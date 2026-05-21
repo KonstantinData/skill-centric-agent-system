@@ -8,150 +8,198 @@ Date: 2026-05-21
 
 The current runtime runs Critic and Judge always-on for every department task,
 regardless of evidence quality, task complexity, or output completeness.
-This pattern has three costs:
+This pattern has two costs:
 
 1. **Financial** — Critic and Judge use `medium`/`high` reasoning budgets
-   (ADR-003). At current run volume, they account for a disproportionate share
+   (ADR-003). At current run volume they account for a disproportionate share
    of token spend on tasks where the research output is already clean.
 
 2. **Latency** — GroupChat rounds for Critic/Judge add wall-clock time even
    when Researcher output is unambiguous.
 
-3. **Maintainability** — Researcher logic is replicated four times (one per
-   department). Any change to evidence-scoring or source-quality rules must be
-   applied in four places.
-
-Before any agent is disabled, we need empirical data: how many tasks *would*
+Before any agent is disabled we need empirical data: how many tasks *would*
 auto-accept under a signal-based gate, and how often would the Critic have
 found a real problem anyway?
 
 ADR-004 introduces a **shadow mode**: the gate is computed on every run, but
-Critic continues to run always-on. The gate verdict is stored alongside the
-Critic result so the two can be compared offline.
+Critic continues to run always-on. The gate verdict and the Critic outcome are
+stored side-by-side so the two can be compared offline.
+
+## Non-Goals
+
+- Researcher logic consolidation (four department copies → one shared skill).
+  Related, but out of scope for ADR-004.
+- Activating the fast path. No agents are disabled in this ADR.
+- Tuning signal weights or policy thresholds. Shadow data drives that decision.
 
 ## Decision
 
-Introduce three new typed structures:
+Introduce four new typed structures:
 
 1. `TaskAssuranceSignals` — evidence-derived confidence signals per task attempt.
 2. `TaskAssurancePolicy` — per-`task_key` gate configuration.
 3. `GateVerdict` — deterministic output of gate evaluation.
+4. `CriticDeltaRecord` — minimal structured diff between gate verdict and
+   actual Critic outcome. This is the primary dataset for shadow-mode analysis.
 
 Extend the existing `TaskReviewArtifact` with an `AssuranceShadowRecord` that
-attaches the verdict and signals to every Critic review.
-
-**No agents are disabled in this ADR.** The gate decides *hypothetically*.
-The shadow record's `actual_critic_delta` field records what the Critic actually
-changed — this is the primary dataset for the follow-on decision.
+attaches all four to every Critic review.
 
 ## Confidence is not LLM-asserted
 
 `TaskAssuranceSignals` scores are computed from observable artifact properties
-only:
+only. An LLM may not produce or modify any signal field.
 
-- `required_fields_score` — fraction of required fields populated in the
-  `TaskArtifact` payload.
-- `source_mix_score` — quality of primary/secondary source distribution.
-- `source_freshness_score` — recency of cited sources.
-- `contradiction_score` — inverted: 1.0 = no contradictions detected,
-  0.0 = severe unresolved conflict.
-- `evidence_strength_score` — depth and corroboration of evidence facts.
+| Signal | Source |
+|--------|--------|
+| `required_fields_score` | fraction of required fields populated in `TaskArtifact.payload` |
+| `source_mix_score` | distribution of primary/secondary source types |
+| `source_freshness_score` | recency of cited sources; see unknown-date fallback below |
+| `contradiction_score` | inverted: 1.0 = no contradictions, 0.0 = severe conflict |
+| `evidence_strength_score` | depth and corroboration of evidence facts |
 
-An LLM may not produce or modify any signal field. Signals are computed by
-deterministic Python from the `TaskArtifact`.
+**Contradiction score note:** `contradiction_score` is only deterministic when
+contradictions are already structured in the artifact (e.g., as a
+`ContractViolation` list). When no structured detection is available,
+callers must use an explicit neutral value (0.5) rather than defaulting to 1.0.
+A default of 1.0 would silently suppress critic escalation for tasks where
+contradictions simply were not checked.
+
+**Source freshness fallback:** When source publication dates are unknown,
+callers compute `source_freshness_score` according to
+`TaskAssurancePolicy.unknown_source_dates_policy`:
+
+- `"neutral"` — unknown dates contribute 0.5 (no penalty, no bonus).
+- `"penalize"` — unknown dates contribute 0.0 (conservative).
 
 ## LTM pattern match rule
 
-`ltm_pattern_match=True` only acts as a confidence booster when:
+`ltm_pattern_match=True` is recorded in shadow mode but **does not boost
+confidence** until empirical precision metrics from measured recall data are
+available in the LTM store.
 
-- `ltm_pattern_precision >= LTM_PRECISION_FLOOR` (0.70), **and**
-- the matched pattern's `task_key`, `department`, `pattern_type`, and
-  `source_strategy` are structurally compatible with the current task.
+Rationale: deriving `ltm_pattern_precision` from an uncalibrated match score
+creates false assurance. The bonus is implemented (`LTM_CONFIDENCE_BONUS=0.05`,
+`LTM_PRECISION_FLOOR=0.70`) but gated behind `LTM_BONUS_ENABLED=False`. It
+will be activated in a follow-on ADR once precision is backed by eval data.
 
-Below the precision floor, an LTM hit is treated as context only — it does not
-raise the confidence score. This prevents stale or low-quality memory patterns
-from silently bypassing the gate.
+When the bonus is active, the structural compatibility check (task_key,
+department, pattern_type, source_strategy) remains a prerequisite — a
+high-precision match on an incompatible pattern is treated as context only.
 
 ## Gate evaluation
 
 ```
-confidence = weighted_sum(signals) + ltm_bonus_if_qualified
+confidence = weighted_sum(signals)        # LTM bonus currently disabled
 
-effective_threshold = policy.critic_required_below
-                    + criticality_delta(signals.task_criticality)
+effective_threshold = clamp(
+    policy.critic_required_below + criticality_delta(signals.task_criticality),
+    0.0, 1.0
+)
 
-requires_critic  = confidence < effective_threshold
+requires_critic  = (task_criticality == "critical")
+                   OR (confidence < effective_threshold)
 would_auto_accept = policy.auto_accept_allowed AND NOT requires_critic
 requires_judge   = any evaluable judge_condition is triggered by signals
 ```
 
-Criticality deltas:
+Criticality deltas applied to `critic_required_below`:
 
-| criticality | delta  | effect                           |
-|-------------|--------|----------------------------------|
-| `low`       | −0.05  | slightly relaxed threshold       |
-| `medium`    | 0.00   | no change                        |
-| `high`      | +0.10  | stricter threshold               |
-| `critical`  | +1.00  | threshold → 1.0; critic always   |
+| criticality | delta  | note                                  |
+|-------------|--------|---------------------------------------|
+| `low`       | −0.05  | slightly relaxed threshold            |
+| `medium`    | 0.00   | no change                             |
+| `high`      | +0.10  | stricter threshold                    |
+| `critical`  | —      | `requires_critic = True` unconditionally |
 
-Judge conditions evaluable from signals (shadow mode only):
+The `critical` case is an explicit branch, not a delta, so that
+`confidence = 1.0` does not slip through when
+`effective_threshold = min(1.0, 0.75 + 1.0) = 1.0`.
 
-- `"conflict"` — triggered when `contradiction_score < 0.40`.
-- `"critical_decision"` — triggered when `task_criticality == "critical"`.
+Signal weights (version `1.0`):
 
-`"max_retries"` and `"ambiguity"` are runtime-only conditions; they cannot be
-evaluated from signals alone and are recorded in `escalation_reason` at
-runtime.
+| signal | weight |
+|--------|--------|
+| `required_fields_score` | 0.30 |
+| `source_mix_score` | 0.20 |
+| `contradiction_score` | 0.20 |
+| `source_freshness_score` | 0.15 |
+| `evidence_strength_score` | 0.15 |
+
+## Versioning
+
+Every `GateVerdict` carries three version strings:
+
+- `scoring_version` — schema version of `TaskAssuranceSignals` (signal field set).
+- `weights_version` — version of `_SIGNAL_WEIGHTS` used during scoring.
+- `policy_version` — version of the `TaskAssurancePolicy` that produced the verdict.
+
+Two runs with the same `TaskAssuranceSignals` are only directly comparable when
+all three versions match.
+
+## CriticDeltaRecord
+
+Minimal structured diff between the gate verdict and the actual Critic outcome.
+Fields are chosen to answer the core shadow-mode question:
+*"Would the Critic have blocked an auto-accept that the gate allowed?"*
+
+```
+CriticDeltaRecord:
+  changed_outcome:               bool       # did Critic change the task outcome?
+  rejected_points_count:         int        # number of points Critic rejected
+  failed_core_rules:             tuple[str] # core contract rules the Critic flagged
+  critic_severity:               none | minor | major | blocking
+  would_have_blocked_auto_accept: bool      # the key shadow-mode signal
+```
+
+`actual_critic_delta: None` is allowed while the diff wire-up is not yet
+implemented in the runtime, but the field is typed as `CriticDeltaRecord | None`
+to signal the intent.
+
+## Judge conditions evaluable from signals
+
+| condition | evaluable from signals? | trigger |
+|-----------|------------------------|---------|
+| `conflict` | yes | `contradiction_score < 0.40` |
+| `critical_decision` | yes | `task_criticality == "critical"` |
+| `max_retries` | **no** — runtime state | recorded in `escalation_reason` |
+| `ambiguity` | **no** — requires Critic output | recorded in `escalation_reason` |
 
 ## StepReasoningPolicy coupling (ADR-003)
 
-Gate verdict maps to reasoning effort:
+Prepared but not enforced in this ADR:
 
-| path             | effort   |
-|------------------|----------|
-| would_auto_accept | `none` / `low` (deterministic export) |
-| requires_critic  | `medium` |
-| requires_judge   | `high`   |
-
-This coupling is *not* enforced in this ADR — it is a preparation for the
-follow-on ADR that activates the fast path.
-
-## Shadow Mode Observation Schema
-
-Every `AssuranceShadowRecord` persists:
-
-- `gate_verdict` — full `GateVerdict` including `confidence_score`.
-- `gate_signals` — the `TaskAssuranceSignals` that produced the verdict.
-- `escalation_reason` — why Critic/Judge ran despite a potential auto-accept
-  verdict (runtime conditions such as `max_retries`).
-- `actual_critic_delta` — structured diff of what the Critic changed relative
-  to the `TaskArtifact`. `None` if Critic ran but changed nothing.
-- `shadow_mode=True` — gate is hypothetical; Critic always runs.
+| gate path | reasoning effort |
+|-----------|-----------------|
+| `would_auto_accept` | `none` / `low` |
+| `requires_critic` | `medium` |
+| `requires_judge` | `high` |
 
 ## Consequences
 
 **Positive**
 
-- Gate logic is deterministic and fully testable without AG2.
+- Gate logic is deterministic and fully testable without AG2 or OpenAI.
 - Audit and trace chain is preserved: every task has a `TaskReviewArtifact`
-  regardless of the gate verdict.
-- Shadow data enables data-driven activation of the fast path in a follow-on ADR.
-- `required_source_types` in `TaskAssurancePolicy` makes source expectations
-  explicit and machine-checkable per task.
+  with an attached `AssuranceShadowRecord`.
+- `CriticDeltaRecord` makes the shadow dataset queryable from day one.
+- Versioning (`scoring_version`, `weights_version`, `policy_version`) ensures
+  cross-run comparability.
+- LTM bonus is disabled until precision is empirically measured — no false
+  assurance from uncalibrated pattern scores.
 
 **Negative / risks**
 
-- Shadow mode adds a small amount of serialization overhead per task.
-- LTM precision floor is a fixed constant (0.70). It may need per-department
-  tuning based on observed match quality.
-- `actual_critic_delta` requires a diff implementation that does not yet exist
-  in the runtime; the field is `None` until that is wired.
+- Shadow mode adds serialization overhead per task.
+- `CriticDeltaRecord` diff requires runtime wire-up; `actual_critic_delta`
+  will be `None` until that is done.
+- `contradiction_score` and `source_freshness_score` require caller discipline:
+  callers must not default to 1.0 for unknown states.
 
 ## Implementation
 
-- `src/orchestration/assurance.py` — `TaskAssuranceSignals`, `TaskAssurancePolicy`,
-  `GateVerdict`, `AssuranceShadowRecord`, `evaluate_gate`.
-- `tests/architecture/test_assurance.py` — pure unit tests; no AG2 dependency.
+- `src/orchestration/assurance.py`
+- `tests/architecture/test_assurance.py`
 
 ## Related
 
