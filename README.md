@@ -6,7 +6,7 @@ The product direction is a single runtime agent that assembles a task-specific `
 
 ## Current Status
 
-Contract-hardening stage. The repository currently defines durable architecture, contracts, schemas, ADRs, and examples before choosing a runtime language or framework. The current priority is making composition testable before runtime code is added.
+Contract-test stage. The repository currently defines durable architecture, contracts, schemas, ADRs, examples, and a Python-based contract-test harness before runtime code is added.
 
 ## Core Flow
 
@@ -28,6 +28,27 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.
+- `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
+
+## Local Validation
+
+Install development dependencies:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+Run contract tests:
+
+```powershell
+python -m pytest
+```
+
+Run linting:
+
+```powershell
+python -m ruff check .
+```
 
 ## Build Rules
 
@@ -39,7 +60,6 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 
 ## Next Steps
 
-1. Decide the implementation stack and record it as an ADR.
-2. Add contract tests for the JSON schemas and examples.
-3. Implement registry discovery, scoring, filtering, resolution, and graph validation.
-4. Implement task analysis and profile composition against the sample task/profile pair.
+1. Add CI for the contract-test command.
+2. Implement registry discovery, scoring, filtering, resolution, and graph validation.
+3. Implement task analysis and profile composition against the sample task/profile pair.

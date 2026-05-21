@@ -1,0 +1,26 @@
+[project]
+name = "skill-centric-agent-system"
+version = "0.1.0"
+description = "Skill-centric, self-composing single-agent runtime contracts and implementation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+
+[project.optional-dependencies]
+dev = [
+    "jsonschema>=4.22",
+    "pytest>=8.2",
+    "ruff>=0.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-p", "no:cacheprovider"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

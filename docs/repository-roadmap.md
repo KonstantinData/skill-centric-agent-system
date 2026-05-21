@@ -22,6 +22,8 @@
 - Record the choice in an ADR.
 - Add formatter, test runner, schema validation, and contract-test commands.
 - Add fixture tests for module metadata and runtime profile examples.
+- Add negative tests for invalid modules and runtime profiles.
+- Add cross-field tests for invariants that JSON Schema cannot express.
 
 ## Phase 4: Registries
 
