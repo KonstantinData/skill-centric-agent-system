@@ -26,9 +26,13 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/adr/`: architecture decision records.
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
+- `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
+- `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.
+- `examples/control-plane/`: representative Cloudflare control-plane storage records.
+- `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
 
 ## Local Validation

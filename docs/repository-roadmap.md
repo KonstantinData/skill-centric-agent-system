@@ -43,6 +43,7 @@
 
 - Add Cloudflare D1 schema contracts for control metadata.
 - Add Hetzner runtime storage schema contracts.
+- Add positive and negative storage contract fixtures.
 - Add Wrangler configuration after resource names and bindings are documented.
 - Add GitHub Actions after local infrastructure validation commands exist.
 

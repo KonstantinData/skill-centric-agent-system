@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:liquisto:skill-centric-agent-system:schema:hetzner-runtime-plane:0.1.0",
+  "title": "Hetzner Runtime Plane Storage Contract",
+  "description": "Recordset contract for Hetzner runtime storage covering runs, steps, tool invocations, validation results, artifacts, and memory candidates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "environment",
+    "records"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "environment": {
+      "$ref": "#/$defs/environment"
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_runs",
+        "runtime_steps",
+        "tool_invocations",
+        "validation_results",
+        "memory_candidates"
+      ],
+      "properties": {
+        "runtime_runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeRun"
+          }
+        },
+        "runtime_steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeStep"
+          }
+        },
+        "tool_invocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/toolInvocation"
+          }
+        },
+        "validation_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validationResult"
+          }
+        },
+        "memory_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/memoryCandidate"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nullableDateTime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ]
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "secret"
+      ]
+    },
+    "runtimeStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "runtimeRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "profile_id",
+        "profile_version",
+        "status",
+        "started_at",
+        "completed_at",
+        "artifact_root_uri"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "task_id": {
+          "$ref": "#/$defs/id"
+        },
+        "profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "profile_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeStatus"
+        },
+        "started_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "artifact_root_uri": {
+          "$ref": "#/$defs/uri"
+        }
+      }
+    },
+    "runtimeStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "step_index",
+        "kind",
+        "status",
+        "started_at",
+        "completed_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "step_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "context",
+            "planner",
+            "executor",
+            "validator"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeStatus"
+        },
+        "started_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        }
+      }
+    },
+    "toolInvocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "step_id",
+        "tool_name",
+        "status",
+        "input_uri",
+        "output_uri",
+        "started_at",
+        "completed_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "tool_name": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeStatus"
+        },
+        "input_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "output_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "started_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        }
+      }
+    },
+    "validationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "step_id",
+        "validator_id",
+        "status",
+        "findings_uri",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "validator_id": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "warning"
+          ]
+        },
+        "findings_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "memoryCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "profile_id",
+        "source_step_id",
+        "target_memory_scope_id",
+        "content_uri",
+        "sensitivity",
+        "retention_policy",
+        "validator_status",
+        "validator_id",
+        "policy_status",
+        "policy_id",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "target_memory_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "content_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/sensitivity"
+        },
+        "retention_policy": {
+          "$ref": "#/$defs/id"
+        },
+        "validator_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "validator_id": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "needs_clarification"
+          ]
+        },
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,634 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:liquisto:skill-centric-agent-system:schema:cloudflare-control-plane:0.1.0",
+  "title": "Cloudflare Control Plane Storage Contract",
+  "description": "Recordset contract for Cloudflare D1 control-plane metadata and references to R2, Vectorize, KV, queues, and AI Gateway.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "environment",
+    "records"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "environment": {
+      "$ref": "#/$defs/environment"
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modules",
+        "module_versions",
+        "module_dependencies",
+        "knowledge_sources",
+        "knowledge_documents",
+        "knowledge_chunks",
+        "memory_records",
+        "scope_bindings",
+        "policy_bindings",
+        "ingestion_jobs",
+        "audit_events"
+      ],
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/module"
+          }
+        },
+        "module_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleVersion"
+          }
+        },
+        "module_dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleDependency"
+          }
+        },
+        "knowledge_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeSource"
+          }
+        },
+        "knowledge_documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeDocument"
+          }
+        },
+        "knowledge_chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeChunk"
+          }
+        },
+        "memory_records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/memoryRecord"
+          }
+        },
+        "scope_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scopeBinding"
+          }
+        },
+        "policy_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policyBinding"
+          }
+        },
+        "ingestion_jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ingestionJob"
+          }
+        },
+        "audit_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/auditEvent"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ]
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "secret"
+      ]
+    },
+    "lifecycleStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated",
+        "deleted"
+      ]
+    },
+    "moduleKind": {
+      "type": "string",
+      "enum": [
+        "skill",
+        "instruction",
+        "tool",
+        "knowledge_scope",
+        "data_scope",
+        "memory_scope",
+        "policy",
+        "validator"
+      ]
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "status",
+        "current_version_id",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/moduleKind"
+        },
+        "status": {
+          "$ref": "#/$defs/lifecycleStatus"
+        },
+        "current_version_id": {
+          "$ref": "#/$defs/id"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "moduleVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "module_id",
+        "version",
+        "source_uri",
+        "checksum",
+        "selection_base_score",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "module_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "source_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "checksum": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selection_base_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "moduleDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "module_version_id",
+        "dependency_kind",
+        "dependency_id",
+        "is_required"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "module_version_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dependency_kind": {
+          "$ref": "#/$defs/moduleKind"
+        },
+        "dependency_id": {
+          "$ref": "#/$defs/id"
+        },
+        "is_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "knowledgeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "source_type",
+        "uri",
+        "owner",
+        "sensitivity",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "repo",
+            "notion",
+            "r2",
+            "url",
+            "manual"
+          ]
+        },
+        "uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/sensitivity"
+        },
+        "status": {
+          "$ref": "#/$defs/lifecycleStatus"
+        }
+      }
+    },
+    "knowledgeDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source_id",
+        "version",
+        "content_uri",
+        "manifest_uri",
+        "checksum",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "content_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "manifest_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "checksum": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/lifecycleStatus"
+        }
+      }
+    },
+    "knowledgeChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "document_id",
+        "chunk_index",
+        "content_uri",
+        "vector_id",
+        "scope_id",
+        "token_count"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "document_id": {
+          "$ref": "#/$defs/id"
+        },
+        "chunk_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "vector_id": {
+          "$ref": "#/$defs/id"
+        },
+        "scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "memoryRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "memory_scope_id",
+        "version",
+        "content_uri",
+        "manifest_uri",
+        "source_run_id",
+        "source_profile_id",
+        "sensitivity",
+        "retention_policy",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "memory_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "content_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "manifest_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "source_run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/sensitivity"
+        },
+        "retention_policy": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "$ref": "#/$defs/lifecycleStatus"
+        }
+      }
+    },
+    "scopeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "scope_id",
+        "scope_kind",
+        "principal_kind",
+        "principal_id",
+        "policy_id",
+        "effect"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "scope_kind": {
+          "type": "string",
+          "enum": [
+            "knowledge_scope",
+            "data_scope",
+            "memory_scope"
+          ]
+        },
+        "principal_kind": {
+          "type": "string",
+          "enum": [
+            "role",
+            "user",
+            "service"
+          ]
+        },
+        "principal_id": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "effect": {
+          "$ref": "#/$defs/policyEffect"
+        }
+      }
+    },
+    "policyBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policy_id",
+        "target_kind",
+        "target_id",
+        "effect",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "module",
+            "knowledge_source",
+            "knowledge_document",
+            "memory_record",
+            "scope"
+          ]
+        },
+        "target_id": {
+          "$ref": "#/$defs/id"
+        },
+        "effect": {
+          "$ref": "#/$defs/policyEffect"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "policyEffect": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny"
+      ]
+    },
+    "ingestionJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "job_type",
+        "status",
+        "source_uri",
+        "target_kind",
+        "target_id",
+        "attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "job_type": {
+          "type": "string",
+          "enum": [
+            "knowledge_import",
+            "memory_import",
+            "embedding_update",
+            "audit_archive"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed"
+          ]
+        },
+        "source_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "knowledge_document",
+            "memory_record",
+            "audit_archive"
+          ]
+        },
+        "target_id": {
+          "$ref": "#/$defs/id"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "auditEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "event_type",
+        "actor_id",
+        "target_kind",
+        "target_id",
+        "created_at",
+        "retention_policy",
+        "archive_after"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor_id": {
+          "$ref": "#/$defs/id"
+        },
+        "target_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_id": {
+          "$ref": "#/$defs/id"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "retention_policy": {
+          "$ref": "#/$defs/id"
+        },
+        "archive_after": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "archive_uri": {
+          "$ref": "#/$defs/uri"
+        }
+      }
+    }
+  }
+}

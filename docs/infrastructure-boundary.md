@@ -35,6 +35,8 @@ Runtime outputs can produce long-term memory, but only through a validated feedb
 
 ## Cloudflare D1 Metadata
 
+The machine-readable recordset contract lives in `schemas/cloudflare-control-plane.schema.json`.
+
 Initial D1 tables should cover:
 
 - `modules`
@@ -88,6 +90,8 @@ audit/
 ```
 
 ## Hetzner Runtime Storage
+
+The machine-readable recordset contract lives in `schemas/hetzner-runtime-plane.schema.json`.
 
 The Hetzner runtime plane should start with structured runtime storage and artifact storage.
 

@@ -1,0 +1,79 @@
+{
+  "contract_version": "0.1.0",
+  "environment": "dev",
+  "records": {
+    "runtime_runs": [
+      {
+        "id": "run-storage-contract-fixture",
+        "task_id": "task-storage-contract-fixture",
+        "profile_id": "profile-storage-contract-fixture",
+        "profile_version": "0.2.0",
+        "status": "succeeded",
+        "started_at": "2026-05-21T20:00:00Z",
+        "completed_at": "2026-05-21T20:02:00Z",
+        "artifact_root_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture"
+      }
+    ],
+    "runtime_steps": [
+      {
+        "id": "step-storage-contract-executor",
+        "run_id": "run-storage-contract-fixture",
+        "step_index": 0,
+        "kind": "executor",
+        "status": "succeeded",
+        "started_at": "2026-05-21T20:00:10Z",
+        "completed_at": "2026-05-21T20:00:40Z"
+      },
+      {
+        "id": "step-storage-contract-validator",
+        "run_id": "run-storage-contract-fixture",
+        "step_index": 1,
+        "kind": "validator",
+        "status": "succeeded",
+        "started_at": "2026-05-21T20:00:45Z",
+        "completed_at": "2026-05-21T20:01:00Z"
+      }
+    ],
+    "tool_invocations": [
+      {
+        "id": "tool-git-read-storage-contract",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": "step-storage-contract-executor",
+        "tool_name": "git-read",
+        "status": "succeeded",
+        "input_uri": "hetzner://runtime/tool_outputs/run-storage-contract-fixture/git-read/input.json",
+        "output_uri": "hetzner://runtime/tool_outputs/run-storage-contract-fixture/git-read/output.json",
+        "started_at": "2026-05-21T20:00:12Z",
+        "completed_at": "2026-05-21T20:00:18Z"
+      }
+    ],
+    "validation_results": [
+      {
+        "id": "vr-storage-contract-memory-candidate",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": "step-storage-contract-validator",
+        "validator_id": "memory-candidate-contract",
+        "status": "passed",
+        "findings_uri": "hetzner://runtime/traces/run-storage-contract-fixture/validation-results.json",
+        "created_at": "2026-05-21T20:01:00Z"
+      }
+    ],
+    "memory_candidates": [
+      {
+        "id": "mc-adr-0004-boundary",
+        "run_id": "run-storage-contract-fixture",
+        "profile_id": "profile-storage-contract-fixture",
+        "source_step_id": "step-storage-contract-validator",
+        "target_memory_scope_id": "mod-project-memory",
+        "content_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture/memory-candidates/mc-adr-0004-boundary.json",
+        "sensitivity": "internal",
+        "retention_policy": "retain-project-memory",
+        "validator_status": "approved",
+        "validator_id": "memory-candidate-contract",
+        "policy_status": "approved",
+        "policy_id": "mod-no-destructive-commands",
+        "created_at": "2026-05-21T20:01:10Z"
+      }
+    ]
+  }
+}
