@@ -18,7 +18,8 @@ TaskCriticality = Literal["low", "medium", "high", "critical"]
 JudgeCondition = Literal["conflict", "max_retries", "critical_decision", "ambiguity"]
 CriticSeverity = Literal["none", "minor", "major", "blocking"]
 
-# Signal weights for the confidence score.  Must sum to 1.0.
+# Signal weights.  Must sum to 1.0.
+# Bumping _SIGNAL_WEIGHTS requires a new ASSURANCE_WEIGHTS_VERSION.
 _SIGNAL_WEIGHTS: dict[str, float] = {
     "required_fields_score":  0.30,
     "source_mix_score":       0.20,
@@ -27,15 +28,16 @@ _SIGNAL_WEIGHTS: dict[str, float] = {
     "evidence_strength_score": 0.15,
 }
 
-# LTM bonus is disabled until empirical precision metrics are available from
-# measured recall data in the LTM store.  Activating this without calibrated
-# precision would create false assurance.  Set to True in a follow-on ADR.
-LTM_BONUS_ENABLED: bool = False
-LTM_CONFIDENCE_BONUS: float = 0.05    # applied only when LTM_BONUS_ENABLED is True
-LTM_PRECISION_FLOOR: float = 0.70    # minimum precision for a match to qualify
+# Neutral fallback applied when a score is None (unknown/undetected).
+_UNKNOWN_SCORE_NEUTRAL: float = 0.5
 
-# Additive adjustment to critic_required_below based on task criticality.
-# "critical" is handled as an explicit branch — see evaluate_gate.
+# LTM bonus disabled until empirical precision from eval data is available.
+# Set to True in a follow-on ADR after precision is measured.
+LTM_BONUS_ENABLED: bool = False
+LTM_CONFIDENCE_BONUS: float = 0.05  # applied only when LTM_BONUS_ENABLED is True
+
+# Additive adjustment to critic_required_below by criticality.
+# "critical" is an unconditional branch — not a delta.
 _CRITICALITY_DELTA: dict[str, float] = {
     "low":    -0.05,
     "medium":  0.00,
@@ -50,37 +52,40 @@ _CONFLICT_SCORE_THRESHOLD: float = 0.40
 class TaskAssuranceSignals:
     """Evidence-derived confidence signals for one task attempt.
 
-    All score fields are in [0.0, 1.0].  Computed from TaskArtifact properties
-    by deterministic Python — never produced or modified by an LLM.
+    Score fields are ``float | None``.
+    - ``float``: computed value in [0.0, 1.0].
+    - ``None``: signal is unknown or not yet detectable from the artifact.
+      ``_compute_confidence`` treats None as ``_UNKNOWN_SCORE_NEUTRAL`` (0.5).
 
     Caller discipline:
-    - contradiction_score: use 0.5 (neutral) when contradictions are not yet
-      structurally detected in the artifact.  Do not default to 1.0.
-    - source_freshness_score: apply TaskAssurancePolicy.unknown_source_dates_policy
-      when source publication dates are missing (neutral → 0.5, penalize → 0.0).
+    - ``contradiction_score``: use ``None`` when contradictions are not yet
+      structurally detected in the artifact.  Do NOT default to 1.0.
+    - ``source_freshness_score``: apply
+      ``TaskAssurancePolicy.unknown_source_dates_policy`` for sources with
+      missing publication dates (neutral → 0.5, penalize → 0.0).
     """
 
     schema_version: str
-    required_fields_score: float    # fraction of required fields populated
-    source_mix_score: float         # quality of primary/secondary source mix
-    source_freshness_score: float   # recency of sources (1.0 = all fresh)
-    contradiction_score: float      # 1.0 = no contradictions; 0.0 = severe conflict
-    evidence_strength_score: float  # depth and corroboration of evidence
+    required_fields_score: float | None
+    source_mix_score: float | None
+    source_freshness_score: float | None
+    contradiction_score: float | None   # 1.0 = no contradictions; 0.0 = severe conflict
+    evidence_strength_score: float | None
     task_criticality: TaskCriticality
     ltm_pattern_match: bool
     ltm_pattern_precision: float | None  # None when ltm_pattern_match is False
 
     def __post_init__(self) -> None:
-        scores = {
+        score_fields = {
             "required_fields_score": self.required_fields_score,
             "source_mix_score": self.source_mix_score,
             "source_freshness_score": self.source_freshness_score,
             "contradiction_score": self.contradiction_score,
             "evidence_strength_score": self.evidence_strength_score,
         }
-        for name, value in scores.items():
-            if not (0.0 <= value <= 1.0):
-                raise ValueError(f"{name} must be in [0.0, 1.0], got {value!r}")
+        for name, value in score_fields.items():
+            if value is not None and not (0.0 <= value <= 1.0):
+                raise ValueError(f"{name} must be in [0.0, 1.0] or None, got {value!r}")
         if self.ltm_pattern_match and self.ltm_pattern_precision is None:
             raise ValueError(
                 "ltm_pattern_precision must be provided when ltm_pattern_match is True"
@@ -103,33 +108,56 @@ class TaskAssurancePolicy:
     regardless of signal quality.
 
     ``unknown_source_dates_policy`` instructs callers how to score sources
-    with missing publication dates when computing source_freshness_score:
-    - "neutral"  → contribute 0.5 (no penalty, no bonus)
-    - "penalize" → contribute 0.0 (conservative)
+    with missing publication dates when computing ``source_freshness_score``:
+    - ``"neutral"``  → contribute 0.5 (no penalty, no bonus)
+    - ``"penalize"`` → contribute 0.0 (conservative)
+
+    ``ltm_precision_floor`` overrides the global floor for this task,
+    enabling per-task or per-department tuning once eval data exists.
     """
 
     task_key: str
     auto_accept_allowed: bool
-    critic_required_below: float          # Critic runs when confidence < this
+    critic_required_below: float            # Critic runs when confidence < threshold
     judge_required_on: frozenset[JudgeCondition]
     required_source_types: tuple[str, ...]
     criticality: TaskCriticality
     policy_version: str
+    preferred_source_types: tuple[str, ...] = ()
+    minimum_source_count: int = 0
     unknown_source_dates_policy: Literal["neutral", "penalize"] = "neutral"
+    ltm_precision_floor: float = 0.70       # per-policy override; default matches global
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.critic_required_below <= 1.0):
             raise ValueError("critic_required_below must be in [0.0, 1.0]")
+        if self.minimum_source_count < 0:
+            raise ValueError("minimum_source_count must be >= 0")
+        if not (0.0 <= self.ltm_precision_floor <= 1.0):
+            raise ValueError("ltm_precision_floor must be in [0.0, 1.0]")
 
 
 @dataclass(frozen=True, slots=True)
 class GateVerdict:
-    """Deterministic output of evaluate_gate for one (signals, policy) pair."""
+    """Deterministic output of evaluate_gate for one (signals, policy) pair.
+
+    ``would_auto_accept`` is True only when:
+    - ``policy.auto_accept_allowed`` is True, AND
+    - ``requires_critic`` is False, AND
+    - ``requires_judge`` is False.
+
+    ``effective_threshold``, ``judge_conditions_triggered``, and
+    ``ltm_bonus_applied`` make the verdict self-describing for shadow analysis
+    without requiring callers to re-derive internal gate state.
+    """
 
     would_auto_accept: bool
     requires_critic: bool
     requires_judge: bool
     reasons: tuple[str, ...]
+    effective_threshold: float
+    judge_conditions_triggered: frozenset[JudgeCondition]
+    ltm_bonus_applied: bool
     policy_version: str
     scoring_version: str
     weights_version: str
@@ -141,6 +169,9 @@ class GateVerdict:
             "requires_critic": self.requires_critic,
             "requires_judge": self.requires_judge,
             "reasons": list(self.reasons),
+            "effective_threshold": self.effective_threshold,
+            "judge_conditions_triggered": sorted(self.judge_conditions_triggered),
+            "ltm_bonus_applied": self.ltm_bonus_applied,
             "policy_version": self.policy_version,
             "scoring_version": self.scoring_version,
             "weights_version": self.weights_version,
@@ -184,11 +215,14 @@ class AssuranceShadowRecord:
     In shadow mode the gate verdict is hypothetical — Critic always runs.
     ``actual_critic_delta`` records what the Critic actually changed.
     It is None until the diff wire-up is implemented in the runtime.
+
+    ``escalation_reason`` is a tuple so multiple runtime conditions
+    (e.g. max_retries + ambiguity) can be recorded independently.
     """
 
     gate_verdict: GateVerdict
     gate_signals: TaskAssuranceSignals
-    escalation_reason: str | None        # runtime conditions, e.g. max_retries
+    escalation_reason: tuple[str, ...]       # empty tuple when no escalation
     actual_critic_delta: CriticDeltaRecord | None
     shadow_mode: bool = True
 
@@ -206,7 +240,7 @@ class AssuranceShadowRecord:
                 "ltm_pattern_match": self.gate_signals.ltm_pattern_match,
                 "ltm_pattern_precision": self.gate_signals.ltm_pattern_precision,
             },
-            "escalation_reason": self.escalation_reason,
+            "escalation_reason": list(self.escalation_reason),
             "actual_critic_delta": (
                 self.actual_critic_delta.to_dict()
                 if self.actual_critic_delta is not None
@@ -216,32 +250,38 @@ class AssuranceShadowRecord:
         }
 
 
-def _compute_confidence(signals: TaskAssuranceSignals) -> float:
-    """Return a weighted confidence score derived from evidence signals.
+def _resolve_score(value: float | None) -> float:
+    """Return the score value or the neutral fallback for unknown signals."""
+    return _UNKNOWN_SCORE_NEUTRAL if value is None else value
 
-    LTM hits only contribute when LTM_BONUS_ENABLED is True and
-    precision >= LTM_PRECISION_FLOOR.  The bonus is currently disabled (see
-    ADR-004: LTM precision is not yet backed by empirical eval data).
+
+def _compute_confidence(
+    signals: TaskAssuranceSignals,
+    policy: TaskAssurancePolicy,
+) -> tuple[float, bool]:
+    """Return (confidence_score, ltm_bonus_applied).
+
+    None scores are resolved to ``_UNKNOWN_SCORE_NEUTRAL``.
+    LTM bonus uses ``policy.ltm_precision_floor`` for per-task tuning.
     Score is clamped to [0.0, 1.0].
     """
     base = (
-        _SIGNAL_WEIGHTS["required_fields_score"] * signals.required_fields_score
-        + _SIGNAL_WEIGHTS["source_mix_score"] * signals.source_mix_score
-        + _SIGNAL_WEIGHTS["source_freshness_score"] * signals.source_freshness_score
-        + _SIGNAL_WEIGHTS["contradiction_score"] * signals.contradiction_score
-        + _SIGNAL_WEIGHTS["evidence_strength_score"] * signals.evidence_strength_score
+        _SIGNAL_WEIGHTS["required_fields_score"] * _resolve_score(signals.required_fields_score)
+        + _SIGNAL_WEIGHTS["source_mix_score"] * _resolve_score(signals.source_mix_score)
+        + _SIGNAL_WEIGHTS["source_freshness_score"] * _resolve_score(signals.source_freshness_score)
+        + _SIGNAL_WEIGHTS["contradiction_score"] * _resolve_score(signals.contradiction_score)
+        + _SIGNAL_WEIGHTS["evidence_strength_score"] * _resolve_score(signals.evidence_strength_score)
     )
 
-    ltm_bonus = 0.0
-    if (
+    ltm_bonus_applied = (
         LTM_BONUS_ENABLED
         and signals.ltm_pattern_match
         and signals.ltm_pattern_precision is not None
-        and signals.ltm_pattern_precision >= LTM_PRECISION_FLOOR
-    ):
-        ltm_bonus = LTM_CONFIDENCE_BONUS
+        and signals.ltm_pattern_precision >= policy.ltm_precision_floor
+    )
+    bonus = LTM_CONFIDENCE_BONUS if ltm_bonus_applied else 0.0
 
-    return min(1.0, round(base + ltm_bonus, 6))
+    return min(1.0, round(base + bonus, 6)), ltm_bonus_applied
 
 
 def evaluate_gate(
@@ -253,20 +293,28 @@ def evaluate_gate(
     Pure function — no side effects, no I/O, no randomness.
     The same (signals, policy) pair always produces the same GateVerdict.
 
-    Judge conditions evaluable from signals:
-    - "conflict"          when contradiction_score < _CONFLICT_SCORE_THRESHOLD
-    - "critical_decision" when task_criticality == "critical"
+    ``would_auto_accept`` requires all three conditions to hold:
+    - ``policy.auto_accept_allowed``
+    - ``not requires_critic``
+    - ``not requires_judge``
 
-    "max_retries" and "ambiguity" are runtime-only conditions and must be
-    captured in AssuranceShadowRecord.escalation_reason.
+    Judge conditions evaluable from signals:
+    - ``"conflict"``          when contradiction_score < _CONFLICT_SCORE_THRESHOLD
+    - ``"critical_decision"`` when task_criticality == "critical"
+
+    ``"max_retries"`` and ``"ambiguity"`` are runtime-only; capture them in
+    ``AssuranceShadowRecord.escalation_reason``.
     """
     reasons: list[str] = []
-    confidence = _compute_confidence(signals)
+    confidence, ltm_bonus_applied = _compute_confidence(signals, policy)
 
-    # "critical" tasks always require Critic — expressed as an explicit branch
-    # so that confidence=1.0 does not slip through when effective_threshold=1.0.
+    # Resolve critic requirement and effective threshold.
     if signals.task_criticality == "critical":
+        # Unconditional branch: critical tasks always require Critic.
+        # An explicit check prevents confidence=1.0 slipping through when
+        # effective_threshold would equal 1.0 via the delta path.
         requires_critic = True
+        effective_threshold = 1.0
         reasons.append("critic required: task_criticality=critical")
     else:
         delta = _CRITICALITY_DELTA.get(signals.task_criticality, 0.0)
@@ -281,30 +329,45 @@ def evaluate_gate(
     if not policy.auto_accept_allowed:
         reasons.append("auto_accept disabled by policy")
 
-    would_auto_accept = policy.auto_accept_allowed and not requires_critic
+    # Resolve judge conditions from signals.
+    judge_conditions_triggered: set[JudgeCondition] = set()
 
-    requires_judge = False
+    contradiction = signals.contradiction_score
     if (
         "conflict" in policy.judge_required_on
-        and signals.contradiction_score < _CONFLICT_SCORE_THRESHOLD
+        and contradiction is not None
+        and contradiction < _CONFLICT_SCORE_THRESHOLD
     ):
-        requires_judge = True
+        judge_conditions_triggered.add("conflict")
         reasons.append(
             f"judge required: conflict detected"
-            f" (contradiction_score={signals.contradiction_score:.4f})"
+            f" (contradiction_score={contradiction:.4f})"
         )
+
     if (
         "critical_decision" in policy.judge_required_on
         and signals.task_criticality == "critical"
     ):
-        requires_judge = True
+        judge_conditions_triggered.add("critical_decision")
         reasons.append("judge required: critical_decision + critical task")
+
+    requires_judge = bool(judge_conditions_triggered)
+
+    # Auto-accept requires critic AND judge to be clear.
+    would_auto_accept = (
+        policy.auto_accept_allowed
+        and not requires_critic
+        and not requires_judge
+    )
 
     return GateVerdict(
         would_auto_accept=would_auto_accept,
         requires_critic=requires_critic,
         requires_judge=requires_judge,
         reasons=tuple(reasons),
+        effective_threshold=effective_threshold,
+        judge_conditions_triggered=frozenset(judge_conditions_triggered),
+        ltm_bonus_applied=ltm_bonus_applied,
         policy_version=policy.policy_version,
         scoring_version=signals.schema_version,
         weights_version=ASSURANCE_WEIGHTS_VERSION,
