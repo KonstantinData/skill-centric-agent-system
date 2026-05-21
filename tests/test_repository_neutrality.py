@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +23,16 @@ FORBIDDEN_BRAND = "liqui" + "sto"
 
 def iter_repository_text_files() -> list[Path]:
     paths: list[Path] = []
-    for path in REPO_ROOT.rglob("*"):
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    for relative_path in result.stdout.splitlines():
+        path = REPO_ROOT / relative_path
         if not path.is_file():
             continue
         if SKIPPED_PARTS.intersection(path.relative_to(REPO_ROOT).parts):

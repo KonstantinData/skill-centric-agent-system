@@ -28,6 +28,16 @@ in the next implementation phase.
 | Memory R2 bucket | `scas-memory-dev` |
 | KV namespace binding | `SCAS_CONFIG` |
 
+The dev Worker is deployed at:
+
+```text
+https://scas-control-api-dev.still-butterfly-bbff.workers.dev
+```
+
+The dev D1 and KV resource IDs are committed in
+`workers/control-api/wrangler.toml`. Re-run the bootstrap sequence only when the
+Cloudflare dev resources need to be recreated.
+
 ## Bootstrap Sequence
 
 Run these commands from the repository root after `npm install`.
@@ -93,10 +103,8 @@ npm run worker:deploy:dev
 
 The main CI workflow runs Worker type checks and Vitest tests on pushes and pull
 requests. Dev deployment is manual through `workflow_dispatch` with
-`deploy_control_api_dev = true`.
-
-Do not run the manual deploy until the Cloudflare D1 and KV placeholder IDs in
-`workers/control-api/wrangler.toml` are replaced with real resource IDs.
+`deploy_control_api_dev = true`, or locally with `npm run worker:deploy:dev`
+when Wrangler is authenticated.
 
 ## Operational Rules
 
