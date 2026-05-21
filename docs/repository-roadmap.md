@@ -25,12 +25,26 @@
 - Add negative tests for invalid modules and runtime profiles.
 - Add cross-field tests for invariants that JSON Schema cannot express.
 
-## Phase 4: Registries
+## Phase 4A: Control Plane And Runtime Plane Contracts
+
+- Define the Cloudflare Control Plane and Hetzner Runtime Plane boundary.
+- Define the memory feedback loop from Hetzner runtime storage to Cloudflare consolidated memory.
+- Define D1 constraints, audit retention, Vectorize filtering boundaries, and AI Gateway usage.
+- Define initial Cloudflare resource names and Hetzner runtime storage responsibilities.
+
+## Phase 4B: Registries
 
 - Implement registry interfaces for skills, instructions, tools, knowledge scopes, data scopes, memory scopes, policies, and validators.
 - Implement deterministic registry discovery and query semantics.
 - Add graph validation for missing references, circular dependencies, conflicts, and unauthorized transitive capabilities.
 - Add fixtures and tests for module discovery and dependency resolution.
+
+## Phase 4C: Infrastructure Scaffolding
+
+- Add Cloudflare D1 schema contracts for control metadata.
+- Add Hetzner runtime storage schema contracts.
+- Add Wrangler configuration after resource names and bindings are documented.
+- Add GitHub Actions after local infrastructure validation commands exist.
 
 ## Phase 5: Analyzer And Composer
 

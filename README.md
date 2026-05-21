@@ -22,6 +22,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 
 - `docs/architecture.md`: system architecture and component responsibilities.
 - `docs/contracts.md`: durable contracts for modules and runtime profiles.
+- `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
 - `docs/adr/`: architecture decision records.
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
