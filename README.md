@@ -56,6 +56,23 @@ Run linting:
 python -m ruff check .
 ```
 
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs contract tests, linting, and JSON syntax checks on
+pushes to `main` and pull requests.
+
+The same workflow also has a manual `workflow_dispatch` infrastructure smoke
+test. Run it with `run_infra_smoke = true` after the required GitHub Actions
+secrets are configured:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ZONE_ID`
+- `HETZNER_HOST`
+- `HETZNER_SSH_KEY`
+- `HETZNER_USER`
+- `OPENAI_API_KEY`
+
 ## Build Rules
 
 - Keep the runtime single-agent unless the product direction changes explicitly.

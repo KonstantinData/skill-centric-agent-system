@@ -45,8 +45,9 @@
 - Derive executable Cloudflare D1 migrations from the control-plane contract.
 - Add Hetzner runtime storage schema contracts.
 - Add positive and negative storage contract fixtures.
+- Add GitHub Actions validation and manual infrastructure smoke checks.
 - Add Wrangler configuration after resource names and bindings are documented.
-- Add GitHub Actions after local infrastructure validation commands exist.
+- Add deployment workflows after local infrastructure validation commands exist.
 
 ## Phase 5: Analyzer And Composer
 

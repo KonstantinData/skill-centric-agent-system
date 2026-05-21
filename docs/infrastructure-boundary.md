@@ -181,9 +181,17 @@ GitHub repository secrets are used for deployment:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ZONE_ID`
+- `HETZNER_HOST`
+- `HETZNER_SSH_KEY`
+- `HETZNER_USER`
 - `OPENAI_API_KEY`
 
 Workers receive runtime secrets through Cloudflare Worker Secrets or account-level secret bindings. `OPENAI_API_KEY` is used through AI Gateway in production and must not be committed to configuration files.
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` validates these secret
+bindings through a manual infrastructure smoke test. The smoke test checks the
+Cloudflare API token, OpenAI secret presence, and SSH connectivity to Hetzner. It
+is not run automatically on pull requests or pushes.
 
 ## Implementation Order
 
