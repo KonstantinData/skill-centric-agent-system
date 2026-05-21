@@ -1,0 +1,21 @@
+{
+  "name": "skill-centric-agent-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "worker:typecheck": "tsc --noEmit -p workers/control-api/tsconfig.json",
+    "worker:test": "vitest run --config workers/control-api/vitest.config.ts",
+    "worker:types": "wrangler types workers/control-api/src/worker-configuration.d.ts --include-runtime false --config workers/control-api/wrangler.toml",
+    "worker:check": "wrangler deploy --dry-run --config workers/control-api/wrangler.toml",
+    "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.16.8",
+    "@cloudflare/workers-types": "4.20260520.1",
+    "@types/node": "^22.10.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7",
+    "wrangler": "^4.93.1"
+  }
+}

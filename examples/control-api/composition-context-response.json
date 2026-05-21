@@ -1,0 +1,11 @@
+{
+  "contract_version": "0.1.0",
+  "registry_version": "0.1.0",
+  "composition_status": "pending_registry_implementation",
+  "candidate_modules": [],
+  "applicable_policies": [],
+  "allowed_knowledge_scopes": [],
+  "allowed_data_scopes": [],
+  "allowed_memory_scopes": [],
+  "validation_requirements": []
+}

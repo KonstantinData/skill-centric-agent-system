@@ -48,6 +48,7 @@
 - Add positive and negative storage contract fixtures.
 - Add GitHub Actions validation and manual infrastructure smoke checks.
 - Add Wrangler configuration after resource names and bindings are documented.
+- Add the Cloudflare Control API Worker scaffold and `POST /composition/context` contract.
 - Add deployment workflows after local infrastructure validation commands exist.
 
 ## Phase 5: Analyzer And Composer

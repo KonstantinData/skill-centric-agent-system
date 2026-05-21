@@ -1,0 +1,31 @@
+"$schema" = "../../node_modules/wrangler/config-schema.json"
+name = "scas-control-api-dev"
+main = "src/index.ts"
+compatibility_date = "2026-05-20"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[vars]
+ENVIRONMENT = "dev"
+
+[[d1_databases]]
+binding = "SCAS_CONTROL_DB"
+database_name = "scas-control-dev"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../../migrations/cloudflare/d1"
+
+[[r2_buckets]]
+binding = "SCAS_KNOWLEDGE_BUCKET"
+bucket_name = "scas-knowledge-dev"
+
+[[r2_buckets]]
+binding = "SCAS_MEMORY_BUCKET"
+bucket_name = "scas-memory-dev"
+
+[[kv_namespaces]]
+binding = "SCAS_CONFIG"
+id = "00000000000000000000000000000000"

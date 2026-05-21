@@ -15,6 +15,7 @@ MODULE_SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
 CONTROL_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "cloudflare-control-plane.schema.json"
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
+COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 MODULE_EXAMPLE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
 CONTROL_PLANE_EXAMPLE_PATH = (
@@ -22,6 +23,12 @@ CONTROL_PLANE_EXAMPLE_PATH = (
 )
 RUNTIME_PLANE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "runtime-plane" / "hetzner-runtime-plane.json"
+)
+COMPOSITION_CONTEXT_REQUEST_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-request.json"
+)
+COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
 )
 D1_MIGRATION_PATH = (
     REPO_ROOT / "migrations" / "cloudflare" / "d1" / "0001_control_plane.sql"
@@ -64,6 +71,13 @@ def runtime_plane_schema() -> dict[str, Any]:
     return schema
 
 
+@pytest.fixture(scope="module")
+def composition_context_schema() -> dict[str, Any]:
+    schema = load_json(COMPOSITION_CONTEXT_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
 @pytest.fixture
 def module_example() -> dict[str, Any]:
     return load_json(MODULE_EXAMPLE_PATH)
@@ -82,6 +96,16 @@ def control_plane_example() -> dict[str, Any]:
 @pytest.fixture
 def runtime_plane_example() -> dict[str, Any]:
     return load_json(RUNTIME_PLANE_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def composition_context_request_example() -> dict[str, Any]:
+    return load_json(COMPOSITION_CONTEXT_REQUEST_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def composition_context_response_example() -> dict[str, Any]:
+    return load_json(COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATH)
 
 
 def assert_valid(schema: dict[str, Any], instance: dict[str, Any]) -> None:
@@ -210,6 +234,14 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
         assert candidate["run_id"] in runs
         assert candidate["source_step_id"] in steps
         assert candidate["profile_id"] == runs[candidate["run_id"]]["profile_id"]
+
+
+def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:
+    return {
+        "$schema": schema["$schema"],
+        "$defs": schema["$defs"],
+        "$ref": ref,
+    }
 
 
 def create_d1_control_plane_connection() -> sqlite3.Connection:
@@ -531,6 +563,21 @@ def test_runtime_plane_example_matches_schema_and_reference_contract(
     assert_runtime_plane_references_are_valid(runtime_plane_example)
 
 
+def test_composition_context_examples_match_schema(
+    composition_context_schema: dict[str, Any],
+    composition_context_request_example: dict[str, Any],
+    composition_context_response_example: dict[str, Any],
+) -> None:
+    assert_valid(
+        schema_ref(composition_context_schema, "#/$defs/request"),
+        composition_context_request_example,
+    )
+    assert_valid(
+        schema_ref(composition_context_schema, "#/$defs/response"),
+        composition_context_response_example,
+    )
+
+
 @pytest.mark.parametrize(
     ("mutator", "message_part"),
     [
@@ -684,6 +731,41 @@ def test_control_plane_rejects_invalid_scope_reference(
     assert_valid(control_plane_schema, invalid_control_plane)
     with pytest.raises(AssertionError, match="kind"):
         assert_control_plane_references_are_valid(invalid_control_plane)
+
+
+def test_invalid_composition_context_request_is_rejected(
+    composition_context_schema: dict[str, Any],
+    composition_context_request_example: dict[str, Any],
+) -> None:
+    invalid_request = deepcopy(composition_context_request_example)
+    invalid_request["task"].pop("signals")
+
+    assert_invalid(
+        schema_ref(composition_context_schema, "#/$defs/request"),
+        invalid_request,
+        "'signals' is a required property",
+    )
+
+
+def test_invalid_composition_context_response_is_rejected(
+    composition_context_schema: dict[str, Any],
+    composition_context_response_example: dict[str, Any],
+) -> None:
+    invalid_response = deepcopy(composition_context_response_example)
+    invalid_response["candidate_modules"].append(
+        {
+            "id": "mod-invalid",
+            "kind": "agent",
+            "version": "0.1.0",
+            "score": 0.5,
+        }
+    )
+
+    assert_invalid(
+        schema_ref(composition_context_schema, "#/$defs/response"),
+        invalid_response,
+        "'agent' is not one of",
+    )
 
 
 def test_cloudflare_d1_migration_contains_required_tables_and_indexes() -> None:

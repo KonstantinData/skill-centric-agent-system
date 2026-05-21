@@ -1,0 +1,31 @@
+{
+  "contract_version": "0.1.0",
+  "environment": "dev",
+  "principal": {
+    "kind": "role",
+    "id": "repository-maintainer"
+  },
+  "requested_profile_generation": {
+    "mode": "initial",
+    "parent_profile_id": null
+  },
+  "task": {
+    "id": "task-control-api-fixture",
+    "type": "code-review",
+    "objective": "Compose a task-local context for reviewing repository changes.",
+    "risk_level": "medium",
+    "signals": {
+      "domain_tags": [
+        "repository",
+        "contracts"
+      ],
+      "capability_hints": [
+        "git-read",
+        "schema-validation"
+      ],
+      "constraints": [
+        "Do not grant write tools by default."
+      ]
+    }
+  }
+}

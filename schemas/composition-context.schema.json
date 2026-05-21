@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:composition-context:0.1.0",
+  "title": "Composition Context Endpoint Contract",
+  "description": "Request and response contract for POST /composition/context on the Cloudflare Control API.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request",
+    "response"
+  ],
+  "properties": {
+    "request": {
+      "$ref": "#/$defs/request"
+    },
+    "response": {
+      "$ref": "#/$defs/response"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ]
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "moduleKind": {
+      "type": "string",
+      "enum": [
+        "skill",
+        "instruction",
+        "tool",
+        "knowledge_scope",
+        "data_scope",
+        "memory_scope",
+        "policy",
+        "validator"
+      ]
+    },
+    "moduleReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "version",
+        "score"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/moduleKind"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "role",
+            "user",
+            "service"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "taskSignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain_tags",
+        "capability_hints",
+        "constraints"
+      ],
+      "properties": {
+        "domain_tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "capability_hints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "objective",
+        "risk_level",
+        "signals"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_level": {
+          "$ref": "#/$defs/riskLevel"
+        },
+        "signals": {
+          "$ref": "#/$defs/taskSignals"
+        }
+      }
+    },
+    "profileGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "parent_profile_id"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "initial",
+            "recomposition"
+          ]
+        },
+        "parent_profile_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "environment",
+        "principal",
+        "requested_profile_generation",
+        "task"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        },
+        "principal": {
+          "$ref": "#/$defs/principal"
+        },
+        "requested_profile_generation": {
+          "$ref": "#/$defs/profileGeneration"
+        },
+        "task": {
+          "$ref": "#/$defs/task"
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "registry_version",
+        "composition_status",
+        "candidate_modules",
+        "applicable_policies",
+        "allowed_knowledge_scopes",
+        "allowed_data_scopes",
+        "allowed_memory_scopes",
+        "validation_requirements"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "registry_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "composition_status": {
+          "type": "string",
+          "enum": [
+            "pending_registry_implementation",
+            "ready",
+            "denied",
+            "invalid_request"
+          ]
+        },
+        "candidate_modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        },
+        "applicable_policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        },
+        "allowed_knowledge_scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        },
+        "allowed_data_scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        },
+        "allowed_memory_scopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        },
+        "validation_requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleReference"
+          }
+        }
+      }
+    }
+  }
+}

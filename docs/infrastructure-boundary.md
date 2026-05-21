@@ -174,6 +174,9 @@ returns:
 
 The endpoint may use KV snapshots for fast reads, but D1 is authoritative. Policy-sensitive or stale cache paths must fall back to D1.
 
+The initial Control API Worker scaffold lives in `workers/control-api/`. Its
+bootstrap and deployment runbook lives in `docs/cloudflare/control-api.md`.
+
 ## Vector Search Flow
 
 Knowledge and memory search must combine D1 and Vectorize:
@@ -212,4 +215,5 @@ is not run automatically on pull requests or pushes.
 4. D1 schema contract.
 5. Hetzner runtime storage contract.
 6. Wrangler configuration.
-7. GitHub Actions deployment and validation.
+7. Cloudflare Control API Worker scaffold and composition context contract.
+8. GitHub Actions deployment and validation.

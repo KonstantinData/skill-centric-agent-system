@@ -3,7 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SKIPPED_PARTS = {".git", ".pytest_cache", ".ruff_cache", "__pycache__", ".venv", "venv"}
+SKIPPED_PARTS = {
+    ".git",
+    ".env",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".wrangler",
+    "__pycache__",
+    ".venv",
+    "coverage",
+    "dist",
+    "node_modules",
+    "skill_centric_agent_system.egg-info",
+    "venv",
+}
 FORBIDDEN_BRAND = "liqui" + "sto"
 
 
