@@ -42,6 +42,7 @@
 ## Phase 4C: Infrastructure Scaffolding
 
 - Add Cloudflare D1 schema contracts for control metadata.
+- Derive executable Cloudflare D1 migrations from the control-plane contract.
 - Add Hetzner runtime storage schema contracts.
 - Add positive and negative storage contract fixtures.
 - Add Wrangler configuration after resource names and bindings are documented.

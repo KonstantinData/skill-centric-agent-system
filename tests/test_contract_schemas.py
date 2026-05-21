@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -22,10 +23,17 @@ CONTROL_PLANE_EXAMPLE_PATH = (
 RUNTIME_PLANE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "runtime-plane" / "hetzner-runtime-plane.json"
 )
+D1_MIGRATION_PATH = (
+    REPO_ROOT / "migrations" / "cloudflare" / "d1" / "0001_control_plane.sql"
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -202,6 +210,294 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
         assert candidate["run_id"] in runs
         assert candidate["source_step_id"] in steps
         assert candidate["profile_id"] == runs[candidate["run_id"]]["profile_id"]
+
+
+def create_d1_control_plane_connection() -> sqlite3.Connection:
+    connection = sqlite3.connect(":memory:")
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.executescript(load_text(D1_MIGRATION_PATH))
+    return connection
+
+
+def insert_control_plane_fixture(
+    connection: sqlite3.Connection,
+    control_plane: dict[str, Any],
+) -> None:
+    records = control_plane["records"]
+
+    connection.executemany(
+        """
+        INSERT INTO modules (
+            id,
+            name,
+            kind,
+            status,
+            current_version_id,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            :id,
+            :name,
+            :kind,
+            :status,
+            :current_version_id,
+            :created_at,
+            :updated_at
+        )
+        """,
+        records["modules"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO module_versions (
+            id,
+            module_id,
+            version,
+            source_uri,
+            checksum,
+            selection_base_score,
+            created_at
+        )
+        VALUES (
+            :id,
+            :module_id,
+            :version,
+            :source_uri,
+            :checksum,
+            :selection_base_score,
+            :created_at
+        )
+        """,
+        records["module_versions"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO module_dependencies (
+            id,
+            module_version_id,
+            dependency_kind,
+            dependency_id,
+            is_required
+        )
+        VALUES (
+            :id,
+            :module_version_id,
+            :dependency_kind,
+            :dependency_id,
+            :is_required
+        )
+        """,
+        [
+            {
+                **dependency,
+                "is_required": int(dependency["is_required"]),
+            }
+            for dependency in records["module_dependencies"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO knowledge_sources (
+            id,
+            name,
+            source_type,
+            uri,
+            owner,
+            sensitivity,
+            status
+        )
+        VALUES (
+            :id,
+            :name,
+            :source_type,
+            :uri,
+            :owner,
+            :sensitivity,
+            :status
+        )
+        """,
+        records["knowledge_sources"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO knowledge_documents (
+            id,
+            source_id,
+            version,
+            content_uri,
+            manifest_uri,
+            checksum,
+            status
+        )
+        VALUES (
+            :id,
+            :source_id,
+            :version,
+            :content_uri,
+            :manifest_uri,
+            :checksum,
+            :status
+        )
+        """,
+        records["knowledge_documents"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO knowledge_chunks (
+            id,
+            document_id,
+            chunk_index,
+            content_uri,
+            vector_id,
+            scope_id,
+            token_count
+        )
+        VALUES (
+            :id,
+            :document_id,
+            :chunk_index,
+            :content_uri,
+            :vector_id,
+            :scope_id,
+            :token_count
+        )
+        """,
+        records["knowledge_chunks"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO memory_records (
+            id,
+            memory_scope_id,
+            version,
+            content_uri,
+            manifest_uri,
+            source_run_id,
+            source_profile_id,
+            sensitivity,
+            retention_policy,
+            status
+        )
+        VALUES (
+            :id,
+            :memory_scope_id,
+            :version,
+            :content_uri,
+            :manifest_uri,
+            :source_run_id,
+            :source_profile_id,
+            :sensitivity,
+            :retention_policy,
+            :status
+        )
+        """,
+        records["memory_records"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO scope_bindings (
+            id,
+            scope_id,
+            scope_kind,
+            principal_kind,
+            principal_id,
+            policy_id,
+            effect
+        )
+        VALUES (
+            :id,
+            :scope_id,
+            :scope_kind,
+            :principal_kind,
+            :principal_id,
+            :policy_id,
+            :effect
+        )
+        """,
+        records["scope_bindings"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO policy_bindings (
+            id,
+            policy_id,
+            target_kind,
+            target_id,
+            effect,
+            priority
+        )
+        VALUES (
+            :id,
+            :policy_id,
+            :target_kind,
+            :target_id,
+            :effect,
+            :priority
+        )
+        """,
+        records["policy_bindings"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO ingestion_jobs (
+            id,
+            job_type,
+            status,
+            source_uri,
+            target_kind,
+            target_id,
+            attempts,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            :id,
+            :job_type,
+            :status,
+            :source_uri,
+            :target_kind,
+            :target_id,
+            :attempts,
+            :created_at,
+            :updated_at
+        )
+        """,
+        records["ingestion_jobs"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO audit_events (
+            id,
+            event_type,
+            actor_id,
+            target_kind,
+            target_id,
+            created_at,
+            retention_policy,
+            archive_after,
+            archive_uri
+        )
+        VALUES (
+            :id,
+            :event_type,
+            :actor_id,
+            :target_kind,
+            :target_id,
+            :created_at,
+            :retention_policy,
+            :archive_after,
+            :archive_uri
+        )
+        """,
+        [
+            {
+                **audit_event,
+                "archive_uri": audit_event.get("archive_uri"),
+            }
+            for audit_event in records["audit_events"]
+        ],
+    )
 
 
 def test_module_example_matches_schema(
@@ -388,6 +684,155 @@ def test_control_plane_rejects_invalid_scope_reference(
     assert_valid(control_plane_schema, invalid_control_plane)
     with pytest.raises(AssertionError, match="kind"):
         assert_control_plane_references_are_valid(invalid_control_plane)
+
+
+def test_cloudflare_d1_migration_contains_required_tables_and_indexes() -> None:
+    expected_tables = {
+        "modules",
+        "module_versions",
+        "module_dependencies",
+        "knowledge_sources",
+        "knowledge_documents",
+        "knowledge_chunks",
+        "memory_records",
+        "scope_bindings",
+        "policy_bindings",
+        "ingestion_jobs",
+        "audit_events",
+    }
+    expected_indexes = {
+        "idx_modules_name",
+        "idx_modules_current_version",
+        "idx_modules_kind_status",
+        "idx_module_versions_module_version",
+        "idx_module_dependencies_module_version",
+        "idx_module_dependencies_dependency",
+        "idx_knowledge_sources_type_status",
+        "idx_knowledge_documents_source_version",
+        "idx_knowledge_chunks_document",
+        "idx_knowledge_chunks_scope",
+        "idx_memory_records_scope_status",
+        "idx_scope_bindings_scope_principal",
+        "idx_scope_bindings_policy",
+        "idx_policy_bindings_policy_target",
+        "idx_ingestion_jobs_status_type",
+        "idx_audit_events_archive_after",
+        "idx_audit_events_target",
+    }
+
+    with create_d1_control_plane_connection() as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        indexes = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            ).fetchall()
+        }
+
+    assert expected_tables <= tables
+    assert expected_indexes <= indexes
+
+
+def test_cloudflare_d1_migration_contains_key_constraints() -> None:
+    migration_sql = load_text(D1_MIGRATION_PATH)
+
+    assert "FOREIGN KEY (module_id) REFERENCES modules (id)" in migration_sql
+    assert "FOREIGN KEY (source_id) REFERENCES knowledge_sources (id)" in migration_sql
+    assert "FOREIGN KEY (memory_scope_id) REFERENCES modules (id)" in migration_sql
+    assert "FOREIGN KEY (policy_id) REFERENCES modules (id)" in migration_sql
+    assert "selection_base_score >= 0" in migration_sql
+    assert "is_required IN (0, 1)" in migration_sql
+    assert "archive_after TEXT NOT NULL" in migration_sql
+
+
+def test_cloudflare_d1_migration_accepts_control_plane_fixture(
+    control_plane_schema: dict[str, Any],
+    control_plane_example: dict[str, Any],
+) -> None:
+    assert_valid(control_plane_schema, control_plane_example)
+
+    with create_d1_control_plane_connection() as connection:
+        insert_control_plane_fixture(connection, control_plane_example)
+
+        module_count = connection.execute("SELECT COUNT(*) FROM modules").fetchone()[0]
+        audit_event_count = connection.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
+        missing_current_versions = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM modules AS m
+            LEFT JOIN module_versions AS mv
+                ON mv.id = m.current_version_id
+                AND mv.module_id = m.id
+            WHERE mv.id IS NULL
+            """
+        ).fetchone()[0]
+
+    assert module_count == len(control_plane_example["records"]["modules"])
+    assert audit_event_count == len(control_plane_example["records"]["audit_events"])
+    assert missing_current_versions == 0
+
+
+def test_cloudflare_d1_migration_rejects_invalid_enum() -> None:
+    with (
+        create_d1_control_plane_connection() as connection,
+        pytest.raises(sqlite3.IntegrityError),
+    ):
+        connection.execute(
+            """
+            INSERT INTO modules (
+                id,
+                name,
+                kind,
+                status,
+                current_version_id,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                'mod-invalid',
+                'invalid',
+                'agent',
+                'active',
+                'mv-invalid-0-1-0',
+                '2026-05-21T20:00:00Z',
+                '2026-05-21T20:00:00Z'
+            )
+            """
+        )
+
+
+def test_cloudflare_d1_migration_rejects_invalid_foreign_key() -> None:
+    with (
+        create_d1_control_plane_connection() as connection,
+        pytest.raises(sqlite3.IntegrityError),
+    ):
+        connection.execute(
+            """
+            INSERT INTO knowledge_documents (
+                id,
+                source_id,
+                version,
+                content_uri,
+                manifest_uri,
+                checksum,
+                status
+            )
+            VALUES (
+                'kd-missing-source',
+                'ks-missing',
+                '0.1.0',
+                'r2://missing/content.md',
+                'r2://missing/manifest.json',
+                'sha256:missing',
+                'active'
+            )
+            """
+        )
 
 
 @pytest.mark.parametrize(

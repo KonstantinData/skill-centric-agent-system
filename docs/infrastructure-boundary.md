@@ -37,6 +37,9 @@ Runtime outputs can produce long-term memory, but only through a validated feedb
 
 The machine-readable recordset contract lives in `schemas/cloudflare-control-plane.schema.json`.
 
+The initial executable D1 migration lives in
+`migrations/cloudflare/d1/0001_control_plane.sql`.
+
 Initial D1 tables should cover:
 
 - `modules`
