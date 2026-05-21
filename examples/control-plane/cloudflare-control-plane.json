@@ -78,6 +78,193 @@
         "created_at": "2026-05-21T20:00:00Z"
       }
     ],
+    "module_selection_metadata": [
+      {
+        "id": "msm-git-diff-analysis-0-1-0",
+        "module_version_id": "mv-git-diff-analysis-0-1-0",
+        "description": "Analyze repository diffs for code review tasks.",
+        "capability_class": "analysis",
+        "domain_tags": [
+          "repository",
+          "contracts"
+        ],
+        "task_types": [
+          "code-review"
+        ],
+        "risk_levels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "task_domains": [
+          "repository",
+          "contracts"
+        ],
+        "required_inputs": [
+          "repository",
+          "diff"
+        ],
+        "phrases": [
+          "review",
+          "diff"
+        ],
+        "negative_phrases": [
+          "deploy"
+        ],
+        "triggers": [
+          "review",
+          "diff"
+        ],
+        "inputs": [
+          "repository",
+          "diff"
+        ],
+        "outputs": [
+          "review-findings"
+        ],
+        "score_modifiers": [
+          {
+            "signal": "task_type:code-review",
+            "weight": 0.1,
+            "reason": "Task type matches code review."
+          },
+          {
+            "signal": "domain:repository",
+            "weight": 0.08,
+            "reason": "Repository domain matches."
+          },
+          {
+            "signal": "input:diff",
+            "weight": 0.05,
+            "reason": "Diff input is available."
+          },
+          {
+            "signal": "capability_class:analysis",
+            "weight": 0.05,
+            "reason": "Analysis capability was requested."
+          },
+          {
+            "signal": "phrase:deploy",
+            "weight": -0.25,
+            "reason": "Deployment phrasing reduces relevance for review-only context."
+          }
+        ],
+        "requires_all_policies": true
+      },
+      {
+        "id": "msm-architecture-docs-0-1-0",
+        "module_version_id": "mv-architecture-docs-0-1-0",
+        "description": "Repository architecture documentation knowledge scope.",
+        "capability_class": "knowledge_access",
+        "domain_tags": [
+          "repository",
+          "architecture"
+        ],
+        "task_types": [
+          "code-review"
+        ],
+        "risk_levels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "task_domains": [
+          "repository",
+          "architecture"
+        ],
+        "required_inputs": [],
+        "phrases": [
+          "architecture",
+          "contract"
+        ],
+        "negative_phrases": [],
+        "triggers": [
+          "architecture"
+        ],
+        "inputs": [],
+        "outputs": [
+          "architecture-context"
+        ],
+        "score_modifiers": [
+          {
+            "signal": "domain:repository",
+            "weight": 0.1,
+            "reason": "Repository domain matches architecture documentation."
+          }
+        ],
+        "requires_all_policies": false
+      },
+      {
+        "id": "msm-project-memory-0-1-0",
+        "module_version_id": "mv-project-memory-0-1-0",
+        "description": "Long-lived project memory scope for consolidated decisions.",
+        "capability_class": "memory_access",
+        "domain_tags": [
+          "repository",
+          "project-memory"
+        ],
+        "task_types": [
+          "code-review"
+        ],
+        "risk_levels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "task_domains": [
+          "repository"
+        ],
+        "required_inputs": [],
+        "phrases": [
+          "memory"
+        ],
+        "negative_phrases": [],
+        "triggers": [
+          "memory"
+        ],
+        "inputs": [],
+        "outputs": [
+          "project-memory"
+        ],
+        "score_modifiers": [],
+        "requires_all_policies": false
+      },
+      {
+        "id": "msm-no-destructive-commands-0-1-0",
+        "module_version_id": "mv-no-destructive-commands-0-1-0",
+        "description": "Policy that blocks destructive repository commands by default.",
+        "capability_class": "policy",
+        "domain_tags": [
+          "repository",
+          "safety"
+        ],
+        "task_types": [
+          "code-review"
+        ],
+        "risk_levels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "task_domains": [
+          "repository"
+        ],
+        "required_inputs": [],
+        "phrases": [
+          "least privilege"
+        ],
+        "negative_phrases": [],
+        "triggers": [
+          "no destructive commands"
+        ],
+        "inputs": [],
+        "outputs": [
+          "policy-decision"
+        ],
+        "score_modifiers": [],
+        "requires_all_policies": false
+      }
+    ],
     "module_dependencies": [
       {
         "id": "dep-git-diff-architecture-docs",

@@ -39,9 +39,15 @@ It exposes:
 
 ## Boundary
 
-This registry layer does not yet read Cloudflare D1 or KV. That comes in the
-next Control API step, where `POST /composition/context` should call equivalent
-registry operations against Cloudflare-backed metadata.
+`POST /composition/context` now calls equivalent registry operations against
+Cloudflare-backed metadata:
+
+- D1 tables store active module versions, structured selection metadata,
+  dependencies, policy bindings, and principal scope bindings.
+- KV is read only for `registry:version`; it is not used for policy-sensitive
+  decisions.
+- The endpoint returns scored candidates, applicable policies, allowed scopes,
+  policy decisions, and graph-validation output.
 
 The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.

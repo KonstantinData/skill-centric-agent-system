@@ -20,8 +20,12 @@
         "contracts"
       ],
       "capability_hints": [
-        "git-read",
+        "analysis",
         "schema-validation"
+      ],
+      "available_inputs": [
+        "repository",
+        "diff"
       ],
       "constraints": [
         "Do not grant write tools by default."

@@ -23,6 +23,7 @@
       "required": [
         "modules",
         "module_versions",
+        "module_selection_metadata",
         "module_dependencies",
         "knowledge_sources",
         "knowledge_documents",
@@ -44,6 +45,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/moduleVersion"
+          }
+        },
+        "module_selection_metadata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleSelectionMetadata"
           }
         },
         "module_dependencies": {
@@ -159,6 +166,68 @@
         "validator"
       ]
     },
+    "capabilityClass": {
+      "type": "string",
+      "enum": [
+        "analysis",
+        "planning",
+        "execution",
+        "retrieval",
+        "validation",
+        "policy",
+        "instruction",
+        "tool_access",
+        "knowledge_access",
+        "data_access",
+        "memory_access",
+        "context"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "riskLevelArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "scoreModifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "weight",
+        "reason"
+      ],
+      "properties": {
+        "signal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "module": {
       "type": "object",
       "additionalProperties": false,
@@ -231,6 +300,82 @@
         },
         "created_at": {
           "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "moduleSelectionMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "module_version_id",
+        "description",
+        "capability_class",
+        "domain_tags",
+        "task_types",
+        "risk_levels",
+        "task_domains",
+        "required_inputs",
+        "phrases",
+        "negative_phrases",
+        "triggers",
+        "inputs",
+        "outputs",
+        "score_modifiers",
+        "requires_all_policies"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "module_version_id": {
+          "$ref": "#/$defs/id"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capability_class": {
+          "$ref": "#/$defs/capabilityClass"
+        },
+        "domain_tags": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "task_types": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "risk_levels": {
+          "$ref": "#/$defs/riskLevelArray"
+        },
+        "task_domains": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "required_inputs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "phrases": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "negative_phrases": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "triggers": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "inputs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "outputs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "score_modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreModifier"
+          }
+        },
+        "requires_all_policies": {
+          "type": "boolean"
         }
       }
     },

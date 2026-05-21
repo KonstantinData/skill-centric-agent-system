@@ -168,14 +168,20 @@ returns:
   candidate_modules
   applicable_policies
   allowed_knowledge_scopes
+  allowed_data_scopes
   allowed_memory_scopes
   validation_requirements
+  policy_decisions
+  graph_validation
 ```
 
-The endpoint may use KV snapshots for fast reads, but D1 is authoritative. Policy-sensitive or stale cache paths must fall back to D1.
+The endpoint reads module versions, structured selection metadata,
+dependencies, policy bindings, and principal scope bindings from D1. KV may
+provide non-authoritative configuration such as `registry:version`, but
+policy-sensitive or stale cache paths must fall back to D1.
 
-The initial Control API Worker scaffold lives in `workers/control-api/`. Its
-bootstrap and deployment runbook lives in `docs/cloudflare/control-api.md`.
+The Control API Worker lives in `workers/control-api/`. Its bootstrap and
+deployment runbook lives in `docs/cloudflare/control-api.md`.
 
 ## Vector Search Flow
 

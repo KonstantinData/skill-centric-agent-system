@@ -30,9 +30,8 @@ COMPOSITION_CONTEXT_REQUEST_EXAMPLE_PATH = (
 COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
 )
-D1_MIGRATION_PATH = (
-    REPO_ROOT / "migrations" / "cloudflare" / "d1" / "0001_control_plane.sql"
-)
+D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
+D1_MIGRATION_PATHS = tuple(sorted(D1_MIGRATION_DIR.glob("*.sql")))
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -168,6 +167,9 @@ def assert_control_plane_references_are_valid(control_plane: dict[str, Any]) -> 
     for module_version in records["module_versions"]:
         assert module_version["module_id"] in modules
 
+    for metadata in records["module_selection_metadata"]:
+        assert metadata["module_version_id"] in module_versions
+
     for dependency in records["module_dependencies"]:
         assert dependency["module_version_id"] in module_versions
         dependency_module = modules.get(dependency["dependency_id"])
@@ -247,8 +249,13 @@ def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:
 def create_d1_control_plane_connection() -> sqlite3.Connection:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
-    connection.executescript(load_text(D1_MIGRATION_PATH))
+    for migration_path in D1_MIGRATION_PATHS:
+        connection.executescript(load_text(migration_path))
     return connection
+
+
+def d1_migration_sql() -> str:
+    return "\n".join(load_text(path) for path in D1_MIGRATION_PATHS)
 
 
 def insert_control_plane_fixture(
@@ -302,6 +309,64 @@ def insert_control_plane_fixture(
         )
         """,
         records["module_versions"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO module_selection_metadata (
+            id,
+            module_version_id,
+            description,
+            capability_class,
+            domain_tags_json,
+            task_types_json,
+            risk_levels_json,
+            task_domains_json,
+            required_inputs_json,
+            phrases_json,
+            negative_phrases_json,
+            triggers_json,
+            inputs_json,
+            outputs_json,
+            score_modifiers_json,
+            requires_all_policies
+        )
+        VALUES (
+            :id,
+            :module_version_id,
+            :description,
+            :capability_class,
+            :domain_tags_json,
+            :task_types_json,
+            :risk_levels_json,
+            :task_domains_json,
+            :required_inputs_json,
+            :phrases_json,
+            :negative_phrases_json,
+            :triggers_json,
+            :inputs_json,
+            :outputs_json,
+            :score_modifiers_json,
+            :requires_all_policies
+        )
+        """,
+        [
+            {
+                **metadata,
+                "domain_tags_json": json.dumps(metadata["domain_tags"]),
+                "task_types_json": json.dumps(metadata["task_types"]),
+                "risk_levels_json": json.dumps(metadata["risk_levels"]),
+                "task_domains_json": json.dumps(metadata["task_domains"]),
+                "required_inputs_json": json.dumps(metadata["required_inputs"]),
+                "phrases_json": json.dumps(metadata["phrases"]),
+                "negative_phrases_json": json.dumps(metadata["negative_phrases"]),
+                "triggers_json": json.dumps(metadata["triggers"]),
+                "inputs_json": json.dumps(metadata["inputs"]),
+                "outputs_json": json.dumps(metadata["outputs"]),
+                "score_modifiers_json": json.dumps(metadata["score_modifiers"]),
+                "requires_all_policies": int(metadata["requires_all_policies"]),
+            }
+            for metadata in records["module_selection_metadata"]
+        ],
     )
     connection.executemany(
         """
@@ -755,6 +820,7 @@ def test_invalid_composition_context_response_is_rejected(
     invalid_response["candidate_modules"].append(
         {
             "id": "mod-invalid",
+            "name": "invalid",
             "kind": "agent",
             "version": "0.1.0",
             "score": 0.5,
@@ -772,6 +838,7 @@ def test_cloudflare_d1_migration_contains_required_tables_and_indexes() -> None:
     expected_tables = {
         "modules",
         "module_versions",
+        "module_selection_metadata",
         "module_dependencies",
         "knowledge_sources",
         "knowledge_documents",
@@ -787,6 +854,7 @@ def test_cloudflare_d1_migration_contains_required_tables_and_indexes() -> None:
         "idx_modules_current_version",
         "idx_modules_kind_status",
         "idx_module_versions_module_version",
+        "idx_module_selection_metadata_capability",
         "idx_module_dependencies_module_version",
         "idx_module_dependencies_dependency",
         "idx_knowledge_sources_type_status",
@@ -821,13 +889,15 @@ def test_cloudflare_d1_migration_contains_required_tables_and_indexes() -> None:
 
 
 def test_cloudflare_d1_migration_contains_key_constraints() -> None:
-    migration_sql = load_text(D1_MIGRATION_PATH)
+    migration_sql = d1_migration_sql()
 
     assert "FOREIGN KEY (module_id) REFERENCES modules (id)" in migration_sql
+    assert "FOREIGN KEY (module_version_id) REFERENCES module_versions (id)" in migration_sql
     assert "FOREIGN KEY (source_id) REFERENCES knowledge_sources (id)" in migration_sql
     assert "FOREIGN KEY (memory_scope_id) REFERENCES modules (id)" in migration_sql
     assert "FOREIGN KEY (policy_id) REFERENCES modules (id)" in migration_sql
     assert "selection_base_score >= 0" in migration_sql
+    assert "json_valid(score_modifiers_json)" in migration_sql
     assert "is_required IN (0, 1)" in migration_sql
     assert "archive_after TEXT NOT NULL" in migration_sql
 

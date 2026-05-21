@@ -71,7 +71,8 @@ def test_worker_source_exposes_health_and_composition_context_routes() -> None:
 
     assert 'url.pathname === "/health"' in source
     assert 'url.pathname === "/composition/context"' in source
-    assert "pending_registry_implementation" in source
+    assert "loadRegistryModules" in source
+    assert "registry_unavailable" in source
     assert "request_body_too_large" in source
 
 
@@ -81,7 +82,7 @@ def test_worker_vitest_scaffold_is_present() -> None:
 
     assert "@cloudflare/vitest-pool-workers" in vitest_config
     assert "workers/control-api/test/**/*.test.ts" in vitest_config
-    assert 'import { SELF } from "cloudflare:test"' in worker_test
+    assert 'import { SELF, env, reset } from "cloudflare:test"' in worker_test
     assert "composition_status" in worker_test
 
 

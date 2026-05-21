@@ -13,10 +13,13 @@ POST /composition/context
 ```
 
 The endpoint contract is defined in
-`schemas/composition-context.schema.json`. The initial Worker implementation
-validates the request shape and returns an empty
-`pending_registry_implementation` context. Registry reads and scoring are added
-in the next implementation phase.
+`schemas/composition-context.schema.json`. The Worker validates the request
+shape, reads active registry metadata from D1, scores candidates against task
+signals, applies policy bindings, checks principal scope bindings, and returns a
+graph-validation summary for the selected context.
+
+D1 remains authoritative for registry and policy-sensitive reads. KV is used
+only for the optional `registry:version` value returned in the response.
 
 ## Dev Resource Names
 

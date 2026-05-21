@@ -60,12 +60,16 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "name",
         "kind",
         "version",
         "score"
       ],
       "properties": {
         "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
           "$ref": "#/$defs/id"
         },
         "kind": {
@@ -81,6 +85,86 @@
         },
         "reason": {
           "type": "string"
+        }
+      }
+    },
+    "moduleIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/moduleKind"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        }
+      }
+    },
+    "policyDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "effect",
+        "reasons"
+      ],
+      "properties": {
+        "module": {
+          "$ref": "#/$defs/moduleIdentity"
+        },
+        "effect": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "needs_clarification"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "graphValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_valid",
+        "errors",
+        "reachable_modules"
+      ],
+      "properties": {
+        "is_valid": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reachable_modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/moduleIdentity"
+          }
         }
       }
     },
@@ -111,6 +195,7 @@
       "required": [
         "domain_tags",
         "capability_hints",
+        "available_inputs",
         "constraints"
       ],
       "properties": {
@@ -121,6 +206,12 @@
           }
         },
         "capability_hints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "available_inputs": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/id"
@@ -228,7 +319,9 @@
         "allowed_knowledge_scopes",
         "allowed_data_scopes",
         "allowed_memory_scopes",
-        "validation_requirements"
+        "validation_requirements",
+        "policy_decisions",
+        "graph_validation"
       ],
       "properties": {
         "contract_version": {
@@ -281,6 +374,15 @@
           "items": {
             "$ref": "#/$defs/moduleReference"
           }
+        },
+        "policy_decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policyDecision"
+          }
+        },
+        "graph_validation": {
+          "$ref": "#/$defs/graphValidation"
         }
       }
     }

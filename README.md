@@ -8,8 +8,8 @@ The product direction is a single runtime agent that assembles a task-specific `
 
 Contract-test and infrastructure-scaffold stage. The repository currently
 defines durable architecture, contracts, schemas, ADRs, examples, a
-Python-based contract-test harness, and the first deployed Cloudflare Worker
-shell for composition-time context.
+Python-based contract-test harness, a local registry implementation, and a
+Cloudflare Control API Worker for composition-time context.
 
 ## Core Flow
 
@@ -37,7 +37,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
-- `workers/control-api/`: Cloudflare Worker scaffold for the Control API.
+- `workers/control-api/`: Cloudflare Control API Worker with `POST /composition/context`.
 - `scripts/cloudflare/`: Cloudflare bootstrap scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `examples/modules/`: representative selectable module metadata.
@@ -126,6 +126,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement `POST /composition/context` D1/KV-backed registry queries.
-2. Implement task analysis and profile composition against the sample task/profile pair.
-3. Add profile assembly on top of registry discovery, scoring, policy filtering, and graph validation.
+1. Implement task analysis and profile composition against the sample task/profile pair.
+2. Add profile assembly on top of registry discovery, scoring, policy filtering, and graph validation.
+3. Add ingestion/seed tooling for publishing module metadata into Cloudflare D1.
