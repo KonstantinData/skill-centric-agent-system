@@ -34,10 +34,10 @@
 
 ## Phase 4B: Registries
 
-- Implement registry interfaces for skills, instructions, tools, knowledge scopes, data scopes, memory scopes, policies, and validators.
-- Implement deterministic registry discovery and query semantics.
-- Add graph validation for missing references, circular dependencies, conflicts, and unauthorized transitive capabilities.
-- Add fixtures and tests for module discovery and dependency resolution.
+- Implement registry interfaces for skills, instructions, tools, knowledge scopes, data scopes, memory scopes, policies, and validators. (Initial local implementation complete.)
+- Implement deterministic registry discovery and query semantics. (Initial local implementation complete.)
+- Add graph validation for missing references, circular dependencies, conflicts, and unauthorized transitive capabilities. (Initial local implementation complete.)
+- Add fixtures and tests for module discovery and dependency resolution. (Initial local fixtures and tests complete.)
 
 ## Phase 4C: Infrastructure Scaffolding
 

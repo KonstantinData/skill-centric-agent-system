@@ -15,7 +15,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 addopts = ["-p", "no:cacheprovider"]
 
 [tool.ruff]
@@ -25,5 +25,5 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
-[tool.setuptools]
-py-modules = []
+[tool.setuptools.packages.find]
+where = ["src"]

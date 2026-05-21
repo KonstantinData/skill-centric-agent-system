@@ -26,6 +26,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/architecture.md`: system architecture and component responsibilities.
 - `docs/contracts.md`: durable contracts for modules and runtime profiles.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
+- `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
@@ -35,6 +36,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
+- `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `workers/control-api/`: Cloudflare Worker scaffold for the Control API.
 - `scripts/cloudflare/`: Cloudflare bootstrap scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
@@ -124,6 +126,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement registry discovery, scoring, filtering, resolution, and graph validation.
-2. Implement `POST /composition/context` D1/KV-backed registry queries.
-3. Implement task analysis and profile composition against the sample task/profile pair.
+1. Implement `POST /composition/context` D1/KV-backed registry queries.
+2. Implement task analysis and profile composition against the sample task/profile pair.
+3. Add profile assembly on top of registry discovery, scoring, policy filtering, and graph validation.
