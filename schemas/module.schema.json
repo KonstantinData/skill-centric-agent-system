@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:liquisto:skill-centric-agent-system:schema:module:0.2.0",
+  "$id": "urn:scas:schema:module:0.2.0",
   "title": "Selectable Module Metadata",
   "description": "Metadata contract for a selectable skill, instruction, tool, scope, policy, validator, or memory module.",
   "type": "object",

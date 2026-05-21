@@ -96,7 +96,16 @@ audit/
 
 The machine-readable recordset contract lives in `schemas/hetzner-runtime-plane.schema.json`.
 
-The Hetzner runtime plane should start with structured runtime storage and artifact storage.
+The initial executable PostgreSQL migration lives in
+`migrations/hetzner/postgres/0001_runtime_plane.sql`.
+
+The Hetzner runtime plane starts with structured runtime storage and artifact
+storage. The default server bootstrap target is:
+
+- Database: `scas_runtime`
+- PostgreSQL owner role: `scas_runtime_app`
+- PostgreSQL schema: `runtime`
+- Artifact root: `/opt/scas/runtime`
 
 Postgres tables:
 
@@ -109,10 +118,12 @@ Postgres tables:
 Artifact paths:
 
 ```text
-artifacts/
-tool_outputs/
-traces/
-logs/
+/opt/scas/runtime/
+  artifacts/
+  tool_outputs/
+  traces/
+  logs/
+  tmp/
 ```
 
 The runtime writes raw outputs and traces only to Hetzner. Cloudflare receives only approved memory records derived from those outputs.

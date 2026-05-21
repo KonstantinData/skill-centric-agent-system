@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:liquisto:skill-centric-agent-system:schema:hetzner-runtime-plane:0.1.0",
+  "$id": "urn:scas:schema:hetzner-runtime-plane:0.1.0",
   "title": "Hetzner Runtime Plane Storage Contract",
   "description": "Recordset contract for Hetzner runtime storage covering runs, steps, tool invocations, validation results, artifacts, and memory candidates.",
   "type": "object",

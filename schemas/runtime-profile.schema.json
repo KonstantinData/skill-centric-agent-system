@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:liquisto:skill-centric-agent-system:schema:runtime-profile:0.2.0",
+  "$id": "urn:scas:schema:runtime-profile:0.2.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",

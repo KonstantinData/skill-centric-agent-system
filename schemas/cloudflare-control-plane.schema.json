@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:liquisto:skill-centric-agent-system:schema:cloudflare-control-plane:0.1.0",
+  "$id": "urn:scas:schema:cloudflare-control-plane:0.1.0",
   "title": "Cloudflare Control Plane Storage Contract",
   "description": "Recordset contract for Cloudflare D1 control-plane metadata and references to R2, Vectorize, KV, queues, and AI Gateway.",
   "type": "object",
