@@ -1,8 +1,25 @@
 {
   "id": "profile-code-review-latest-commit",
+  "profile_version": "0.2.0",
+  "profile_generation": 1,
+  "parent_profile_id": null,
+  "recomposition_reason": null,
   "task_type": "code_review",
   "objective": "Review the latest commit for regressions and missing tests.",
   "risk_level": "medium",
+  "auth_context": {
+    "principal": {
+      "id": "user-konstantin",
+      "type": "user",
+      "display_name": "Konstantin Milonas"
+    },
+    "roles": [
+      "repository-maintainer"
+    ],
+    "authorization_policies": [
+      "submitter-can-request-code-review"
+    ]
+  },
   "instructions": [
     "base-agent-rules",
     "code-review-rules"
@@ -34,7 +51,47 @@
     "runtime-profile-schema",
     "review-findings-contract"
   ],
+  "module_versions": {
+    "base-agent-rules": "0.1.0",
+    "code-review-rules": "0.1.0",
+    "git-diff-analysis": "0.1.0",
+    "test-gap-analysis": "0.1.0",
+    "git-read": "0.1.0",
+    "filesystem-read": "0.1.0",
+    "architecture-docs": "0.1.0",
+    "coding-guidelines": "0.1.0",
+    "repository-readonly": "0.1.0",
+    "current-task": "0.1.0",
+    "user-preferences": "0.1.0",
+    "no-destructive-commands": "0.1.0",
+    "require-file-references": "0.1.0",
+    "runtime-profile-schema": "0.1.0",
+    "review-findings-contract": "0.1.0"
+  },
   "limits": {
-    "max_tool_calls": 30
+    "max_tool_calls": 30,
+    "max_tokens": 60000,
+    "max_duration_seconds": 900,
+    "max_data_reads": 120,
+    "max_memory_ops": 10,
+    "max_recompositions": 1
+  },
+  "failure_policy": {
+    "on_composer_failure": "request_clarification",
+    "on_validator_failure": "fail_closed",
+    "on_policy_denial": "return_error",
+    "on_budget_exhausted": "return_error"
+  },
+  "observability": {
+    "trace_id": "trace-code-review-latest-commit",
+    "log_level": "info",
+    "capture_events": [
+      "task_analyzed",
+      "candidates_scored",
+      "policies_evaluated",
+      "profile_validated",
+      "runtime_completed"
+    ],
+    "redact_sensitive_data": true
   }
 }

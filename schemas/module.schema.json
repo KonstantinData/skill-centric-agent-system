@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://liquisto.local/schemas/module.schema.json",
+  "$id": "urn:liquisto:skill-centric-agent-system:schema:module:0.2.0",
   "title": "Selectable Module Metadata",
   "description": "Metadata contract for a selectable skill, instruction, tool, scope, policy, validator, or memory module.",
   "type": "object",
@@ -10,6 +10,9 @@
     "version",
     "kind",
     "description",
+    "capability_class",
+    "domain_tags",
+    "task_signals",
     "triggers",
     "inputs",
     "outputs",
@@ -19,6 +22,7 @@
     "data_scopes",
     "policies",
     "validators",
+    "selection",
     "tests"
   ],
   "properties": {
@@ -47,6 +51,58 @@
       "type": "string",
       "minLength": 1
     },
+    "capability_class": {
+      "type": "string",
+      "enum": [
+        "analysis",
+        "planning",
+        "execution",
+        "retrieval",
+        "validation",
+        "policy",
+        "instruction",
+        "tool_access",
+        "knowledge_access",
+        "data_access",
+        "memory_access",
+        "context"
+      ]
+    },
+    "domain_tags": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "task_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_types",
+        "risk_levels",
+        "domains",
+        "required_inputs",
+        "phrases",
+        "negative_phrases"
+      ],
+      "properties": {
+        "task_types": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "risk_levels": {
+          "$ref": "#/$defs/riskLevelArray"
+        },
+        "domains": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "required_inputs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "phrases": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "negative_phrases": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
     "triggers": {
       "$ref": "#/$defs/stringArray"
     },
@@ -74,6 +130,31 @@
     "validators": {
       "$ref": "#/$defs/stringArray"
     },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_score",
+        "score_modifiers",
+        "requires_all_policies"
+      ],
+      "properties": {
+        "base_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "score_modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreModifier"
+          }
+        },
+        "requires_all_policies": {
+          "type": "boolean"
+        }
+      }
+    },
     "tests": {
       "$ref": "#/$defs/stringArray"
     }
@@ -86,6 +167,43 @@
         "minLength": 1
       },
       "uniqueItems": true
+    },
+    "riskLevelArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "scoreModifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "weight",
+        "reason"
+      ],
+      "properties": {
+        "signal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   }
 }

@@ -3,6 +3,40 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Analyze git diffs for behavioral changes, regressions, and review-relevant risks.",
+  "capability_class": "analysis",
+  "domain_tags": [
+    "software-engineering",
+    "git",
+    "code-review"
+  ],
+  "task_signals": {
+    "task_types": [
+      "code_review"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "software-engineering",
+      "git"
+    ],
+    "required_inputs": [
+      "repository",
+      "diff"
+    ],
+    "phrases": [
+      "review",
+      "diff",
+      "commit",
+      "pull request"
+    ],
+    "negative_phrases": [
+      "deploy",
+      "apply changes",
+      "delete"
+    ]
+  },
   "triggers": [
     "review",
     "diff",
@@ -38,6 +72,27 @@
   "validators": [
     "review-findings-contract"
   ],
+  "selection": {
+    "base_score": 0.74,
+    "score_modifiers": [
+      {
+        "signal": "task_type:code_review",
+        "weight": 0.18,
+        "reason": "Code review tasks require diff-oriented change analysis."
+      },
+      {
+        "signal": "input:diff",
+        "weight": 0.08,
+        "reason": "The module is more reliable when a concrete diff is available."
+      },
+      {
+        "signal": "phrase:deploy",
+        "weight": -0.25,
+        "reason": "Deployment requests should not select review-only analysis as an execution capability."
+      }
+    ],
+    "requires_all_policies": true
+  },
   "tests": [
     "detects-risky-diff-fixture",
     "requires-file-line-references"

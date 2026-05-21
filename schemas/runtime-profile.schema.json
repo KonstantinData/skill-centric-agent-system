@@ -1,15 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://liquisto.local/schemas/runtime-profile.schema.json",
+  "$id": "urn:liquisto:skill-centric-agent-system:schema:runtime-profile:0.2.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "id",
+    "profile_version",
+    "profile_generation",
+    "parent_profile_id",
+    "recomposition_reason",
     "task_type",
     "objective",
     "risk_level",
+    "auth_context",
     "instructions",
     "skills",
     "tools",
@@ -18,12 +23,44 @@
     "memory_scopes",
     "policies",
     "validators",
-    "limits"
+    "module_versions",
+    "limits",
+    "failure_policy",
+    "observability"
   ],
   "properties": {
     "id": {
       "type": "string",
       "minLength": 1
+    },
+    "profile_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "profile_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parent_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "recomposition_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "task_reclassified",
+        "missing_capability",
+        "policy_change",
+        "budget_exhausted",
+        "validator_failure",
+        null
+      ]
     },
     "task_type": {
       "type": "string",
@@ -41,6 +78,49 @@
         "high",
         "critical"
       ]
+    },
+    "auth_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principal",
+        "roles",
+        "authorization_policies"
+      ],
+      "properties": {
+        "principal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "user",
+                "service",
+                "system"
+              ]
+            },
+            "display_name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "roles": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "authorization_policies": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
     },
     "instructions": {
       "$ref": "#/$defs/nonEmptyStringArray"
@@ -66,16 +146,107 @@
     "validators": {
       "$ref": "#/$defs/nonEmptyStringArray"
     },
+    "module_versions": {
+      "type": "object",
+      "description": "Version pins for every selected instruction, skill, tool, scope, policy, validator, and memory module.",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      }
+    },
     "limits": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "max_tool_calls"
+        "max_tool_calls",
+        "max_tokens",
+        "max_duration_seconds",
+        "max_data_reads",
+        "max_memory_ops",
+        "max_recompositions"
       ],
       "properties": {
         "max_tool_calls": {
           "type": "integer",
           "minimum": 0
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_duration_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_data_reads": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_memory_ops": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_recompositions": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "failure_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "on_composer_failure",
+        "on_validator_failure",
+        "on_policy_denial",
+        "on_budget_exhausted"
+      ],
+      "properties": {
+        "on_composer_failure": {
+          "$ref": "#/$defs/failureAction"
+        },
+        "on_validator_failure": {
+          "$ref": "#/$defs/failureAction"
+        },
+        "on_policy_denial": {
+          "$ref": "#/$defs/failureAction"
+        },
+        "on_budget_exhausted": {
+          "$ref": "#/$defs/failureAction"
+        }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_id",
+        "log_level",
+        "capture_events",
+        "redact_sensitive_data"
+      ],
+      "properties": {
+        "trace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "log_level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "capture_events": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "redact_sensitive_data": {
+          "type": "boolean"
         }
       }
     }
@@ -97,6 +268,15 @@
       },
       "minItems": 1,
       "uniqueItems": true
+    },
+    "failureAction": {
+      "type": "string",
+      "enum": [
+        "fail_closed",
+        "request_clarification",
+        "return_error",
+        "recompose_once"
+      ]
     }
   }
 }

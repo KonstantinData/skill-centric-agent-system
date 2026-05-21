@@ -3,7 +3,10 @@
   "source": "user",
   "request": "Review the latest commit for regressions and missing tests.",
   "context": {
-    "repository": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system",
+    "repository": {
+      "slug": "KonstantinData/skill-centric-agent-system",
+      "canonical_url": "https://github.com/KonstantinData/skill-centric-agent-system"
+    },
     "attachments": []
   },
   "constraints": {

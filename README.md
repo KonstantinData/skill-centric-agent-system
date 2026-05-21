@@ -6,7 +6,7 @@ The product direction is a single runtime agent that assembles a task-specific `
 
 ## Current Status
 
-Foundation stage. The repository currently defines durable architecture, contracts, schemas, ADRs, and examples before choosing a runtime language or framework.
+Contract-hardening stage. The repository currently defines durable architecture, contracts, schemas, ADRs, and examples before choosing a runtime language or framework. The current priority is making composition testable before runtime code is added.
 
 ## Core Flow
 
@@ -40,6 +40,6 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 ## Next Steps
 
 1. Decide the implementation stack and record it as an ADR.
-2. Add contract tests for the JSON schemas.
-3. Implement the first registry abstraction.
+2. Add contract tests for the JSON schemas and examples.
+3. Implement registry discovery, scoring, filtering, resolution, and graph validation.
 4. Implement task analysis and profile composition against the sample task/profile pair.
