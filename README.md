@@ -73,6 +73,11 @@ secrets are configured:
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
 
+`HETZNER_SSH_KEY` must contain the complete private OpenSSH key block, including
+the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`
+lines. Do not use the public `ssh-ed25519 ...` line or the `SHA256:...`
+fingerprint as this secret.
+
 ## Build Rules
 
 - Keep the runtime single-agent unless the product direction changes explicitly.

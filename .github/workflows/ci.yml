@@ -117,6 +117,12 @@ jobs:
           printf '%s\n' "${HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
           chmod 600 "${HOME}/.ssh/hetzner_key"
 
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----"
+            exit 1
+          fi
+
           ssh-keyscan -H "${HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
 
           ssh \

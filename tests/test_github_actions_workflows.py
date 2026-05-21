@@ -38,6 +38,14 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
         assert f"secrets.{secret}" in workflow
 
 
+def test_ci_workflow_validates_hetzner_private_key_format() -> None:
+    workflow = load_ci_workflow()
+
+    assert "ssh-keygen -y -f" in workflow
+    assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
+    assert "-----BEGIN OPENSSH PRIVATE KEY-----" in workflow
+
+
 def test_infrastructure_smoke_test_is_manual_only() -> None:
     workflow = load_ci_workflow()
 
