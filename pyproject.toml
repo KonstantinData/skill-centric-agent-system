@@ -1,0 +1,14 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "architecture: Pure architecture/contract tests — no AG2/autogen dependency",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = ["venv", ".git", "__pycache__", ".pytest_cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
