@@ -53,6 +53,7 @@ cover/
 .wrangler/
 coverage/
 node_modules/
+template/
 
 # Translations
 *.mo
