@@ -1,0 +1,13 @@
+{
+  "id": "task-code-review-latest-commit",
+  "source": "user",
+  "request": "Review the latest commit for regressions and missing tests.",
+  "context": {
+    "repository": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system",
+    "attachments": []
+  },
+  "constraints": {
+    "write_access": false,
+    "destructive_actions": false
+  }
+}

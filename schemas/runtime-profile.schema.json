@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://liquisto.local/schemas/runtime-profile.schema.json",
+  "title": "Runtime Agent Profile",
+  "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "task_type",
+    "objective",
+    "risk_level",
+    "instructions",
+    "skills",
+    "tools",
+    "knowledge_scopes",
+    "data_scopes",
+    "memory_scopes",
+    "policies",
+    "validators",
+    "limits"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "instructions": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "skills": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "tools": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "knowledge_scopes": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "data_scopes": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "memory_scopes": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "policies": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "validators": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_tool_calls"
+      ],
+      "properties": {
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

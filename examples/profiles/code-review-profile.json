@@ -1,0 +1,40 @@
+{
+  "id": "profile-code-review-latest-commit",
+  "task_type": "code_review",
+  "objective": "Review the latest commit for regressions and missing tests.",
+  "risk_level": "medium",
+  "instructions": [
+    "base-agent-rules",
+    "code-review-rules"
+  ],
+  "skills": [
+    "git-diff-analysis",
+    "test-gap-analysis"
+  ],
+  "tools": [
+    "git-read",
+    "filesystem-read"
+  ],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "memory_scopes": [
+    "current-task",
+    "user-preferences"
+  ],
+  "policies": [
+    "no-destructive-commands",
+    "require-file-references"
+  ],
+  "validators": [
+    "runtime-profile-schema",
+    "review-findings-contract"
+  ],
+  "limits": {
+    "max_tool_calls": 30
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "git-diff-analysis",
+  "version": "0.1.0",
+  "kind": "skill",
+  "description": "Analyze git diffs for behavioral changes, regressions, and review-relevant risks.",
+  "triggers": [
+    "review",
+    "diff",
+    "commit",
+    "pull request"
+  ],
+  "inputs": [
+    "repository",
+    "diff"
+  ],
+  "outputs": [
+    "findings",
+    "review-summary"
+  ],
+  "required_tools": [
+    "git-read",
+    "filesystem-read"
+  ],
+  "optional_tools": [
+    "test-runner"
+  ],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "policies": [
+    "no-destructive-commands",
+    "require-file-references"
+  ],
+  "validators": [
+    "review-findings-contract"
+  ],
+  "tests": [
+    "detects-risky-diff-fixture",
+    "requires-file-line-references"
+  ]
+}

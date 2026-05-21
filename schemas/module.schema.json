@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://liquisto.local/schemas/module.schema.json",
+  "title": "Selectable Module Metadata",
+  "description": "Metadata contract for a selectable skill, instruction, tool, scope, policy, validator, or memory module.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "version",
+    "kind",
+    "description",
+    "triggers",
+    "inputs",
+    "outputs",
+    "required_tools",
+    "optional_tools",
+    "knowledge_scopes",
+    "data_scopes",
+    "policies",
+    "validators",
+    "tests"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "skill",
+        "instruction",
+        "tool",
+        "knowledge_scope",
+        "data_scope",
+        "policy",
+        "validator",
+        "memory_scope"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "triggers": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "inputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "outputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "required_tools": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "optional_tools": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "knowledge_scopes": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "data_scopes": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "policies": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "validators": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "tests": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}
