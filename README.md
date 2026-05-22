@@ -28,7 +28,8 @@ scope-expanded responses. The Validator phase now runs the validator IDs
 selected by the active profile and fail-closes unknown or failed validators.
 Controlled recomposition requests now emit `recomposition_requested` and stop
 the current run with `needs_recomposition` instead of mutating the active
-profile. Runtime artifact writes now honor the profile's
+profile. A manual live dev E2E gate now exists for the Cloudflare-to-Hetzner
+runtime path. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
@@ -64,6 +65,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
 - `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
 - `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
+- `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
@@ -83,6 +85,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
 - `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
+- `scripts/runtime/`: live runtime gate scripts.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.
@@ -208,6 +211,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Prove the flow with a live dev E2E gate.
-2. Add the operations baseline and runbooks.
-3. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Add the operations baseline and runbooks.
+2. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

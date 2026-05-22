@@ -137,6 +137,8 @@ The current repository has implemented the first control-plane slice:
 - a controlled recomposition request path that emits `recomposition_requested`
   and stops the current run with `needs_recomposition` instead of mutating the
   active profile,
+- a manual live dev E2E gate script for the Cloudflare composition/retrieval
+  and Hetzner runtime persistence path,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write

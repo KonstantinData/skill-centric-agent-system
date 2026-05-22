@@ -297,6 +297,8 @@ Implemented:
 - Controlled recomposition request path emits `recomposition_requested` and
   stops the current run with `needs_recomposition` without mutating the active
   profile.
+- Manual live dev E2E gate script runs Cloudflare composition/retrieval and
+  Hetzner PostgreSQL/artifact persistence in one path.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
@@ -349,6 +351,7 @@ Completed:
 20. Runtime Context Manager binding to the Control API retrieval endpoint.
 21. Runtime Validator Framework driven by profile-selected validators.
 22. Controlled recomposition request path without runtime self-granting.
+23. Manual live dev E2E gate script for Cloudflare and Hetzner.
 
 Next:
 
