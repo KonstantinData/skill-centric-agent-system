@@ -1,0 +1,427 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:runtime-api:0.1.0",
+  "title": "Runtime API Contract",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "kind"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "start_run_request",
+        "run_status_response",
+        "run_result_response",
+        "cancel_run_response",
+        "retry_run_request",
+        "runtime_error_response"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "start_run_request"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/startRunRequest"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "run_status_response"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/runStatusResponse"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "run_result_response"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/runResultResponse"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "cancel_run_response"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/cancelRunResponse"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "retry_run_request"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/retryRunRequest"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "runtime_error_response"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/runtimeErrorResponse"
+      }
+    }
+  ],
+  "$defs": {
+    "startRunRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "environment",
+        "task",
+        "storage",
+        "execution"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "start_run_request"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ]
+        },
+        "task": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "storage": {
+          "$ref": "#/$defs/storageConfig"
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_root",
+            "repository_root",
+            "run_immediately"
+          ],
+          "properties": {
+            "artifact_root": {
+              "type": "string",
+              "minLength": 1
+            },
+            "repository_root": {
+              "type": "string",
+              "minLength": 1
+            },
+            "run_immediately": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "runStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "run"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "run_status_response"
+        },
+        "run": {
+          "$ref": "#/$defs/runSummary"
+        }
+      }
+    },
+    "runResultResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "run",
+        "result"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "run_result_response"
+        },
+        "run": {
+          "$ref": "#/$defs/runSummary"
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "response",
+            "validation_result_uris",
+            "event_count",
+            "checkpoint_count"
+          ],
+          "properties": {
+            "response": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "validation_result_uris": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "event_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "checkpoint_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "cancelRunResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "run_id",
+        "previous_status",
+        "status",
+        "stop_reason"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "cancel_run_response"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous_status": {
+          "$ref": "#/$defs/runStatus"
+        },
+        "status": {
+          "const": "cancelled"
+        },
+        "stop_reason": {
+          "const": "cancelled"
+        }
+      }
+    },
+    "retryRunRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "source_run_id",
+        "reason"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "retry_run_request"
+        },
+        "source_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtimeErrorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "error"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "runtime_error_response"
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "storageConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "memory",
+            "postgres",
+            "recordset"
+          ]
+        }
+      }
+    },
+    "runSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "profile_id",
+        "profile_version",
+        "status",
+        "stop_reason",
+        "started_at",
+        "completed_at",
+        "artifact_root_uri",
+        "token_budget_total",
+        "tokens_used_total"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "status": {
+          "$ref": "#/$defs/runStatus"
+        },
+        "stop_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifact_root_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "token_budget_total": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "tokens_used_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "runStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

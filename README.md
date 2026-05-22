@@ -50,11 +50,14 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
 - `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
+- `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
+- `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
+- `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
@@ -73,6 +76,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/profiles/`: representative composed profiles.
 - `examples/control-plane/`: representative Cloudflare control-plane storage records and generated dev D1 seed SQL.
 - `examples/control-api/`: representative Control API request and response payloads.
+- `examples/runtime-api/`: representative Runtime API request and response payloads.
 - `examples/evaluations/`: evaluation fixtures for controlled learning through approved memory.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.

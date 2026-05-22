@@ -1,0 +1,27 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "run_result_response",
+  "run": {
+    "id": "run-code-review-latest-commit",
+    "task_id": "task-code-review-latest-commit",
+    "profile_id": "profile-code-review-latest-commit",
+    "profile_version": "0.2.0",
+    "status": "succeeded",
+    "stop_reason": "completed",
+    "started_at": "2026-05-22T10:00:00Z",
+    "completed_at": "2026-05-22T10:00:05Z",
+    "artifact_root_uri": "hetzner://runtime/",
+    "token_budget_total": 120000,
+    "tokens_used_total": 0
+  },
+  "result": {
+    "response": {
+      "summary": "Runtime completed successfully."
+    },
+    "validation_result_uris": [
+      "hetzner://runtime/traces/run-code-review-latest-commit/validation/minimal-runtime-findings.json"
+    ],
+    "event_count": 20,
+    "checkpoint_count": 5
+  }
+}

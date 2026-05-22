@@ -142,8 +142,8 @@ and minimal runtime loop complete for the current code-review fixture.
 
 Implement this phase only after the Runtime Preflight Gate is satisfied:
 
-1. Finalize the generic runtime contract.
-2. Define the Runtime API/CLI contract.
+1. Finalize the generic runtime contract. (Initial docs and schema complete.)
+2. Define the Runtime API/CLI contract. (Initial docs and examples complete.)
 3. Wire runtime execution to real Hetzner PostgreSQL and artifact storage.
 4. Enforce all Runtime Agent Profile limits and access boundaries.
 5. Harden the Tool Gateway for productive execution.

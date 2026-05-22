@@ -154,3 +154,8 @@ The existing follow-up items for async indexing, AI Gateway live secret rollout,
 runtime expansion beyond the initial fixture, and retention cleanup remain
 backlog work after the Phase 1 core runtime gate unless explicitly pulled
 forward by a failing entry criterion.
+
+The durable runtime contract lives in `docs/runtime-contract.md`. Runtime API
+and CLI semantics live in `docs/runtime-api.md`, with machine-readable examples
+under `examples/runtime-api/` and schema coverage in
+`schemas/runtime-api.schema.json`.

@@ -1,0 +1,18 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "start_run_request",
+  "environment": "dev",
+  "task": {
+    "id": "task-code-review-latest-commit",
+    "objective": "Review the latest commit for behavioral regressions.",
+    "repository": "repo://current"
+  },
+  "storage": {
+    "mode": "postgres"
+  },
+  "execution": {
+    "artifact_root": "/opt/scas/runtime",
+    "repository_root": "/workspace/repository",
+    "run_immediately": true
+  }
+}

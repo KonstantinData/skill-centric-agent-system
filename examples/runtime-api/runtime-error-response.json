@@ -1,0 +1,8 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "runtime_error_response",
+  "error": {
+    "code": "runtime_run_not_found",
+    "message": "Runtime run was not found."
+  }
+}

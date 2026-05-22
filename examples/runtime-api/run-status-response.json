@@ -1,0 +1,17 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "run_status_response",
+  "run": {
+    "id": "run-code-review-latest-commit",
+    "task_id": "task-code-review-latest-commit",
+    "profile_id": "profile-code-review-latest-commit",
+    "profile_version": "0.2.0",
+    "status": "running",
+    "stop_reason": null,
+    "started_at": "2026-05-22T10:00:00Z",
+    "completed_at": null,
+    "artifact_root_uri": "hetzner://runtime/",
+    "token_budget_total": 120000,
+    "tokens_used_total": 0
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "cancel_run_response",
+  "run_id": "run-code-review-latest-commit",
+  "previous_status": "running",
+  "status": "cancelled",
+  "stop_reason": "cancelled"
+}

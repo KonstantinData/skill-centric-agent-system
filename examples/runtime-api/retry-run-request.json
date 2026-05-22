@@ -1,0 +1,6 @@
+{
+  "contract_version": "0.1.0",
+  "kind": "retry_run_request",
+  "source_run_id": "run-code-review-latest-commit",
+  "reason": "Validator requested recomposition after missing capability."
+}

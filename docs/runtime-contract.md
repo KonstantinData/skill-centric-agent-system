@@ -1,0 +1,198 @@
+# Runtime Contract
+
+## Purpose
+
+This document defines the generic Runtime Contract for the productive Runtime
+Phase. It is task-neutral by design. The runtime must not encode a fixed agent
+role such as reviewer, researcher, or task executor. Those are validation
+scenarios produced by task intake, analyzer signals, composition context, and
+profile selection.
+
+## Contract Surfaces
+
+The productive runtime path is:
+
+```text
+Task Envelope
+-> Task Analyzer Output
+-> Cloudflare Composition Context
+-> Runtime Agent Profile
+-> Runtime Run
+-> Runtime Steps
+-> Runtime Events and Checkpoints
+-> Tool Invocations
+-> Validation Results
+-> Runtime Result
+```
+
+Every surface must be explicit, serializable, and reproducible. The runtime may
+request recomposition, but it must never mutate the active profile to grant a
+new capability.
+
+## Task Envelope
+
+The Task Envelope is the normalized runtime input. It must contain:
+
+- stable task ID,
+- objective,
+- submitter principal,
+- environment,
+- available inputs and attachments,
+- explicit constraints,
+- repository or workspace context when relevant,
+- privacy and risk hints.
+
+Task-specific payloads are allowed, but they must remain data. They must not
+grant capabilities directly.
+
+## Analyzer Output
+
+Analyzer Output must contain:
+
+- `task_type`,
+- `risk_level`,
+- `domains`,
+- `required_inputs`,
+- `available_inputs`,
+- `capability_hints`,
+- `constraints`,
+- `missing_information`,
+- `auth_claims`.
+
+If required information is missing, the Composer must fail closed or request
+clarification instead of composing a broad profile.
+
+## Runtime Agent Profile
+
+The Runtime Agent Profile is the immutable execution contract. It must conform
+to `schemas/runtime-profile.schema.json` and include:
+
+- profile version and generation,
+- parent profile and recomposition reason,
+- auth context,
+- selected instructions, skills, tools, knowledge scopes, data scopes, memory
+  scopes, policies, and validators,
+- exact module version pins,
+- execution limits,
+- failure policy,
+- observability settings.
+
+The runtime must enforce the profile at every access boundary.
+
+## Run Lifecycle
+
+Runtime run statuses are:
+
+- `queued`
+- `running`
+- `succeeded`
+- `failed`
+- `cancelled`
+
+Allowed status transitions:
+
+```text
+queued -> running
+queued -> cancelled
+running -> succeeded
+running -> failed
+running -> cancelled
+running -> queued      # retry creates a new run; the original remains terminal
+```
+
+Retry must create a new run ID and preserve parent run traceability in the
+runtime result or retry metadata. It must not reopen a terminal run in place.
+
+## Step Lifecycle
+
+Runtime step kinds are:
+
+- `context`
+- `planner`
+- `executor`
+- `validator`
+
+Each step must write:
+
+- stable ID,
+- run ID,
+- step index,
+- kind,
+- status,
+- start and completion timestamps,
+- stop reason,
+- token budget and usage,
+- idempotency key,
+- attempt number.
+
+## Stop Reasons
+
+Stop reasons must be constrained to the runtime vocabulary in
+`src/skill_centric_agent_system/runtime/models.py` and the Hetzner schema:
+
+- completed
+- max_tokens
+- max_duration
+- max_tool_calls
+- max_data_reads
+- max_memory_ops
+- max_recompositions
+- policy_denied
+- validator_failed
+- tool_error
+- cancelled
+- needs_recomposition
+- composer_failure
+- runtime_error
+
+## Failure Semantics
+
+The runtime fails closed for unsafe ambiguity.
+
+- Composer failure: no runtime execution.
+- Profile validation failure: no runtime execution.
+- Policy denial: do not execute the denied capability.
+- Budget exhaustion: stop according to profile failure policy.
+- Tool failure: record event, persist invocation metadata, then fail or
+  continue only if the validator/failure policy permits it.
+- Validator failure: fail or request recomposition only when profile failure
+  policy allows it.
+
+## Recomposition
+
+Recomposition is a controlled request to the Composer. It is allowed only when:
+
+- active profile failure policy permits recomposition,
+- `limits.max_recompositions` is not exhausted,
+- the reason is one of the schema-defined `recomposition_reason` values.
+
+The new profile must set:
+
+- incremented `profile_generation`,
+- `parent_profile_id`,
+- `recomposition_reason`.
+
+The runtime must not self-grant tools, memory, data, knowledge, skills, or
+validators.
+
+## Observability
+
+Every productive run must emit Flight Recorder events and checkpoints to the
+Hetzner Runtime Plane. Event payloads use artifact URIs, not inline JSON blobs.
+The runtime must honor `observability.redact_sensitive_data` before writing
+artifacts.
+
+## Runtime Result
+
+The runtime result must contain:
+
+- run ID,
+- task ID,
+- profile ID,
+- final status,
+- stop reason,
+- response or validation failure summary,
+- validation result references,
+- artifact root URI,
+- event/checkpoint references,
+- recomposition or retry references when applicable.
