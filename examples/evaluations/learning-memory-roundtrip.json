@@ -1,0 +1,47 @@
+{
+  "contract_version": "0.1.0",
+  "purpose": "Demonstrate controlled learning through approved memory, not model fine-tuning or uncontrolled self-modification.",
+  "producer": {
+    "task_id": "task-code-review-latest-commit",
+    "expected_candidate": {
+      "target_memory_scope_id": "mod-project-memory",
+      "sensitivity": "internal",
+      "retention_policy": "project-memory-180d",
+      "validator_status": "approved",
+      "policy_status": "approved"
+    }
+  },
+  "consumer": {
+    "authorized_retrieval_request": {
+      "contract_version": "0.1.0",
+      "principal": {
+        "kind": "role",
+        "id": "repository-maintainer"
+      },
+      "query": "runtime reconstruction decisions",
+      "knowledge_scope_ids": [
+        "mod-architecture-docs"
+      ],
+      "memory_scope_ids": [
+        "mod-project-memory"
+      ],
+      "top_k": 5
+    },
+    "unauthorized_retrieval_request": {
+      "contract_version": "0.1.0",
+      "principal": {
+        "kind": "role",
+        "id": "guest"
+      },
+      "query": "runtime reconstruction decisions",
+      "knowledge_scope_ids": [
+        "mod-architecture-docs"
+      ],
+      "memory_scope_ids": [
+        "mod-project-memory"
+      ],
+      "top_k": 5
+    }
+  },
+  "expected_negative_behavior": "The unauthorized retrieval request returns no memory records because D1 scope bindings do not allow the guest principal."
+}

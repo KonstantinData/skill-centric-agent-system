@@ -164,11 +164,39 @@ def test_postgres_runtime_store_uses_uri_tool_and_validation_payloads() -> None:
             "created_at": "2026-05-22T08:00:02Z",
         }
     )
+    store.insert_memory_candidate(
+        {
+            "id": "mc-example",
+            "run_id": "run-example",
+            "profile_id": "profile-example",
+            "source_step_id": "step-example",
+            "target_memory_scope_id": "mod-project-memory",
+            "content_uri": "hetzner://runtime/memory/candidate.json",
+            "sensitivity": "internal",
+            "retention_policy": "project-memory-180d",
+            "validator_status": "pending",
+            "validator_id": "memory-candidate-contract",
+            "policy_status": "pending",
+            "policy_id": "mod-no-destructive-commands",
+            "created_at": "2026-05-22T08:00:03Z",
+        }
+    )
+    store.update_memory_candidate(
+        "mc-example",
+        {
+            "validator_status": "approved",
+            "validation_reason": "passed",
+            "policy_status": "approved",
+            "policy_reason": "allowed",
+        },
+    )
 
     sql = "\n".join(call[0] for call in fake.calls)
     assert "input_uri" in sql
     assert "output_uri" in sql
     assert "findings_uri" in sql
+    assert "validation_reason" in sql
+    assert "policy_reason" in sql
     assert "input_json" not in sql
     assert "output_json" not in sql
     assert "findings_json" not in sql

@@ -823,6 +823,48 @@ describe("control API worker", () => {
     );
   });
 
+  it("returns no retrieval records for unauthorized principals", async () => {
+    await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(knowledgeIngestRequest),
+    });
+    await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(memoryIngestRequest),
+    });
+
+    const response = await fetchJson("/retrieval/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        contract_version: "0.1.0",
+        principal: {
+          kind: "role",
+          id: "guest",
+        },
+        query: "runtime reconstruction",
+        knowledge_scope_ids: ["mod-architecture-docs"],
+        memory_scope_ids: ["mod-project-memory"],
+        top_k: 5,
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.allowed_knowledge_scope_ids).toEqual([]);
+    expect(body.allowed_memory_scope_ids).toEqual([]);
+    expect(body.knowledge_chunks).toEqual([]);
+    expect(body.memory_records).toEqual([]);
+  });
+
   it("fails closed when AI Gateway routing is not fully configured", async () => {
     const response = await fetchJson("/ai-gateway/openai/chat/completions", {
       method: "POST",

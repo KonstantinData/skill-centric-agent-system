@@ -230,6 +230,25 @@ runtime events are high-growth records.
 Trace data and event artifacts must redact sensitive task content when
 `observability.redact_sensitive_data` is true.
 
+## Memory Candidate Contract
+
+Runtime learning is expressed as explicit memory candidates, not as hidden model
+state or uncontrolled self-modification.
+
+Memory candidates are Hetzner Runtime Plane records. A candidate must:
+
+- come from a completed runtime step,
+- identify `run_id`, `profile_id`, `source_step_id`, and target memory scope,
+- store proposed content as a Hetzner artifact URI,
+- declare sensitivity and retention policy,
+- pass validator checks for provenance, scope, sensitivity, retention, and
+  content summary,
+- pass policy checks for the target memory scope before Cloudflare ingestion.
+
+Rejected candidates remain recorded with `validation_reason` and/or
+`policy_reason`. Cloudflare receives only candidates whose `validator_status`
+and `policy_status` are both `approved`.
+
 ## Retention Contract
 
 Runtime retention is planned before deletion. Cleanup jobs must first compute a

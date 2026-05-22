@@ -15,10 +15,12 @@ can execute read-only code-review fixture work. Runtime artifact redaction and
 retention planning are implemented for the Flight Recorder artifact path. The
 Control API also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
-and a fail-closed AI Gateway route for OpenAI chat completions.
+and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
+Plane can extract and validate memory candidates from completed runtime steps
+before submitting approved candidates to Cloudflare durable memory.
 
-The next main implementation block is async indexing and memory candidate
-extraction/validation, followed by broader Hetzner runtime execution.
+The next main implementation block is async indexing and remote deployment
+stabilization, followed by broader Hetzner runtime execution.
 
 ## Phase 1: Foundation
 
@@ -125,5 +127,6 @@ and minimal runtime loop complete for the current code-review fixture.
 Status: initial runtime redaction and retention planning complete; Cloudflare
 knowledge and memory ingestion endpoints are implemented; the Hetzner memory
 feedback client exists; Control API retrieval and AI Gateway routes are
-implemented; operational cleanup jobs, async indexing, memory candidate
-extraction/validation, and broader telemetry remain pending.
+implemented; memory candidate extraction/validation and the controlled learning
+fixture exist; operational cleanup jobs, async indexing, and broader telemetry
+remain pending.

@@ -23,8 +23,9 @@ knowledge and validated-memory ingestion endpoints that write R2 objects, D1
 metadata, ingestion jobs, and audit events. It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
-completions. Hetzner can submit approved memory candidates through the Memory
-Feedback Pipeline client.
+completions. Hetzner can now extract memory candidates from completed runtime
+steps, validate their scope/sensitivity/provenance/policy status, and submit
+only approved candidates through the Memory Feedback Pipeline client.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
@@ -71,6 +72,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/profiles/`: representative composed profiles.
 - `examples/control-plane/`: representative Cloudflare control-plane storage records and generated dev D1 seed SQL.
 - `examples/control-api/`: representative Control API request and response payloads.
+- `examples/evaluations/`: evaluation fixtures for controlled learning through approved memory.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
 
@@ -177,4 +179,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 1. Add async ingestion/indexing workers for knowledge and memory embeddings.
 2. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
-3. Add production deployment hardening for Cloudflare and Hetzner runtime operations.
+3. Apply and smoke-test the latest Hetzner/Cloudflare migrations in the remote environments.

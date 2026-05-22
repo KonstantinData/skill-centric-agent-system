@@ -7,6 +7,12 @@ from skill_centric_agent_system.runtime.entrypoint import (
     RuntimeStartResult,
 )
 from skill_centric_agent_system.runtime.loop import MinimalRuntimeLoop, RuntimeLoopResult
+from skill_centric_agent_system.runtime.memory_candidates import (
+    MemoryCandidateError,
+    MemoryCandidateExtractor,
+    MemoryCandidateValidationResult,
+    MemoryCandidateValidator,
+)
 from skill_centric_agent_system.runtime.memory_feedback import (
     CloudflareMemoryIngestionClient,
     MemoryFeedbackError,
@@ -38,6 +44,10 @@ __all__ = [
     "JsonArtifactStore",
     "MemoryFeedbackError",
     "MemoryFeedbackPipeline",
+    "MemoryCandidateError",
+    "MemoryCandidateExtractor",
+    "MemoryCandidateValidationResult",
+    "MemoryCandidateValidator",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
     "RuntimeRetentionPlan",

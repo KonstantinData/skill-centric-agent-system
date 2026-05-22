@@ -104,6 +104,7 @@ def test_hetzner_runtime_migration_adds_lookup_indexes() -> None:
         "idx_tool_invocations_run_step",
         "idx_validation_results_validator_status",
         "idx_memory_candidates_scope_status",
+        "idx_memory_candidates_validation_status",
     }
 
     for index in required_indexes:

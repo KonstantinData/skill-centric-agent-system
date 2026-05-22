@@ -42,6 +42,14 @@ class RuntimeStore(Protocol):
 
     def insert_validation_result(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
+    def insert_memory_candidate(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def update_memory_candidate(
+        self,
+        candidate_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]: ...
 
     def checkpoints_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]: ...
@@ -125,6 +133,22 @@ class InMemoryRuntimeStore:
         stored = dict(record)
         self.validation_results.append(stored)
         return stored
+
+    def insert_memory_candidate(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.memory_candidates.append(stored)
+        return stored
+
+    def update_memory_candidate(
+        self,
+        candidate_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        for candidate in self.memory_candidates:
+            if candidate["id"] == candidate_id:
+                candidate.update(fields)
+                return candidate
+        raise KeyError(candidate_id)
 
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]:
         return tuple(event for event in self.runtime_events if event["run_id"] == run_id)
@@ -317,6 +341,45 @@ class PostgresRuntimeStore:
             dict(record),
         )
         return record
+
+    def insert_memory_candidate(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        self.connection.execute(
+            """
+            INSERT INTO runtime.memory_candidates (
+                id, run_id, profile_id, source_step_id, target_memory_scope_id,
+                content_uri, sensitivity, retention_policy, validator_status,
+                validator_id, validation_reason, policy_status, policy_id,
+                policy_reason, created_at
+            )
+            VALUES (
+                %(id)s, %(run_id)s, %(profile_id)s, %(source_step_id)s,
+                %(target_memory_scope_id)s, %(content_uri)s, %(sensitivity)s,
+                %(retention_policy)s, %(validator_status)s, %(validator_id)s,
+                %(validation_reason)s, %(policy_status)s, %(policy_id)s,
+                %(policy_reason)s, %(created_at)s
+            )
+            ON CONFLICT (id) DO NOTHING
+            """,
+            {
+                "validation_reason": None,
+                "policy_reason": None,
+                **dict(record),
+            },
+        )
+        return record
+
+    def update_memory_candidate(
+        self,
+        candidate_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        assignments = ", ".join(f"{field} = %({field})s" for field in fields)
+        params = {"id": candidate_id, **dict(fields)}
+        self.connection.execute(
+            f"UPDATE runtime.memory_candidates SET {assignments} WHERE id = %(id)s",
+            params,
+        )
+        return params
 
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]:
         cursor = self.connection.execute(

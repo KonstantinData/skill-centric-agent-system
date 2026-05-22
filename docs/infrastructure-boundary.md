@@ -166,6 +166,8 @@ Rules:
 - A memory candidate must identify its source run and profile.
 - A memory candidate must declare target memory scope, sensitivity, retention, and policy result.
 - A validator must approve the candidate before ingestion.
+- Validation and policy decisions are stored on the candidate as status fields
+  and reason text before the feedback client can submit it.
 - Cloudflare stores the consolidated memory object and retrieval metadata.
 
 ## Composer Control API Flow
@@ -284,6 +286,9 @@ Implemented:
   objects, D1 metadata, ingestion jobs, and audit events.
 - Hetzner Memory Feedback Pipeline client submits only validator-approved and
   policy-approved memory candidates to Cloudflare.
+- Hetzner Memory Candidate Extractor and Validator create candidates only from
+  completed runtime steps and record validation/policy reasons for approved and
+  rejected candidates.
 - Cloudflare Control API retrieval endpoint returns D1-gated knowledge and
   memory context with Vectorize bindings and D1 post-validation.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
@@ -316,6 +321,7 @@ Completed:
 13. Profile-scoped Tool Gateway and Minimal Runtime Loop.
 14. Cloudflare knowledge and memory ingestion endpoints.
 15. Vectorize-ready retrieval endpoint and AI Gateway route.
+16. Memory Candidate Extraction, Validation, and controlled learning fixture.
 
 Next:
 

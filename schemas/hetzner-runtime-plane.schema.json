@@ -114,6 +114,12 @@
       ],
       "minLength": 1
     },
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "nullableId": {
       "type": [
         "string",
@@ -582,6 +588,9 @@
         "validator_id": {
           "$ref": "#/$defs/id"
         },
+        "validation_reason": {
+          "$ref": "#/$defs/nullableString"
+        },
         "policy_status": {
           "type": "string",
           "enum": [
@@ -593,6 +602,9 @@
         },
         "policy_id": {
           "$ref": "#/$defs/id"
+        },
+        "policy_reason": {
+          "$ref": "#/$defs/nullableString"
         },
         "created_at": {
           "$ref": "#/$defs/dateTime"
