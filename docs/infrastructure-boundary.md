@@ -299,6 +299,8 @@ Implemented:
   profile.
 - Manual live dev E2E gate script runs Cloudflare composition/retrieval and
   Hetzner PostgreSQL/artifact persistence in one path.
+- Operations runbook defines migrations, smoke tests, diagnostics, environment
+  separation, and disable paths.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
@@ -321,7 +323,6 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
-- Generic validators, controlled recomposition, and live dev E2E runtime gate.
 - Remote live dev runtime gate proving the full path against Cloudflare Control
   API, Hetzner PostgreSQL, and Hetzner artifact storage.
 
@@ -352,6 +353,7 @@ Completed:
 21. Runtime Validator Framework driven by profile-selected validators.
 22. Controlled recomposition request path without runtime self-granting.
 23. Manual live dev E2E gate script for Cloudflare and Hetzner.
+24. Operations runbook for migrations, smoke tests, diagnostics, and disable paths.
 
 Next:
 

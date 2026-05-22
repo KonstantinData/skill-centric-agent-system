@@ -139,6 +139,8 @@ The current repository has implemented the first control-plane slice:
   active profile,
 - a manual live dev E2E gate script for the Cloudflare composition/retrieval
   and Hetzner runtime persistence path,
+- an operations runbook for migrations, smoke tests, diagnostics, environment
+  separation, and disable paths,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
@@ -154,10 +156,7 @@ The current repository has implemented the first control-plane slice:
 The following architecture components are still pending implementation:
 
 - live recomposition continuation with a newly composed profile,
-- live dev end-to-end gate across Cloudflare composition and Hetzner runtime
-  persistence,
-- operations baseline for migration, smoke tests, diagnostics, and disable
-  paths,
+- executed live dev gate evidence against the remote Hetzner runtime database,
 - expanded runtime planning and execution beyond the initial code-review loop,
 - async ingestion/indexing workers for knowledge and memory embeddings.
 

@@ -22,8 +22,10 @@ profile and fail-closes unknown or failed validators. Controlled recomposition
 requests now emit `recomposition_requested` and stop the current run with
 `needs_recomposition` instead of mutating the active profile. A manual live dev
 E2E gate script now covers the Cloudflare-to-Hetzner runtime path. Runtime
-artifact redaction and retention planning are implemented for the Flight
-Recorder artifact path. The Control API also has knowledge/memory ingestion, a D1-gated
+operations now have a baseline runbook for migrations, smoke tests,
+diagnostics, and disable paths. Runtime artifact redaction and retention
+planning are implemented for the Flight Recorder artifact path. The Control API
+also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
@@ -161,9 +163,9 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 7. Make validation profile- and task-contract driven. (Initial framework complete.)
 8. Implement controlled recomposition without runtime self-granting. (Initial request path complete.)
 9. Add a live dev end-to-end gate across Cloudflare and Hetzner. (Manual gate script complete.)
-10. Add the operations baseline and runbooks.
+10. Add the operations baseline and runbooks. (Initial runbook complete.)
 
-Status: in progress. Steps 1-9 have initial implementations.
+Status: initial implementation complete. Steps 1-10 have initial implementations.
 
 ## Phase 7: Operational Hardening
 

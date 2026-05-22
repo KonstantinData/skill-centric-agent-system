@@ -29,7 +29,8 @@ selected by the active profile and fail-closes unknown or failed validators.
 Controlled recomposition requests now emit `recomposition_requested` and stop
 the current run with `needs_recomposition` instead of mutating the active
 profile. A manual live dev E2E gate now exists for the Cloudflare-to-Hetzner
-runtime path. Runtime artifact writes now honor the profile's
+runtime path, and the operations runbook defines migrations, smoke tests,
+diagnostics, and disable paths. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
@@ -44,7 +45,7 @@ The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
 Live recomposition continuation, richer tool execution, async indexing workers,
-and production deployment hardening remain follow-up implementation work.
+and production-scale deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -66,6 +67,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
 - `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
 - `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
+- `docs/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
@@ -211,5 +213,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Add the operations baseline and runbooks.
-2. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
