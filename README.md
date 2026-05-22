@@ -16,11 +16,13 @@ checkpoints, stop reasons, token budgets, and idempotency keys. The first
 runtime entry point can now start a run from task intake, compose the runtime
 profile, emit Flight Recorder events, write artifact-backed trace payloads, and
 run the first minimal context/planner/executor/validator loop through a
-profile-scoped Tool Gateway. Runtime artifact writes now honor the profile's
-`observability.redact_sensitive_data` flag and expose a retention planner for
-runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
-knowledge and validated-memory ingestion endpoints that write R2 objects, D1
-metadata, ingestion jobs, and audit events. It now also exposes a
+profile-scoped Tool Gateway. The runtime CLI can now use either in-memory
+storage for local fixtures or PostgreSQL storage for the Hetzner Runtime Plane
+through `SCAS_RUNTIME_DATABASE_URL`. Runtime artifact writes now honor the
+profile's `observability.redact_sensitive_data` flag and expose a retention
+planner for runtime artifact cleanup jobs. The Cloudflare Control API also
+exposes initial knowledge and validated-memory ingestion endpoints that write
+R2 objects, D1 metadata, ingestion jobs, and audit events. It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
 completions. Hetzner can now extract memory candidates from completed runtime
@@ -30,8 +32,9 @@ only approved candidates through the Memory Feedback Pipeline client.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Broader runtime planning, richer tool execution, async indexing workers, and
-production deployment hardening remain follow-up implementation work.
+Full profile enforcement, generic validators, controlled recomposition, richer
+tool execution, async indexing workers, and production deployment hardening
+remain follow-up implementation work.
 
 ## Core Flow
 
@@ -65,7 +68,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
-- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Flight Recorder writer, runtime storage ports, and JSON artifact store.
+- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Flight Recorder writer, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
@@ -117,6 +120,20 @@ external services. With `--run-minimal-loop`, it also runs the first
 Context/Planner/Executor/Validator loop, invokes only profile-allowed read
 tools, writes tool input/output artifacts under the artifact root, and prints
 the run/profile summary.
+
+Start the same path against Hetzner PostgreSQL storage when the database URL is
+available in the environment:
+
+```powershell
+scas-runtime-start `
+  --task-file examples\tasks\code-review-task.json `
+  --composition-context-file examples\control-api\composition-context-response.json `
+  --artifact-root /opt/scas/runtime `
+  --repository-root . `
+  --storage-mode postgres `
+  --database-url $env:SCAS_RUNTIME_DATABASE_URL `
+  --run-minimal-loop
+```
 
 Generate the Cloudflare D1 dev seed from module contracts:
 
@@ -182,8 +199,8 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Complete the Runtime Preflight Gate in `docs/runtime-preflight.md`.
-2. Finalize the generic Runtime Contract and Runtime API/CLI contract.
-3. Wire productive runtime execution to real Hetzner PostgreSQL and artifact storage.
-4. Enforce profile boundaries, harden the Tool Gateway, bind retrieval context, add generic validators, implement recomposition, and prove the flow with a live dev E2E gate.
-5. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Complete full profile boundary enforcement for tools, knowledge, data, memory, budgets, duration, and recomposition count.
+2. Harden the Tool Gateway for productive execution.
+3. Bind the Context Manager to `POST /retrieval/context`.
+4. Add generic validators and controlled recomposition.
+5. Prove the flow with a live dev E2E gate, then continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

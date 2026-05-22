@@ -36,6 +36,16 @@ Input:
 - repository root when repository tools are allowed,
 - optional `run_minimal_loop` flag for local dev execution.
 
+For CLI execution, productive storage is selected with:
+
+```text
+--storage-mode postgres --database-url "$SCAS_RUNTIME_DATABASE_URL"
+```
+
+The `--database-url` flag may be omitted when `SCAS_RUNTIME_DATABASE_URL` is set
+in the process environment. API-shaped requests must reference a secret or
+environment variable, not include a literal connection string.
+
 Output:
 
 - run ID,
@@ -140,4 +150,5 @@ Supported storage modes:
 - `postgres`: Hetzner Runtime Plane,
 - `recordset`: future offline inspection/export mode.
 
-Productive Runtime Phase uses `postgres`.
+Productive Runtime Phase uses `postgres` with the Hetzner PostgreSQL database
+and the Hetzner artifact root, normally `/opt/scas/runtime`.

@@ -7,10 +7,11 @@ from typing import Any
 
 from skill_centric_agent_system.composition import ControlPlaneClient
 from skill_centric_agent_system.runtime import (
-    InMemoryRuntimeStore,
     JsonArtifactStore,
     MinimalRuntimeLoop,
     RuntimeEntryPoint,
+    RuntimeEntryPointError,
+    open_runtime_store_session,
 )
 
 
@@ -28,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--artifact-root",
         default=".scas-runtime",
-        help="Local artifact root for runtime dry-run artifacts.",
+        help="Artifact root for runtime traces and tool outputs.",
     )
     parser.add_argument(
         "--repository-root",
@@ -46,6 +47,19 @@ def main(argv: list[str] | None = None) -> int:
         choices=("dev", "staging", "prod"),
         help="Composition environment.",
     )
+    parser.add_argument(
+        "--storage-mode",
+        default="memory",
+        choices=("memory", "postgres"),
+        help="Runtime storage backend. Use postgres for the Hetzner Runtime Plane.",
+    )
+    parser.add_argument(
+        "--database-url",
+        help=(
+            "PostgreSQL connection URL for --storage-mode postgres. "
+            "Defaults to SCAS_RUNTIME_DATABASE_URL."
+        ),
+    )
     args = parser.parse_args(argv)
 
     task = _load_json(Path(args.task_file))
@@ -57,39 +71,47 @@ def main(argv: list[str] | None = None) -> int:
     control_plane_client = (
         ControlPlaneClient(args.control_plane_url) if args.control_plane_url else None
     )
-    store = InMemoryRuntimeStore()
-    runtime = RuntimeEntryPoint(
-        store=store,
-        artifacts=JsonArtifactStore(args.artifact_root),
-        control_plane_client=control_plane_client,
-        environment=args.environment,
-    )
-    result = runtime.start(task, composition_context_response=context_response)
-    loop_result = None
-    if args.run_minimal_loop:
-        loop_result = MinimalRuntimeLoop(
-            store=store,
-            artifacts=JsonArtifactStore(args.artifact_root),
-            repository_root=args.repository_root,
-        ).run(result)
-    print(
-        json.dumps(
-            {
-                "run_id": result.run_id,
-                "task_id": result.analyzed_task.task_id,
-                "profile_id": result.profile["id"],
-                "profile_version": result.profile["profile_version"],
-                "status": store.runtime_runs[result.run_id]["status"],
-                "stop_reason": store.runtime_runs[result.run_id]["stop_reason"],
-                "artifact_root_uri": store.runtime_runs[result.run_id][
-                    "artifact_root_uri"
-                ],
-                "runtime_response": loop_result.response if loop_result else None,
-            },
-            indent=2,
-            sort_keys=True,
+    artifacts = JsonArtifactStore(args.artifact_root)
+    with open_runtime_store_session(
+        mode=args.storage_mode,
+        database_url=args.database_url,
+    ) as storage:
+        runtime = RuntimeEntryPoint(
+            store=storage.store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=args.environment,
         )
-    )
+        result = runtime.start(task, composition_context_response=context_response)
+        loop_result = None
+        if args.run_minimal_loop:
+            loop_result = MinimalRuntimeLoop(
+                store=storage.store,
+                artifacts=artifacts,
+                repository_root=args.repository_root,
+            ).run(result)
+
+        run_record = storage.store.get_runtime_run(result.run_id)
+        if run_record is None:
+            raise RuntimeEntryPointError(f"Runtime run was not persisted: {result.run_id}.")
+
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "task_id": result.analyzed_task.task_id,
+                    "profile_id": result.profile["id"],
+                    "profile_version": result.profile["profile_version"],
+                    "status": run_record["status"],
+                    "stop_reason": run_record["stop_reason"],
+                    "artifact_root_uri": run_record["artifact_root_uri"],
+                    "storage_mode": args.storage_mode,
+                    "runtime_response": loop_result.response if loop_result else None,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
     return 0
 
 

@@ -334,8 +334,44 @@
             "postgres",
             "recordset"
           ]
+        },
+        "database_url_env": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "connection_secret_ref": {
+          "type": "string",
+          "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "postgres"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "database_url_env"
+                ]
+              },
+              {
+                "required": [
+                  "connection_secret_ref"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     "runSummary": {
       "type": "object",

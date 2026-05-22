@@ -11,8 +11,11 @@ from skill_centric_agent_system.runtime import (
     FlightRecorder,
     InMemoryRuntimeStore,
     JsonArtifactStore,
+    PostgresRuntimeStore,
     RuntimeEntryPoint,
     RuntimeEntryPointError,
+    RuntimeStorageError,
+    open_runtime_store_session,
 )
 from skill_centric_agent_system.runtime.cli import main as runtime_cli_main
 
@@ -151,6 +154,7 @@ def test_runtime_cli_starts_fixture_backed_run(tmp_path: Path, capsys: Any) -> N
     assert output["profile_id"] == "profile-code-review-latest-commit"
     assert output["status"] == "running"
     assert output["stop_reason"] is None
+    assert output["storage_mode"] == "memory"
 
 
 def test_runtime_cli_can_run_minimal_loop(tmp_path: Path, capsys: Any) -> None:
@@ -174,3 +178,48 @@ def test_runtime_cli_can_run_minimal_loop(tmp_path: Path, capsys: Any) -> None:
     assert output["status"] == "succeeded"
     assert output["stop_reason"] == "completed"
     assert output["runtime_response"]["tool_result_count"] == 2
+
+
+def test_runtime_storage_session_opens_memory_store() -> None:
+    with open_runtime_store_session(mode="memory") as storage:
+        assert isinstance(storage.store, InMemoryRuntimeStore)
+
+
+def test_runtime_storage_session_requires_postgres_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SCAS_RUNTIME_DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeStorageError, match="SCAS_RUNTIME_DATABASE_URL"):
+        open_runtime_store_session(mode="postgres", database_url=None)
+
+
+def test_runtime_storage_session_wraps_postgres_connection() -> None:
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.committed = False
+            self.closed = False
+
+        def commit(self) -> None:
+            self.committed = True
+
+        def rollback(self) -> None:
+            raise AssertionError("rollback should not be called")
+
+        def close(self) -> None:
+            self.closed = True
+
+    fake_connection = FakeConnection()
+
+    def connector(database_url: str) -> FakeConnection:
+        assert database_url == "postgresql://runtime.example/scas_runtime"
+        return fake_connection
+
+    with open_runtime_store_session(
+        mode="postgres",
+        database_url="postgresql://runtime.example/scas_runtime",
+        connector=connector,
+    ) as storage:
+        assert isinstance(storage.store, PostgresRuntimeStore)
+
+    assert fake_connection.committed is True
+    assert fake_connection.closed is True

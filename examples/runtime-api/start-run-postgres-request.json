@@ -4,15 +4,15 @@
   "environment": "dev",
   "task": {
     "id": "task-code-review-latest-commit",
-    "objective": "Review the latest commit for behavioral regressions.",
-    "repository": "repo://current"
+    "task_type": "code-review"
   },
   "storage": {
-    "mode": "memory"
+    "mode": "postgres",
+    "database_url_env": "SCAS_RUNTIME_DATABASE_URL"
   },
   "execution": {
-    "artifact_root": ".scas-runtime",
-    "repository_root": ".",
+    "artifact_root": "/opt/scas/runtime",
+    "repository_root": "/workspace/repository",
     "run_immediately": true
   }
 }

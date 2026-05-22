@@ -281,6 +281,9 @@ Implemented:
 - Runtime Entry Point exists for Analyzer -> Control API context -> Composer ->
   run creation, with an in-memory runtime store and artifact-backed Flight
   Recorder writer.
+- Runtime CLI storage can switch between in-memory fixture storage and
+  PostgreSQL-backed Hetzner Runtime Plane storage through
+  `SCAS_RUNTIME_DATABASE_URL`.
 - Profile-scoped Tool Gateway exists for `git-read`, `filesystem-read`, and
   `test-runner`.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
@@ -305,10 +308,10 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
-- Productive runtime execution against real Hetzner PostgreSQL and artifact
-  storage.
 - Full profile enforcement, generic validators, controlled recomposition, and
   live dev E2E runtime gate.
+- Remote live dev runtime gate proving the full path against Cloudflare Control
+  API, Hetzner PostgreSQL, and Hetzner artifact storage.
 
 ## Implementation Order
 
@@ -330,10 +333,10 @@ Completed:
 14. Cloudflare knowledge and memory ingestion endpoints.
 15. Vectorize-ready retrieval endpoint and AI Gateway route.
 16. Memory Candidate Extraction, Validation, and controlled learning fixture.
+17. Runtime storage session for PostgreSQL-backed Hetzner execution.
 
 Next:
 
-1. Complete the Runtime Preflight Gate in `docs/runtime-preflight.md`.
-2. Implement the productive runtime core in the Phase 1 order documented in
+1. Implement the productive runtime core in the Phase 1 order documented in
    `docs/repository-roadmap.md`.
-3. Implement async ingestion/indexing workers and remote Vectorize population.
+2. Implement async ingestion/indexing workers and remote Vectorize population.

@@ -28,7 +28,10 @@ from skill_centric_agent_system.runtime.storage import (
     FlightRecorder,
     InMemoryRuntimeStore,
     PostgresRuntimeStore,
+    RuntimeStorageError,
     RuntimeStore,
+    RuntimeStoreSession,
+    open_runtime_store_session,
 )
 from skill_centric_agent_system.runtime.tool_gateway import (
     ToolDeniedError,
@@ -56,6 +59,8 @@ __all__ = [
     "RuntimeLoopResult",
     "RuntimeEntryPoint",
     "RuntimeEntryPointError",
+    "RuntimeStorageError",
+    "RuntimeStoreSession",
     "RuntimeStartResult",
     "RuntimeStore",
     "ToolDeniedError",
@@ -63,5 +68,6 @@ __all__ = [
     "ToolGateway",
     "ToolInvocationResult",
     "profile_redacts_sensitive_data",
+    "open_runtime_store_session",
     "redact_sensitive_data",
 ]

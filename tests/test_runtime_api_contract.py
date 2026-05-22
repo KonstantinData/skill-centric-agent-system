@@ -23,6 +23,18 @@ def test_runtime_api_examples_match_schema() -> None:
         validator.validate(load_json(example_path))
 
 
+def test_runtime_api_postgres_storage_requires_secret_reference() -> None:
+    schema = load_json(RUNTIME_API_SCHEMA_PATH)
+    validator = Draft202012Validator(schema)
+    request = load_json(RUNTIME_API_EXAMPLES_DIR / "start-run-request.json")
+    request["storage"] = {"mode": "postgres"}
+
+    errors = list(validator.iter_errors(request))
+
+    assert errors
+    assert any("not valid under any of the given schemas" in error.message for error in errors)
+
+
 def test_runtime_api_contract_documents_required_commands() -> None:
     contract = (REPO_ROOT / "docs" / "runtime-api.md").read_text(encoding="utf-8")
     for command in (

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Mapping, MutableMapping
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
@@ -29,6 +31,8 @@ class RuntimeStore(Protocol):
     def insert_runtime_run(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
     def update_runtime_run(self, run_id: str, fields: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def get_runtime_run(self, run_id: str) -> Mapping[str, Any] | None: ...
 
     def insert_runtime_step(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
@@ -76,6 +80,9 @@ class InMemoryRuntimeStore:
         stored = self.runtime_runs[run_id]
         stored.update(fields)
         return stored
+
+    def get_runtime_run(self, run_id: str) -> Mapping[str, Any] | None:
+        return self.runtime_runs.get(run_id)
 
     def insert_runtime_step(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         idempotency_key = record.get("idempotency_key")
@@ -244,6 +251,20 @@ class PostgresRuntimeStore:
         )
         return params
 
+    def get_runtime_run(self, run_id: str) -> Mapping[str, Any] | None:
+        cursor = self.connection.execute(
+            """
+            SELECT id, task_id, profile_id, profile_version, status, started_at,
+                   completed_at, artifact_root_uri, token_budget_total,
+                   tokens_used_total, stop_reason
+            FROM runtime.runtime_runs
+            WHERE id = %(run_id)s
+            """,
+            {"run_id": run_id},
+        )
+        row = cursor.fetchone()
+        return row if row is not None else None
+
     def insert_runtime_step(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         self.connection.execute(
             """
@@ -407,6 +428,76 @@ class PostgresRuntimeStore:
             {"run_id": run_id},
         )
         return tuple(cursor.fetchall())
+
+
+class RuntimeStorageError(RuntimeError):
+    """Raised when runtime storage cannot be opened or used."""
+
+
+@dataclass
+class RuntimeStoreSession:
+    """Own the lifecycle of a runtime store and its optional backing connection."""
+
+    store: RuntimeStore
+    connection: Any | None = None
+
+    def __enter__(self) -> RuntimeStoreSession:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        if self.connection is None:
+            return False
+
+        try:
+            if exc_type is None and hasattr(self.connection, "commit"):
+                self.connection.commit()
+            elif exc_type is not None and hasattr(self.connection, "rollback"):
+                self.connection.rollback()
+        finally:
+            if hasattr(self.connection, "close"):
+                self.connection.close()
+        return False
+
+
+def open_runtime_store_session(
+    *,
+    mode: str,
+    database_url: str | None = None,
+    connector: Callable[[str], Any] | None = None,
+) -> RuntimeStoreSession:
+    """Open a runtime storage session for local memory or Hetzner PostgreSQL."""
+
+    if mode == "memory":
+        return RuntimeStoreSession(store=InMemoryRuntimeStore())
+
+    if mode != "postgres":
+        raise RuntimeStorageError(f"Unsupported runtime storage mode: {mode}.")
+
+    dsn = database_url or os.getenv("SCAS_RUNTIME_DATABASE_URL")
+    if not dsn:
+        raise RuntimeStorageError(
+            "Postgres runtime storage requires --database-url or "
+            "SCAS_RUNTIME_DATABASE_URL."
+        )
+
+    connection = connector(dsn) if connector is not None else _connect_psycopg(dsn)
+    return RuntimeStoreSession(
+        store=PostgresRuntimeStore(connection),
+        connection=connection,
+    )
+
+
+def _connect_psycopg(database_url: str) -> Any:
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError as exc:  # pragma: no cover - depends on optional extra.
+        raise RuntimeStorageError(
+            "Postgres runtime storage requires the optional runtime dependency: "
+            "pip install 'skill-centric-agent-system[runtime]'."
+        ) from exc
+
+    return psycopg.connect(database_url, row_factory=dict_row)
 
 
 class FlightRecorder:
