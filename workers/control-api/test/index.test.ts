@@ -1,10 +1,11 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
-import { SELF, env, reset } from "cloudflare:test";
+import { env, reset } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import migration0001 from "../../../migrations/cloudflare/d1/0001_control_plane.sql?raw";
 import migration0002 from "../../../migrations/cloudflare/d1/0002_module_selection_metadata.sql?raw";
+import worker from "../src/index";
 
 const compositionRequest = {
   contract_version: "0.1.0",
@@ -66,8 +67,56 @@ const memoryIngestRequest = {
   },
 };
 
-async function fetchJson(path: string, init?: RequestInit): Promise<Response> {
-  return SELF.fetch(`https://control-api.test${path}`, init);
+const ADMIN_TOKEN = "test-admin-token";
+const COMPOSITION_TOKEN = "test-composition-token";
+const INGESTION_TOKEN = "test-ingestion-token";
+const RETRIEVAL_TOKEN = "test-retrieval-token";
+const AI_GATEWAY_TOKEN = "test-ai-gateway-token";
+
+type TestEnv = Env & {
+  CONTROL_API_TOKEN?: string;
+  CONTROL_API_COMPOSITION_TOKEN?: string;
+  CONTROL_API_INGESTION_TOKEN?: string;
+  CONTROL_API_RETRIEVAL_TOKEN?: string;
+  CONTROL_API_AI_GATEWAY_TOKEN?: string;
+};
+
+function testEnv(overrides: Partial<TestEnv> = {}): TestEnv {
+  return {
+    ...env,
+    CONTROL_API_TOKEN: ADMIN_TOKEN,
+    CONTROL_API_COMPOSITION_TOKEN: COMPOSITION_TOKEN,
+    CONTROL_API_INGESTION_TOKEN: INGESTION_TOKEN,
+    CONTROL_API_RETRIEVAL_TOKEN: RETRIEVAL_TOKEN,
+    CONTROL_API_AI_GATEWAY_TOKEN: AI_GATEWAY_TOKEN,
+    ...overrides,
+  } as TestEnv;
+}
+
+function testContext(): ExecutionContext {
+  return {
+    waitUntil() {},
+    passThroughOnException() {},
+  } as unknown as ExecutionContext;
+}
+
+async function fetchJson(
+  path: string,
+  init?: RequestInit,
+  overrides: Partial<TestEnv> = {},
+): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("authorization") && path !== "/health") {
+    headers.set("authorization", `Bearer ${ADMIN_TOKEN}`);
+  }
+  return worker.fetch(
+    new Request(`https://control-api.test${path}`, {
+      ...init,
+      headers,
+    }),
+    testEnv(overrides),
+    testContext(),
+  );
 }
 
 async function migrateControlPlane(): Promise<void> {
@@ -548,6 +597,95 @@ describe("control API worker", () => {
       service: "scas-control-api",
       environment: "dev",
     });
+  });
+
+  it("requires bearer authorization for protected endpoints", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "authorization": "",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(compositionRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error.code).toBe("authorization_required");
+  });
+
+  it("rejects invalid bearer authorization", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "authorization": "Bearer wrong-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(compositionRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error.code).toBe("authorization_invalid");
+  });
+
+  it("fails closed when protected endpoint auth is not configured", async () => {
+    const response = await fetchJson(
+      "/composition/context",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(compositionRequest),
+      },
+      {
+        CONTROL_API_TOKEN: undefined,
+        CONTROL_API_COMPOSITION_TOKEN: undefined,
+        CONTROL_API_INGESTION_TOKEN: undefined,
+        CONTROL_API_RETRIEVAL_TOKEN: undefined,
+        CONTROL_API_AI_GATEWAY_TOKEN: undefined,
+      },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe("control_api_auth_unconfigured");
+  });
+
+  it("enforces endpoint-scoped bearer authorization", async () => {
+    const allowed = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${COMPOSITION_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(compositionRequest),
+    });
+    expect(allowed.status).toBe(200);
+
+    const denied = await fetchJson("/retrieval/context", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${COMPOSITION_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        contract_version: "0.1.0",
+        principal: {
+          kind: "role",
+          id: "repository-maintainer",
+        },
+        query: "runtime reconstruction",
+        knowledge_scope_ids: ["mod-architecture-docs"],
+        memory_scope_ids: ["mod-project-memory"],
+        top_k: 5,
+      }),
+    });
+    const body = await denied.json();
+
+    expect(denied.status).toBe(403);
+    expect(body.error.code).toBe("authorization_scope_denied");
   });
 
   it("returns a D1-backed composition context", async () => {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--control-plane-url",
         help="Control Plane base URL. Used when no composition context fixture is supplied.",
+    )
+    parser.add_argument(
+        "--control-plane-token",
+        default=os.getenv("SCAS_CONTROL_API_TOKEN"),
+        help=(
+            "Bearer token for Control Plane requests. "
+            "Defaults to SCAS_CONTROL_API_TOKEN."
+        ),
     )
     parser.add_argument(
         "--artifact-root",
@@ -69,7 +78,9 @@ def main(argv: list[str] | None = None) -> int:
         else None
     )
     control_plane_client = (
-        ControlPlaneClient(args.control_plane_url) if args.control_plane_url else None
+        ControlPlaneClient(args.control_plane_url, api_token=args.control_plane_token)
+        if args.control_plane_url
+        else None
     )
     artifacts = JsonArtifactStore(args.artifact_root)
     with open_runtime_store_session(

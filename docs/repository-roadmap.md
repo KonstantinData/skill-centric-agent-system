@@ -7,7 +7,8 @@ setup, local registry foundation, Cloudflare/Hetzner infrastructure contracts,
 Control API Worker scaffold, D1-backed `POST /composition/context`, dev D1
 registry seed path, and the first Analyzer/Composer implementation.
 The Hetzner Runtime Plane also has the initial Flight Recorder storage contract
-for runtime events, checkpoints, stop reasons, token budgets, and idempotency.
+for runtime events, checkpoints, stop reasons, token budgets, idempotency, and
+atomic run-local event indexing.
 The Runtime Entry Point can start a run from task intake, compose the runtime
 profile, create the runtime run, and emit initial artifact-backed Flight
 Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
@@ -29,12 +30,18 @@ also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
-before submitting approved candidates to Cloudflare durable memory.
+before submitting approved candidates to Cloudflare durable memory. The Control
+API now requires bearer authentication for every non-health route and supports
+endpoint-scoped tokens. The Task Analyzer has evaluation coverage for
+code-review, research, task-execution, and general tasks. Composition scoring
+has positive and negative evaluation fixtures, and runtime artifacts chunk large
+string payloads into manifest-referenced text chunks.
 
 The Runtime Preflight Gate is complete. The current implementation block is the
 productive runtime core. Async indexing, AI Gateway live secret rollout, broader
-runtime expansion, and retention cleanup remain explicit backlog items and must
-not obscure the runtime entry gate.
+runtime expansion, retention cleanup, live Hetzner E2E evidence, and live
+Postgres concurrency evidence remain explicit backlog items and must not
+obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -133,9 +140,12 @@ and remote index population remain pending.
 - Emit validated, version-pinned runtime profiles. (Initial implementation complete.)
 - Add recomposition tests with parent profile traceability. (Initial implementation complete.)
 - Add runtime entrypoint wiring from task intake to Control API client to composed profile. (Initial implementation complete.)
-- Expand analyzer coverage beyond code-review fixtures.
+- Expand analyzer coverage beyond code-review fixtures. (Initial evaluation
+  coverage complete.)
 
-Status: initial implementation complete; broader task coverage remains.
+Status: initial implementation complete. Broader task coverage should now grow
+through evaluation fixtures before classifier or LLM-assisted analysis is
+introduced.
 
 ## Phase 6: Runtime Loop
 
@@ -171,7 +181,7 @@ Status: initial implementation complete. Steps 1-10 have initial implementations
 
 - Expand observability and trace export.
 - Plan and enforce runtime artifact retention. (Initial planner complete.)
-- Add evaluation fixtures.
+- Add analyzer and composition-scoring evaluation fixtures. (Initial fixtures complete.)
 - Add safety tests for permissions and scoped access.
 - Add documentation for deployment and operations.
 
@@ -179,5 +189,7 @@ Status: initial runtime redaction and retention planning complete; Cloudflare
 knowledge and memory ingestion endpoints are implemented; the Hetzner memory
 feedback client exists; Control API retrieval and AI Gateway routes are
 implemented; memory candidate extraction/validation and the controlled learning
-fixture exist; operational cleanup jobs, async indexing, and broader telemetry
+fixture exist; Control API auth, atomic event indexing, and chunked artifact
+persistence are implemented; operational cleanup jobs, async indexing, live
+Hetzner E2E evidence, live Postgres concurrency evidence, and broader telemetry
 remain pending.

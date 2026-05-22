@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +17,7 @@ class ControlPlaneClientError(RuntimeError):
 class ControlPlaneClient:
     base_url: str
     timeout_seconds: float = 10.0
+    api_token: str | None = None
 
     def composition_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
         return self._post_json("/composition/context", request_body)
@@ -31,6 +33,7 @@ class ControlPlaneClient:
             headers={
                 "content-type": "application/json",
                 "accept": "application/json",
+                **self._authorization_headers(),
             },
             method="POST",
         )
@@ -50,3 +53,9 @@ class ControlPlaneClient:
         if not isinstance(parsed, dict):
             raise ControlPlaneClientError("Control Plane response must be a JSON object.")
         return parsed
+
+    def _authorization_headers(self) -> dict[str, str]:
+        token = self.api_token or os.getenv("SCAS_CONTROL_API_TOKEN")
+        if token is None or not token.strip():
+            return {}
+        return {"authorization": f"Bearer {token.strip()}"}

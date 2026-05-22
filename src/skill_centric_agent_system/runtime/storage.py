@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Protocol
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
@@ -38,7 +39,11 @@ class RuntimeStore(Protocol):
 
     def update_runtime_step(self, step_id: str, fields: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
+    def allocate_runtime_event_index(self, run_id: str) -> int: ...
+
     def insert_runtime_event(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def allocate_runtime_checkpoint_index(self, run_id: str) -> int: ...
 
     def insert_runtime_checkpoint(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
@@ -70,6 +75,9 @@ class InMemoryRuntimeStore:
         self.tool_invocations: list[dict[str, Any]] = []
         self.validation_results: list[dict[str, Any]] = []
         self.memory_candidates: list[dict[str, Any]] = []
+        self._lock = Lock()
+        self._event_indices: dict[str, int] = {}
+        self._checkpoint_indices: dict[str, int] = {}
 
     def insert_runtime_run(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         stored = dict(record)
@@ -104,32 +112,60 @@ class InMemoryRuntimeStore:
         stored.update(fields)
         return stored
 
-    def insert_runtime_event(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
-        existing = self._find_by_run_idempotency(
-            self.runtime_events,
-            str(record["run_id"]),
-            str(record["idempotency_key"]),
-        )
-        if existing is not None:
-            return existing
+    def allocate_runtime_event_index(self, run_id: str) -> int:
+        with self._lock:
+            next_index = self._event_indices.get(run_id)
+            if next_index is None:
+                existing_indices = [
+                    int(event["event_index"])
+                    for event in self.runtime_events
+                    if event["run_id"] == run_id
+                ]
+                next_index = max(existing_indices, default=-1) + 1
+            self._event_indices[run_id] = next_index + 1
+            return next_index
 
-        stored = dict(record)
-        self.runtime_events.append(stored)
-        return stored
+    def insert_runtime_event(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        with self._lock:
+            existing = self._find_by_run_idempotency(
+                self.runtime_events,
+                str(record["run_id"]),
+                str(record["idempotency_key"]),
+            )
+            if existing is not None:
+                return existing
+
+            stored = dict(record)
+            self.runtime_events.append(stored)
+            return stored
+
+    def allocate_runtime_checkpoint_index(self, run_id: str) -> int:
+        with self._lock:
+            next_index = self._checkpoint_indices.get(run_id)
+            if next_index is None:
+                existing_indices = [
+                    int(checkpoint["checkpoint_index"])
+                    for checkpoint in self.runtime_checkpoints
+                    if checkpoint["run_id"] == run_id
+                ]
+                next_index = max(existing_indices, default=-1) + 1
+            self._checkpoint_indices[run_id] = next_index + 1
+            return next_index
 
     def insert_runtime_checkpoint(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
-        existing = self._find_by_run_index(
-            self.runtime_checkpoints,
-            str(record["run_id"]),
-            int(record["checkpoint_index"]),
-            "checkpoint_index",
-        )
-        if existing is not None:
-            return existing
+        with self._lock:
+            existing = self._find_by_run_index(
+                self.runtime_checkpoints,
+                str(record["run_id"]),
+                int(record["checkpoint_index"]),
+                "checkpoint_index",
+            )
+            if existing is not None:
+                return existing
 
-        stored = dict(record)
-        self.runtime_checkpoints.append(stored)
-        return stored
+            stored = dict(record)
+            self.runtime_checkpoints.append(stored)
+            return stored
 
     def insert_tool_invocation(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         stored = dict(record)
@@ -293,6 +329,24 @@ class PostgresRuntimeStore:
         )
         return params
 
+    def allocate_runtime_event_index(self, run_id: str) -> int:
+        self.connection.execute(
+            "SELECT id FROM runtime.runtime_runs WHERE id = %(run_id)s FOR UPDATE",
+            {"run_id": run_id},
+        )
+        cursor = self.connection.execute(
+            """
+            SELECT COALESCE(MAX(event_index) + 1, 0) AS next_event_index
+            FROM runtime.runtime_events
+            WHERE run_id = %(run_id)s
+            """,
+            {"run_id": run_id},
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return 0
+        return int(row["next_event_index"])
+
     def insert_runtime_event(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         self.connection.execute(
             """
@@ -312,6 +366,24 @@ class PostgresRuntimeStore:
             dict(record),
         )
         return record
+
+    def allocate_runtime_checkpoint_index(self, run_id: str) -> int:
+        self.connection.execute(
+            "SELECT id FROM runtime.runtime_runs WHERE id = %(run_id)s FOR UPDATE",
+            {"run_id": run_id},
+        )
+        cursor = self.connection.execute(
+            """
+            SELECT COALESCE(MAX(checkpoint_index) + 1, 0) AS next_checkpoint_index
+            FROM runtime.runtime_checkpoints
+            WHERE run_id = %(run_id)s
+            """,
+            {"run_id": run_id},
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return 0
+        return int(row["next_checkpoint_index"])
 
     def insert_runtime_checkpoint(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         self.connection.execute(
@@ -610,7 +682,7 @@ class FlightRecorder:
         if stop_reason is not None:
             require_choice(stop_reason, STOP_REASONS, "stop_reason")
 
-        event_index = len(self.store.events_for_run(run_id))
+        event_index = self.store.allocate_runtime_event_index(run_id)
         key = idempotency_key or f"{run_id}:event:{event_type}:{event_index}"
         existing = self.store.insert_runtime_event(
             self._event_record(
@@ -660,7 +732,7 @@ class FlightRecorder:
         redact_sensitive_data: bool = True,
     ) -> Mapping[str, Any]:
         require_choice(phase, RUNTIME_PHASES, "phase")
-        checkpoint_index = len(self.store.checkpoints_for_run(run_id))
+        checkpoint_index = self.store.allocate_runtime_checkpoint_index(run_id)
         state_uri = self.artifacts.write_json(
             ("traces", run_id, "checkpoints", f"{checkpoint_index:03d}-{phase}"),
             state,

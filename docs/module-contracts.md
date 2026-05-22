@@ -105,7 +105,8 @@ or keyword matches alone must never select a module. All sub-fields are arrays
 and may be empty when the module applies broadly.
 
 `task_signals.task_types` - Normalized task classes the module targets, for
-example `code-review`, `data-export`, `document-summary`.
+example `code-review`, `research`, `task-execution`, `data-export`,
+`document-summary`.
 
 `task_signals.risk_levels` - Risk levels at which the module is applicable.
 A module restricted to `low` and `medium` will not be selected for `high` or

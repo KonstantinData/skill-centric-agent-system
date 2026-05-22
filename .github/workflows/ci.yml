@@ -97,6 +97,7 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
 
     steps:
       - name: Check out repository
@@ -123,6 +124,19 @@ jobs:
       - name: Dry-run Worker deploy
         run: npm run worker:check
 
+      - name: Configure Control API token secret
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CONTROL_API_TOKEN:-}" ]; then
+            echo "::error::Missing required secret: CONTROL_API_TOKEN"
+            exit 1
+          fi
+
+          printf '%s' "${CONTROL_API_TOKEN}" \
+            | npx wrangler secret put CONTROL_API_TOKEN --config workers/control-api/wrangler.toml
+
       - name: Deploy dev Worker
         run: npm run worker:deploy:dev
 
@@ -139,6 +153,7 @@ jobs:
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
 
     steps:
       - name: Check out repository
@@ -157,7 +172,8 @@ jobs:
             HETZNER_HOST \
             HETZNER_SSH_KEY \
             HETZNER_USER \
-            OPENAI_API_KEY
+            OPENAI_API_KEY \
+            CONTROL_API_TOKEN
           do
             if [ -z "${!name:-}" ]; then
               echo "::error::Missing required secret: ${name}"

@@ -131,6 +131,9 @@ The runtime writes raw outputs and traces only to Hetzner. Cloudflare receives o
 Runtime events follow the Flight Recorder pattern:
 
 - `runtime_events` is append-only per run and deduplicated by idempotency key.
+- Runtime event indexes are allocated through the runtime store, not by
+  counting currently visible events. The PostgreSQL adapter locks the
+  `runtime_runs` row before computing the next run-local index.
 - `event_type`, `actor_role`, and `stop_reason` use constrained vocabularies.
 - planned action, execution, and result payloads are stored by artifact URI
   (`planned_action_uri`, `execution_uri`, `result_uri`), not inline JSON.
@@ -139,6 +142,8 @@ Runtime events follow the Flight Recorder pattern:
 - Token budget and token usage are tracked on runs and steps.
 - The first Python Flight Recorder writer writes event/checkpoint payloads to a
   JSON artifact store and persists only URIs into runtime event rows.
+- Large string payloads are persisted as chunked text artifacts with a manifest
+  reference in the parent JSON artifact.
 - Artifact writes honor the Runtime Agent Profile's
   `observability.redact_sensitive_data` flag.
 - Runtime retention planning separates expired artifact URIs from retained
@@ -250,8 +255,20 @@ GitHub repository secrets are used for deployment:
 - `HETZNER_SSH_KEY`
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
+- `CONTROL_API_TOKEN`
 
 Workers receive runtime secrets through Cloudflare Worker Secrets or account-level secret bindings. `OPENAI_API_KEY` is used through AI Gateway in production and must not be committed to configuration files.
+
+The Control API Worker requires bearer-token secrets for every non-health
+route. Endpoint-scoped secrets are:
+
+- `CONTROL_API_COMPOSITION_TOKEN`
+- `CONTROL_API_INGESTION_TOKEN`
+- `CONTROL_API_RETRIEVAL_TOKEN`
+- `CONTROL_API_AI_GATEWAY_TOKEN`
+
+`CONTROL_API_TOKEN` may be used as an all-scope automation token when endpoint
+scoping is impractical.
 
 The GitHub Actions workflow at `.github/workflows/ci.yml` validates these secret
 bindings through a manual infrastructure smoke test. The smoke test checks the
@@ -272,12 +289,15 @@ Implemented:
   checkpoints, stop reasons, token budgets, and idempotency keys.
 - Wrangler configuration exists for the dev Control API Worker.
 - `POST /composition/context` is implemented in `workers/control-api/`.
+- The Control API Worker requires bearer authentication on every non-health
+  endpoint and supports endpoint-scoped tokens.
 - Dev D1 registry seed generation exists in
   `scripts/cloudflare/generate_control_plane_seed.py`.
 - The dev Worker and remote dev D1 have been smoke-tested with a real
   `git-diff-analysis` candidate.
-- Python Task Analyzer and Profile Composer integration exists for the current
-  code-review fixture and Control Plane response contract.
+- Python Task Analyzer and Profile Composer integration exists for code-review,
+  research, task-execution, and general task evaluation cases and the Control
+  Plane response contract.
 - Runtime Entry Point exists for Analyzer -> Control API context -> Composer ->
   run creation, with an in-memory runtime store and artifact-backed Flight
   Recorder writer.
@@ -315,6 +335,8 @@ Implemented:
   memory context with Vectorize bindings and D1 post-validation.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
   when the account configuration and `OPENAI_API_KEY` secret are present.
+- Composition scoring evaluation fixtures cover positive and negative scoring
+  evidence across code-review and project-memory task signals.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -354,6 +376,10 @@ Completed:
 22. Controlled recomposition request path without runtime self-granting.
 23. Manual live dev E2E gate script for Cloudflare and Hetzner.
 24. Operations runbook for migrations, smoke tests, diagnostics, and disable paths.
+25. Control API bearer authentication and endpoint-scoped authorization.
+26. Atomic Flight Recorder event-index allocation.
+27. Analyzer and scoring evaluation fixtures.
+28. Chunked runtime artifact payload persistence.
 
 Next:
 

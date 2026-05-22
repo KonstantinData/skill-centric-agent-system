@@ -17,10 +17,18 @@ from skill_centric_agent_system.registries.modules import UnknownModuleError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GIT_DIFF_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
+PROJECT_MEMORY_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "project-memory.json"
+SCORING_EVALUATIONS_PATH = (
+    REPO_ROOT / "examples" / "evaluations" / "composition-scoring-cases.json"
+)
 
 
 def load_git_diff_module() -> dict[str, object]:
     return json.loads(GIT_DIFF_MODULE_PATH.read_text(encoding="utf-8"))
+
+
+def load_project_memory_module() -> dict[str, object]:
+    return json.loads(PROJECT_MEMORY_MODULE_PATH.read_text(encoding="utf-8"))
 
 
 def module_fixture(
@@ -115,6 +123,16 @@ def registry_with_git_module_and_dependencies() -> InMemoryModuleRegistry:
     )
 
 
+def registry_with_scoring_modules() -> InMemoryModuleRegistry:
+    return InMemoryModuleRegistry(
+        [
+            ModuleMetadata.from_mapping(load_git_diff_module()),
+            ModuleMetadata.from_mapping(load_project_memory_module()),
+            *dependency_modules(),
+        ]
+    )
+
+
 def code_review_signals(*, phrases: list[str] | None = None) -> TaskSignals:
     return TaskSignals(
         task_type="code-review",
@@ -123,6 +141,22 @@ def code_review_signals(*, phrases: list[str] | None = None) -> TaskSignals:
         available_inputs=frozenset({"repository", "diff"}),
         capability_hints=frozenset({"analysis"}),
         phrases=frozenset(phrases or ["review", "diff"]),
+    )
+
+
+def task_signals_from_mapping(value: dict[str, object]) -> TaskSignals:
+    return TaskSignals(
+        task_type=str(value["task_type"]),
+        risk_level=str(value["risk_level"]),
+        domains=frozenset(str(item) for item in value["domains"]),  # type: ignore[index]
+        available_inputs=frozenset(
+            str(item) for item in value["available_inputs"]  # type: ignore[index]
+        ),
+        capability_hints=frozenset(
+            str(item) for item in value["capability_hints"]  # type: ignore[index]
+        ),
+        phrases=frozenset(str(item) for item in value["phrases"]),  # type: ignore[index]
+        constraints=frozenset(str(item) for item in value["constraints"]),  # type: ignore[index]
     )
 
 
@@ -184,6 +218,22 @@ def test_registry_scores_positive_and_negative_structured_evidence() -> None:
     assert "input:diff" in positive_score.matched_signals
     assert negative_score.score == 0.75
     assert "phrase:deploy" in negative_score.negative_signals
+
+
+def test_registry_scoring_matches_evaluation_cases() -> None:
+    registry = registry_with_scoring_modules()
+    cases = json.loads(SCORING_EVALUATIONS_PATH.read_text(encoding="utf-8"))
+
+    for case in cases:
+        module = registry.resolve(case["module"])
+        score = registry.score(module, task_signals_from_mapping(case["task_signals"]))
+        expected = case["expected"]
+
+        assert score.score == expected["score"], case["name"]
+        assert set(expected["matched_signals_include"]).issubset(
+            score.matched_signals
+        ), case["name"]
+        assert set(score.negative_signals) == set(expected["negative_signals"]), case["name"]
 
 
 def test_policy_filter_requires_explicit_policy_context() -> None:

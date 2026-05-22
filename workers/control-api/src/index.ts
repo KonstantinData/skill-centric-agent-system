@@ -23,6 +23,19 @@ type ModuleKind =
   | "policy"
   | "validator";
 type PolicyEffect = "allow" | "deny" | "needs_clarification";
+type EndpointScope =
+  | "composition"
+  | "ingestion"
+  | "retrieval"
+  | "ai_gateway";
+
+type AuthEnv = Env & {
+  CONTROL_API_TOKEN?: string;
+  CONTROL_API_COMPOSITION_TOKEN?: string;
+  CONTROL_API_INGESTION_TOKEN?: string;
+  CONTROL_API_RETRIEVAL_TOKEN?: string;
+  CONTROL_API_AI_GATEWAY_TOKEN?: string;
+};
 
 type ErrorResponse = {
   error: {
@@ -283,6 +296,95 @@ function errorResponse(status: number, code: string, message: string): Response 
     } satisfies ErrorResponse,
     { status },
   );
+}
+
+function authorizeControlApiRequest(
+  request: Request,
+  env: Env,
+  requiredScope: EndpointScope,
+): Response | null {
+  const url = new URL(request.url);
+  const tokens = configuredAuthTokens(env as AuthEnv, url.hostname);
+  if (tokens.length === 0) {
+    return errorResponse(
+      503,
+      "control_api_auth_unconfigured",
+      "Control API authentication is not configured for this environment.",
+    );
+  }
+
+  const authorization = request.headers.get("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (match === null) {
+    return errorResponse(401, "authorization_required", "Bearer authorization is required.");
+  }
+
+  const presentedToken = match[1]?.trim() ?? "";
+  if (presentedToken.length === 0) {
+    return errorResponse(401, "authorization_required", "Bearer authorization is required.");
+  }
+  const matched = tokens.filter((token) => constantTimeEqual(token.value, presentedToken));
+  if (matched.length === 0) {
+    return errorResponse(401, "authorization_invalid", "Bearer authorization is invalid.");
+  }
+
+  if (!matched.some((token) => token.scopes.has(requiredScope) || token.scopes.has("all"))) {
+    return errorResponse(
+      403,
+      "authorization_scope_denied",
+      "Bearer authorization does not allow this Control API endpoint.",
+    );
+  }
+
+  return null;
+}
+
+function configuredAuthTokens(
+  env: AuthEnv,
+  hostname: string,
+): { value: string; scopes: Set<EndpointScope | "all"> }[] {
+  const allowLocalTestToken = hostname.endsWith(".test") || hostname === "control-api.test";
+  const tokens: { value: string; scopes: Set<EndpointScope | "all"> }[] = [];
+  pushToken(tokens, env.CONTROL_API_TOKEN, ["all"], allowLocalTestToken);
+  pushToken(tokens, env.CONTROL_API_COMPOSITION_TOKEN, ["composition"], allowLocalTestToken);
+  pushToken(tokens, env.CONTROL_API_INGESTION_TOKEN, ["ingestion"], allowLocalTestToken);
+  pushToken(tokens, env.CONTROL_API_RETRIEVAL_TOKEN, ["retrieval"], allowLocalTestToken);
+  pushToken(tokens, env.CONTROL_API_AI_GATEWAY_TOKEN, ["ai_gateway"], allowLocalTestToken);
+  return tokens;
+}
+
+function pushToken(
+  tokens: { value: string; scopes: Set<EndpointScope | "all"> }[],
+  value: string | undefined,
+  scopes: (EndpointScope | "all")[],
+  allowLocalTestToken: boolean,
+): void {
+  const token = configuredToken(value, allowLocalTestToken);
+  if (token !== null) {
+    tokens.push({ value: token, scopes: new Set(scopes) });
+  }
+}
+
+function configuredToken(value: string | undefined, allowLocalTestToken: boolean): string | null {
+  const token = value?.trim();
+  if (token === undefined || token.length === 0 || token === "unset") {
+    return null;
+  }
+  if (token === "local-test-token" && !allowLocalTestToken) {
+    return null;
+  }
+  return token;
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+  for (let index = 0; index < maxLength; index += 1) {
+    diff |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+  return diff === 0;
 }
 
 function isObject(value: unknown): value is JsonObject {
@@ -1244,6 +1346,11 @@ async function compositionContextResponse(
 }
 
 async function handleCompositionContext(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "composition");
+  if (authError !== null) {
+    return authError;
+  }
+
   if (request.method !== "POST") {
     return errorResponse(405, "method_not_allowed", "Use POST for /composition/context.");
   }
@@ -1310,6 +1417,11 @@ async function readValidatedJson<T>(
 }
 
 async function handleKnowledgeIngest(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "ingestion");
+  if (authError !== null) {
+    return authError;
+  }
+
   const parsed = await readValidatedJson<KnowledgeIngestRequest>(
     request,
     validateKnowledgeIngestRequest,
@@ -1446,6 +1558,11 @@ async function handleKnowledgeIngest(request: Request, env: Env): Promise<Respon
 }
 
 async function handleMemoryIngest(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "ingestion");
+  if (authError !== null) {
+    return authError;
+  }
+
   const parsed = await readValidatedJson<MemoryIngestRequest>(
     request,
     validateMemoryIngestRequest,
@@ -1570,6 +1687,11 @@ async function writeIngestionAudit(
 }
 
 async function handleRetrievalContext(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "retrieval");
+  if (authError !== null) {
+    return authError;
+  }
+
   const parsed = await readValidatedJson<RetrievalRequest>(
     request,
     validateRetrievalRequest,
@@ -1751,6 +1873,11 @@ function aiGatewayOpenAiChatUrl(env: Env): string {
 }
 
 async function handleAiGatewayOpenAiChat(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "ai_gateway");
+  if (authError !== null) {
+    return authError;
+  }
+
   if (request.method !== "POST") {
     return errorResponse(405, "method_not_allowed", "Use POST for AI Gateway routing.");
   }

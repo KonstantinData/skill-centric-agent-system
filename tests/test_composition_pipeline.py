@@ -22,6 +22,9 @@ COMPOSITION_CONTEXT_RESPONSE_PATH = (
 )
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RUNTIME_PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
+TASK_ANALYZER_EVALUATIONS_PATH = (
+    REPO_ROOT / "examples" / "evaluations" / "task-analyzer-cases.json"
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -70,6 +73,23 @@ def test_task_analyzer_emits_control_plane_request_contract() -> None:
     assert "software-engineering" in request["task"]["signals"]["domain_tags"]
     assert "analysis" in request["task"]["signals"]["capability_hints"]
     assert analyzed.missing_information == ()
+
+
+def test_task_analyzer_matches_task_neutral_evaluation_cases() -> None:
+    cases = json.loads(TASK_ANALYZER_EVALUATIONS_PATH.read_text(encoding="utf-8"))
+    analyzer = TaskAnalyzer()
+
+    for case in cases:
+        analyzed = analyzer.analyze(case["task"])
+        expected = case["expected"]
+        assert analyzed.task_type == expected["task_type"], case["name"]
+        assert analyzed.risk_level == expected["risk_level"], case["name"]
+        assert list(analyzed.required_inputs) == expected["required_inputs"], case["name"]
+        assert list(analyzed.available_inputs) == expected["available_inputs"], case["name"]
+        assert set(expected["domains_include"]).issubset(analyzed.domains), case["name"]
+        assert set(expected["capability_hints_include"]).issubset(
+            analyzed.capability_hints
+        ), case["name"]
 
 
 def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> None:

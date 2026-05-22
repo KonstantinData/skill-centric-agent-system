@@ -27,14 +27,17 @@ Set these variables on the machine that runs the gate:
 
 ```bash
 export SCAS_CONTROL_API_URL="https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
+export SCAS_CONTROL_API_TOKEN="..."
 export SCAS_RUNTIME_DATABASE_URL="postgresql://..."
 export SCAS_RUNTIME_ARTIFACT_ROOT="/opt/scas/runtime"
 export SCAS_REPOSITORY_ROOT="/path/to/skill-centric-agent-system"
 ```
 
-`SCAS_RUNTIME_DATABASE_URL` must point to the Hetzner runtime PostgreSQL
-database. Productive runtime artifacts must be written under the Hetzner
-artifact root.
+`SCAS_CONTROL_API_TOKEN` must authorize both composition and retrieval, either
+through the admin token or the endpoint-scoped composition and retrieval
+tokens. `SCAS_RUNTIME_DATABASE_URL` must point to the Hetzner runtime
+PostgreSQL database. Productive runtime artifacts must be written under the
+Hetzner artifact root.
 
 ## Command
 

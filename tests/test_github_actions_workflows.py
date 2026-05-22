@@ -32,6 +32,7 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
         "HETZNER_SSH_KEY",
         "HETZNER_USER",
         "OPENAI_API_KEY",
+        "CONTROL_API_TOKEN",
     }
 
     for secret in required_secrets:

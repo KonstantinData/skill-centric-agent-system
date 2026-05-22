@@ -12,10 +12,11 @@ contract-test harness, a local registry implementation, a deployed Cloudflare
 Control API Worker, D1 migrations, generated dev registry seed data, and the
 first Task Analyzer/Profile Composer implementation. The Hetzner Runtime Plane
 also has an initial Flight Recorder storage contract for runtime events,
-checkpoints, stop reasons, token budgets, and idempotency keys. The first
-runtime entry point can now start a run from task intake, compose the runtime
-profile, emit Flight Recorder events, write artifact-backed trace payloads, and
-run the first minimal context/planner/executor/validator loop through a
+checkpoints, stop reasons, token budgets, idempotency keys, and atomic
+run-local event indexing. The first runtime entry point can now start a run
+from task intake, compose the runtime profile, emit Flight Recorder events,
+write artifact-backed trace payloads, and run the first minimal
+context/planner/executor/validator loop through a
 profile-scoped Tool Gateway. The runtime CLI can now use either in-memory
 storage for local fixtures or PostgreSQL storage for the Hetzner Runtime Plane
 through `SCAS_RUNTIME_DATABASE_URL`. Runtime profile enforcement now fail-closes
@@ -37,15 +38,21 @@ knowledge and validated-memory ingestion endpoints that write R2 objects, D1
 metadata, ingestion jobs, and audit events. It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
-completions. Hetzner can now extract memory candidates from completed runtime
-steps, validate their scope/sensitivity/provenance/policy status, and submit
-only approved candidates through the Memory Feedback Pipeline client.
+completions. Every non-health Control API route now requires bearer
+authentication and supports endpoint-scoped authorization tokens. Hetzner can
+now extract memory candidates from completed runtime steps, validate their
+scope/sensitivity/provenance/policy status, and submit only approved candidates
+through the Memory Feedback Pipeline client. Analyzer and composition-scoring
+evaluation fixtures now cover code-review, research, task-execution, general
+tasks, and positive/negative scoring evidence. Runtime artifact persistence now
+chunks large string payloads into manifest-referenced text chunks.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
 Live recomposition continuation, richer tool execution, async indexing workers,
-and production-scale deployment hardening remain follow-up implementation work.
+remote live Hetzner E2E evidence, live Postgres concurrency evidence, and
+production-scale deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -94,7 +101,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/control-plane/`: representative Cloudflare control-plane storage records and generated dev D1 seed SQL.
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
-- `examples/evaluations/`: evaluation fixtures for controlled learning through approved memory.
+- `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
 
@@ -141,7 +148,8 @@ available in the environment:
 ```powershell
 scas-runtime-start `
   --task-file examples\tasks\code-review-task.json `
-  --composition-context-file examples\control-api\composition-context-response.json `
+  --control-plane-url $env:SCAS_CONTROL_API_URL `
+  --control-plane-token $env:SCAS_CONTROL_API_TOKEN `
   --artifact-root /opt/scas/runtime `
   --repository-root . `
   --storage-mode postgres `
@@ -187,6 +195,11 @@ secrets are configured:
 - `HETZNER_SSH_KEY`
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
+- `CONTROL_API_TOKEN`
+
+`CONTROL_API_TOKEN` is used by the manual dev Worker deployment job to
+configure the Worker secret. Endpoint-scoped Worker secrets can be configured
+manually with Wrangler when the single automation token is too broad.
 
 `HETZNER_SSH_KEY` must contain the complete private OpenSSH key block, including
 the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`
@@ -213,4 +226,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Execute the live dev E2E gate against remote Hetzner with Control API auth configured.
+2. Capture live Postgres concurrency evidence after the atomic event-index change.
+3. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

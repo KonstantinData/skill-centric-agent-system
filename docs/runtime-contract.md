@@ -118,6 +118,9 @@ must enforce:
 
 Large tool input/output payloads must be written as artifacts and referenced by
 URI from runtime events and `tool_invocations`.
+When a single string payload exceeds the artifact store inline threshold, it
+must be split into text chunks with a manifest URI stored in the parent JSON
+artifact.
 
 ## Context Retrieval
 
@@ -260,6 +263,9 @@ Every productive run must emit Flight Recorder events and checkpoints to the
 Hetzner Runtime Plane. Event payloads use artifact URIs, not inline JSON blobs.
 The runtime must honor `observability.redact_sensitive_data` before writing
 artifacts.
+Run-local event indexes must be allocated atomically by the runtime storage
+adapter. The runtime must not derive `event_index` by counting currently visible
+events in a way that can race under parallel writers.
 
 ## Runtime Result
 

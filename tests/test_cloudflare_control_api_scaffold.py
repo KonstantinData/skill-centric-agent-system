@@ -93,7 +93,8 @@ def test_worker_vitest_scaffold_is_present() -> None:
 
     assert "@cloudflare/vitest-pool-workers" in vitest_config
     assert "workers/control-api/test/**/*.test.ts" in vitest_config
-    assert 'import { SELF, env, reset } from "cloudflare:test"' in worker_test
+    assert 'import { env, reset } from "cloudflare:test"' in worker_test
+    assert 'import worker from "../src/index"' in worker_test
     assert "composition_status" in worker_test
 
 
@@ -108,6 +109,7 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler kv namespace create SCAS_CONFIG" in docs
     assert "npx wrangler vectorize create scas-knowledge-dev" in docs
     assert "npx wrangler secret put OPENAI_API_KEY" in docs
+    assert "npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN" in docs
     assert "npm run worker:deploy:dev" in docs
     assert "npx wrangler d1 create scas-control-dev" in script
     assert "npx wrangler vectorize create scas-knowledge-dev" in script

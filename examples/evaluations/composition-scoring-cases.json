@@ -1,0 +1,138 @@
+[
+  {
+    "name": "code review selects git diff analysis",
+    "module": "git-diff-analysis",
+    "task_signals": {
+      "task_type": "code-review",
+      "risk_level": "medium",
+      "domains": [
+        "software-engineering",
+        "git"
+      ],
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "phrases": [
+        "review",
+        "diff"
+      ],
+      "constraints": [
+        "least privilege"
+      ]
+    },
+    "expected": {
+      "score": 1.0,
+      "matched_signals_include": [
+        "task_type:code-review",
+        "input:diff",
+        "capability_class:analysis"
+      ],
+      "negative_signals": []
+    }
+  },
+  {
+    "name": "deployment phrase lowers review-only skill score",
+    "module": "git-diff-analysis",
+    "task_signals": {
+      "task_type": "code-review",
+      "risk_level": "medium",
+      "domains": [
+        "software-engineering",
+        "git"
+      ],
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "phrases": [
+        "review",
+        "deploy"
+      ],
+      "constraints": [
+        "least privilege"
+      ]
+    },
+    "expected": {
+      "score": 0.75,
+      "matched_signals_include": [
+        "task_type:code-review",
+        "input:diff"
+      ],
+      "negative_signals": [
+        "phrase:deploy"
+      ]
+    }
+  },
+  {
+    "name": "project memory applies to research tasks",
+    "module": "project-memory",
+    "task_signals": {
+      "task_type": "research",
+      "risk_level": "low",
+      "domains": [
+        "software-engineering",
+        "runtime"
+      ],
+      "available_inputs": [],
+      "capability_hints": [
+        "memory_access"
+      ],
+      "phrases": [
+        "project memory",
+        "previous decision"
+      ],
+      "constraints": [
+        "least privilege"
+      ]
+    },
+    "expected": {
+      "score": 0.75,
+      "matched_signals_include": [
+        "task_type:research",
+        "domain:runtime",
+        "capability_class:memory_access"
+      ],
+      "negative_signals": []
+    }
+  },
+  {
+    "name": "secret phrase strongly lowers project memory score",
+    "module": "project-memory",
+    "task_signals": {
+      "task_type": "research",
+      "risk_level": "low",
+      "domains": [
+        "software-engineering",
+        "runtime"
+      ],
+      "available_inputs": [],
+      "capability_hints": [
+        "memory_access"
+      ],
+      "phrases": [
+        "project memory",
+        "secret"
+      ],
+      "constraints": [
+        "least privilege"
+      ]
+    },
+    "expected": {
+      "score": 0.25,
+      "matched_signals_include": [
+        "task_type:research",
+        "domain:runtime"
+      ],
+      "negative_signals": [
+        "phrase:secret"
+      ]
+    }
+  }
+]

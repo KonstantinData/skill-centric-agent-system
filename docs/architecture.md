@@ -27,19 +27,22 @@ flowchart TD
     Intake --> Analyzer["Task Analyzer"]
     Analyzer --> Composer["Agent Composer"]
 
-    Composer --> InstructionRegistry["Instruction Registry"]
-    Composer --> SkillRegistry["Skill Registry"]
-    Composer --> ToolRegistry["Tool Registry"]
-    Composer --> KnowledgeIndex["Knowledge Index"]
-    Composer --> DataRegistry["Data Scope Registry"]
-    Composer --> MemoryRegistry["Memory Registry"]
-    Composer --> PolicyRegistry["Policy Registry"]
-    Composer --> ValidatorRegistry["Validator Registry"]
+    Composer --> ControlAPI["Cloudflare Control API<br/>POST /composition/context"]
+
+    ControlAPI --> InstructionRegistry["Instruction Registry"]
+    ControlAPI --> SkillRegistry["Skill Registry"]
+    ControlAPI --> ToolRegistry["Tool Registry"]
+    ControlAPI --> KnowledgeIndex["Knowledge Index"]
+    ControlAPI --> DataRegistry["Data Scope Registry"]
+    ControlAPI --> MemoryRegistry["Memory Registry"]
+    ControlAPI --> PolicyRegistry["Policy Registry"]
+    ControlAPI --> ValidatorRegistry["Validator Registry"]
 
     Composer --> Profile["Runtime Agent Profile"]
 
     Profile --> Agent["Single Agent Runtime"]
 
+    Agent --> RuntimeStore["Hetzner Runtime Plane<br/>Runs / Steps / Events / Checkpoints"]
     Agent --> Context["Context Manager"]
     Agent --> Planner["Planner"]
     Agent --> Executor["Executor"]
@@ -109,15 +112,19 @@ The current repository has implemented the first control-plane slice:
 - schema-backed module metadata and runtime profile contracts,
 - local deterministic module registry semantics,
 - Cloudflare D1 control-plane migrations,
-- a Cloudflare Control API Worker with `POST /composition/context`,
+- a Cloudflare Control API Worker with bearer authentication on every
+  non-health route,
+- `POST /composition/context`,
 - D1-backed candidate scoring, policy binding, scope binding, and graph validation,
 - generated dev D1 seed data derived from `examples/modules/*.json`,
-- a rule-based Task Analyzer for initial repository code-review tasks,
+- a rule-based Task Analyzer with evaluation coverage for code-review,
+  research, task-execution, and general tasks,
 - a Runtime Profile Composer that consumes Control Plane context responses,
-- an optional Python Control Plane client for `POST /composition/context`,
+- Python Control Plane and memory ingestion clients with bearer token support,
 - Hetzner runtime-plane storage contracts and bootstrap scripts,
 - a Hetzner Flight Recorder storage contract for runtime events, checkpoints,
-  stop reasons, token budgets, and idempotency keys,
+  stop reasons, token budgets, idempotency keys, and atomic event-index
+  allocation,
 - a Runtime Entry Point that starts a run from task intake, composes a runtime
   profile, writes initial Flight Recorder events, and stores event/checkpoint
   payloads as artifact URIs,
@@ -139,6 +146,8 @@ The current repository has implemented the first control-plane slice:
   active profile,
 - a manual live dev E2E gate script for the Cloudflare composition/retrieval
   and Hetzner runtime persistence path,
+- analyzer and composition-scoring evaluation fixtures,
+- chunked runtime artifact persistence for large string payloads,
 - an operations runbook for migrations, smoke tests, diagnostics, environment
   separation, and disable paths,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
@@ -157,6 +166,8 @@ The following architecture components are still pending implementation:
 
 - live recomposition continuation with a newly composed profile,
 - executed live dev gate evidence against the remote Hetzner runtime database,
+- live Postgres concurrency evidence against the remote Hetzner runtime
+  database,
 - expanded runtime planning and execution beyond the initial code-review loop,
 - async ingestion/indexing workers for knowledge and memory embeddings.
 
@@ -173,8 +184,12 @@ validation scenarios live in `docs/runtime-preflight.md`.
 Auth/authz, failure semantics, and observability are part of the architecture from the start:
 
 - Every composition uses an explicit principal, roles, and authorization policies.
+- Every non-health Control API request uses bearer authentication with
+  endpoint-scoped authorization where practical.
 - Unsafe ambiguity fails closed or requests clarification.
 - Every profile defines trace settings and required event capture.
 - Limits cover tool calls, tokens, duration, data reads, memory operations, and recomposition count.
 - Runtime events store large planned-action, execution, and result payloads by
   artifact URI rather than inline JSON.
+- Large string payloads inside runtime artifacts are chunked and referenced by
+  a manifest instead of being stored as one large inline string.

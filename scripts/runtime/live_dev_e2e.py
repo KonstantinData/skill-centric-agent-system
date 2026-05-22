@@ -32,6 +32,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Cloudflare Control API base URL.",
     )
     parser.add_argument(
+        "--control-plane-token",
+        default=os.getenv("SCAS_CONTROL_API_TOKEN"),
+        help="Control API bearer token. Defaults to SCAS_CONTROL_API_TOKEN.",
+    )
+    parser.add_argument(
         "--database-url",
         default=os.getenv("SCAS_RUNTIME_DATABASE_URL"),
         help="Hetzner PostgreSQL URL. Defaults to SCAS_RUNTIME_DATABASE_URL.",
@@ -50,9 +55,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.database_url:
         raise SystemExit("SCAS_RUNTIME_DATABASE_URL or --database-url is required.")
+    if not args.control_plane_token:
+        raise SystemExit("SCAS_CONTROL_API_TOKEN or --control-plane-token is required.")
 
     task = _load_json(Path(args.task_file))
-    control_plane_client = ControlPlaneClient(args.control_plane_url)
+    control_plane_client = ControlPlaneClient(
+        args.control_plane_url,
+        api_token=args.control_plane_token,
+    )
     artifacts = JsonArtifactStore(args.artifact_root)
 
     with open_runtime_store_session(

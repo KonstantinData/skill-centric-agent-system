@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +101,30 @@ def test_flight_recorder_deduplicates_events_by_idempotency_key(tmp_path: Path) 
     assert store.runtime_events[0]["event_index"] == 0
 
 
+def test_flight_recorder_allocates_unique_event_indices_concurrently(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
+    profile = load_json(REPO_ROOT / "examples" / "profiles" / "code-review-profile.json")
+    run = recorder.start_run(task_id="task-code-review-latest-commit", profile=profile)
+    run_id = str(run["id"])
+
+    def record(index: int) -> int:
+        event = recorder.record_event(
+            run_id=run_id,
+            event_type="runtime_started",
+            actor_role="composer",
+            result={"attempt": index},
+            idempotency_key=f"event-{index}",
+        )
+        return int(event["event_index"])
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        event_indices = list(executor.map(record, range(40)))
+
+    assert sorted(event_indices) == list(range(40))
+    assert sorted(int(event["event_index"]) for event in store.runtime_events) == list(range(40))
+
+
 def test_artifact_store_redacts_sensitive_payload_fields(tmp_path: Path) -> None:
     store = InMemoryRuntimeStore()
     recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
@@ -124,6 +150,36 @@ def test_artifact_store_redacts_sensitive_payload_fields(tmp_path: Path) -> None
         "openai_api_key": "[REDACTED]",
         "public": "visible",
     }
+
+
+def test_artifact_store_chunks_large_string_payloads(tmp_path: Path) -> None:
+    artifacts = JsonArtifactStore(
+        tmp_path,
+        chunk_string_threshold_bytes=10,
+        chunk_size_bytes=6,
+    )
+
+    uri = artifacts.write_json(
+        ("traces", "run-example", "events", "large-output"),
+        {"stdout": "abcdefghijklmnopqrstuvwxyz"},
+    )
+
+    payload = load_json(tmp_path / Path(uri.removeprefix("hetzner://runtime/")))
+    stdout_ref = payload["stdout"]
+    assert stdout_ref["artifact_ref"] == "chunked_text"
+    assert stdout_ref["byte_length"] == 26
+    assert stdout_ref["chunk_count"] == 5
+    assert stdout_ref["encoding"] == "utf-8"
+
+    manifest_path = tmp_path / Path(
+        stdout_ref["manifest_uri"].removeprefix("hetzner://runtime/")
+    )
+    manifest = load_json(manifest_path)
+    assert manifest["chunk_count"] == 5
+    first_chunk = tmp_path / Path(
+        manifest["chunks"][0]["uri"].removeprefix("hetzner://runtime/")
+    )
+    assert first_chunk.read_text(encoding="utf-8") == "abcdef"
 
 
 def test_runtime_entrypoint_requires_context_source(tmp_path: Path) -> None:
@@ -223,3 +279,26 @@ def test_runtime_storage_session_wraps_postgres_connection() -> None:
 
     assert fake_connection.committed is True
     assert fake_connection.closed is True
+
+
+def test_postgres_runtime_store_allocates_event_indices_under_run_lock() -> None:
+    class FakeCursor:
+        def fetchone(self) -> Mapping[str, int]:
+            return {"next_event_index": 7}
+
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, Mapping[str, Any] | None]] = []
+
+        def execute(self, sql: str, params: Mapping[str, Any] | None = None) -> Any:
+            self.calls.append((sql, params))
+            return FakeCursor()
+
+    fake = FakeConnection()
+    store = PostgresRuntimeStore(fake)
+
+    assert store.allocate_runtime_event_index("run-example") == 7
+    assert "FOR UPDATE" in fake.calls[0][0]
+    assert "MAX(event_index) + 1" in fake.calls[1][0]
+    assert fake.calls[0][1] == {"run_id": "run-example"}
+    assert fake.calls[1][1] == {"run_id": "run-example"}

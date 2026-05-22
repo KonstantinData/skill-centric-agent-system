@@ -23,6 +23,9 @@ Rules:
 - Cloudflare receives only Control Plane data and validated memory records.
 - Secrets must be injected through GitHub Actions, Worker secrets, or host
   environment variables. Secrets must not be committed.
+- Control API tokens must be scoped by endpoint where possible. Use
+  `CONTROL_API_TOKEN` only for trusted automation that needs all protected
+  endpoints.
 
 ## Migration Flow
 
@@ -64,10 +67,12 @@ Cloudflare Control API:
 ```bash
 curl -s -X POST "$SCAS_CONTROL_API_URL/composition/context" \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/composition-context-request.json
 
 curl -s -X POST "$SCAS_CONTROL_API_URL/retrieval/context" \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/retrieval-context-request.json
 ```
 
@@ -85,17 +90,29 @@ python scripts/runtime/live_dev_e2e.py \
   --task-file examples/tasks/code-review-task.json
 ```
 
+Postgres concurrency smoke:
+
+```bash
+python scripts/runtime/postgres_concurrency_smoke.py --events 20
+```
+
+This smoke test requires `SCAS_RUNTIME_DATABASE_URL` and verifies that
+concurrent Flight Recorder writes persist a contiguous per-run `event_index`
+sequence.
+
 ## Diagnostics
 
 Composition failures:
 
 - Check `POST /composition/context` response status and graph validation errors.
+- Confirm the request used a bearer token with composition scope.
 - Verify D1 seed state and policy/scope bindings.
 - Verify module IDs and naming conventions.
 
 Retrieval failures:
 
 - Check `POST /retrieval/context` response scope IDs.
+- Confirm the request used a bearer token with retrieval scope.
 - Verify D1 scope bindings before Vectorize behavior.
 - Treat Vectorize as ranking only, not policy authority.
 
@@ -123,6 +140,7 @@ Validator failures:
 Emergency disable options:
 
 - Disable the Cloudflare Worker route or roll back the Worker deployment.
+- Rotate or remove the affected Control API endpoint token.
 - Remove or deny D1 policy/scope bindings for the affected capability.
 - Remove a tool from the composed Runtime Agent Profile by policy.
 - Disable live runtime execution by withholding `SCAS_RUNTIME_DATABASE_URL`.

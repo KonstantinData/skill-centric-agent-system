@@ -19,7 +19,11 @@ The schema `$id` values use stable URNs during local development. A deployment t
 
 ## Task Analyzer Contract
 
-`Task Analyzer` turns normalized task intake into structured task signals for the Composer. The first implementation is rule-based for repository code-review tasks. Future classifier or LLM assistance may be added, but analyzer output must remain explicit and testable.
+`Task Analyzer` turns normalized task intake into structured task signals for
+the Composer. The first implementation is rule-based and has evaluation
+coverage for `code-review`, `research`, `task-execution`, and `general-task`.
+Future classifier or LLM assistance may be added, but analyzer output must
+remain explicit and testable.
 
 Minimum analyzer output:
 
@@ -229,6 +233,8 @@ runtime events are high-growth records.
 
 Trace data and event artifacts must redact sensitive task content when
 `observability.redact_sensitive_data` is true.
+Large string payloads inside artifacts must be chunked and represented by a
+manifest reference when they exceed the artifact store's inline threshold.
 
 ## Memory Candidate Contract
 

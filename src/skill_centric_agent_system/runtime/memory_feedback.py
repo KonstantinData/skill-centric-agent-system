@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +17,7 @@ class MemoryFeedbackError(RuntimeError):
 class CloudflareMemoryIngestionClient:
     base_url: str
     timeout_seconds: float = 10.0
+    api_token: str | None = None
 
     def ingest_memory(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
         url = self.base_url.rstrip("/") + "/memory/ingest"
@@ -25,6 +27,7 @@ class CloudflareMemoryIngestionClient:
             headers={
                 "content-type": "application/json",
                 "accept": "application/json",
+                **self._authorization_headers(),
             },
             method="POST",
         )
@@ -43,6 +46,12 @@ class CloudflareMemoryIngestionClient:
         if not isinstance(parsed, dict):
             raise MemoryFeedbackError("Cloudflare memory ingestion response must be an object.")
         return parsed
+
+    def _authorization_headers(self) -> dict[str, str]:
+        token = self.api_token or os.getenv("SCAS_CONTROL_API_TOKEN")
+        if token is None or not token.strip():
+            return {}
+        return {"authorization": f"Bearer {token.strip()}"}
 
 
 class MemoryFeedbackPipeline:

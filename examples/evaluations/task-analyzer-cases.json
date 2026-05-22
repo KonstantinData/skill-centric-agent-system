@@ -1,0 +1,119 @@
+[
+  {
+    "name": "code review with diff input",
+    "task": {
+      "id": "task-review-diff",
+      "request": "Review the current pull request diff for regressions.",
+      "context": {
+        "repository": {
+          "path": ".",
+          "default_branch": "main"
+        }
+      },
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "code-review",
+      "risk_level": "medium",
+      "required_inputs": [
+        "repository",
+        "diff"
+      ],
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "domains_include": [
+        "software-engineering",
+        "git",
+        "repository"
+      ],
+      "capability_hints_include": [
+        "analysis"
+      ]
+    }
+  },
+  {
+    "name": "research task without repository",
+    "task": {
+      "id": "task-research-runtime-observability",
+      "request": "Research runtime observability patterns and summarize the trade-offs.",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "research",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "capability_hints_include": [
+        "retrieval",
+        "analysis"
+      ]
+    }
+  },
+  {
+    "name": "repository task execution",
+    "task": {
+      "id": "task-update-docs",
+      "request": "Update the repository documentation for the new runtime contract.",
+      "context": {
+        "repository": {
+          "path": ".",
+          "default_branch": "main"
+        }
+      },
+      "constraints": {
+        "write_access": true,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "task-execution",
+      "risk_level": "high",
+      "required_inputs": [
+        "repository"
+      ],
+      "available_inputs": [
+        "repository"
+      ],
+      "domains_include": [
+        "task-execution",
+        "software-engineering",
+        "repository"
+      ],
+      "capability_hints_include": [
+        "execution",
+        "schema-validation"
+      ]
+    }
+  },
+  {
+    "name": "general task stays task neutral",
+    "task": {
+      "id": "task-plan-meeting",
+      "request": "Prepare a concise agenda for discussing runtime priorities.",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "general-task",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [],
+      "capability_hints_include": []
+    }
+  }
+]

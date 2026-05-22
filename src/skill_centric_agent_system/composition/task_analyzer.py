@@ -127,9 +127,40 @@ def _task_type(objective: str) -> str:
         "regression",
         "missing tests",
     )
-    if any(term in text for term in review_terms):
+    if any(_contains_task_term(text, term) for term in review_terms):
         return "code-review"
+    research_terms = (
+        "research",
+        "investigate",
+        "compare",
+        "summarize",
+        "find information",
+        "look up",
+        "survey",
+    )
+    if any(_contains_task_term(text, term) for term in research_terms):
+        return "research"
+    execution_terms = (
+        "implement",
+        "build",
+        "fix",
+        "update",
+        "change",
+        "create",
+        "refactor",
+        "migrate",
+        "add",
+        "remove",
+    )
+    if any(_contains_task_term(text, term) for term in execution_terms):
+        return "task-execution"
     return "general-task"
+
+
+def _contains_task_term(text: str, term: str) -> bool:
+    if re.fullmatch(r"[a-z0-9]+", term):
+        return re.search(rf"\b{re.escape(term)}\b", text) is not None
+    return term in text
 
 
 def _repository_context(task: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -146,6 +177,12 @@ def _domains(task_type: str, repository: Mapping[str, Any] | None) -> tuple[str,
     domains: list[str] = []
     if task_type == "code-review":
         domains.extend(["software-engineering", "git", "code-review"])
+    elif task_type == "research":
+        domains.extend(["research", "knowledge-retrieval"])
+    elif task_type == "task-execution":
+        domains.append("task-execution")
+        if repository is not None:
+            domains.append("software-engineering")
     if repository is not None:
         domains.append("repository")
     return _dedupe(domains)
@@ -195,7 +232,13 @@ def _objective_mentions_diff_source(objective: str) -> bool:
 
 
 def _capability_hints(task_type: str, objective: str) -> tuple[str, ...]:
-    hints = ["analysis"] if task_type == "code-review" else []
+    hints = []
+    if task_type == "code-review":
+        hints.append("analysis")
+    elif task_type == "research":
+        hints.extend(["retrieval", "analysis"])
+    elif task_type == "task-execution":
+        hints.append("execution")
     text = objective.casefold()
     if "schema" in text or "contract" in text:
         hints.append("schema-validation")

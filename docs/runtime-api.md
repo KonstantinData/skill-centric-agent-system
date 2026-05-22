@@ -31,6 +31,7 @@ Input:
 - task envelope,
 - environment,
 - composition context source or Control API URL,
+- Control API bearer token when live Control API calls are used,
 - artifact root,
 - storage mode,
 - repository root when repository tools are allowed,
@@ -45,6 +46,15 @@ For CLI execution, productive storage is selected with:
 The `--database-url` flag may be omitted when `SCAS_RUNTIME_DATABASE_URL` is set
 in the process environment. API-shaped requests must reference a secret or
 environment variable, not include a literal connection string.
+
+Live Control API calls require:
+
+```text
+--control-plane-url "$SCAS_CONTROL_API_URL" --control-plane-token "$SCAS_CONTROL_API_TOKEN"
+```
+
+The token flag may be omitted when `SCAS_CONTROL_API_TOKEN` is set in the
+process environment.
 
 Output:
 

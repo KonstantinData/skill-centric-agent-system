@@ -51,6 +51,36 @@ Cloudflare AI Gateway's OpenAI chat completions endpoint. It fails closed with
 `503 ai_gateway_not_configured` unless `AI_GATEWAY_ACCOUNT_ID` and the
 `OPENAI_API_KEY` Worker secret are configured.
 
+## Authentication And Authorization
+
+`GET /health` is public. Every other Control API endpoint requires a bearer
+token and fails closed when no token binding is configured.
+
+Supported Worker secret bindings:
+
+| Secret | Scope |
+| --- | --- |
+| `CONTROL_API_TOKEN` | All protected endpoints |
+| `CONTROL_API_COMPOSITION_TOKEN` | `POST /composition/context` |
+| `CONTROL_API_INGESTION_TOKEN` | `POST /knowledge/ingest`, `POST /memory/ingest` |
+| `CONTROL_API_RETRIEVAL_TOKEN` | `POST /retrieval/context` |
+| `CONTROL_API_AI_GATEWAY_TOKEN` | `POST /ai-gateway/openai/chat/completions` |
+
+Use endpoint-scoped tokens where practical. `CONTROL_API_TOKEN` is an admin
+fallback for trusted automation.
+
+Configure secrets with Wrangler:
+
+```bash
+npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_INGESTION_TOKEN --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_RETRIEVAL_TOKEN --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-api/wrangler.toml
+```
+
+Runtime clients use `SCAS_CONTROL_API_TOKEN` or the CLI
+`--control-plane-token` flag to send `Authorization: Bearer ...`.
+
 ## Dev Resource Names
 
 | Resource | Name |
@@ -117,6 +147,7 @@ Configure AI Gateway routing:
 
 ```bash
 npx wrangler secret put OPENAI_API_KEY --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-api/wrangler.toml
 ```
 
 Set `AI_GATEWAY_ACCOUNT_ID` to the Cloudflare account ID and `AI_GATEWAY_ID`
@@ -179,6 +210,7 @@ Smoke-test the deployed dev Worker against seeded D1 data:
 ```bash
 curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/composition/context \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/composition-context-request.json
 ```
 
@@ -194,6 +226,7 @@ Smoke-test knowledge ingestion:
 ```bash
 curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/knowledge/ingest \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/knowledge-ingest-request.json
 ```
 
@@ -202,6 +235,7 @@ Smoke-test memory ingestion:
 ```bash
 curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/memory/ingest \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/memory-ingest-request.json
 ```
 
@@ -210,6 +244,7 @@ Smoke-test retrieval after ingesting knowledge and memory:
 ```bash
 curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/retrieval/context \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/retrieval-context-request.json
 ```
 
@@ -222,6 +257,7 @@ Smoke-test AI Gateway fail-closed behavior before secrets are configured:
 ```bash
 curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/ai-gateway/openai/chat/completions \
   -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/ai-gateway-chat-request.json
 ```
 
@@ -246,6 +282,8 @@ when Wrangler is authenticated.
 ## Operational Rules
 
 - The Worker uses Cloudflare bindings for D1, R2, and KV access.
+- All non-health routes require bearer authentication and endpoint-scoped
+  authorization.
 - The Worker binds Vectorize indexes for knowledge and memory retrieval.
 - Secrets are not stored in `wrangler.toml`; use Worker secrets or GitHub
   Actions secrets for deployment.
