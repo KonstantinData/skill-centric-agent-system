@@ -16,7 +16,9 @@ checkpoints, stop reasons, token budgets, and idempotency keys. The first
 runtime entry point can now start a run from task intake, compose the runtime
 profile, emit Flight Recorder events, write artifact-backed trace payloads, and
 run the first minimal context/planner/executor/validator loop through a
-profile-scoped Tool Gateway.
+profile-scoped Tool Gateway. Runtime artifact writes now honor the profile's
+`observability.redact_sensitive_data` flag and expose a retention planner for
+runtime artifact cleanup jobs.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
@@ -167,6 +169,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Add runtime redaction and retention policy enforcement beyond the current JSON artifact redaction helper.
-2. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
-3. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.
+1. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
+2. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.
+3. Add Vectorize retrieval and production AI Gateway routing.

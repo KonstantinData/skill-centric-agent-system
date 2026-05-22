@@ -11,11 +11,12 @@ for runtime events, checkpoints, stop reasons, token budgets, and idempotency.
 The Runtime Entry Point can start a run from task intake, compose the runtime
 profile, create the runtime run, and emit initial artifact-backed Flight
 Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
-can execute read-only code-review fixture work.
+can execute read-only code-review fixture work. Runtime artifact redaction and
+retention planning are implemented for the Flight Recorder artifact path.
 
-The next main implementation block is runtime redaction/retention enforcement,
-then Cloudflare knowledge and memory ingestion. Infrastructure follow-up work
-remains for Vectorize, AI Gateway, and broader Hetzner runtime execution.
+The next main implementation block is Cloudflare knowledge and memory ingestion.
+Infrastructure follow-up work remains for Vectorize, AI Gateway, and broader
+Hetzner runtime execution.
 
 ## Phase 1: Foundation
 
@@ -113,8 +114,10 @@ and minimal runtime loop complete for the current code-review fixture.
 ## Phase 7: Operational Hardening
 
 - Expand observability and trace export.
+- Plan and enforce runtime artifact retention. (Initial planner complete.)
 - Add evaluation fixtures.
 - Add safety tests for permissions and scoped access.
 - Add documentation for deployment and operations.
 
-Status: pending.
+Status: initial runtime redaction and retention planning complete; operational
+cleanup jobs and broader telemetry remain pending.

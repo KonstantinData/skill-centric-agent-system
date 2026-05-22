@@ -8,6 +8,7 @@ from typing import Any
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
 from skill_centric_agent_system.runtime.entrypoint import RuntimeStartResult
 from skill_centric_agent_system.runtime.models import iso_timestamp, selected_modules, slug_id
+from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.storage import FlightRecorder, RuntimeStore
 from skill_centric_agent_system.runtime.tool_gateway import ToolGateway
 
@@ -38,11 +39,12 @@ class MinimalRuntimeLoop:
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
         profile = start_result.profile
         run_id = start_result.run_id
+        redact_sensitive_data = profile_redacts_sensitive_data(profile)
 
-        context = self._context_step(run_id, profile)
-        plan = self._planner_step(run_id, profile, context)
-        execution = self._executor_step(run_id, profile, plan)
-        response = self._validator_step(run_id, profile, execution)
+        context = self._context_step(run_id, profile, redact_sensitive_data)
+        plan = self._planner_step(run_id, profile, context, redact_sensitive_data)
+        execution = self._executor_step(run_id, profile, plan, redact_sensitive_data)
+        response = self._validator_step(run_id, profile, execution, redact_sensitive_data)
 
         self.recorder.record_event(
             run_id=run_id,
@@ -50,6 +52,7 @@ class MinimalRuntimeLoop:
             actor_role="validator",
             result=response,
             stop_reason="completed",
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.complete_run(
             run_id=run_id,
@@ -68,6 +71,7 @@ class MinimalRuntimeLoop:
         self,
         run_id: str,
         profile: Mapping[str, Any],
+        redact_sensitive_data: bool,
     ) -> Mapping[str, Any]:
         step = self.recorder.start_step(run_id=run_id, step_index=0, kind="context")
         self.recorder.record_event(
@@ -76,6 +80,7 @@ class MinimalRuntimeLoop:
             event_type="step_started",
             actor_role="context_manager",
             planned_action={"phase": "context"},
+            redact_sensitive_data=redact_sensitive_data,
         )
         context = {
             "profile_id": profile["id"],
@@ -89,6 +94,7 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             phase="context",
             state=context,
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.record_event(
             run_id=run_id,
@@ -97,6 +103,7 @@ class MinimalRuntimeLoop:
             actor_role="context_manager",
             result=context,
             stop_reason="completed",
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.complete_step(
             step_id=str(step["id"]),
@@ -110,6 +117,7 @@ class MinimalRuntimeLoop:
         run_id: str,
         profile: Mapping[str, Any],
         context: Mapping[str, Any],
+        redact_sensitive_data: bool,
     ) -> Mapping[str, Any]:
         step = self.recorder.start_step(run_id=run_id, step_index=1, kind="planner")
         self.recorder.record_event(
@@ -118,6 +126,7 @@ class MinimalRuntimeLoop:
             event_type="step_started",
             actor_role="planner",
             planned_action={"phase": "planner", "context_keys": sorted(context)},
+            redact_sensitive_data=redact_sensitive_data,
         )
         plan = {
             "objective": profile["objective"],
@@ -132,6 +141,7 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             phase="planner",
             state=plan,
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.record_event(
             run_id=run_id,
@@ -140,6 +150,7 @@ class MinimalRuntimeLoop:
             actor_role="planner",
             result=plan,
             stop_reason="completed",
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.complete_step(
             step_id=str(step["id"]),
@@ -153,6 +164,7 @@ class MinimalRuntimeLoop:
         run_id: str,
         profile: Mapping[str, Any],
         plan: Mapping[str, Any],
+        redact_sensitive_data: bool,
     ) -> Mapping[str, Any]:
         step = self.recorder.start_step(run_id=run_id, step_index=2, kind="executor")
         self.recorder.record_event(
@@ -161,6 +173,7 @@ class MinimalRuntimeLoop:
             event_type="step_started",
             actor_role="executor",
             planned_action=plan,
+            redact_sensitive_data=redact_sensitive_data,
         )
         gateway = ToolGateway(
             profile=profile,
@@ -168,6 +181,7 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             recorder=self.recorder,
             repository_root=self.repository_root,
+            redact_sensitive_data=redact_sensitive_data,
         )
         tool_results = []
         for action in plan.get("actions", []):
@@ -192,6 +206,7 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             phase="executor",
             state=execution,
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.record_event(
             run_id=run_id,
@@ -200,6 +215,7 @@ class MinimalRuntimeLoop:
             actor_role="executor",
             result=execution,
             stop_reason="completed",
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.complete_step(
             step_id=str(step["id"]),
@@ -213,6 +229,7 @@ class MinimalRuntimeLoop:
         run_id: str,
         profile: Mapping[str, Any],
         execution: Mapping[str, Any],
+        redact_sensitive_data: bool,
     ) -> Mapping[str, Any]:
         step = self.recorder.start_step(run_id=run_id, step_index=3, kind="validator")
         self.recorder.record_event(
@@ -221,6 +238,7 @@ class MinimalRuntimeLoop:
             event_type="step_started",
             actor_role="validator",
             planned_action={"phase": "validator", "validators": profile["validators"]},
+            redact_sensitive_data=redact_sensitive_data,
         )
         findings = {
             "status": "passed",
@@ -230,6 +248,7 @@ class MinimalRuntimeLoop:
         findings_uri = self.artifacts.write_json(
             ("traces", run_id, "validation", "minimal-runtime-findings"),
             findings,
+            redact=redact_sensitive_data,
         )
         validation_id = slug_id(f"{run_id}-minimal-runtime", prefix="validation")
         self.store.insert_validation_result(
@@ -250,6 +269,7 @@ class MinimalRuntimeLoop:
             actor_role="validator",
             execution={"validation_result_id": validation_id},
             result={"status": "passed", "findings_uri": findings_uri},
+            redact_sensitive_data=redact_sensitive_data,
         )
         response = {
             "run_id": run_id,
@@ -263,6 +283,7 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             phase="validator",
             state=response,
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.record_event(
             run_id=run_id,
@@ -271,6 +292,7 @@ class MinimalRuntimeLoop:
             actor_role="validator",
             result=response,
             stop_reason="completed",
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.recorder.complete_step(
             step_id=str(step["id"]),

@@ -139,6 +139,10 @@ Runtime events follow the Flight Recorder pattern:
 - Token budget and token usage are tracked on runs and steps.
 - The first Python Flight Recorder writer writes event/checkpoint payloads to a
   JSON artifact store and persists only URIs into runtime event rows.
+- Artifact writes honor the Runtime Agent Profile's
+  `observability.redact_sensitive_data` flag.
+- Runtime retention planning separates expired artifact URIs from retained
+  records before any cleanup job deletes data.
 
 ## Memory Feedback Loop
 
@@ -252,6 +256,7 @@ Implemented:
   `test-runner`.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
+- Runtime redaction policy and retention planner exist for runtime artifacts.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -283,6 +288,5 @@ Completed:
 
 Next:
 
-1. Runtime redaction and retention enforcement.
-2. Knowledge and memory ingestion.
-3. Vectorize and AI Gateway production integration.
+1. Knowledge and memory ingestion.
+2. Vectorize and AI Gateway production integration.

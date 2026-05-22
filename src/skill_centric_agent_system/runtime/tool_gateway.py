@@ -44,6 +44,7 @@ class ToolGateway:
         recorder: FlightRecorder,
         repository_root: str | Path,
         adapters: Mapping[str, ToolAdapter] | None = None,
+        redact_sensitive_data: bool = True,
     ) -> None:
         self.profile = profile
         self.run_id = run_id
@@ -51,6 +52,7 @@ class ToolGateway:
         self.recorder = recorder
         self.repository_root = Path(repository_root).resolve()
         self.adapters = dict(adapters or _default_adapters(self.repository_root))
+        self.redact_sensitive_data = redact_sensitive_data
         self._invocation_index = 0
 
     def invoke(
@@ -67,6 +69,7 @@ class ToolGateway:
                 planned_action={"tool_name": tool_name, "payload": dict(payload)},
                 result={"effect": "deny", "reason": "tool_not_in_runtime_profile"},
                 stop_reason="policy_denied",
+                redact_sensitive_data=self.redact_sensitive_data,
             )
             raise ToolDeniedError(f"Tool is not allowed by runtime profile: {tool_name}")
 
@@ -82,6 +85,7 @@ class ToolGateway:
         input_uri = self.recorder.artifacts.write_json(
             ("tool_outputs", self.run_id, f"{invocation_id}-input"),
             {"tool_name": tool_name, "payload": dict(payload)},
+            redact=self.redact_sensitive_data,
         )
         started_at = iso_timestamp(self.recorder.clock())
         self.recorder.record_event(
@@ -90,6 +94,7 @@ class ToolGateway:
             event_type="tool_invocation_started",
             actor_role="executor",
             planned_action={"tool_name": tool_name, "input_uri": input_uri},
+            redact_sensitive_data=self.redact_sensitive_data,
         )
 
         try:
@@ -104,6 +109,7 @@ class ToolGateway:
         output_uri = self.recorder.artifacts.write_json(
             ("tool_outputs", self.run_id, f"{invocation_id}-output"),
             {"tool_name": tool_name, "status": status, "output": output},
+            redact=self.redact_sensitive_data,
         )
         completed_at = iso_timestamp(self.recorder.clock())
         record = self.recorder.store.insert_tool_invocation(
@@ -127,6 +133,7 @@ class ToolGateway:
             execution={"tool_invocation_id": invocation_id, "status": status},
             result={"tool_name": tool_name, "output_uri": output_uri},
             stop_reason=stop_reason,  # type: ignore[arg-type]
+            redact_sensitive_data=self.redact_sensitive_data,
         )
 
         result = ToolInvocationResult(

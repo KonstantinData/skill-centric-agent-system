@@ -503,12 +503,14 @@ class FlightRecorder:
         state: Any,
         step_id: str | None = None,
         tokens_used_total: int = 0,
+        redact_sensitive_data: bool = True,
     ) -> Mapping[str, Any]:
         require_choice(phase, RUNTIME_PHASES, "phase")
         checkpoint_index = len(self.store.checkpoints_for_run(run_id))
         state_uri = self.artifacts.write_json(
             ("traces", run_id, "checkpoints", f"{checkpoint_index:03d}-{phase}"),
             state,
+            redact=redact_sensitive_data,
         )
         record = {
             "id": slug_id(f"{run_id}-{phase}-{checkpoint_index}", prefix="checkpoint"),
@@ -528,6 +530,7 @@ class FlightRecorder:
             actor_role="composer" if phase in {"analysis", "composition"} else "executor",
             result={"checkpoint_id": stored["id"], "phase": phase},
             idempotency_key=f"{run_id}:checkpoint:{checkpoint_index}",
+            redact_sensitive_data=redact_sensitive_data,
         )
         return stored
 

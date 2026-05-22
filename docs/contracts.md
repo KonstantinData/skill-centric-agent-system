@@ -210,6 +210,22 @@ runtime events are high-growth records.
 Trace data and event artifacts must redact sensitive task content when
 `observability.redact_sensitive_data` is true.
 
+## Retention Contract
+
+Runtime retention is planned before deletion. Cleanup jobs must first compute a
+retention plan that separates expired run IDs and artifact URIs from retained
+records.
+
+Default retention windows:
+
+- succeeded runs: 30 days,
+- cancelled runs: 30 days,
+- failed runs: 90 days.
+
+Queued and running runs are never expired by the retention planner. The planner
+does not delete files or database rows directly; deletion belongs to an
+operational cleanup job that can audit the plan before applying it.
+
 ## Anti-Patterns
 
 - grant all tools for every task,

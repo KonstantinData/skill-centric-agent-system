@@ -11,6 +11,7 @@ from skill_centric_agent_system.composition import (
     TaskAnalyzer,
 )
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
+from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.storage import (
     FlightRecorder,
     RuntimeStore,
@@ -67,6 +68,7 @@ class RuntimeEntryPoint:
             context_request
         )
         profile = self.composer.compose(analyzed_task, context_response)
+        redact_sensitive_data = profile_redacts_sensitive_data(profile)
         run = self.flight_recorder.start_run(
             task_id=analyzed_task.task_id,
             profile=profile,
@@ -87,6 +89,7 @@ class RuntimeEntryPoint:
                 "available_inputs": list(analyzed_task.available_inputs),
                 "missing_information": list(analyzed_task.missing_information),
             },
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.flight_recorder.record_event(
             run_id=run_identifier,
@@ -94,12 +97,14 @@ class RuntimeEntryPoint:
             actor_role="composer",
             planned_action=context_request,
             result=context_response,
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.flight_recorder.record_event(
             run_id=run_identifier,
             event_type="profile_emitted",
             actor_role="composer",
             result={"profile": profile},
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.flight_recorder.record_event(
             run_id=run_identifier,
@@ -110,11 +115,13 @@ class RuntimeEntryPoint:
                 "validators": profile["validators"],
                 "module_versions": profile["module_versions"],
             },
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.flight_recorder.checkpoint(
             run_id=run_identifier,
             phase="composition",
             state=profile_summary(profile),
+            redact_sensitive_data=redact_sensitive_data,
         )
         self.flight_recorder.record_event(
             run_id=run_identifier,
@@ -125,6 +132,7 @@ class RuntimeEntryPoint:
                 "profile_id": profile["id"],
                 "profile_version": profile["profile_version"],
             },
+            redact_sensitive_data=redact_sensitive_data,
         )
 
         return RuntimeStartResult(
