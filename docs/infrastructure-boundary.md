@@ -144,6 +144,10 @@ Runtime events follow the Flight Recorder pattern:
 - Runtime retention planning separates expired artifact URIs from retained
   records before any cleanup job deletes data.
 
+Productive runtime work may only begin after the Runtime Preflight Gate in
+`docs/runtime-preflight.md` confirms that the dev Worker, D1, R2, Vectorize,
+Hetzner PostgreSQL, artifact root, secrets, and CI are in a known state.
+
 ## Memory Feedback Loop
 
 ```mermaid
@@ -301,6 +305,10 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
+- Productive runtime execution against real Hetzner PostgreSQL and artifact
+  storage.
+- Full profile enforcement, generic validators, controlled recomposition, and
+  live dev E2E runtime gate.
 
 ## Implementation Order
 
@@ -325,5 +333,7 @@ Completed:
 
 Next:
 
-1. Async ingestion/indexing workers.
-2. Remote Vectorize index provisioning and embedding population.
+1. Complete the Runtime Preflight Gate in `docs/runtime-preflight.md`.
+2. Implement the productive runtime core in the Phase 1 order documented in
+   `docs/repository-roadmap.md`.
+3. Implement async ingestion/indexing workers and remote Vectorize population.

@@ -19,8 +19,28 @@ and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
 before submitting approved candidates to Cloudflare durable memory.
 
-The next main implementation block is async indexing and remote deployment
-stabilization, followed by broader Hetzner runtime execution.
+The next main implementation block is the Runtime Preflight Gate in
+`docs/runtime-preflight.md`, followed by the productive runtime core. Async
+indexing, AI Gateway live secret rollout, broader runtime expansion, and
+retention cleanup remain explicit backlog items and must not obscure the
+runtime entry gate.
+
+## Phase 0: Runtime Preflight Gate
+
+- Synchronize the Notion Feature Backlog, this roadmap, `docs/architecture.md`,
+  and `docs/infrastructure-boundary.md`.
+- Finalize naming rules for `task_type`, `capability_class`, module IDs, scope
+  IDs, tool IDs, and scoring signal values.
+- Define what productive Runtime Phase means for this repository.
+- Verify current dev infrastructure state across Cloudflare, Hetzner, secrets,
+  and CI.
+- Define entry criteria for productive runtime work.
+- Define generic validation scenarios without turning them into separate agent
+  roles.
+- Define first-slice risk boundaries for tools, approvals, writes, destructive
+  actions, secrets, and runtime artifacts.
+
+Status: active. The durable gate is documented in `docs/runtime-preflight.md`.
 
 ## Phase 1: Foundation
 
@@ -115,6 +135,23 @@ Status: initial implementation complete; broader task coverage remains.
 
 Status: storage contracts, initial run start path, profile-scoped Tool Gateway,
 and minimal runtime loop complete for the current code-review fixture.
+
+## Phase 6B: Productive Runtime Core
+
+Implement this phase only after the Runtime Preflight Gate is satisfied:
+
+1. Finalize the generic runtime contract.
+2. Define the Runtime API/CLI contract.
+3. Wire runtime execution to real Hetzner PostgreSQL and artifact storage.
+4. Enforce all Runtime Agent Profile limits and access boundaries.
+5. Harden the Tool Gateway for productive execution.
+6. Bind Context Manager retrieval to `POST /retrieval/context`.
+7. Make validation profile- and task-contract driven.
+8. Implement controlled recomposition without runtime self-granting.
+9. Add a live dev end-to-end gate across Cloudflare and Hetzner.
+10. Add the operations baseline and runbooks.
+
+Status: queued behind Phase 0.
 
 ## Phase 7: Operational Hardening
 

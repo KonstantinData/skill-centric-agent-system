@@ -63,13 +63,19 @@ flowchart TD
 
 `Task Analyzer` converts the task envelope into structured task signals: task type, risk level, domains, required inputs, available inputs, capability hints, constraints, missing information, and auth claims. It may use rules, classifiers, or LLM assistance, but its output must be explicit and testable.
 
-`Agent Composer` queries registries, scores candidate modules, applies policies, validates the dependency graph, pins module versions, and emits a runtime profile. It does not load broad capabilities by default.
+`Agent Composer` consumes structured task signals and calls the Cloudflare
+Control API for D1-backed composition context. It scores candidate modules,
+applies policies, validates the dependency graph, pins module versions, and
+emits a runtime profile. It does not load broad capabilities by default.
 
 `Runtime Agent Profile` is the task-local execution contract. It is immutable for a single execution attempt. Recomposition creates a new profile generation with a parent profile reference and reason.
 
 `Single Agent Runtime` executes the task through context management, planning, execution, validation, and response. It cannot grant itself tools, data, memory, or knowledge outside the profile.
 
-`Context Manager` loads only relevant instructions, knowledge, memory, and prior tool results allowed by the profile.
+`Context Manager` loads only relevant instructions, knowledge, memory, and prior
+tool results allowed by the profile. Knowledge and memory retrieval must go
+through the bounded Cloudflare `POST /retrieval/context` endpoint instead of
+direct broad store reads.
 
 `Planner` creates and revises the task plan inside profile constraints and budgets.
 
@@ -133,8 +139,26 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
+- Runtime Preflight Gate completion as defined in `docs/runtime-preflight.md`,
+- productive Runtime API/CLI contract,
+- real Hetzner Postgres/artifact storage wiring for runtime execution paths,
+- full Runtime Agent Profile enforcement for tools, knowledge, data, memory,
+  tokens, duration, data reads, memory operations, and recomposition count,
+- generic validator framework and controlled recomposition path,
+- live dev end-to-end gate across Cloudflare composition and Hetzner runtime
+  persistence,
+- operations baseline for migration, smoke tests, diagnostics, and disable
+  paths,
 - expanded runtime planning and execution beyond the initial code-review loop,
 - async ingestion/indexing workers for knowledge and memory embeddings.
+
+## Productive Runtime Gate
+
+The productive Runtime Phase is not a public launch. It begins when the runtime
+executes against real Cloudflare and Hetzner infrastructure with reproducible
+run state, hard profile enforcement, bounded tool execution, structured failure
+semantics, and observable artifacts. The entry checklist and task-neutral
+validation scenarios live in `docs/runtime-preflight.md`.
 
 ## Operational Baseline
 

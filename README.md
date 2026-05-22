@@ -49,6 +49,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/contracts.md`: durable contracts for modules and runtime profiles.
 - `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
+- `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
@@ -177,6 +178,8 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Add async ingestion/indexing workers for knowledge and memory embeddings.
-2. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
-3. Apply and smoke-test the latest Hetzner/Cloudflare migrations in the remote environments.
+1. Complete the Runtime Preflight Gate in `docs/runtime-preflight.md`.
+2. Finalize the generic Runtime Contract and Runtime API/CLI contract.
+3. Wire productive runtime execution to real Hetzner PostgreSQL and artifact storage.
+4. Enforce profile boundaries, harden the Tool Gateway, bind retrieval context, add generic validators, implement recomposition, and prove the flow with a live dev E2E gate.
+5. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
