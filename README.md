@@ -6,10 +6,19 @@ The product direction is a single runtime agent that assembles a task-specific `
 
 ## Current Status
 
-Contract-test and infrastructure-scaffold stage. The repository currently
-defines durable architecture, contracts, schemas, ADRs, examples, a
-Python-based contract-test harness, a local registry implementation, and a
-Cloudflare Control API Worker for composition-time context.
+Initial composition implementation stage. The repository currently defines
+durable architecture, contracts, schemas, ADRs, examples, a Python-based
+contract-test harness, a local registry implementation, a deployed Cloudflare
+Control API Worker, D1 migrations, generated dev registry seed data, and the
+first Task Analyzer/Profile Composer implementation. The Hetzner Runtime Plane
+also has an initial Flight Recorder storage contract for runtime events,
+checkpoints, stop reasons, token budgets, and idempotency keys.
+
+The current dev Control Plane can answer `POST /composition/context` with real
+D1-backed module candidates such as `git-diff-analysis`. The Python composer can
+consume that Control Plane response and emit a version-pinned runtime profile.
+Runtime execution, knowledge ingestion, memory ingestion, Vectorize, and
+production AI Gateway routing remain follow-up implementation work.
 
 ## Core Flow
 
@@ -25,6 +34,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 
 - `docs/architecture.md`: system architecture and component responsibilities.
 - `docs/contracts.md`: durable contracts for modules and runtime profiles.
+- `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
@@ -36,6 +46,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
+- `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with `POST /composition/context`.
@@ -44,7 +55,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.
-- `examples/control-plane/`: representative Cloudflare control-plane storage records.
+- `examples/control-plane/`: representative Cloudflare control-plane storage records and generated dev D1 seed SQL.
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
@@ -133,6 +144,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement task analysis and profile composition against the sample task/profile pair.
-2. Add profile assembly on top of registry discovery, scoring, policy filtering, and graph validation.
+1. Wire the Analyzer/Composer pipeline into an executable runtime entrypoint.
+2. Implement the Single Agent Runtime loop on Hetzner against composed profiles and the Flight Recorder event writer.
 3. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.

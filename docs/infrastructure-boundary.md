@@ -37,8 +37,7 @@ Runtime outputs can produce long-term memory, but only through a validated feedb
 
 The machine-readable recordset contract lives in `schemas/cloudflare-control-plane.schema.json`.
 
-The initial executable D1 migration lives in
-`migrations/cloudflare/d1/0001_control_plane.sql`.
+The executable D1 migrations live in `migrations/cloudflare/d1/`.
 
 Initial D1 tables should cover:
 
@@ -96,8 +95,7 @@ audit/
 
 The machine-readable recordset contract lives in `schemas/hetzner-runtime-plane.schema.json`.
 
-The initial executable PostgreSQL migration lives in
-`migrations/hetzner/postgres/0001_runtime_plane.sql`.
+The executable PostgreSQL migrations live in `migrations/hetzner/postgres/`.
 
 The Hetzner runtime plane starts with structured runtime storage and artifact
 storage. The default server bootstrap target is:
@@ -111,6 +109,8 @@ Postgres tables:
 
 - `runtime_runs`
 - `runtime_steps`
+- `runtime_events`
+- `runtime_checkpoints`
 - `tool_invocations`
 - `validation_results`
 - `memory_candidates`
@@ -127,6 +127,16 @@ Artifact paths:
 ```
 
 The runtime writes raw outputs and traces only to Hetzner. Cloudflare receives only approved memory records derived from those outputs.
+
+Runtime events follow the Flight Recorder pattern:
+
+- `runtime_events` is append-only per run and deduplicated by idempotency key.
+- `event_type`, `actor_role`, and `stop_reason` use constrained vocabularies.
+- planned action, execution, and result payloads are stored by artifact URI
+  (`planned_action_uri`, `execution_uri`, `result_uri`), not inline JSON.
+- `runtime_checkpoints` stores phase snapshots; `step_id` is nullable for
+  checkpoints between runtime phases.
+- Token budget and token usage are tracked on runs and steps.
 
 ## Memory Feedback Loop
 
@@ -213,13 +223,58 @@ bindings through a manual infrastructure smoke test. The smoke test checks the
 Cloudflare API token, OpenAI secret presence, and SSH connectivity to Hetzner. It
 is not run automatically on pull requests or pushes.
 
+## Current Implementation Status
+
+Implemented:
+
+- ADR-0004 records the Cloudflare/Hetzner boundary.
+- ADR-0005 records the Runtime Flight Recorder decision.
+- This infrastructure boundary document defines ownership and data flow.
+- Cloudflare D1 schema contract and migrations exist.
+- Hetzner runtime storage schema contract, PostgreSQL migration, and bootstrap
+  script exist.
+- Hetzner runtime observability migration exists for runtime events,
+  checkpoints, stop reasons, token budgets, and idempotency keys.
+- Wrangler configuration exists for the dev Control API Worker.
+- `POST /composition/context` is implemented in `workers/control-api/`.
+- Dev D1 registry seed generation exists in
+  `scripts/cloudflare/generate_control_plane_seed.py`.
+- The dev Worker and remote dev D1 have been smoke-tested with a real
+  `git-diff-analysis` candidate.
+- Python Task Analyzer and Profile Composer integration exists for the current
+  code-review fixture and Control Plane response contract.
+- GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
+  Worker type checks, and Worker dry-run deploys.
+
+Not yet implemented:
+
+- Cloudflare knowledge ingestion API and queue/workflow execution.
+- Cloudflare memory ingestion API and feedback pipeline from Hetzner.
+- Vectorize index creation and retrieval flow.
+- Production OpenAI routing through AI Gateway.
+- Runtime execution loop on Hetzner.
+- End-to-end runtime entrypoint from task intake through remote Control API to
+  Hetzner execution.
+
 ## Implementation Order
+
+Completed:
 
 1. ADR-0004.
 2. This infrastructure boundary document.
 3. Roadmap update.
-4. D1 schema contract.
-5. Hetzner runtime storage contract.
+4. D1 schema contract and migrations.
+5. Hetzner runtime storage contract and bootstrap script.
 6. Wrangler configuration.
 7. Cloudflare Control API Worker scaffold and composition context contract.
 8. GitHub Actions deployment and validation.
+9. D1 registry seed generation and remote dev seed smoke test.
+10. Initial Task Analyzer and Profile Composer.
+11. Runtime Flight Recorder storage contract.
+
+Next:
+
+1. Runtime entrypoint wiring for Analyzer -> Control API -> Composer.
+2. Runtime execution loop and Flight Recorder event writer.
+3. Knowledge and memory ingestion.
+4. Vectorize and AI Gateway production integration.

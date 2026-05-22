@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+import json
+from copy import deepcopy
+from pathlib import Path
+from typing import Any
+
+import pytest
+from jsonschema import Draft202012Validator
+
+from skill_centric_agent_system.composition import (
+    CompositionError,
+    RuntimeProfileComposer,
+    TaskAnalyzer,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "code-review-task.json"
+PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
+COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
+)
+COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
+RUNTIME_PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:
+    return {
+        "$schema": schema["$schema"],
+        "$defs": schema["$defs"],
+        "$ref": ref,
+    }
+
+
+def selected_profile_modules(profile: dict[str, Any]) -> set[str]:
+    selected: set[str] = set()
+    for field in (
+        "instructions",
+        "skills",
+        "tools",
+        "knowledge_scopes",
+        "data_scopes",
+        "memory_scopes",
+        "policies",
+        "validators",
+    ):
+        selected.update(profile[field])
+    return selected
+
+
+def test_task_analyzer_emits_control_plane_request_contract() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    schema = load_json(COMPOSITION_CONTEXT_SCHEMA_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    request = analyzed.to_composition_context_request()
+
+    Draft202012Validator(schema_ref(schema, "#/$defs/request")).validate(request)
+    assert request["principal"] == {
+        "kind": "role",
+        "id": "repository-maintainer",
+    }
+    assert request["task"]["type"] == "code-review"
+    assert request["task"]["risk_level"] == "medium"
+    assert request["task"]["signals"]["available_inputs"] == ["repository", "diff"]
+    assert "software-engineering" in request["task"]["signals"]["domain_tags"]
+    assert "analysis" in request["task"]["signals"]["capability_hints"]
+    assert analyzed.missing_information == ()
+
+
+def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    profile_schema = load_json(RUNTIME_PROFILE_SCHEMA_PATH)
+    expected_profile = load_json(PROFILE_EXAMPLE_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    profile = RuntimeProfileComposer().compose(analyzed, context_response)
+
+    Draft202012Validator(profile_schema).validate(profile)
+    assert profile == expected_profile
+    assert selected_profile_modules(profile) == set(profile["module_versions"])
+    assert profile["skills"] == ["git-diff-analysis"]
+    assert profile["tools"] == ["filesystem-read", "git-read", "test-runner"]
+    assert profile["memory_scopes"] == []
+
+
+def test_profile_composer_fails_closed_when_control_plane_denies_context() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response["composition_status"] = "denied"
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="not ready"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
+
+
+def test_profile_composer_fails_closed_when_graph_is_invalid() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response["graph_validation"]["is_valid"] = False
+    context_response["graph_validation"]["errors"] = ["git-read is not allowed."]
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="graph validation failed"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
+
+
+def test_profile_composer_fails_without_applicable_policies() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response["applicable_policies"] = []
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="no applicable policies"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
+
+
+def test_profile_composer_preserves_recomposition_traceability() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    analyzed = TaskAnalyzer().analyze(task)
+
+    profile = RuntimeProfileComposer().compose(
+        analyzed,
+        context_response,
+        profile_generation=2,
+        parent_profile_id="profile-code-review-latest-commit",
+        recomposition_reason="missing_capability",
+    )
+
+    assert profile["profile_generation"] == 2
+    assert profile["parent_profile_id"] == "profile-code-review-latest-commit"
+    assert profile["recomposition_reason"] == "missing_capability"
+
+
+def test_profile_composer_fails_when_required_inputs_are_missing() -> None:
+    task = deepcopy(load_json(TASK_EXAMPLE_PATH))
+    task["context"].pop("repository")
+    analyzed = TaskAnalyzer().analyze(task)
+
+    assert analyzed.missing_information == ("repository", "diff")
+    with pytest.raises(CompositionError, match="missing required inputs"):
+        RuntimeProfileComposer().compose(
+            analyzed,
+            load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+        )

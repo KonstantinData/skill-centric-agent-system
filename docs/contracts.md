@@ -2,6 +2,10 @@
 
 ## Contract Boundary
 
+This document is the high-level, human-readable contract for composition and
+runtime behavior. Detailed field semantics for selectable modules live in
+`docs/module-contracts.md`; machine-readable contracts live in `schemas/`.
+
 The system is allowed to assemble a task-local agent profile, but it is not allowed to invent capabilities freely. Selection must pass through:
 
 1. task analysis,
@@ -15,7 +19,7 @@ The schema `$id` values use stable URNs during local development. A deployment t
 
 ## Task Analyzer Contract
 
-`Task Analyzer` turns normalized task intake into structured task signals for the Composer. The first implementation may combine rules and LLM classification, but its output must be explicit and testable.
+`Task Analyzer` turns normalized task intake into structured task signals for the Composer. The first implementation is rule-based for repository code-review tasks. Future classifier or LLM assistance may be added, but analyzer output must remain explicit and testable.
 
 Minimum analyzer output:
 
@@ -45,6 +49,7 @@ Every selectable module must be:
 - testable or otherwise verifiable.
 
 The machine-readable contract lives in `schemas/module.schema.json`.
+The detailed field-level module contract lives in `docs/module-contracts.md`.
 
 `triggers` are weak human-readable hints. They may improve recall, but they are never sufficient for selection. Structured fields such as `capability_class`, `domain_tags`, `task_signals`, and `selection.score_modifiers` are the scoring surface.
 
@@ -73,7 +78,7 @@ Scoring combines positive and negative evidence:
 - negative phrases or denied capability hints,
 - policy preconditions.
 
-Keyword or phrase matches alone must not select a module. The Composer should use thresholds and tie-breaks that are deterministic and covered by tests once implementation begins.
+Keyword or phrase matches alone must not select a module. Scoring must use deterministic structured evidence, negative signals, and stable tie-breaks covered by tests.
 
 ## Runtime Agent Profile
 
@@ -99,6 +104,11 @@ Required profile concerns:
 - observability settings.
 
 Instructions, policies, and validators are non-empty because every execution needs baseline behavior, guardrails, and completion checks. Skills may be empty when a task can be handled by instructions, scoped knowledge, and tools without a specialized skill.
+
+The initial Composer consumes the Control Plane composition context and injects
+baseline instruction and profile-schema validator pins until instruction and
+baseline-validator registries are backed by D1 records. These baseline modules
+are still explicit profile entries with version pins.
 
 ## Version Pinning
 
@@ -171,7 +181,14 @@ Minimum events:
 - validator executed,
 - runtime completed or failed.
 
-Trace data must redact sensitive task content when `observability.redact_sensitive_data` is true.
+Runtime storage records these events through an append-only Flight Recorder on
+the Hetzner Runtime Plane. Event type, actor role, stop reason, and checkpoint
+phase values are constrained enums. Planned-action, execution, and result
+payloads must be written as Hetzner artifact URIs, not inline JSON blobs, because
+runtime events are high-growth records.
+
+Trace data and event artifacts must redact sensitive task content when
+`observability.redact_sensitive_data` is true.
 
 ## Anti-Patterns
 

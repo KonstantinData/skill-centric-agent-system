@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  bootstrap_runtime_plane.sh [--rebuild] [--migration-file PATH]
+  bootstrap_runtime_plane.sh [--rebuild] [--migration-file PATH] [--migrations-dir PATH]
 
 Environment:
   SCAS_RUNTIME_DB        Database to create/use. Default: scas_runtime
@@ -18,7 +18,8 @@ USAGE
 SCAS_RUNTIME_DB="${SCAS_RUNTIME_DB:-scas_runtime}"
 SCAS_RUNTIME_DB_OWNER="${SCAS_RUNTIME_DB_OWNER:-scas_runtime_app}"
 SCAS_RUNTIME_ROOT="${SCAS_RUNTIME_ROOT:-/opt/scas/runtime}"
-MIGRATION_FILE="/opt/scas/migrations/hetzner/postgres/0001_runtime_plane.sql"
+MIGRATIONS_DIR="/opt/scas/migrations/hetzner/postgres"
+MIGRATION_FILE=""
 REBUILD=0
 
 while [ "$#" -gt 0 ]; do
@@ -29,6 +30,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --migration-file)
       MIGRATION_FILE="${2:?missing value for --migration-file}"
+      shift 2
+      ;;
+    --migrations-dir)
+      MIGRATIONS_DIR="${2:?missing value for --migrations-dir}"
       shift 2
       ;;
     -h|--help)
@@ -72,9 +77,16 @@ require_safe_identifier "SCAS_RUNTIME_DB" "$SCAS_RUNTIME_DB"
 require_safe_identifier "SCAS_RUNTIME_DB_OWNER" "$SCAS_RUNTIME_DB_OWNER"
 require_safe_runtime_root
 
-if [ ! -f "$MIGRATION_FILE" ]; then
-  echo "Migration file not found: ${MIGRATION_FILE}" >&2
-  exit 2
+if [ -n "$MIGRATION_FILE" ]; then
+  if [ ! -f "$MIGRATION_FILE" ]; then
+    echo "Migration file not found: ${MIGRATION_FILE}" >&2
+    exit 2
+  fi
+else
+  if [ ! -d "$MIGRATIONS_DIR" ]; then
+    echo "Migrations directory not found: ${MIGRATIONS_DIR}" >&2
+    exit 2
+  fi
 fi
 
 if [ "$REBUILD" -eq 1 ]; then
@@ -94,7 +106,20 @@ if ! psql_postgres -d postgres -Atc \
   sudo -u postgres createdb --owner="$SCAS_RUNTIME_DB_OWNER" "$SCAS_RUNTIME_DB"
 fi
 
-psql_postgres -d "$SCAS_RUNTIME_DB" -f "$MIGRATION_FILE"
+if [ -n "$MIGRATION_FILE" ]; then
+  psql_postgres -d "$SCAS_RUNTIME_DB" -f "$MIGRATION_FILE"
+else
+  shopt -s nullglob
+  migration_files=("$MIGRATIONS_DIR"/*.sql)
+  shopt -u nullglob
+  if [ "${#migration_files[@]}" -eq 0 ]; then
+    echo "No migration files found in ${MIGRATIONS_DIR}" >&2
+    exit 2
+  fi
+  for migration_file in "${migration_files[@]}"; do
+    psql_postgres -d "$SCAS_RUNTIME_DB" -f "$migration_file"
+  done
+fi
 psql_postgres -d "$SCAS_RUNTIME_DB" -c "
 GRANT USAGE ON SCHEMA runtime TO \"${SCAS_RUNTIME_DB_OWNER}\";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA runtime TO \"${SCAS_RUNTIME_DB_OWNER}\";
@@ -114,7 +139,7 @@ Skill-Centric Agent System runtime storage root.
 
 Database: ${SCAS_RUNTIME_DB}
 Schema: runtime
-Migration: ${MIGRATION_FILE}
+Migrations: ${MIGRATION_FILE:-$MIGRATIONS_DIR/*.sql}
 
 This directory stores runtime artifacts only. Consolidated long-term memory is
 written to Cloudflare through the validated memory feedback loop.

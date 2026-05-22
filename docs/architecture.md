@@ -96,6 +96,32 @@ The runtime receives only the validated profile. If execution needs a capability
 
 Self-assembly is controlled. Capability selection must go through registries, scoring, policies, graph validation, and profile validation. Free-form prompt text may explain behavior, but it must not be the sole authority for granting capabilities.
 
+## Implemented Surfaces
+
+The current repository has implemented the first control-plane slice:
+
+- schema-backed module metadata and runtime profile contracts,
+- local deterministic module registry semantics,
+- Cloudflare D1 control-plane migrations,
+- a Cloudflare Control API Worker with `POST /composition/context`,
+- D1-backed candidate scoring, policy binding, scope binding, and graph validation,
+- generated dev D1 seed data derived from `examples/modules/*.json`,
+- a rule-based Task Analyzer for initial repository code-review tasks,
+- a Runtime Profile Composer that consumes Control Plane context responses,
+- an optional Python Control Plane client for `POST /composition/context`,
+- Hetzner runtime-plane storage contracts and bootstrap scripts,
+- a Hetzner Flight Recorder storage contract for runtime events, checkpoints,
+  stop reasons, token budgets, and idempotency keys.
+
+The following architecture components are still pending implementation:
+
+- runtime entrypoint wiring from task intake through remote Control Plane to profile,
+- Single Agent Runtime loop,
+- runtime event writer implementation,
+- knowledge and memory ingestion APIs,
+- Vectorize-backed retrieval,
+- production OpenAI routing through AI Gateway.
+
 ## Operational Baseline
 
 Auth/authz, failure semantics, and observability are part of the architecture from the start:
@@ -104,3 +130,5 @@ Auth/authz, failure semantics, and observability are part of the architecture fr
 - Unsafe ambiguity fails closed or requests clarification.
 - Every profile defines trace settings and required event capture.
 - Limits cover tool calls, tokens, duration, data reads, memory operations, and recomposition count.
+- Runtime events store large planned-action, execution, and result payloads by
+  artifact URI rather than inline JSON.

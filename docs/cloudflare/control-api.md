@@ -131,6 +131,17 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/co
 The response must include `composition_status: "ready"` and a scored
 `git-diff-analysis` candidate.
 
+## Seed Scope
+
+`examples/control-plane/dev-seed.sql` is generated from
+`examples/modules/*.json` and is the operational dev registry seed. Referenced
+tools, scopes, policies, and validators are emitted as generated stub modules
+until they have first-class module metadata files.
+
+`examples/control-plane/cloudflare-control-plane.json` is a broader storage
+contract fixture. It exercises knowledge and memory record shapes in addition
+to registry records and should not be treated as the exact deployed dev seed.
+
 ## CI And Deployment
 
 The main CI workflow runs Worker type checks and Vitest tests on pushes and pull

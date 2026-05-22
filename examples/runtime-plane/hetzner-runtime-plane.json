@@ -1,5 +1,5 @@
 {
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.0",
   "environment": "dev",
   "records": {
     "runtime_runs": [
@@ -11,7 +11,10 @@
         "status": "succeeded",
         "started_at": "2026-05-21T20:00:00Z",
         "completed_at": "2026-05-21T20:02:00Z",
-        "artifact_root_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture"
+        "artifact_root_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture",
+        "token_budget_total": 60000,
+        "tokens_used_total": 3100,
+        "stop_reason": "completed"
       }
     ],
     "runtime_steps": [
@@ -22,7 +25,12 @@
         "kind": "executor",
         "status": "succeeded",
         "started_at": "2026-05-21T20:00:10Z",
-        "completed_at": "2026-05-21T20:00:40Z"
+        "completed_at": "2026-05-21T20:00:40Z",
+        "stop_reason": "completed",
+        "token_budget": 20000,
+        "tokens_used": 1800,
+        "idempotency_key": "run-storage-contract-fixture-step-0",
+        "attempt": 1
       },
       {
         "id": "step-storage-contract-validator",
@@ -31,7 +39,78 @@
         "kind": "validator",
         "status": "succeeded",
         "started_at": "2026-05-21T20:00:45Z",
-        "completed_at": "2026-05-21T20:01:00Z"
+        "completed_at": "2026-05-21T20:01:00Z",
+        "stop_reason": "completed",
+        "token_budget": 10000,
+        "tokens_used": 900,
+        "idempotency_key": "run-storage-contract-fixture-step-1",
+        "attempt": 1
+      }
+    ],
+    "runtime_events": [
+      {
+        "id": "event-storage-contract-runtime-started",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": null,
+        "event_index": 0,
+        "event_type": "runtime_started",
+        "actor_role": "composer",
+        "planned_action_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/000-runtime-started-planned.json",
+        "execution_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/000-runtime-started-execution.json",
+        "result_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/000-runtime-started-result.json",
+        "stop_reason": null,
+        "idempotency_key": "run-storage-contract-fixture-event-0",
+        "created_at": "2026-05-21T20:00:00Z"
+      },
+      {
+        "id": "event-storage-contract-tool-completed",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": "step-storage-contract-executor",
+        "event_index": 1,
+        "event_type": "tool_invocation_completed",
+        "actor_role": "executor",
+        "planned_action_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/001-tool-planned.json",
+        "execution_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/001-tool-execution.json",
+        "result_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/001-tool-result.json",
+        "stop_reason": null,
+        "idempotency_key": "run-storage-contract-fixture-event-1",
+        "created_at": "2026-05-21T20:00:18Z"
+      },
+      {
+        "id": "event-storage-contract-runtime-completed",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": null,
+        "event_index": 2,
+        "event_type": "runtime_completed",
+        "actor_role": "validator",
+        "planned_action_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/002-runtime-completed-planned.json",
+        "execution_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/002-runtime-completed-execution.json",
+        "result_uri": "hetzner://runtime/traces/run-storage-contract-fixture/events/002-runtime-completed-result.json",
+        "stop_reason": "completed",
+        "idempotency_key": "run-storage-contract-fixture-event-2",
+        "created_at": "2026-05-21T20:02:00Z"
+      }
+    ],
+    "runtime_checkpoints": [
+      {
+        "id": "checkpoint-storage-contract-after-planner",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": null,
+        "checkpoint_index": 0,
+        "phase": "planner",
+        "state_uri": "hetzner://runtime/traces/run-storage-contract-fixture/checkpoints/000-after-planner.json",
+        "tokens_used_total": 400,
+        "created_at": "2026-05-21T20:00:09Z"
+      },
+      {
+        "id": "checkpoint-storage-contract-after-validator",
+        "run_id": "run-storage-contract-fixture",
+        "step_id": "step-storage-contract-validator",
+        "checkpoint_index": 1,
+        "phase": "validator",
+        "state_uri": "hetzner://runtime/traces/run-storage-contract-fixture/checkpoints/001-after-validator.json",
+        "tokens_used_total": 3100,
+        "created_at": "2026-05-21T20:01:00Z"
       }
     ],
     "tool_invocations": [

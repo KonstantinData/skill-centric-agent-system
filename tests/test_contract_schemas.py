@@ -224,6 +224,16 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
     for step in records["runtime_steps"]:
         assert step["run_id"] in runs
 
+    for event in records["runtime_events"]:
+        assert event["run_id"] in runs
+        if event["step_id"] is not None:
+            assert event["step_id"] in steps
+
+    for checkpoint in records["runtime_checkpoints"]:
+        assert checkpoint["run_id"] in runs
+        if checkpoint["step_id"] is not None:
+            assert checkpoint["step_id"] in steps
+
     for invocation in records["tool_invocations"]:
         assert invocation["run_id"] in runs
         assert invocation["step_id"] in steps
@@ -995,6 +1005,33 @@ def test_cloudflare_d1_migration_rejects_invalid_foreign_key() -> None:
             "'id' is a required property",
         ),
         (
+            lambda runtime_plane: runtime_plane["records"]["runtime_steps"][0].pop(
+                "idempotency_key"
+            ),
+            "'idempotency_key' is a required property",
+        ),
+        (
+            lambda runtime_plane: runtime_plane["records"]["runtime_events"][0].__setitem__(
+                "event_type",
+                "freeform_event",
+            ),
+            "'freeform_event' is not one of",
+        ),
+        (
+            lambda runtime_plane: runtime_plane["records"]["runtime_events"][0].__setitem__(
+                "actor_role",
+                "freeform_actor",
+            ),
+            "'freeform_actor' is not one of",
+        ),
+        (
+            lambda runtime_plane: runtime_plane["records"]["runtime_events"][0].__setitem__(
+                "planned_action_json",
+                {},
+            ),
+            "Additional properties are not allowed",
+        ),
+        (
             lambda runtime_plane: runtime_plane["records"]["memory_candidates"][0].pop(
                 "validator_status"
             ),
@@ -1026,6 +1063,18 @@ def test_runtime_plane_rejects_invalid_runtime_reference(
 ) -> None:
     invalid_runtime_plane = deepcopy(runtime_plane_example)
     invalid_runtime_plane["records"]["memory_candidates"][0]["source_step_id"] = "missing-step"
+
+    assert_valid(runtime_plane_schema, invalid_runtime_plane)
+    with pytest.raises(AssertionError):
+        assert_runtime_plane_references_are_valid(invalid_runtime_plane)
+
+
+def test_runtime_plane_rejects_invalid_event_reference(
+    runtime_plane_schema: dict[str, Any],
+    runtime_plane_example: dict[str, Any],
+) -> None:
+    invalid_runtime_plane = deepcopy(runtime_plane_example)
+    invalid_runtime_plane["records"]["runtime_events"][1]["step_id"] = "missing-step"
 
     assert_valid(runtime_plane_schema, invalid_runtime_plane)
     with pytest.raises(AssertionError):

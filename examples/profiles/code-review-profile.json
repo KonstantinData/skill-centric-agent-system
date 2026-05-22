@@ -9,9 +9,8 @@
   "risk_level": "medium",
   "auth_context": {
     "principal": {
-      "id": "user-konstantin",
-      "type": "user",
-      "display_name": "Konstantin Milonas"
+      "id": "user-local",
+      "type": "user"
     },
     "roles": [
       "repository-maintainer"
@@ -25,12 +24,12 @@
     "code-review-rules"
   ],
   "skills": [
-    "git-diff-analysis",
-    "test-gap-analysis"
+    "git-diff-analysis"
   ],
   "tools": [
+    "filesystem-read",
     "git-read",
-    "filesystem-read"
+    "test-runner"
   ],
   "knowledge_scopes": [
     "architecture-docs",
@@ -39,10 +38,7 @@
   "data_scopes": [
     "repository-readonly"
   ],
-  "memory_scopes": [
-    "current-task",
-    "user-preferences"
-  ],
+  "memory_scopes": [],
   "policies": [
     "no-destructive-commands",
     "require-file-references"
@@ -55,14 +51,12 @@
     "base-agent-rules": "0.1.0",
     "code-review-rules": "0.1.0",
     "git-diff-analysis": "0.1.0",
-    "test-gap-analysis": "0.1.0",
-    "git-read": "0.1.0",
     "filesystem-read": "0.1.0",
+    "git-read": "0.1.0",
+    "test-runner": "0.1.0",
     "architecture-docs": "0.1.0",
     "coding-guidelines": "0.1.0",
     "repository-readonly": "0.1.0",
-    "current-task": "0.1.0",
-    "user-preferences": "0.1.0",
     "no-destructive-commands": "0.1.0",
     "require-file-references": "0.1.0",
     "runtime-profile-schema": "0.1.0",
@@ -87,8 +81,10 @@
     "log_level": "info",
     "capture_events": [
       "task_analyzed",
+      "composition_context_received",
       "candidates_scored",
       "policies_evaluated",
+      "graph_validated",
       "profile_validated",
       "runtime_completed"
     ],

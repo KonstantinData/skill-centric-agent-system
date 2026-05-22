@@ -52,6 +52,9 @@ Cloudflare-backed metadata:
 The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.
 
+The detailed module metadata contract is documented in
+`docs/module-contracts.md`.
+
 ## Cloudflare Seed
 
 The dev D1 registry seed is generated from `examples/modules/*.json`:
@@ -64,3 +67,8 @@ The generator writes idempotent upserts for `modules`, `module_versions`,
 `module_selection_metadata`, `module_dependencies`, `policy_bindings`, and
 `scope_bindings`. Referenced tools, scopes, policies, and validators are emitted
 as generated stub modules until first-class module contracts exist for them.
+
+`examples/control-plane/cloudflare-control-plane.json` remains a storage
+contract fixture for the broader Cloudflare record model, including knowledge
+and memory records. `examples/control-plane/dev-seed.sql` is the operational dev
+registry seed used by the current Worker smoke test.

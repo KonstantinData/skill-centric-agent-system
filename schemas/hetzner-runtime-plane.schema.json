@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:hetzner-runtime-plane:0.1.0",
+  "$id": "urn:scas:schema:hetzner-runtime-plane:0.2.0",
   "title": "Hetzner Runtime Plane Storage Contract",
-  "description": "Recordset contract for Hetzner runtime storage covering runs, steps, tool invocations, validation results, artifacts, and memory candidates.",
+  "description": "Recordset contract for Hetzner runtime storage covering runs, steps, flight-recorder events, checkpoints, tool invocations, validation results, artifacts, and memory candidates.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -23,6 +23,8 @@
       "required": [
         "runtime_runs",
         "runtime_steps",
+        "runtime_events",
+        "runtime_checkpoints",
         "tool_invocations",
         "validation_results",
         "memory_candidates"
@@ -38,6 +40,18 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/runtimeStep"
+          }
+        },
+        "runtime_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeEvent"
+          }
+        },
+        "runtime_checkpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeCheckpoint"
           }
         },
         "tool_invocations": {
@@ -93,6 +107,35 @@
       "type": "string",
       "minLength": 1
     },
+    "nullableUri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "nullableId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nullableNonNegativeInteger": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
     "sensitivity": {
       "type": "string",
       "enum": [
@@ -112,6 +155,84 @@
         "cancelled"
       ]
     },
+    "stopReason": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "max_tokens",
+        "max_duration",
+        "max_tool_calls",
+        "max_data_reads",
+        "max_memory_ops",
+        "max_recompositions",
+        "policy_denied",
+        "validator_failed",
+        "tool_error",
+        "cancelled",
+        "needs_recomposition",
+        "composer_failure",
+        "runtime_error"
+      ]
+    },
+    "nullableStopReason": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/stopReason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "task_intake_normalized",
+        "task_analyzed",
+        "candidates_discovered",
+        "candidates_scored",
+        "policies_evaluated",
+        "graph_validated",
+        "profile_emitted",
+        "profile_validated",
+        "runtime_started",
+        "access_attempted",
+        "validator_executed",
+        "runtime_completed",
+        "runtime_failed",
+        "step_started",
+        "step_completed",
+        "tool_invocation_started",
+        "tool_invocation_completed",
+        "budget_exhausted",
+        "checkpoint_created",
+        "recomposition_requested"
+      ]
+    },
+    "actorRole": {
+      "type": "string",
+      "enum": [
+        "context_manager",
+        "planner",
+        "executor",
+        "validator",
+        "policy_engine",
+        "composer"
+      ]
+    },
+    "runtimePhase": {
+      "type": "string",
+      "enum": [
+        "task_intake",
+        "analysis",
+        "composition",
+        "context",
+        "planner",
+        "executor",
+        "validator",
+        "finalization"
+      ]
+    },
     "runtimeRun": {
       "type": "object",
       "additionalProperties": false,
@@ -123,7 +244,10 @@
         "status",
         "started_at",
         "completed_at",
-        "artifact_root_uri"
+        "artifact_root_uri",
+        "token_budget_total",
+        "tokens_used_total",
+        "stop_reason"
       ],
       "properties": {
         "id": {
@@ -149,6 +273,15 @@
         },
         "artifact_root_uri": {
           "$ref": "#/$defs/uri"
+        },
+        "token_budget_total": {
+          "$ref": "#/$defs/nullableNonNegativeInteger"
+        },
+        "tokens_used_total": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/nullableStopReason"
         }
       }
     },
@@ -162,7 +295,12 @@
         "kind",
         "status",
         "started_at",
-        "completed_at"
+        "completed_at",
+        "stop_reason",
+        "token_budget",
+        "tokens_used",
+        "idempotency_key",
+        "attempt"
       ],
       "properties": {
         "id": {
@@ -172,8 +310,7 @@
           "$ref": "#/$defs/id"
         },
         "step_index": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/nonNegativeInteger"
         },
         "kind": {
           "type": "string",
@@ -192,6 +329,117 @@
         },
         "completed_at": {
           "$ref": "#/$defs/nullableDateTime"
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/nullableStopReason"
+        },
+        "token_budget": {
+          "$ref": "#/$defs/nullableNonNegativeInteger"
+        },
+        "tokens_used": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/uri"
+        },
+        "attempt": {
+          "$ref": "#/$defs/positiveInteger"
+        }
+      }
+    },
+    "runtimeEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "step_id",
+        "event_index",
+        "event_type",
+        "actor_role",
+        "planned_action_uri",
+        "execution_uri",
+        "result_uri",
+        "stop_reason",
+        "idempotency_key",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "step_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "event_index": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "event_type": {
+          "$ref": "#/$defs/eventType"
+        },
+        "actor_role": {
+          "$ref": "#/$defs/actorRole"
+        },
+        "planned_action_uri": {
+          "$ref": "#/$defs/nullableUri"
+        },
+        "execution_uri": {
+          "$ref": "#/$defs/nullableUri"
+        },
+        "result_uri": {
+          "$ref": "#/$defs/nullableUri"
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/nullableStopReason"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/uri"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "runtimeCheckpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "run_id",
+        "step_id",
+        "checkpoint_index",
+        "phase",
+        "state_uri",
+        "tokens_used_total",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "step_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "checkpoint_index": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "phase": {
+          "$ref": "#/$defs/runtimePhase"
+        },
+        "state_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "tokens_used_total": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
         }
       }
     },
