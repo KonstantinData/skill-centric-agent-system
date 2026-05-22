@@ -28,6 +28,7 @@ The Feature Backlog order for Phase 0 is:
 5. `P0.05 Runtime Preflight Gate: Define Runtime Entry Criteria`
 6. `P0.06 Runtime Preflight Gate: Define Generic Validation Scenarios`
 7. `P0.07 Runtime Preflight Gate: Define Risk Boundaries`
+8. `P0.08 Runtime Preflight Gate: Seed Project Memory Scope and Fail Closed on Unknown Memory Scope`
 
 Phase 1 must not start until the Phase 0 checklist below is satisfied or each
 exception is tracked as an explicit backlog item.

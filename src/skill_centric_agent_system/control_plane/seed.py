@@ -190,19 +190,29 @@ def build_seed_records(
             )
 
     if default_policy_name is not None:
-        for dependency in dependencies.values():
-            if dependency["kind"] in SCOPE_KINDS:
-                scope_bindings.append(
-                    {
-                        "id": _scope_binding_id(dependency["name"], principal_id),
-                        "scope_id": _module_id(dependency["name"]),
-                        "scope_kind": dependency["kind"],
-                        "principal_kind": principal_kind,
-                        "principal_id": principal_id,
-                        "policy_id": _module_id(default_policy_name),
-                        "effect": "allow",
-                    }
-                )
+        scope_modules = {
+            (dependency["name"], dependency["kind"]): dependency
+            for dependency in dependencies.values()
+            if dependency["kind"] in SCOPE_KINDS
+        }
+        for module in all_modules:
+            if module["kind"] in SCOPE_KINDS:
+                scope_modules[(module["name"], module["kind"])] = {
+                    "name": module["name"],
+                    "kind": module["kind"],
+                }
+        for dependency in scope_modules.values():
+            scope_bindings.append(
+                {
+                    "id": _scope_binding_id(dependency["name"], principal_id),
+                    "scope_id": _module_id(dependency["name"]),
+                    "scope_kind": dependency["kind"],
+                    "principal_kind": principal_kind,
+                    "principal_id": principal_id,
+                    "policy_id": _module_id(default_policy_name),
+                    "effect": "allow",
+                }
+            )
 
     return ControlPlaneSeedRecords(
         modules=tuple(sorted(modules, key=lambda item: item["id"])),

@@ -18,6 +18,8 @@ PHASE_0_ITEMS = [
     "P0.05 Runtime Preflight Gate: Define Runtime Entry Criteria",
     "P0.06 Runtime Preflight Gate: Define Generic Validation Scenarios",
     "P0.07 Runtime Preflight Gate: Define Risk Boundaries",
+    "P0.08 Runtime Preflight Gate: "
+    "Seed Project Memory Scope and Fail Closed on Unknown Memory Scope",
 ]
 
 PHASE_1_ITEMS = [

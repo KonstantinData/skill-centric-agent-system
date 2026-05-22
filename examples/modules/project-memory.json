@@ -1,0 +1,78 @@
+{
+  "name": "project-memory",
+  "version": "0.1.0",
+  "kind": "memory_scope",
+  "description": "Allow access to validated, project-scoped memory records that have passed runtime memory candidate validation and policy gates.",
+  "capability_class": "memory_access",
+  "domain_tags": [
+    "software-engineering",
+    "runtime",
+    "project-memory"
+  ],
+  "task_signals": {
+    "task_types": [
+      "code-review",
+      "research",
+      "task-execution"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "software-engineering",
+      "runtime"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "remember",
+      "previous decision",
+      "project memory",
+      "runtime reconstruction"
+    ],
+    "negative_phrases": [
+      "raw trace",
+      "secret",
+      "credentials"
+    ]
+  },
+  "triggers": [
+    "remember",
+    "project memory",
+    "previous decision"
+  ],
+  "inputs": [],
+  "outputs": [
+    "project-memory-records"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [],
+  "data_scopes": [],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "validators": [
+    "review-findings-contract"
+  ],
+  "selection": {
+    "base_score": 0.55,
+    "score_modifiers": [
+      {
+        "signal": "phrase:project memory",
+        "weight": 0.2,
+        "reason": "Project memory is relevant when the task asks for prior project decisions."
+      },
+      {
+        "signal": "phrase:secret",
+        "weight": -0.5,
+        "reason": "Secret-bearing content must not be loaded through project memory without a stronger policy gate."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": [
+    "retrieves-approved-project-memory",
+    "denies-raw-runtime-trace-memory"
+  ]
+}

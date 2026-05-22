@@ -1457,6 +1457,25 @@ async function handleMemoryIngest(request: Request, env: Env): Promise<Response>
   const body = parsed.body;
   const timestamp = nowIso();
   const bucketName = `scas-memory-${env.ENVIRONMENT}`;
+  const memoryScope = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id
+    FROM modules
+    WHERE id = ?
+      AND kind = 'memory_scope'
+      AND status = 'active'
+    LIMIT 1
+    `,
+  )
+    .bind(body.memory.memory_scope_id)
+    .first();
+  if (memoryScope === null) {
+    return errorResponse(
+      403,
+      "memory_scope_not_allowed",
+      "memory.memory_scope_id must reference an active memory_scope module.",
+    );
+  }
   const baseKey = `memory/${body.memory.memory_scope_id}/${body.memory.id}/${versionPath(body.memory.version)}`;
   const contentKey = `${baseKey}/content.json`;
   const manifestKey = `${baseKey}/manifest.json`;

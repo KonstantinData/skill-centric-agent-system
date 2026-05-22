@@ -817,6 +817,26 @@ describe("control API worker", () => {
     expect(rejectedBody.error.message).toContain("Raw runtime traces");
   });
 
+  it("fails closed when memory ingestion references an unknown memory scope", async () => {
+    const response = await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...memoryIngestRequest,
+        memory: {
+          ...memoryIngestRequest.memory,
+          memory_scope_id: "mod-unknown-memory",
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("memory_scope_not_allowed");
+  });
+
   it("returns D1-post-validated retrieval context for Vectorize-ready records", async () => {
     await fetchJson("/knowledge/ingest", {
       method: "POST",

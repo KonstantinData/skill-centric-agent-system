@@ -39,6 +39,8 @@ runtime entry gate.
   roles.
 - Define first-slice risk boundaries for tools, approvals, writes, destructive
   actions, secrets, and runtime artifacts.
+- Seed the first project memory scope and make memory ingestion fail closed when
+  a request references an unknown memory scope.
 
 Status: active. The durable gate is documented in `docs/runtime-preflight.md`.
 

@@ -51,6 +51,7 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
         "git-diff-analysis",
         "git-read",
         "no-destructive-commands",
+        "project-memory",
         "repository-readonly",
         "require-file-references",
         "review-findings-contract",
@@ -58,9 +59,9 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     }
     assert len(seed.module_versions) == len(seed.modules)
     assert len(seed.module_selection_metadata) == len(seed.modules)
-    assert len(seed.module_dependencies) == 9
-    assert len(seed.policy_bindings) == 2
-    assert len(seed.scope_bindings) == 3
+    assert len(seed.module_dependencies) == 11
+    assert len(seed.policy_bindings) == 3
+    assert len(seed.scope_bindings) == 4
 
 
 def test_committed_dev_seed_sql_is_generated_from_module_contracts() -> None:
@@ -110,11 +111,11 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
             """
         ).fetchone()[0]
 
-    assert module_count == 10
-    assert version_count == 10
-    assert metadata_count == 10
-    assert dependency_count == 9
-    assert policy_binding_count == 2
-    assert scope_binding_count == 3
+    assert module_count == 11
+    assert version_count == 11
+    assert metadata_count == 11
+    assert dependency_count == 11
+    assert policy_binding_count == 3
+    assert scope_binding_count == 4
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0
