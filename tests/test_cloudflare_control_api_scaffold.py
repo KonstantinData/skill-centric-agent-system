@@ -53,17 +53,24 @@ def test_wrangler_config_defines_control_api_bindings() -> None:
     assert config["main"] == "src/index.ts"
     assert config["compatibility_date"] == "2026-05-20"
     assert config["compatibility_flags"] == ["nodejs_compat"]
-    assert config["vars"] == {"ENVIRONMENT": "dev"}
+    assert config["vars"] == {
+        "ENVIRONMENT": "dev",
+        "AI_GATEWAY_ACCOUNT_ID": "unset",
+        "AI_GATEWAY_ID": "default",
+    }
 
     d1_bindings = {binding["binding"]: binding for binding in config["d1_databases"]}
     r2_bindings = {binding["binding"]: binding for binding in config["r2_buckets"]}
     kv_bindings = {binding["binding"]: binding for binding in config["kv_namespaces"]}
+    vectorize_bindings = {binding["binding"]: binding for binding in config["vectorize"]}
 
     assert d1_bindings["SCAS_CONTROL_DB"]["database_name"] == "scas-control-dev"
     assert d1_bindings["SCAS_CONTROL_DB"]["migrations_dir"] == "../../migrations/cloudflare/d1"
     assert r2_bindings["SCAS_KNOWLEDGE_BUCKET"]["bucket_name"] == "scas-knowledge-dev"
     assert r2_bindings["SCAS_MEMORY_BUCKET"]["bucket_name"] == "scas-memory-dev"
     assert "SCAS_CONFIG" in kv_bindings
+    assert vectorize_bindings["SCAS_KNOWLEDGE_INDEX"]["index_name"] == "scas-knowledge-dev"
+    assert vectorize_bindings["SCAS_MEMORY_INDEX"]["index_name"] == "scas-memory-dev"
 
 
 def test_worker_source_exposes_health_and_composition_context_routes() -> None:
@@ -71,9 +78,13 @@ def test_worker_source_exposes_health_and_composition_context_routes() -> None:
 
     assert 'url.pathname === "/health"' in source
     assert 'url.pathname === "/composition/context"' in source
+    assert 'url.pathname === "/retrieval/context"' in source
+    assert 'url.pathname === "/ai-gateway/openai/chat/completions"' in source
     assert "loadRegistryModules" in source
     assert "registry_unavailable" in source
     assert "request_body_too_large" in source
+    assert "queryVectorize" in source
+    assert "ai_gateway_not_configured" in source
 
 
 def test_worker_vitest_scaffold_is_present() -> None:
@@ -95,6 +106,8 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler d1 migrations apply scas-control-dev --remote" in docs
     assert "npx wrangler r2 bucket create scas-knowledge-dev" in docs
     assert "npx wrangler kv namespace create SCAS_CONFIG" in docs
+    assert "npx wrangler vectorize create scas-knowledge-dev" in docs
+    assert "npx wrangler secret put OPENAI_API_KEY" in docs
     assert "npm run worker:deploy:dev" in docs
     assert "npx wrangler d1 create scas-control-dev" in script
 

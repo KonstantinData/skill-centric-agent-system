@@ -199,6 +199,29 @@ policy-sensitive or stale cache paths must fall back to D1.
 The Control API Worker lives in `workers/control-api/`. Its bootstrap and
 deployment runbook lives in `docs/cloudflare/control-api.md`.
 
+Runtime context retrieval uses a separate bounded endpoint:
+
+```text
+POST /retrieval/context
+  principal
+  query
+  optional query_embedding
+  requested knowledge_scope_ids
+  requested memory_scope_ids
+  top_k
+
+returns:
+  allowed_knowledge_scope_ids
+  allowed_memory_scope_ids
+  knowledge_chunks
+  memory_records
+  vectorize_matches
+```
+
+Without `query_embedding`, the endpoint returns a D1-prefiltered retrieval
+context and no semantic matches. With `query_embedding`, Vectorize ranks
+candidate IDs and D1 post-validates every returned match.
+
 ## Vector Search Flow
 
 Knowledge and memory search must combine D1 and Vectorize:
@@ -261,15 +284,17 @@ Implemented:
   objects, D1 metadata, ingestion jobs, and audit events.
 - Hetzner Memory Feedback Pipeline client submits only validator-approved and
   policy-approved memory candidates to Cloudflare.
+- Cloudflare Control API retrieval endpoint returns D1-gated knowledge and
+  memory context with Vectorize bindings and D1 post-validation.
+- Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
+  when the account configuration and `OPENAI_API_KEY` secret are present.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
 Not yet implemented:
 
-- Cloudflare knowledge ingestion API and queue/workflow execution.
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
-- Vectorize index creation and retrieval flow.
-- Production OpenAI routing through AI Gateway.
+- Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
 
 ## Implementation Order
@@ -290,8 +315,9 @@ Completed:
 12. Runtime Entry Point and Flight Recorder writer.
 13. Profile-scoped Tool Gateway and Minimal Runtime Loop.
 14. Cloudflare knowledge and memory ingestion endpoints.
+15. Vectorize-ready retrieval endpoint and AI Gateway route.
 
 Next:
 
-1. Vectorize and AI Gateway production integration.
-2. Async ingestion/indexing workers.
+1. Async ingestion/indexing workers.
+2. Remote Vectorize index provisioning and embedding population.

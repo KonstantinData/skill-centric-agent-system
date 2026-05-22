@@ -26,6 +26,8 @@ Additional ingestion endpoints are now available:
 ```text
 POST /knowledge/ingest
 POST /memory/ingest
+POST /retrieval/context
+POST /ai-gateway/openai/chat/completions
 ```
 
 `POST /knowledge/ingest` accepts normalized knowledge source/document content,
@@ -38,6 +40,17 @@ writes memory content and a manifest to R2, then records `memory_records`,
 `ingestion_jobs`, and `audit_events` in D1. Raw runtime traces and tool outputs
 are explicitly rejected by the endpoint.
 
+`POST /retrieval/context` accepts a principal, query text, allowed candidate
+knowledge and memory scope IDs, and an optional `query_embedding`. D1 computes
+the allowed IDs first. When an embedding is provided, the Worker queries the
+bound Vectorize indexes and post-validates the matches against the D1-allowed
+knowledge chunks and memory records before returning them.
+
+`POST /ai-gateway/openai/chat/completions` is a narrow pass-through route to
+Cloudflare AI Gateway's OpenAI chat completions endpoint. It fails closed with
+`503 ai_gateway_not_configured` unless `AI_GATEWAY_ACCOUNT_ID` and the
+`OPENAI_API_KEY` Worker secret are configured.
+
 ## Dev Resource Names
 
 | Resource | Name |
@@ -46,6 +59,8 @@ are explicitly rejected by the endpoint.
 | D1 database | `scas-control-dev` |
 | Knowledge R2 bucket | `scas-knowledge-dev` |
 | Memory R2 bucket | `scas-memory-dev` |
+| Knowledge Vectorize index | `scas-knowledge-dev` |
+| Memory Vectorize index | `scas-memory-dev` |
 | KV namespace binding | `SCAS_CONFIG` |
 
 The dev Worker is deployed at:
@@ -86,6 +101,28 @@ npx wrangler kv namespace create SCAS_CONFIG --config workers/control-api/wrangl
 
 Copy the returned KV namespace `id` into
 `workers/control-api/wrangler.toml`.
+
+Create Vectorize indexes:
+
+```bash
+npx wrangler vectorize create scas-knowledge-dev --dimensions=1536 --metric=cosine --config workers/control-api/wrangler.toml
+npx wrangler vectorize create scas-memory-dev --dimensions=1536 --metric=cosine --config workers/control-api/wrangler.toml
+```
+
+The committed `wrangler.toml` binds these indexes as `SCAS_KNOWLEDGE_INDEX`
+and `SCAS_MEMORY_INDEX`. If the embedding model changes, create replacement
+indexes instead of mutating dimensions in place.
+
+Configure AI Gateway routing:
+
+```bash
+npx wrangler secret put OPENAI_API_KEY --config workers/control-api/wrangler.toml
+```
+
+Set `AI_GATEWAY_ACCOUNT_ID` to the Cloudflare account ID and `AI_GATEWAY_ID`
+to the intended AI Gateway name in the deployment environment. The committed
+dev default keeps `AI_GATEWAY_ACCOUNT_ID = "unset"` so local and unconfigured
+deployments fail closed.
 
 Apply D1 migrations locally:
 
@@ -164,6 +201,26 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/me
   --data-binary @examples/control-api/memory-ingest-request.json
 ```
 
+Smoke-test retrieval after ingesting knowledge and memory:
+
+```bash
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/retrieval/context \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/retrieval-context-request.json
+```
+
+The response must include `retrieval_status: "ready"` and only D1-allowed
+knowledge chunks and memory records. Without `query_embedding`, the route
+returns `vectorize.status: "d1_prefilter_ready"` and no semantic matches.
+
+Smoke-test AI Gateway fail-closed behavior before secrets are configured:
+
+```bash
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/ai-gateway/openai/chat/completions \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/ai-gateway-chat-request.json
+```
+
 ## Seed Scope
 
 `examples/control-plane/dev-seed.sql` is generated from
@@ -185,6 +242,7 @@ when Wrangler is authenticated.
 ## Operational Rules
 
 - The Worker uses Cloudflare bindings for D1, R2, and KV access.
+- The Worker binds Vectorize indexes for knowledge and memory retrieval.
 - Secrets are not stored in `wrangler.toml`; use Worker secrets or GitHub
   Actions secrets for deployment.
 - D1 remains authoritative for registry and policy-sensitive reads.
@@ -194,3 +252,6 @@ when Wrangler is authenticated.
   the Hetzner Runtime Plane.
 - Knowledge and memory ingestion writes Cloudflare-owned metadata and
   consolidated objects only.
+- AI Gateway routing is the only production OpenAI route exposed by the Control
+  API Worker and must fail closed when secrets or account configuration are
+  missing.

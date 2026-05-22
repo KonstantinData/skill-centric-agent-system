@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:retrieval-context:0.1.0",
+  "title": "Retrieval Context Endpoint Contract",
+  "description": "Request and response contract for POST /retrieval/context on the Cloudflare Control API.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request",
+    "response"
+  ],
+  "properties": {
+    "request": {
+      "$ref": "#/$defs/request"
+    },
+    "response": {
+      "$ref": "#/$defs/response"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "role",
+            "user",
+            "service"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "principal",
+        "query",
+        "knowledge_scope_ids",
+        "memory_scope_ids",
+        "top_k"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "principal": {
+          "$ref": "#/$defs/principal"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query_embedding": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "type": "number"
+          }
+        },
+        "knowledge_scope_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "memory_scope_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "top_k": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "retrievalVectorizeState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "knowledge_index",
+        "memory_index",
+        "bindings",
+        "note"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "d1_prefilter_ready",
+            "vectorize_query_post_validated"
+          ]
+        },
+        "knowledge_index": {
+          "$ref": "#/$defs/id"
+        },
+        "memory_index": {
+          "$ref": "#/$defs/id"
+        },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "knowledge",
+            "memory"
+          ],
+          "properties": {
+            "knowledge": {
+              "type": "boolean"
+            },
+            "memory": {
+              "type": "boolean"
+            }
+          }
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "knowledgeChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "document_id",
+        "chunk_index",
+        "content_uri",
+        "vector_id",
+        "scope_id",
+        "token_count"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "document_id": {
+          "$ref": "#/$defs/id"
+        },
+        "chunk_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vector_id": {
+          "$ref": "#/$defs/id"
+        },
+        "scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "memoryRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "memory_scope_id",
+        "version",
+        "content_uri",
+        "manifest_uri",
+        "source_run_id",
+        "source_profile_id",
+        "sensitivity",
+        "retention_policy",
+        "status",
+        "vector_id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "memory_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "content_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "secret"
+          ]
+        },
+        "retention_policy": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "deleted"
+          ]
+        },
+        "vector_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "vectorizeMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "score"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "score": {
+          "type": "number"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "vectorizeMatches": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "knowledge",
+        "memory"
+      ],
+      "properties": {
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/vectorizeMatch"
+          }
+        },
+        "memory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/vectorizeMatch"
+          }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "retrieval_status",
+        "query",
+        "vectorize",
+        "allowed_knowledge_scope_ids",
+        "allowed_memory_scope_ids",
+        "knowledge_chunks",
+        "memory_records",
+        "vectorize_matches"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "retrieval_status": {
+          "type": "string",
+          "enum": [
+            "ready"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vectorize": {
+          "$ref": "#/$defs/retrievalVectorizeState"
+        },
+        "allowed_knowledge_scope_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "allowed_memory_scope_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "knowledge_chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/knowledgeChunk"
+          }
+        },
+        "memory_records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/memoryRecord"
+          }
+        },
+        "vectorize_matches": {
+          "$ref": "#/$defs/vectorizeMatches"
+        }
+      }
+    }
+  }
+}

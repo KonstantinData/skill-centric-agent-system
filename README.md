@@ -20,15 +20,17 @@ profile-scoped Tool Gateway. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
-metadata, ingestion jobs, and audit events. Hetzner can submit approved memory
-candidates through the Memory Feedback Pipeline client.
+metadata, ingestion jobs, and audit events. It now also exposes a
+D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
+post-validation, plus a fail-closed AI Gateway route for OpenAI chat
+completions. Hetzner can submit approved memory candidates through the Memory
+Feedback Pipeline client.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Broader runtime planning, richer tool execution, knowledge ingestion, memory
-ingestion, Vectorize, and production AI Gateway routing remain follow-up
-implementation work.
+Broader runtime planning, richer tool execution, async indexing workers, and
+production deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -52,6 +54,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
+- `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
@@ -60,7 +63,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Flight Recorder writer, runtime storage ports, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
-- `workers/control-api/`: Cloudflare Control API Worker with `POST /composition/context`.
+- `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
 - `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `examples/modules/`: representative selectable module metadata.
@@ -172,6 +175,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Add Vectorize retrieval and production AI Gateway routing.
+1. Add async ingestion/indexing workers for knowledge and memory embeddings.
 2. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
-3. Add async ingestion/indexing workers.
+3. Add production deployment hardening for Cloudflare and Hetzner runtime operations.

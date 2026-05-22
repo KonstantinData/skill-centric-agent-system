@@ -130,6 +130,26 @@ The first adapters are read-oriented:
 - `filesystem-read`: reads files under the configured repository root,
 - `test-runner`: invokes `python -m pytest` with explicit argument arrays.
 
+## Retrieval Context Contract
+
+Knowledge and memory retrieval is a Control Plane concern. Runtime context
+loading must request a bounded retrieval context instead of reading broad
+knowledge or memory stores directly.
+
+The machine-readable contract for the first Control API retrieval endpoint
+lives in `schemas/retrieval-context.schema.json`.
+
+`POST /retrieval/context` must:
+
+- accept an explicit principal and requested knowledge/memory scope IDs,
+- use D1 scope bindings to compute allowed IDs before semantic lookup,
+- use Vectorize only for similarity ranking when a query embedding is present,
+- post-validate Vectorize matches against D1-allowed IDs,
+- return only content URIs and metadata, not raw R2 object contents,
+- fail closed for invalid request shapes.
+
+Vectorize metadata filtering is an optimization, not a policy engine.
+
 ## Version Pinning
 
 Profile arrays reference selected module names. `module_versions` pins every selected instruction, skill, tool, scope, policy, validator, and memory module to an exact semantic version.

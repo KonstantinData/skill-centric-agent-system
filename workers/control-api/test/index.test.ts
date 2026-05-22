@@ -762,6 +762,87 @@ describe("control API worker", () => {
     expect(rejectedBody.error.message).toContain("Raw runtime traces");
   });
 
+  it("returns D1-post-validated retrieval context for Vectorize-ready records", async () => {
+    await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(knowledgeIngestRequest),
+    });
+    await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(memoryIngestRequest),
+    });
+
+    const response = await fetchJson("/retrieval/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        contract_version: "0.1.0",
+        principal: {
+          kind: "role",
+          id: "repository-maintainer",
+        },
+        query: "runtime reconstruction",
+        knowledge_scope_ids: ["mod-architecture-docs"],
+        memory_scope_ids: ["mod-project-memory"],
+        top_k: 5,
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.retrieval_status).toBe("ready");
+    expect(body.vectorize.status).toBe("d1_prefilter_ready");
+    expect(body.vectorize.bindings).toEqual({
+      knowledge: true,
+      memory: true,
+    });
+    expect(body.vectorize_matches).toEqual({
+      knowledge: [],
+      memory: [],
+    });
+    expect(body.knowledge_chunks[0]).toEqual(
+      expect.objectContaining({
+        id: "chunk-knowledge-doc-runtime-0",
+        scope_id: "mod-architecture-docs",
+        vector_id: "vec-knowledge-doc-runtime-0",
+      }),
+    );
+    expect(body.memory_records[0]).toEqual(
+      expect.objectContaining({
+        id: "memory-runtime-decision",
+        memory_scope_id: "mod-project-memory",
+      }),
+    );
+  });
+
+  it("fails closed when AI Gateway routing is not fully configured", async () => {
+    const response = await fetchJson("/ai-gateway/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error).toEqual({
+      code: "ai_gateway_not_configured",
+      message: "AI Gateway account and OPENAI_API_KEY Worker secret must be configured.",
+    });
+  });
+
   it("rejects non-json composition context requests", async () => {
     const response = await fetchJson("/composition/context", {
       method: "POST",

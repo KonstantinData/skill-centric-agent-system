@@ -1,0 +1,51 @@
+{
+  "contract_version": "0.1.0",
+  "retrieval_status": "ready",
+  "query": "runtime reconstruction decisions",
+  "vectorize": {
+    "status": "d1_prefilter_ready",
+    "knowledge_index": "scas-knowledge-dev",
+    "memory_index": "scas-memory-dev",
+    "bindings": {
+      "knowledge": true,
+      "memory": true
+    },
+    "note": "D1 computes allowed IDs before Vectorize semantic lookup and post-validates Vectorize matches."
+  },
+  "allowed_knowledge_scope_ids": [
+    "mod-architecture-docs"
+  ],
+  "allowed_memory_scope_ids": [
+    "mod-project-memory"
+  ],
+  "knowledge_chunks": [
+    {
+      "id": "chunk-knowledge-doc-runtime-0",
+      "document_id": "knowledge-doc-runtime",
+      "chunk_index": 0,
+      "content_uri": "r2://scas-knowledge-dev/knowledge/knowledge-source-scas-docs/knowledge-doc-runtime/v0.1.0/chunks/0.json",
+      "vector_id": "vec-knowledge-doc-runtime-0",
+      "scope_id": "mod-architecture-docs",
+      "token_count": 12
+    }
+  ],
+  "memory_records": [
+    {
+      "id": "memory-runtime-decision",
+      "memory_scope_id": "mod-project-memory",
+      "version": "0.1.0",
+      "content_uri": "r2://scas-memory-dev/memory/mod-project-memory/memory-runtime-decision/v0.1.0/content.json",
+      "manifest_uri": "r2://scas-memory-dev/memory/mod-project-memory/memory-runtime-decision/v0.1.0/manifest.json",
+      "source_run_id": "run-code-review",
+      "source_profile_id": "profile-code-review",
+      "sensitivity": "internal",
+      "retention_policy": "project-memory-180d",
+      "status": "active",
+      "vector_id": "vec-memory-runtime-decision"
+    }
+  ],
+  "vectorize_matches": {
+    "knowledge": [],
+    "memory": []
+  }
+}

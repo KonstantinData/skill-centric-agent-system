@@ -120,14 +120,17 @@ The current repository has implemented the first control-plane slice:
 - a profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
   `test-runner`,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
-  and validator phases against the composed profile.
+  and validator phases against the composed profile,
+- Cloudflare Control API knowledge and memory ingestion endpoints that write
+  R2 objects and D1 metadata,
+- `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
+  D1 post-validation of semantic matches,
+- fail-closed production OpenAI routing through Cloudflare AI Gateway.
 
 The following architecture components are still pending implementation:
 
 - expanded runtime planning and execution beyond the initial code-review loop,
-- knowledge and memory ingestion APIs,
-- Vectorize-backed retrieval,
-- production OpenAI routing through AI Gateway.
+- async ingestion/indexing workers for knowledge and memory embeddings.
 
 ## Operational Baseline
 

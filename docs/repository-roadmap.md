@@ -12,11 +12,13 @@ The Runtime Entry Point can start a run from task intake, compose the runtime
 profile, create the runtime run, and emit initial artifact-backed Flight
 Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
 can execute read-only code-review fixture work. Runtime artifact redaction and
-retention planning are implemented for the Flight Recorder artifact path.
+retention planning are implemented for the Flight Recorder artifact path. The
+Control API also has knowledge/memory ingestion, a D1-gated
+`POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
+and a fail-closed AI Gateway route for OpenAI chat completions.
 
-The next main implementation block is retrieval/indexing through Vectorize and
-production AI Gateway routing. Infrastructure follow-up work remains for
-broader Hetzner runtime execution and async ingestion workers.
+The next main implementation block is async indexing and memory candidate
+extraction/validation, followed by broader Hetzner runtime execution.
 
 ## Phase 1: Foundation
 
@@ -85,8 +87,9 @@ Status: initial implementation complete.
 
 Status: initial control-plane implementation complete. Runtime Entry Point and
 Flight Recorder writer are implemented for the first composition path.
-Knowledge ingestion, memory ingestion, Vectorize, and AI Gateway integration
-remain pending.
+Knowledge ingestion, memory ingestion, Vectorize-ready retrieval, and
+AI Gateway routing are implemented at Worker/API level; async indexing workers
+and remote index population remain pending.
 
 ## Phase 5: Analyzer And Composer
 
@@ -121,5 +124,6 @@ and minimal runtime loop complete for the current code-review fixture.
 
 Status: initial runtime redaction and retention planning complete; Cloudflare
 knowledge and memory ingestion endpoints are implemented; the Hetzner memory
-feedback client exists; operational cleanup jobs, async indexing, and broader
-telemetry remain pending.
+feedback client exists; Control API retrieval and AI Gateway routes are
+implemented; operational cleanup jobs, async indexing, memory candidate
+extraction/validation, and broader telemetry remain pending.

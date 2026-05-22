@@ -1,0 +1,15 @@
+{
+  "contract_version": "0.1.0",
+  "principal": {
+    "kind": "role",
+    "id": "repository-maintainer"
+  },
+  "query": "runtime reconstruction decisions",
+  "knowledge_scope_ids": [
+    "mod-architecture-docs"
+  ],
+  "memory_scope_ids": [
+    "mod-project-memory"
+  ],
+  "top_k": 5
+}

@@ -132,6 +132,43 @@ type MemoryIngestRequest = {
   };
 };
 
+type RetrievalRequest = {
+  contract_version: string;
+  principal: {
+    kind: PrincipalKind;
+    id: string;
+  };
+  query: string;
+  query_embedding?: number[];
+  knowledge_scope_ids: string[];
+  memory_scope_ids: string[];
+  top_k: number;
+};
+
+type KnowledgeRetrievalRow = {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  content_uri: string;
+  vector_id: string;
+  scope_id: string;
+  token_count: number;
+};
+
+type MemoryRetrievalRow = {
+  id: string;
+  memory_scope_id: string;
+  version: string;
+  content_uri: string;
+  manifest_uri: string;
+  source_run_id: string;
+  source_profile_id: string;
+  sensitivity: string;
+  retention_policy: string;
+  status: string;
+  vector_id: string;
+};
+
 type RegistryModuleRow = {
   id: string;
   name: string;
@@ -307,6 +344,15 @@ function idArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isId);
 }
 
+function finiteNumberArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= 4096 &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
+  );
+}
+
 function validateCompositionRequest(body: unknown): string | null {
   if (!isObject(body)) {
     return "Request body must be a JSON object.";
@@ -474,6 +520,40 @@ function validateMemoryIngestRequest(body: unknown): string | null {
   }
   if (!isId(body.memory.retention_policy)) {
     return "memory.retention_policy must be a valid id.";
+  }
+  return null;
+}
+
+function validateRetrievalRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (!isSemver(body.contract_version)) {
+    return "contract_version must be semver.";
+  }
+  if (!isObject(body.principal)) {
+    return "principal is required.";
+  }
+  if (!["role", "user", "service"].includes(String(body.principal.kind))) {
+    return "principal.kind must be role, user, or service.";
+  }
+  if (!isId(body.principal.id)) {
+    return "principal.id must be a valid id.";
+  }
+  if (typeof body.query !== "string" || body.query.length === 0) {
+    return "query is required.";
+  }
+  if (hasProperty(body, "query_embedding") && !finiteNumberArray(body.query_embedding)) {
+    return "query_embedding must be a non-empty finite number array with at most 4096 values.";
+  }
+  if (!idArray(body.knowledge_scope_ids)) {
+    return "knowledge_scope_ids must be an array of ids.";
+  }
+  if (!idArray(body.memory_scope_ids)) {
+    return "memory_scope_ids must be an array of ids.";
+  }
+  if (typeof body.top_k !== "number" || body.top_k < 1 || body.top_k > 20) {
+    return "top_k must be between 1 and 20.";
   }
   return null;
 }
@@ -1199,6 +1279,7 @@ async function handleCompositionContext(request: Request, env: Env): Promise<Res
 async function readValidatedJson<T>(
   request: Request,
   validate: (body: unknown) => string | null,
+  invalidRequestCode = "invalid_ingestion_request",
 ): Promise<{ body: T } | { response: Response }> {
   if (request.method !== "POST") {
     return { response: errorResponse(405, "method_not_allowed", "Use POST for this endpoint.") };
@@ -1222,7 +1303,7 @@ async function readValidatedJson<T>(
 
   const validationError = validate(body);
   if (validationError !== null) {
-    return { response: errorResponse(400, "invalid_ingestion_request", validationError) };
+    return { response: errorResponse(400, invalidRequestCode, validationError) };
   }
 
   return { body: body as T };
@@ -1469,6 +1550,237 @@ async function writeIngestionAudit(
   ]);
 }
 
+async function handleRetrievalContext(request: Request, env: Env): Promise<Response> {
+  const parsed = await readValidatedJson<RetrievalRequest>(
+    request,
+    validateRetrievalRequest,
+    "invalid_retrieval_request",
+  );
+  if ("response" in parsed) {
+    return parsed.response;
+  }
+  const body = parsed.body;
+  const scopeBindings = await loadScopeBindings(env, body.principal);
+  const allowedKnowledgeScopes = body.knowledge_scope_ids.filter((scopeId) =>
+    scopeBindingAllows(scopeId, scopeBindings),
+  );
+  const allowedMemoryScopes = body.memory_scope_ids.filter((scopeId) =>
+    scopeBindingAllows(scopeId, scopeBindings),
+  );
+  const knowledgeChunks: KnowledgeRetrievalRow[] = [];
+  for (const scopeId of allowedKnowledgeScopes) {
+    const result = await env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT
+        kc.id,
+        kc.document_id,
+        kc.chunk_index,
+        kc.content_uri,
+        kc.vector_id,
+        kc.scope_id,
+        kc.token_count
+      FROM knowledge_chunks AS kc
+      INNER JOIN knowledge_documents AS kd
+        ON kd.id = kc.document_id
+      WHERE kc.scope_id = ?
+        AND kd.status = 'active'
+      ORDER BY kc.document_id ASC, kc.chunk_index ASC
+      LIMIT ?
+      `,
+    )
+      .bind(scopeId, body.top_k)
+      .all<KnowledgeRetrievalRow>();
+    knowledgeChunks.push(...(result.results ?? []));
+  }
+  const memoryRecords: MemoryRetrievalRow[] = [];
+  for (const scopeId of allowedMemoryScopes) {
+    const result = await env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT
+        id,
+        memory_scope_id,
+        version,
+        content_uri,
+        manifest_uri,
+        source_run_id,
+        source_profile_id,
+        sensitivity,
+        retention_policy,
+        status
+      FROM memory_records
+      WHERE memory_scope_id = ?
+        AND status = 'active'
+      ORDER BY id ASC
+      LIMIT ?
+      `,
+    )
+      .bind(scopeId, body.top_k)
+      .all<Omit<MemoryRetrievalRow, "vector_id">>();
+    memoryRecords.push(
+      ...(result.results ?? []).map((row) => ({
+        ...row,
+        vector_id: `vec-${row.id}`,
+      })),
+    );
+  }
+  const boundedKnowledgeChunks = knowledgeChunks.slice(0, body.top_k);
+  const boundedMemoryRecords = memoryRecords.slice(0, body.top_k);
+  const knowledgeVectorIds = new Set(boundedKnowledgeChunks.map((chunk) => chunk.vector_id));
+  const memoryVectorIds = new Set(boundedMemoryRecords.map((memory) => memory.vector_id));
+  const vectorize = {
+    status:
+      body.query_embedding === undefined
+        ? "d1_prefilter_ready"
+        : "vectorize_query_post_validated",
+    knowledge_index: "scas-knowledge-dev",
+    memory_index: "scas-memory-dev",
+    bindings: {
+      knowledge: Boolean(env.SCAS_KNOWLEDGE_INDEX),
+      memory: Boolean(env.SCAS_MEMORY_INDEX),
+    },
+    note: "D1 computes allowed IDs before Vectorize semantic lookup and post-validates Vectorize matches.",
+  };
+  const vectorizeMatches =
+    body.query_embedding === undefined
+      ? {
+          knowledge: [],
+          memory: [],
+        }
+      : await queryVectorize(
+          env,
+          body.query_embedding,
+          allowedKnowledgeScopes,
+          allowedMemoryScopes,
+          knowledgeVectorIds,
+          memoryVectorIds,
+          body.top_k,
+        );
+
+  return jsonResponse({
+    contract_version: CONTRACT_VERSION,
+    retrieval_status: "ready",
+    query: body.query,
+    vectorize,
+    allowed_knowledge_scope_ids: allowedKnowledgeScopes,
+    allowed_memory_scope_ids: allowedMemoryScopes,
+    knowledge_chunks: boundedKnowledgeChunks,
+    memory_records: boundedMemoryRecords,
+    vectorize_matches: vectorizeMatches,
+  });
+}
+
+async function queryVectorize(
+  env: Env,
+  embedding: number[],
+  allowedKnowledgeScopes: string[],
+  allowedMemoryScopes: string[],
+  allowedKnowledgeVectorIds: Set<string>,
+  allowedMemoryVectorIds: Set<string>,
+  topK: number,
+): Promise<{ knowledge: VectorizeMatch[]; memory: VectorizeMatch[] }> {
+  const [knowledgeMatches, memoryMatches] = await Promise.all([
+    allowedKnowledgeScopes.length === 0
+      ? Promise.resolve({ matches: [] })
+      : env.SCAS_KNOWLEDGE_INDEX.query(embedding, {
+          topK,
+          returnMetadata: "indexed",
+          filter: {
+            scope_id: {
+              $in: allowedKnowledgeScopes,
+            },
+          },
+        }),
+    allowedMemoryScopes.length === 0
+      ? Promise.resolve({ matches: [] })
+      : env.SCAS_MEMORY_INDEX.query(embedding, {
+          topK,
+          returnMetadata: "indexed",
+          filter: {
+            memory_scope_id: {
+              $in: allowedMemoryScopes,
+            },
+          },
+        }),
+  ]);
+
+  return {
+    knowledge: knowledgeMatches.matches.filter((match) => allowedKnowledgeVectorIds.has(match.id)),
+    memory: memoryMatches.matches.filter((match) => allowedMemoryVectorIds.has(match.id)),
+  };
+}
+
+function aiGatewayEnv(env: Env): {
+  accountId: string;
+  gatewayId: string;
+  openAiApiKey?: string;
+} {
+  const extended = env as Env & {
+    AI_GATEWAY_ACCOUNT_ID?: string;
+    AI_GATEWAY_ID?: string;
+    OPENAI_API_KEY?: string;
+  };
+  return {
+    accountId: extended.AI_GATEWAY_ACCOUNT_ID ?? "",
+    gatewayId: extended.AI_GATEWAY_ID ?? "default",
+    openAiApiKey: extended.OPENAI_API_KEY,
+  };
+}
+
+function aiGatewayOpenAiChatUrl(env: Env): string {
+  const gateway = aiGatewayEnv(env);
+  return `https://gateway.ai.cloudflare.com/v1/${gateway.accountId}/${gateway.gatewayId}/openai/chat/completions`;
+}
+
+async function handleAiGatewayOpenAiChat(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return errorResponse(405, "method_not_allowed", "Use POST for AI Gateway routing.");
+  }
+  const gateway = aiGatewayEnv(env);
+  if (
+    gateway.accountId.length === 0 ||
+    gateway.accountId === "unset" ||
+    gateway.openAiApiKey === undefined ||
+    gateway.openAiApiKey.length === 0
+  ) {
+    return errorResponse(
+      503,
+      "ai_gateway_not_configured",
+      "AI Gateway account and OPENAI_API_KEY Worker secret must be configured.",
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await readJson(request);
+  } catch {
+    return errorResponse(400, "invalid_json", "Request body must be valid JSON.");
+  }
+  if (!isObject(body)) {
+    return errorResponse(400, "invalid_ai_gateway_request", "Request body must be a JSON object.");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(aiGatewayOpenAiChatUrl(env), {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${gateway.openAiApiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return errorResponse(502, "ai_gateway_unavailable", "AI Gateway upstream request failed.");
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      "content-type": response.headers.get("content-type") ?? "application/json",
+    },
+  });
+}
+
 function handleHealth(env: Env): Response {
   return jsonResponse({
     status: "ok",
@@ -1499,6 +1811,14 @@ export default {
 
     if (url.pathname === "/memory/ingest") {
       return handleMemoryIngest(request, env);
+    }
+
+    if (url.pathname === "/retrieval/context") {
+      return handleRetrievalContext(request, env);
+    }
+
+    if (url.pathname === "/ai-gateway/openai/chat/completions") {
+      return handleAiGatewayOpenAiChat(request, env);
     }
 
     return errorResponse(404, "not_found", "Endpoint not found.");
