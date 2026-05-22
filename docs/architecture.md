@@ -134,6 +134,9 @@ The current repository has implemented the first control-plane slice:
   outside the active profile,
 - a Runtime Validator Framework that runs the validator IDs selected by the
   active profile and fail-closes unknown or failed validators,
+- a controlled recomposition request path that emits `recomposition_requested`
+  and stops the current run with `needs_recomposition` instead of mutating the
+  active profile,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
@@ -148,7 +151,7 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
-- controlled recomposition path,
+- live recomposition continuation with a newly composed profile,
 - live dev end-to-end gate across Cloudflare composition and Hetzner runtime
   persistence,
 - operations baseline for migration, smoke tests, diagnostics, and disable

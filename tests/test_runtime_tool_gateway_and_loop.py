@@ -387,6 +387,65 @@ def test_minimal_runtime_loop_fails_closed_for_unknown_profile_validator(
     assert store.validation_results[-1]["status"] == "failed"
 
 
+def test_minimal_runtime_loop_requests_recomposition_for_missing_capability(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["tools"].remove("git-read")
+    start_result.profile["failure_policy"]["on_policy_denial"] = "recompose_once"
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
+    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "needs_recomposition"
+    recomposition_event = store.runtime_events[-1]
+    assert recomposition_event["event_type"] == "recomposition_requested"
+    result_payload = load_artifact(tmp_path, str(recomposition_event["result_uri"]))
+    assert result_payload["parent_profile_id"] == start_result.profile["id"]
+    assert result_payload["requested_profile_generation"] == 2
+    assert result_payload["recomposition_reason"] == "missing_capability"
+
+
+def test_minimal_runtime_loop_respects_recomposition_budget(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["profile_generation"] = 2
+    start_result.profile["tools"].remove("git-read")
+    start_result.profile["failure_policy"]["on_policy_denial"] = "recompose_once"
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
+    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "max_recompositions"
+    assert store.runtime_events[-1]["event_type"] == "runtime_failed"
+    assert store.runtime_events[-1]["stop_reason"] == "max_recompositions"
+
+
 def test_minimal_runtime_loop_fails_closed_when_profile_limit_is_exceeded(
     tmp_path: Path,
 ) -> None:

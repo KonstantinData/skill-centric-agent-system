@@ -26,7 +26,9 @@ access audit events. The Runtime Context Manager now calls the Control API
 retrieval endpoint for profile-bounded knowledge/memory context and rejects
 scope-expanded responses. The Validator phase now runs the validator IDs
 selected by the active profile and fail-closes unknown or failed validators.
-Runtime artifact writes now honor the profile's
+Controlled recomposition requests now emit `recomposition_requested` and stop
+the current run with `needs_recomposition` instead of mutating the active
+profile. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
@@ -40,8 +42,8 @@ only approved candidates through the Memory Feedback Pipeline client.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Controlled recomposition, richer tool execution, async indexing workers, and
-production deployment hardening remain follow-up implementation work.
+Live recomposition continuation, richer tool execution, async indexing workers,
+and production deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -206,7 +208,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement controlled recomposition.
-2. Prove the flow with a live dev E2E gate.
-3. Add the operations baseline and runbooks.
-4. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Prove the flow with a live dev E2E gate.
+2. Add the operations baseline and runbooks.
+3. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

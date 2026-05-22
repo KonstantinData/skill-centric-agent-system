@@ -243,6 +243,17 @@ The new profile must set:
 The runtime must not self-grant tools, memory, data, knowledge, skills, or
 validators.
 
+When recomposition is needed, the runtime must emit `recomposition_requested`
+with:
+
+- task ID,
+- parent profile ID,
+- requested profile generation,
+- schema-defined recomposition reason.
+
+The current run must stop with `needs_recomposition`. A new profile must come
+from the Composer; the runtime must not edit the active profile in place.
+
 ## Observability
 
 Every productive run must emit Flight Recorder events and checkpoints to the

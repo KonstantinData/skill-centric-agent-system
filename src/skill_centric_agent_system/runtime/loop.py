@@ -83,23 +83,12 @@ class MinimalRuntimeLoop:
             ToolDeniedError,
             ToolExecutionError,
         ) as error:
-            stop_reason = str(getattr(error, "stop_reason", "tool_error"))
-            self.recorder.record_event(
+            self._handle_runtime_error(
                 run_id=run_id,
-                event_type="runtime_failed",
-                actor_role="policy_engine" if stop_reason != "tool_error" else "executor",
-                result={
-                    "error": str(error),
-                    "error_type": type(error).__name__,
-                },
-                stop_reason=stop_reason,  # type: ignore[arg-type]
+                start_result=start_result,
+                error=error,
+                enforcer=enforcer,
                 redact_sensitive_data=redact_sensitive_data,
-            )
-            self.recorder.complete_run(
-                run_id=run_id,
-                status="failed",
-                stop_reason=stop_reason,  # type: ignore[arg-type]
-                tokens_used_total=enforcer.tokens_used,
             )
             raise RuntimeLoopError(str(error)) from error
 
@@ -123,6 +112,84 @@ class MinimalRuntimeLoop:
             stop_reason="completed",
             response=response,
         )
+
+    def _handle_runtime_error(
+        self,
+        *,
+        run_id: str,
+        start_result: RuntimeStartResult,
+        error: Exception,
+        enforcer: RuntimeProfileEnforcer,
+        redact_sensitive_data: bool,
+    ) -> str:
+        profile = start_result.profile
+        recomposition_reason = _recomposition_reason(error)
+        if recomposition_reason is not None and _profile_allows_recomposition(profile, error):
+            try:
+                enforcer.record_recomposition_request()
+            except ProfileEnforcementError as budget_error:
+                return self._fail_run(
+                    run_id=run_id,
+                    error=budget_error,
+                    enforcer=enforcer,
+                    redact_sensitive_data=redact_sensitive_data,
+                )
+            next_generation = int(profile["profile_generation"]) + 1
+            self.recorder.record_event(
+                run_id=run_id,
+                event_type="recomposition_requested",
+                actor_role="composer",
+                result={
+                    "task_id": start_result.analyzed_task.task_id,
+                    "parent_profile_id": profile["id"],
+                    "requested_profile_generation": next_generation,
+                    "recomposition_reason": recomposition_reason,
+                },
+                stop_reason="needs_recomposition",
+                redact_sensitive_data=redact_sensitive_data,
+            )
+            self.recorder.complete_run(
+                run_id=run_id,
+                status="failed",
+                stop_reason="needs_recomposition",
+                tokens_used_total=enforcer.tokens_used,
+            )
+            return "needs_recomposition"
+
+        return self._fail_run(
+            run_id=run_id,
+            error=error,
+            enforcer=enforcer,
+            redact_sensitive_data=redact_sensitive_data,
+        )
+
+    def _fail_run(
+        self,
+        *,
+        run_id: str,
+        error: Exception,
+        enforcer: RuntimeProfileEnforcer,
+        redact_sensitive_data: bool,
+    ) -> str:
+        stop_reason = str(getattr(error, "stop_reason", "tool_error"))
+        self.recorder.record_event(
+            run_id=run_id,
+            event_type="runtime_failed",
+            actor_role="policy_engine" if stop_reason != "tool_error" else "executor",
+            result={
+                "error": str(error),
+                "error_type": type(error).__name__,
+            },
+            stop_reason=stop_reason,  # type: ignore[arg-type]
+            redact_sensitive_data=redact_sensitive_data,
+        )
+        self.recorder.complete_run(
+            run_id=run_id,
+            status="failed",
+            stop_reason=stop_reason,  # type: ignore[arg-type]
+            tokens_used_total=enforcer.tokens_used,
+        )
+        return stop_reason
 
     def _context_step(
         self,
@@ -401,3 +468,35 @@ class MinimalRuntimeLoop:
             stop_reason="completed",
         )
         return response
+
+
+def _profile_allows_recomposition(profile: Mapping[str, Any], error: Exception) -> bool:
+    failure_policy = profile.get("failure_policy", {})
+    if not isinstance(failure_policy, Mapping):
+        return False
+    policy_field = _failure_policy_field(error)
+    if policy_field is None:
+        return False
+    return failure_policy.get(policy_field) == "recompose_once"
+
+
+def _failure_policy_field(error: Exception) -> str | None:
+    stop_reason = str(getattr(error, "stop_reason", ""))
+    if isinstance(error, RuntimeValidationError):
+        return "on_validator_failure"
+    if stop_reason == "policy_denied":
+        return "on_policy_denial"
+    if stop_reason.startswith("max_"):
+        return "on_budget_exhausted"
+    return None
+
+
+def _recomposition_reason(error: Exception) -> str | None:
+    stop_reason = str(getattr(error, "stop_reason", ""))
+    if isinstance(error, RuntimeValidationError):
+        return "validator_failure"
+    if stop_reason == "policy_denied":
+        return "missing_capability"
+    if stop_reason.startswith("max_"):
+        return "budget_exhausted"
+    return None

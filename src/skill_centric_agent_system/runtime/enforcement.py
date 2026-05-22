@@ -38,7 +38,7 @@ class RuntimeProfileEnforcer:
         self.tokens_used = 0
         self.data_reads = 0
         self.memory_ops = 0
-        self.recomposition_requests = 0
+        self.recomposition_requests = max(0, int(profile.get("profile_generation", 1)) - 1)
 
     def validate_profile_for_runtime(self) -> None:
         missing_versions = [
