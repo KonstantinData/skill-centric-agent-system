@@ -1,6 +1,7 @@
 """Runtime entrypoint, storage, and Flight Recorder helpers."""
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore, redact_sensitive_data
+from skill_centric_agent_system.runtime.context import RuntimeContextManager
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
     RuntimeProfileEnforcer,
@@ -66,6 +67,7 @@ __all__ = [
     "RuntimeRetentionPlanner",
     "RuntimeRetentionPolicy",
     "RuntimeProfileEnforcer",
+    "RuntimeContextManager",
     "RuntimeLoopError",
     "RuntimeLoopResult",
     "RuntimeEntryPoint",

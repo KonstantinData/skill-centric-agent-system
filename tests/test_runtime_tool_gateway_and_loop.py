@@ -15,6 +15,7 @@ from skill_centric_agent_system.runtime import (
     JsonArtifactStore,
     MinimalRuntimeLoop,
     ProfileEnforcementError,
+    RuntimeContextManager,
     RuntimeEntryPoint,
     RuntimeLoopError,
     RuntimeProfileEnforcer,
@@ -258,6 +259,98 @@ def test_minimal_runtime_loop_executes_profile_scoped_read_tools(tmp_path: Path)
 
     recordset = store.as_runtime_plane_recordset()
     Draft202012Validator(load_json(RUNTIME_PLANE_SCHEMA_PATH)).validate(recordset)
+
+
+def test_minimal_runtime_loop_loads_retrieval_context_through_control_plane(
+    tmp_path: Path,
+) -> None:
+    class FakeRetrievalClient:
+        def __init__(self) -> None:
+            self.requests: list[Mapping[str, Any]] = []
+
+        def retrieval_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
+            self.requests.append(dict(request_body))
+            return {
+                "contract_version": "0.1.0",
+                "retrieval_status": "ready",
+                "query": request_body["query"],
+                "vectorize": {
+                    "status": "d1_prefilter_ready",
+                    "knowledge_index": "scas-knowledge-dev",
+                    "memory_index": "scas-memory-dev",
+                    "bindings": {"knowledge": True, "memory": True},
+                    "note": "D1 prefilter only.",
+                },
+                "allowed_knowledge_scope_ids": list(request_body["knowledge_scope_ids"]),
+                "allowed_memory_scope_ids": list(request_body["memory_scope_ids"]),
+                "knowledge_chunks": [],
+                "memory_records": [],
+                "vectorize_matches": {"knowledge": [], "memory": []},
+            }
+
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    client = FakeRetrievalClient()
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+        control_plane_client=client,
+    )
+
+    loop.run(start_result)
+
+    assert client.requests
+    request = client.requests[0]
+    assert request["principal"] == {"kind": "role", "id": "repository-maintainer"}
+    assert request["knowledge_scope_ids"] == [
+        "mod-architecture-docs",
+        "mod-coding-guidelines",
+    ]
+    assert request["memory_scope_ids"] == []
+    context_checkpoint = next(
+        checkpoint for checkpoint in store.runtime_checkpoints if checkpoint["phase"] == "context"
+    )
+    context_payload = load_artifact(tmp_path, str(context_checkpoint["state_uri"]))
+    assert context_payload["retrieval_response"]["retrieval_status"] == "ready"
+
+
+def test_runtime_context_manager_rejects_retrieval_scopes_outside_profile() -> None:
+    class BadRetrievalClient:
+        def retrieval_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "contract_version": "0.1.0",
+                "retrieval_status": "ready",
+                "query": request_body["query"],
+                "vectorize": {
+                    "status": "d1_prefilter_ready",
+                    "knowledge_index": "scas-knowledge-dev",
+                    "memory_index": "scas-memory-dev",
+                    "bindings": {"knowledge": True, "memory": True},
+                    "note": "D1 prefilter only.",
+                },
+                "allowed_knowledge_scope_ids": ["mod-outside-knowledge"],
+                "allowed_memory_scope_ids": [],
+                "knowledge_chunks": [],
+                "memory_records": [],
+                "vectorize_matches": {"knowledge": [], "memory": []},
+            }
+
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    manager = RuntimeContextManager(
+        enforcer=RuntimeProfileEnforcer(profile),
+        control_plane_client=BadRetrievalClient(),
+    )
+
+    with pytest.raises(ProfileEnforcementError) as exc_info:
+        manager.load(profile, query=profile["objective"])
+
+    assert exc_info.value.code == "retrieval_response_scope_not_in_runtime_profile"
 
 
 def test_minimal_runtime_loop_fails_closed_when_profile_limit_is_exceeded(

@@ -119,6 +119,20 @@ must enforce:
 Large tool input/output payloads must be written as artifacts and referenced by
 URI from runtime events and `tool_invocations`.
 
+## Context Retrieval
+
+The Context Manager must not read knowledge or memory stores directly. It must
+build a bounded retrieval request from the active profile and submit it to the
+Cloudflare Control API:
+
+```text
+POST /retrieval/context
+```
+
+The request may include only profile-selected knowledge and memory scopes. The
+response must be checked before use; any returned scope outside the active
+profile is a policy denial and must fail closed.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

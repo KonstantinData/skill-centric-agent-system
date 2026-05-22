@@ -129,6 +129,9 @@ The current repository has implemented the first control-plane slice:
 - a Runtime Profile Enforcer that fail-closes unselected tools/scopes and
   exhausted tool, token, duration, data-read, memory-op, and recomposition
   budgets,
+- a Runtime Context Manager that requests profile-bounded knowledge and memory
+  through `POST /retrieval/context` and rejects responses containing scopes
+  outside the active profile,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
@@ -143,7 +146,6 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
-- productive Runtime API/CLI implementation beyond the current start-run alias,
 - generic validator framework and controlled recomposition path,
 - live dev end-to-end gate across Cloudflare composition and Hetzner runtime
   persistence,

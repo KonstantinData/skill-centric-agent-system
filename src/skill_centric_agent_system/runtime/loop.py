@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
+from skill_centric_agent_system.runtime.context import (
+    RetrievalContextClient,
+    RuntimeContextManager,
+)
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
     RuntimeProfileEnforcer,
@@ -42,10 +46,12 @@ class MinimalRuntimeLoop:
         store: RuntimeStore,
         artifacts: JsonArtifactStore,
         repository_root: str | Path,
+        control_plane_client: RetrievalContextClient | None = None,
     ) -> None:
         self.store = store
         self.artifacts = artifacts
         self.repository_root = Path(repository_root)
+        self.control_plane_client = control_plane_client
         self.recorder = FlightRecorder(store, artifacts)
 
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
@@ -116,9 +122,6 @@ class MinimalRuntimeLoop:
         enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
         enforcer.check_duration()
-        enforcer.require_knowledge_scopes(profile.get("knowledge_scopes", []))
-        enforcer.require_memory_scopes(profile.get("memory_scopes", []))
-        enforcer.require_data_scopes(profile.get("data_scopes", []))
         step = self.recorder.start_step(run_id=run_id, step_index=0, kind="context")
         self.recorder.record_event(
             run_id=run_id,
@@ -128,13 +131,10 @@ class MinimalRuntimeLoop:
             planned_action={"phase": "context"},
             redact_sensitive_data=redact_sensitive_data,
         )
-        context = {
-            "profile_id": profile["id"],
-            "instructions": profile["instructions"],
-            "knowledge_scopes": profile["knowledge_scopes"],
-            "memory_scopes": profile["memory_scopes"],
-            "data_scopes": profile["data_scopes"],
-        }
+        context = RuntimeContextManager(
+            enforcer=enforcer,
+            control_plane_client=self.control_plane_client,
+        ).load(profile, query=str(profile["objective"]))
         self.recorder.checkpoint(
             run_id=run_id,
             step_id=str(step["id"]),

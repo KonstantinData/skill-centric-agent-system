@@ -18,7 +18,13 @@ class ControlPlaneClient:
     timeout_seconds: float = 10.0
 
     def composition_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
-        url = self.base_url.rstrip("/") + "/composition/context"
+        return self._post_json("/composition/context", request_body)
+
+    def retrieval_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
+        return self._post_json("/retrieval/context", request_body)
+
+    def _post_json(self, path: str, request_body: Mapping[str, Any]) -> dict[str, Any]:
+        url = self.base_url.rstrip("/") + path
         request = Request(
             url,
             data=json.dumps(request_body).encode("utf-8"),

@@ -22,7 +22,9 @@ through `SCAS_RUNTIME_DATABASE_URL`. Runtime profile enforcement now fail-closes
 unselected tools/scopes and exhausted tool, token, duration, data-read,
 memory-op, and recomposition budgets. The Tool Gateway now applies per-tool
 allowlists, risk gating, blocked argument checks, timeouts, output limits, and
-access audit events. Runtime artifact writes now honor the profile's
+access audit events. The Runtime Context Manager now calls the Control API
+retrieval endpoint for profile-bounded knowledge/memory context and rejects
+scope-expanded responses. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
@@ -36,9 +38,9 @@ only approved candidates through the Memory Feedback Pipeline client.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Context retrieval binding, generic validators, controlled recomposition, richer
-tool execution, async indexing workers, and production deployment hardening
-remain follow-up implementation work.
+Generic validators, controlled recomposition, richer tool execution, async
+indexing workers, and production deployment hardening remain follow-up
+implementation work.
 
 ## Core Flow
 
@@ -72,7 +74,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
-- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
+- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
@@ -203,8 +205,7 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Bind the Context Manager to `POST /retrieval/context`.
-2. Add generic validators and controlled recomposition.
-3. Prove the flow with a live dev E2E gate.
-4. Add the operations baseline and runbooks.
-5. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Add generic validators and controlled recomposition.
+2. Prove the flow with a live dev E2E gate.
+3. Add the operations baseline and runbooks.
+4. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

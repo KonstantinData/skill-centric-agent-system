@@ -289,6 +289,9 @@ Implemented:
 - Hardened profile-scoped Tool Gateway exists for `git-read`,
   `filesystem-read`, and `test-runner`, with risk gating, blocked argument
   checks, timeouts, output limits, and access audit events.
+- Runtime Context Manager calls `POST /retrieval/context` for bounded
+  knowledge/memory context and rejects responses with scopes outside the active
+  profile.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
@@ -338,6 +341,7 @@ Completed:
 17. Runtime storage session for PostgreSQL-backed Hetzner execution.
 18. Runtime Profile Enforcement for selected capabilities and profile budgets.
 19. Tool Gateway hardening for productive runtime execution.
+20. Runtime Context Manager binding to the Control API retrieval endpoint.
 
 Next:
 

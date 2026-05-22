@@ -89,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
                 store=storage.store,
                 artifacts=artifacts,
                 repository_root=args.repository_root,
+                control_plane_client=control_plane_client,
             ).run(result)
 
         run_record = storage.store.get_runtime_run(result.run_id)
