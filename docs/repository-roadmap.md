@@ -8,11 +8,14 @@ Control API Worker scaffold, D1-backed `POST /composition/context`, dev D1
 registry seed path, and the first Analyzer/Composer implementation.
 The Hetzner Runtime Plane also has the initial Flight Recorder storage contract
 for runtime events, checkpoints, stop reasons, token budgets, and idempotency.
+The Runtime Entry Point can start a run from task intake, compose the runtime
+profile, create the runtime run, and emit initial artifact-backed Flight
+Recorder events.
 
-The next main implementation block is wiring the composed profile into the
-runtime entrypoint and beginning Phase 6. Infrastructure follow-up work remains
-for knowledge ingestion, memory ingestion, Vectorize, AI Gateway, and the
-Hetzner runtime loop.
+The next main implementation block is the profile-scoped Tool Gateway and the
+minimal Single Agent Runtime loop. Infrastructure follow-up work remains for
+knowledge ingestion, memory ingestion, Vectorize, AI Gateway, and the Hetzner
+runtime loop.
 
 ## Phase 1: Foundation
 
@@ -79,9 +82,10 @@ Status: initial implementation complete.
 - Add deployment workflows after local infrastructure validation commands exist.
 - Add Hetzner Runtime Flight Recorder storage contracts and migration. (Initial implementation complete.)
 
-Status: initial control-plane implementation complete. Knowledge ingestion,
-memory ingestion, Runtime Flight Recorder writer implementation, Vectorize, and
-AI Gateway integration remain pending.
+Status: initial control-plane implementation complete. Runtime Entry Point and
+Flight Recorder writer are implemented for the first composition path.
+Knowledge ingestion, memory ingestion, Vectorize, and AI Gateway integration
+remain pending.
 
 ## Phase 5: Analyzer And Composer
 
@@ -89,20 +93,22 @@ AI Gateway integration remain pending.
 - Consume Control Plane candidate scoring, policy decisions, scope grants, and graph validation. (Initial implementation complete.)
 - Emit validated, version-pinned runtime profiles. (Initial implementation complete.)
 - Add recomposition tests with parent profile traceability. (Initial implementation complete.)
-- Add runtime entrypoint wiring from task intake to Control API client to composed profile.
+- Add runtime entrypoint wiring from task intake to Control API client to composed profile. (Initial implementation complete.)
 - Expand analyzer coverage beyond code-review fixtures.
 
-Status: initial implementation complete; runtime wiring and broader task coverage remain.
+Status: initial implementation complete; broader task coverage remains.
 
 ## Phase 6: Runtime Loop
 
 - Implement context management.
 - Implement planning and execution orchestration.
 - Enforce tool, token, duration, data-read, memory, and recomposition limits.
-- Emit Flight Recorder runtime events and checkpoints.
+- Emit Flight Recorder runtime events and checkpoints. (Initial writer complete.)
+- Implement profile-scoped Tool Gateway.
 - Implement validation before final response/action.
 
-Status: storage contracts complete; runtime implementation pending.
+Status: storage contracts and initial run start path complete; Tool Gateway and
+runtime loop pending.
 
 ## Phase 7: Operational Hardening
 

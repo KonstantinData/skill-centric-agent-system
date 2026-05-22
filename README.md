@@ -12,13 +12,16 @@ contract-test harness, a local registry implementation, a deployed Cloudflare
 Control API Worker, D1 migrations, generated dev registry seed data, and the
 first Task Analyzer/Profile Composer implementation. The Hetzner Runtime Plane
 also has an initial Flight Recorder storage contract for runtime events,
-checkpoints, stop reasons, token budgets, and idempotency keys.
+checkpoints, stop reasons, token budgets, and idempotency keys. The first
+runtime entry point can now start a run from task intake, compose the runtime
+profile, emit Flight Recorder events, and write artifact-backed trace payloads.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Runtime execution, knowledge ingestion, memory ingestion, Vectorize, and
-production AI Gateway routing remain follow-up implementation work.
+The runtime loop, tool execution, knowledge ingestion, memory ingestion,
+Vectorize, and production AI Gateway routing remain follow-up implementation
+work.
 
 ## Core Flow
 
@@ -47,6 +50,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
+- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Flight Recorder writer, runtime storage ports, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with `POST /composition/context`.
@@ -79,6 +83,19 @@ Run linting:
 ```powershell
 python -m ruff check .
 ```
+
+Start a local fixture-backed runtime run:
+
+```powershell
+scas-runtime-start `
+  --task-file examples\tasks\code-review-task.json `
+  --composition-context-file examples\control-api\composition-context-response.json `
+  --artifact-root .scas-runtime
+```
+
+The command starts the Analyzer -> Composer -> Runtime Entry Point path without
+external services. It writes Flight Recorder event/checkpoint payloads under the
+artifact root and prints the run/profile summary.
 
 Generate the Cloudflare D1 dev seed from module contracts:
 
@@ -144,6 +161,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Wire the Analyzer/Composer pipeline into an executable runtime entrypoint.
+1. Implement the profile-scoped Tool Gateway.
 2. Implement the Single Agent Runtime loop on Hetzner against composed profiles and the Flight Recorder event writer.
 3. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.

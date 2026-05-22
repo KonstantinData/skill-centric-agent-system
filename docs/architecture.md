@@ -111,13 +111,17 @@ The current repository has implemented the first control-plane slice:
 - an optional Python Control Plane client for `POST /composition/context`,
 - Hetzner runtime-plane storage contracts and bootstrap scripts,
 - a Hetzner Flight Recorder storage contract for runtime events, checkpoints,
-  stop reasons, token budgets, and idempotency keys.
+  stop reasons, token budgets, and idempotency keys,
+- a Runtime Entry Point that starts a run from task intake, composes a runtime
+  profile, writes initial Flight Recorder events, and stores event/checkpoint
+  payloads as artifact URIs,
+- runtime storage ports with an in-memory implementation for tests and a
+  Postgres adapter shape for Hetzner integration.
 
 The following architecture components are still pending implementation:
 
-- runtime entrypoint wiring from task intake through remote Control Plane to profile,
 - Single Agent Runtime loop,
-- runtime event writer implementation,
+- profile-scoped Tool Gateway,
 - knowledge and memory ingestion APIs,
 - Vectorize-backed retrieval,
 - production OpenAI routing through AI Gateway.

@@ -51,6 +51,7 @@ coverage.xml
 .pytest_cache/
 cover/
 .wrangler/
+.scas-runtime/
 coverage/
 node_modules/
 template/

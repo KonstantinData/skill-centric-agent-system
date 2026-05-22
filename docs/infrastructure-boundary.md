@@ -137,6 +137,8 @@ Runtime events follow the Flight Recorder pattern:
 - `runtime_checkpoints` stores phase snapshots; `step_id` is nullable for
   checkpoints between runtime phases.
 - Token budget and token usage are tracked on runs and steps.
+- The first Python Flight Recorder writer writes event/checkpoint payloads to a
+  JSON artifact store and persists only URIs into runtime event rows.
 
 ## Memory Feedback Loop
 
@@ -243,6 +245,9 @@ Implemented:
   `git-diff-analysis` candidate.
 - Python Task Analyzer and Profile Composer integration exists for the current
   code-review fixture and Control Plane response contract.
+- Runtime Entry Point exists for Analyzer -> Control API context -> Composer ->
+  run creation, with an in-memory runtime store and artifact-backed Flight
+  Recorder writer.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -253,8 +258,7 @@ Not yet implemented:
 - Vectorize index creation and retrieval flow.
 - Production OpenAI routing through AI Gateway.
 - Runtime execution loop on Hetzner.
-- End-to-end runtime entrypoint from task intake through remote Control API to
-  Hetzner execution.
+- Profile-scoped Tool Gateway.
 
 ## Implementation Order
 
@@ -271,10 +275,11 @@ Completed:
 9. D1 registry seed generation and remote dev seed smoke test.
 10. Initial Task Analyzer and Profile Composer.
 11. Runtime Flight Recorder storage contract.
+12. Runtime Entry Point and Flight Recorder writer.
 
 Next:
 
-1. Runtime entrypoint wiring for Analyzer -> Control API -> Composer.
-2. Runtime execution loop and Flight Recorder event writer.
+1. Profile-scoped Tool Gateway.
+2. Runtime execution loop.
 3. Knowledge and memory ingestion.
 4. Vectorize and AI Gateway production integration.

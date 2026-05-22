@@ -31,10 +31,11 @@ DEFAULT_FAILURE_POLICY = {
 }
 DEFAULT_CAPTURE_EVENTS = (
     "task_analyzed",
-    "composition_context_received",
+    "candidates_discovered",
     "candidates_scored",
     "policies_evaluated",
     "graph_validated",
+    "profile_emitted",
     "profile_validated",
     "runtime_completed",
 )

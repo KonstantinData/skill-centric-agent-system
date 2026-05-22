@@ -12,6 +12,12 @@ dev = [
     "pytest>=8.2",
     "ruff>=0.5",
 ]
+runtime = [
+    "psycopg[binary]>=3.2",
+]
+
+[project.scripts]
+scas-runtime-start = "skill_centric_agent_system.runtime.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
