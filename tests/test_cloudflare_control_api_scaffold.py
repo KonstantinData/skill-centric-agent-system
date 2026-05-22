@@ -110,6 +110,7 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler secret put OPENAI_API_KEY" in docs
     assert "npm run worker:deploy:dev" in docs
     assert "npx wrangler d1 create scas-control-dev" in script
+    assert "npx wrangler vectorize create scas-knowledge-dev" in script
 
 
 def test_ci_runs_worker_checks_and_has_manual_dev_deploy_gate() -> None:

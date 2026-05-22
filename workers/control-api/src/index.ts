@@ -1224,7 +1224,7 @@ async function compositionContextResponse(
     scopeBindings,
   );
   const compositionStatus =
-    candidateScores.length > 0 && allowedCandidates.length === 0 ? "denied" : "ready";
+    candidateScores.length === 0 || allowedCandidates.length === 0 ? "denied" : "ready";
 
   return {
     contract_version: CONTRACT_VERSION,

@@ -647,6 +647,61 @@ describe("control API worker", () => {
     expect(body.policy_decisions[0].effect).toBe("needs_clarification");
   });
 
+  it("fails closed when no module candidate matches the task", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...compositionRequest,
+        task: {
+          ...compositionRequest.task,
+          id: "task-unknown",
+          type: "unknown-task",
+          signals: {
+            domain_tags: ["unknown"],
+            capability_hints: ["unknown"],
+            available_inputs: ["unknown"],
+            constraints: [],
+          },
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.candidate_modules).toEqual([]);
+    expect(body.graph_validation).toEqual({
+      is_valid: true,
+      errors: [],
+      reachable_modules: [],
+    });
+  });
+
+  it("returns denied composition status when graph validation fails", async () => {
+    await env.SCAS_CONTROL_DB.prepare(
+      "UPDATE module_dependencies SET dependency_kind = ? WHERE id = ?",
+    )
+      .bind("tool", "dep-git-diff-architecture-docs")
+      .run();
+
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(compositionRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.graph_validation.is_valid).toBe(false);
+    expect(body.graph_validation.errors[0]).toContain("as tool, got knowledge_scope");
+  });
+
   it("rejects unsupported methods on composition context", async () => {
     const response = await fetchJson("/composition/context");
     const body = await response.json();

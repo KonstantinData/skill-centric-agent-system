@@ -22,6 +22,10 @@ echo
 echo "Copy the returned KV namespace id into workers/control-api/wrangler.toml."
 echo
 
+npx wrangler vectorize create scas-knowledge-dev --dimensions=1536 --metric=cosine --config "$WRANGLER_CONFIG"
+npx wrangler vectorize create scas-memory-dev --dimensions=1536 --metric=cosine --config "$WRANGLER_CONFIG"
+echo
+
 npx wrangler d1 migrations apply scas-control-dev --local --config "$WRANGLER_CONFIG"
 echo
 echo "After the Cloudflare resource IDs are committed, run:"

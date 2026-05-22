@@ -185,6 +185,10 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/co
 The response must include `composition_status: "ready"` and a scored
 `git-diff-analysis` candidate.
 
+`/composition/context` fails closed with `composition_status: "denied"` when
+required policies are missing, graph validation fails, or no module candidate
+matches the task signals.
+
 Smoke-test knowledge ingestion:
 
 ```bash
