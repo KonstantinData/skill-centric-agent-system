@@ -9,6 +9,7 @@ from skill_centric_agent_system.composition import ControlPlaneClient
 from skill_centric_agent_system.runtime import (
     InMemoryRuntimeStore,
     JsonArtifactStore,
+    MinimalRuntimeLoop,
     RuntimeEntryPoint,
 )
 
@@ -28,6 +29,16 @@ def main(argv: list[str] | None = None) -> int:
         "--artifact-root",
         default=".scas-runtime",
         help="Local artifact root for runtime dry-run artifacts.",
+    )
+    parser.add_argument(
+        "--repository-root",
+        default=".",
+        help="Repository root used by profile-scoped read tools.",
+    )
+    parser.add_argument(
+        "--run-minimal-loop",
+        action="store_true",
+        help="Run the first context/planner/executor/validator loop after start.",
     )
     parser.add_argument(
         "--environment",
@@ -54,6 +65,13 @@ def main(argv: list[str] | None = None) -> int:
         environment=args.environment,
     )
     result = runtime.start(task, composition_context_response=context_response)
+    loop_result = None
+    if args.run_minimal_loop:
+        loop_result = MinimalRuntimeLoop(
+            store=store,
+            artifacts=JsonArtifactStore(args.artifact_root),
+            repository_root=args.repository_root,
+        ).run(result)
     print(
         json.dumps(
             {
@@ -62,9 +80,11 @@ def main(argv: list[str] | None = None) -> int:
                 "profile_id": result.profile["id"],
                 "profile_version": result.profile["profile_version"],
                 "status": store.runtime_runs[result.run_id]["status"],
+                "stop_reason": store.runtime_runs[result.run_id]["stop_reason"],
                 "artifact_root_uri": store.runtime_runs[result.run_id][
                     "artifact_root_uri"
                 ],
+                "runtime_response": loop_result.response if loop_result else None,
             },
             indent=2,
             sort_keys=True,

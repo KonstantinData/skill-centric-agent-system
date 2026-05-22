@@ -14,14 +14,16 @@ first Task Analyzer/Profile Composer implementation. The Hetzner Runtime Plane
 also has an initial Flight Recorder storage contract for runtime events,
 checkpoints, stop reasons, token budgets, and idempotency keys. The first
 runtime entry point can now start a run from task intake, compose the runtime
-profile, emit Flight Recorder events, and write artifact-backed trace payloads.
+profile, emit Flight Recorder events, write artifact-backed trace payloads, and
+run the first minimal context/planner/executor/validator loop through a
+profile-scoped Tool Gateway.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-The runtime loop, tool execution, knowledge ingestion, memory ingestion,
-Vectorize, and production AI Gateway routing remain follow-up implementation
-work.
+Broader runtime planning, richer tool execution, knowledge ingestion, memory
+ingestion, Vectorize, and production AI Gateway routing remain follow-up
+implementation work.
 
 ## Core Flow
 
@@ -90,12 +92,16 @@ Start a local fixture-backed runtime run:
 scas-runtime-start `
   --task-file examples\tasks\code-review-task.json `
   --composition-context-file examples\control-api\composition-context-response.json `
-  --artifact-root .scas-runtime
+  --artifact-root .scas-runtime `
+  --repository-root . `
+  --run-minimal-loop
 ```
 
 The command starts the Analyzer -> Composer -> Runtime Entry Point path without
-external services. It writes Flight Recorder event/checkpoint payloads under the
-artifact root and prints the run/profile summary.
+external services. With `--run-minimal-loop`, it also runs the first
+Context/Planner/Executor/Validator loop, invokes only profile-allowed read
+tools, writes tool input/output artifacts under the artifact root, and prints
+the run/profile summary.
 
 Generate the Cloudflare D1 dev seed from module contracts:
 
@@ -161,6 +167,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement the profile-scoped Tool Gateway.
-2. Implement the Single Agent Runtime loop on Hetzner against composed profiles and the Flight Recorder event writer.
+1. Add runtime redaction and retention policy enforcement beyond the current JSON artifact redaction helper.
+2. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
 3. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.

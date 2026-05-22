@@ -150,3 +150,27 @@ def test_runtime_cli_starts_fixture_backed_run(tmp_path: Path, capsys: Any) -> N
     assert output["run_id"] == "run-code-review-latest-commit"
     assert output["profile_id"] == "profile-code-review-latest-commit"
     assert output["status"] == "running"
+    assert output["stop_reason"] is None
+
+
+def test_runtime_cli_can_run_minimal_loop(tmp_path: Path, capsys: Any) -> None:
+    exit_code = runtime_cli_main(
+        [
+            "--task-file",
+            str(TASK_EXAMPLE_PATH),
+            "--composition-context-file",
+            str(COMPOSITION_CONTEXT_RESPONSE_PATH),
+            "--artifact-root",
+            str(tmp_path),
+            "--repository-root",
+            str(REPO_ROOT),
+            "--run-minimal-loop",
+        ]
+    )
+
+    assert exit_code == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["run_id"] == "run-code-review-latest-commit"
+    assert output["status"] == "succeeded"
+    assert output["stop_reason"] == "completed"
+    assert output["runtime_response"]["tool_result_count"] == 2

@@ -248,6 +248,10 @@ Implemented:
 - Runtime Entry Point exists for Analyzer -> Control API context -> Composer ->
   run creation, with an in-memory runtime store and artifact-backed Flight
   Recorder writer.
+- Profile-scoped Tool Gateway exists for `git-read`, `filesystem-read`, and
+  `test-runner`.
+- Minimal Runtime Loop exists for context, planner, executor, and validator
+  phases against the code-review fixture.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -257,8 +261,7 @@ Not yet implemented:
 - Cloudflare memory ingestion API and feedback pipeline from Hetzner.
 - Vectorize index creation and retrieval flow.
 - Production OpenAI routing through AI Gateway.
-- Runtime execution loop on Hetzner.
-- Profile-scoped Tool Gateway.
+- Expanded runtime loop beyond the initial code-review fixture.
 
 ## Implementation Order
 
@@ -276,10 +279,10 @@ Completed:
 10. Initial Task Analyzer and Profile Composer.
 11. Runtime Flight Recorder storage contract.
 12. Runtime Entry Point and Flight Recorder writer.
+13. Profile-scoped Tool Gateway and Minimal Runtime Loop.
 
 Next:
 
-1. Profile-scoped Tool Gateway.
-2. Runtime execution loop.
-3. Knowledge and memory ingestion.
-4. Vectorize and AI Gateway production integration.
+1. Runtime redaction and retention enforcement.
+2. Knowledge and memory ingestion.
+3. Vectorize and AI Gateway production integration.

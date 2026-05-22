@@ -110,6 +110,26 @@ baseline instruction and profile-schema validator pins until instruction and
 baseline-validator registries are backed by D1 records. These baseline modules
 are still explicit profile entries with version pins.
 
+## Tool Gateway Contract
+
+Runtime tools are invoked only through the Tool Gateway. The gateway must check
+the composed profile before executing an adapter:
+
+- a tool not listed in `profile.tools` is denied before adapter lookup,
+- denied access emits an `access_attempted` runtime event with
+  `stop_reason = policy_denied`,
+- allowed tool invocations write input and output artifacts by URI,
+- `tool_invocations` stores only artifact URIs and status metadata,
+- adapters must avoid shell string execution and use constrained command
+  surfaces.
+
+The first adapters are read-oriented:
+
+- `git-read`: allows selected read-only git subcommands (`status`, `diff`,
+  `log`, `show`),
+- `filesystem-read`: reads files under the configured repository root,
+- `test-runner`: invokes `python -m pytest` with explicit argument arrays.
+
 ## Version Pinning
 
 Profile arrays reference selected module names. `module_versions` pins every selected instruction, skill, tool, scope, policy, validator, and memory module to an exact semantic version.

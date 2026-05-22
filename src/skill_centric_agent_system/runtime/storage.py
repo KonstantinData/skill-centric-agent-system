@@ -38,6 +38,10 @@ class RuntimeStore(Protocol):
 
     def insert_runtime_checkpoint(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
+    def insert_tool_invocation(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def insert_validation_result(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]: ...
 
     def checkpoints_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]: ...
@@ -110,6 +114,16 @@ class InMemoryRuntimeStore:
 
         stored = dict(record)
         self.runtime_checkpoints.append(stored)
+        return stored
+
+    def insert_tool_invocation(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.tool_invocations.append(stored)
+        return stored
+
+    def insert_validation_result(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.validation_results.append(stored)
         return stored
 
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]:
@@ -271,11 +285,65 @@ class PostgresRuntimeStore:
         )
         return record
 
+    def insert_tool_invocation(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        self.connection.execute(
+            """
+            INSERT INTO runtime.tool_invocations (
+                id, run_id, step_id, tool_name, status, input_uri, output_uri,
+                started_at, completed_at
+            )
+            VALUES (
+                %(id)s, %(run_id)s, %(step_id)s, %(tool_name)s, %(status)s,
+                %(input_uri)s, %(output_uri)s, %(started_at)s, %(completed_at)s
+            )
+            ON CONFLICT (id) DO NOTHING
+            """,
+            dict(record),
+        )
+        return record
+
+    def insert_validation_result(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        self.connection.execute(
+            """
+            INSERT INTO runtime.validation_results (
+                id, run_id, step_id, validator_id, status, findings_uri, created_at
+            )
+            VALUES (
+                %(id)s, %(run_id)s, %(step_id)s, %(validator_id)s, %(status)s,
+                %(findings_uri)s, %(created_at)s
+            )
+            ON CONFLICT (id) DO NOTHING
+            """,
+            dict(record),
+        )
+        return record
+
     def events_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]:
-        raise NotImplementedError("PostgresRuntimeStore does not read event streams yet.")
+        cursor = self.connection.execute(
+            """
+            SELECT id, run_id, step_id, event_index, event_type, actor_role,
+                   planned_action_uri, execution_uri, result_uri, stop_reason,
+                   idempotency_key, created_at
+            FROM runtime.runtime_events
+            WHERE run_id = %(run_id)s
+            ORDER BY event_index
+            """,
+            {"run_id": run_id},
+        )
+        return tuple(cursor.fetchall())
 
     def checkpoints_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]:
-        raise NotImplementedError("PostgresRuntimeStore does not read checkpoints yet.")
+        cursor = self.connection.execute(
+            """
+            SELECT id, run_id, step_id, checkpoint_index, phase, state_uri,
+                   tokens_used_total, created_at
+            FROM runtime.runtime_checkpoints
+            WHERE run_id = %(run_id)s
+            ORDER BY checkpoint_index
+            """,
+            {"run_id": run_id},
+        )
+        return tuple(cursor.fetchall())
 
 
 class FlightRecorder:

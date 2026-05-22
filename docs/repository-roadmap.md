@@ -10,12 +10,12 @@ The Hetzner Runtime Plane also has the initial Flight Recorder storage contract
 for runtime events, checkpoints, stop reasons, token budgets, and idempotency.
 The Runtime Entry Point can start a run from task intake, compose the runtime
 profile, create the runtime run, and emit initial artifact-backed Flight
-Recorder events.
+Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
+can execute read-only code-review fixture work.
 
-The next main implementation block is the profile-scoped Tool Gateway and the
-minimal Single Agent Runtime loop. Infrastructure follow-up work remains for
-knowledge ingestion, memory ingestion, Vectorize, AI Gateway, and the Hetzner
-runtime loop.
+The next main implementation block is runtime redaction/retention enforcement,
+then Cloudflare knowledge and memory ingestion. Infrastructure follow-up work
+remains for Vectorize, AI Gateway, and broader Hetzner runtime execution.
 
 ## Phase 1: Foundation
 
@@ -107,8 +107,8 @@ Status: initial implementation complete; broader task coverage remains.
 - Implement profile-scoped Tool Gateway.
 - Implement validation before final response/action.
 
-Status: storage contracts and initial run start path complete; Tool Gateway and
-runtime loop pending.
+Status: storage contracts, initial run start path, profile-scoped Tool Gateway,
+and minimal runtime loop complete for the current code-review fixture.
 
 ## Phase 7: Operational Hardening
 

@@ -116,12 +116,15 @@ The current repository has implemented the first control-plane slice:
   profile, writes initial Flight Recorder events, and stores event/checkpoint
   payloads as artifact URIs,
 - runtime storage ports with an in-memory implementation for tests and a
-  Postgres adapter shape for Hetzner integration.
+  Postgres adapter shape for Hetzner integration,
+- a profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
+  `test-runner`,
+- a minimal Single Agent Runtime loop that executes context, planner, executor,
+  and validator phases against the composed profile.
 
 The following architecture components are still pending implementation:
 
-- Single Agent Runtime loop,
-- profile-scoped Tool Gateway,
+- expanded runtime planning and execution beyond the initial code-review loop,
 - knowledge and memory ingestion APIs,
 - Vectorize-backed retrieval,
 - production OpenAI routing through AI Gateway.
