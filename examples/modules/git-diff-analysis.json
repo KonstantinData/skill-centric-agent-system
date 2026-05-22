@@ -11,7 +11,7 @@
   ],
   "task_signals": {
     "task_types": [
-      "code_review"
+      "code-review"
     ],
     "risk_levels": [
       "low",
@@ -76,7 +76,7 @@
     "base_score": 0.74,
     "score_modifiers": [
       {
-        "signal": "task_type:code_review",
+        "signal": "task_type:code-review",
         "weight": 0.18,
         "reason": "Code review tasks require diff-oriented change analysis."
       },

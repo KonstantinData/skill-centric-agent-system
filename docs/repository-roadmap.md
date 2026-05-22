@@ -50,6 +50,7 @@
 - Add Wrangler configuration after resource names and bindings are documented.
 - Add the Cloudflare Control API Worker scaffold and `POST /composition/context` contract.
 - Implement D1/KV-backed `POST /composition/context` registry queries. (Initial dev implementation complete.)
+- Add D1 seed tooling that derives registry records from module contracts. (Initial dev implementation complete.)
 - Add deployment workflows after local infrastructure validation commands exist.
 
 ## Phase 5: Analyzer And Composer

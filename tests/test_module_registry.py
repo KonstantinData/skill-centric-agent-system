@@ -42,7 +42,7 @@ def module_fixture(
         "capability_class": capability_class,
         "domain_tags": domains or [name],
         "task_signals": {
-            "task_types": task_types or ["code_review"],
+            "task_types": task_types or ["code-review"],
             "risk_levels": ["low", "medium", "high"],
             "domains": domains or [name],
             "required_inputs": required_inputs or [],
@@ -117,7 +117,7 @@ def registry_with_git_module_and_dependencies() -> InMemoryModuleRegistry:
 
 def code_review_signals(*, phrases: list[str] | None = None) -> TaskSignals:
     return TaskSignals(
-        task_type="code_review",
+        task_type="code-review",
         risk_level="medium",
         domains=frozenset({"software-engineering", "git"}),
         available_inputs=frozenset({"repository", "diff"}),
@@ -134,7 +134,7 @@ def test_registry_discovers_candidates_by_structured_signals() -> None:
             kinds=frozenset({"skill"}),
             capability_classes=frozenset({"analysis"}),
             domains=frozenset({"git"}),
-            task_types=frozenset({"code_review"}),
+            task_types=frozenset({"code-review"}),
             available_inputs=frozenset({"repository", "diff"}),
             require_available_inputs=True,
         )
@@ -163,7 +163,7 @@ def test_registry_does_not_select_keyword_only_candidates_when_structured_signal
         RegistryQuery(
             kinds=frozenset({"skill"}),
             domains=frozenset({"git"}),
-            task_types=frozenset({"code_review"}),
+            task_types=frozenset({"code-review"}),
             available_inputs=frozenset({"repository", "diff"}),
             require_available_inputs=True,
         )
@@ -180,7 +180,7 @@ def test_registry_scores_positive_and_negative_structured_evidence() -> None:
     negative_score = registry.score(module, code_review_signals(phrases=["review", "deploy"]))
 
     assert positive_score.score == 1.0
-    assert "task_type:code_review" in positive_score.matched_signals
+    assert "task_type:code-review" in positive_score.matched_signals
     assert "input:diff" in positive_score.matched_signals
     assert negative_score.score == 0.75
     assert "phrase:deploy" in negative_score.negative_signals

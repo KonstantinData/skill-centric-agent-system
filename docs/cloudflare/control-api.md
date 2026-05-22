@@ -82,6 +82,24 @@ Apply D1 migrations to Cloudflare:
 npx wrangler d1 migrations apply scas-control-dev --remote --config workers/control-api/wrangler.toml
 ```
 
+Generate the dev registry seed from the module contracts:
+
+```bash
+python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
+```
+
+Seed the local D1 database:
+
+```bash
+npx wrangler d1 execute scas-control-dev --local --file examples/control-plane/dev-seed.sql --config workers/control-api/wrangler.toml --yes
+```
+
+Seed the Cloudflare dev D1 database:
+
+```bash
+npx wrangler d1 execute scas-control-dev --remote --file examples/control-plane/dev-seed.sql --config workers/control-api/wrangler.toml --yes
+```
+
 Regenerate Worker binding types after updating resource IDs:
 
 ```bash
@@ -101,6 +119,17 @@ Deploy the dev Worker:
 ```bash
 npm run worker:deploy:dev
 ```
+
+Smoke-test the deployed dev Worker against seeded D1 data:
+
+```bash
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/composition/context \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/composition-context-request.json
+```
+
+The response must include `composition_status: "ready"` and a scored
+`git-diff-analysis` candidate.
 
 ## CI And Deployment
 

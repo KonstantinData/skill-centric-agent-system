@@ -4,7 +4,7 @@
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
-  "task_type": "code_review",
+  "task_type": "code-review",
   "objective": "Review the latest commit for regressions and missing tests.",
   "risk_level": "medium",
   "auth_context": {

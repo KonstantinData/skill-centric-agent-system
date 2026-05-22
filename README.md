@@ -37,8 +37,9 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
+- `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with `POST /composition/context`.
-- `scripts/cloudflare/`: Cloudflare bootstrap scripts.
+- `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
@@ -66,6 +67,12 @@ Run linting:
 
 ```powershell
 python -m ruff check .
+```
+
+Generate the Cloudflare D1 dev seed from module contracts:
+
+```powershell
+python scripts\cloudflare\generate_control_plane_seed.py --output examples\control-plane\dev-seed.sql
 ```
 
 Install Worker dependencies:
@@ -128,4 +135,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 1. Implement task analysis and profile composition against the sample task/profile pair.
 2. Add profile assembly on top of registry discovery, scoring, policy filtering, and graph validation.
-3. Add ingestion/seed tooling for publishing module metadata into Cloudflare D1.
+3. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.

@@ -19,7 +19,7 @@ The schema `$id` values use stable URNs during local development. A deployment t
 
 Minimum analyzer output:
 
-- `task_type`: normalized task class, for example `code_review`.
+- `task_type`: normalized task class, for example `code-review`.
 - `risk_level`: `low`, `medium`, `high`, or `critical`.
 - `domains`: domain tags such as `software-engineering`, `git`, or `notion`.
 - `required_inputs`: inputs the runtime needs before execution.

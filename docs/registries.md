@@ -51,3 +51,16 @@ Cloudflare-backed metadata:
 
 The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.
+
+## Cloudflare Seed
+
+The dev D1 registry seed is generated from `examples/modules/*.json`:
+
+```text
+python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
+```
+
+The generator writes idempotent upserts for `modules`, `module_versions`,
+`module_selection_metadata`, `module_dependencies`, `policy_bindings`, and
+`scope_bindings`. Referenced tools, scopes, policies, and validators are emitted
+as generated stub modules until first-class module contracts exist for them.

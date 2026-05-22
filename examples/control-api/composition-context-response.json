@@ -9,13 +9,21 @@
       "kind": "skill",
       "version": "0.1.0",
       "score": 1,
-      "reason": "Task type, domain, input, and capability signals matched."
+      "reason": "Code review tasks require diff-oriented change analysis. The module is more reliable when a concrete diff is available."
     }
   ],
   "applicable_policies": [
     {
       "id": "mod-no-destructive-commands",
       "name": "no-destructive-commands",
+      "kind": "policy",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Required by selected module."
+    },
+    {
+      "id": "mod-require-file-references",
+      "name": "require-file-references",
       "kind": "policy",
       "version": "0.1.0",
       "score": 1,
@@ -28,22 +36,39 @@
       "name": "architecture-docs",
       "kind": "knowledge_scope",
       "version": "0.1.0",
-      "score": 0.6,
+      "score": 0.5,
       "reason": "Allowed for principal by scope binding."
-    }
-  ],
-  "allowed_data_scopes": [],
-  "allowed_memory_scopes": [
+    },
     {
-      "id": "mod-project-memory",
-      "name": "project-memory",
-      "kind": "memory_scope",
+      "id": "mod-coding-guidelines",
+      "name": "coding-guidelines",
+      "kind": "knowledge_scope",
       "version": "0.1.0",
       "score": 0.5,
       "reason": "Allowed for principal by scope binding."
     }
   ],
-  "validation_requirements": [],
+  "allowed_data_scopes": [
+    {
+      "id": "mod-repository-readonly",
+      "name": "repository-readonly",
+      "kind": "data_scope",
+      "version": "0.1.0",
+      "score": 0.5,
+      "reason": "Allowed for principal by scope binding."
+    }
+  ],
+  "allowed_memory_scopes": [],
+  "validation_requirements": [
+    {
+      "id": "mod-review-findings-contract",
+      "name": "review-findings-contract",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 0.5,
+      "reason": "Required by selected module."
+    }
+  ],
   "policy_decisions": [
     {
       "module": {
@@ -69,15 +94,57 @@
         "version": "0.1.0"
       },
       {
+        "id": "mod-coding-guidelines",
+        "name": "coding-guidelines",
+        "kind": "knowledge_scope",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-filesystem-read",
+        "name": "filesystem-read",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      {
         "id": "mod-git-diff-analysis",
         "name": "git-diff-analysis",
         "kind": "skill",
         "version": "0.1.0"
       },
       {
+        "id": "mod-git-read",
+        "name": "git-read",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      {
         "id": "mod-no-destructive-commands",
         "name": "no-destructive-commands",
         "kind": "policy",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-repository-readonly",
+        "name": "repository-readonly",
+        "kind": "data_scope",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-require-file-references",
+        "name": "require-file-references",
+        "kind": "policy",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-review-findings-contract",
+        "name": "review-findings-contract",
+        "kind": "validator",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-test-runner",
+        "name": "test-runner",
+        "kind": "tool",
         "version": "0.1.0"
       }
     ]
