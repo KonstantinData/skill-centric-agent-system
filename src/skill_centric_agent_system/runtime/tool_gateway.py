@@ -6,12 +6,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from skill_centric_agent_system.runtime.enforcement import (
+    ProfileEnforcementError,
+    RuntimeProfileEnforcer,
+)
 from skill_centric_agent_system.runtime.models import iso_timestamp, slug_id
 from skill_centric_agent_system.runtime.storage import FlightRecorder
 
 
 class ToolDeniedError(PermissionError):
     """Raised when the runtime profile does not allow a tool."""
+
+    def __init__(self, message: str, *, stop_reason: str = "policy_denied") -> None:
+        super().__init__(message)
+        self.stop_reason = stop_reason
 
 
 class ToolExecutionError(RuntimeError):
@@ -44,6 +52,7 @@ class ToolGateway:
         recorder: FlightRecorder,
         repository_root: str | Path,
         adapters: Mapping[str, ToolAdapter] | None = None,
+        enforcer: RuntimeProfileEnforcer | None = None,
         redact_sensitive_data: bool = True,
     ) -> None:
         self.profile = profile
@@ -52,6 +61,7 @@ class ToolGateway:
         self.recorder = recorder
         self.repository_root = Path(repository_root).resolve()
         self.adapters = dict(adapters or _default_adapters(self.repository_root))
+        self.enforcer = enforcer or RuntimeProfileEnforcer(profile)
         self.redact_sensitive_data = redact_sensitive_data
         self._invocation_index = 0
 
@@ -60,18 +70,14 @@ class ToolGateway:
         tool_name: str,
         payload: Mapping[str, Any],
     ) -> ToolInvocationResult:
-        if tool_name not in self.profile.get("tools", []):
-            self.recorder.record_event(
-                run_id=self.run_id,
-                step_id=self.step_id,
-                event_type="access_attempted",
-                actor_role="policy_engine",
-                planned_action={"tool_name": tool_name, "payload": dict(payload)},
-                result={"effect": "deny", "reason": "tool_not_in_runtime_profile"},
-                stop_reason="policy_denied",
-                redact_sensitive_data=self.redact_sensitive_data,
+        try:
+            self.enforcer.record_tool_invocation(
+                tool_name,
+                required_data_scopes=_tool_required_data_scopes(tool_name),
             )
-            raise ToolDeniedError(f"Tool is not allowed by runtime profile: {tool_name}")
+        except ProfileEnforcementError as error:
+            self._record_denied_access(tool_name, payload, error)
+            raise ToolDeniedError(str(error), stop_reason=error.stop_reason) from error
 
         adapter = self.adapters.get(tool_name)
         if adapter is None:
@@ -147,6 +153,23 @@ class ToolGateway:
         if status != "succeeded":
             raise ToolExecutionError(f"Tool {tool_name} failed: {output['error']}")
         return result
+
+    def _record_denied_access(
+        self,
+        tool_name: str,
+        payload: Mapping[str, Any],
+        error: ProfileEnforcementError,
+    ) -> None:
+        self.recorder.record_event(
+            run_id=self.run_id,
+            step_id=self.step_id,
+            event_type="access_attempted",
+            actor_role="policy_engine",
+            planned_action={"tool_name": tool_name, "payload": dict(payload)},
+            result={"effect": "deny", "reason": error.code},
+            stop_reason=error.stop_reason,
+            redact_sensitive_data=self.redact_sensitive_data,
+        )
 
 
 class FilesystemReadAdapter:
@@ -234,3 +257,9 @@ def _default_adapters(repository_root: Path) -> Mapping[str, ToolAdapter]:
         "git-read": GitReadAdapter(repository_root),
         "test-runner": TestRunnerAdapter(repository_root),
     }
+
+
+def _tool_required_data_scopes(tool_name: str) -> tuple[str, ...]:
+    if tool_name in {"filesystem-read", "git-read", "test-runner"}:
+        return ("repository-readonly",)
+    return ()

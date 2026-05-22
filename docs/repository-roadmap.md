@@ -11,19 +11,20 @@ for runtime events, checkpoints, stop reasons, token budgets, and idempotency.
 The Runtime Entry Point can start a run from task intake, compose the runtime
 profile, create the runtime run, and emit initial artifact-backed Flight
 Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
-can execute read-only code-review fixture work. Runtime artifact redaction and
-retention planning are implemented for the Flight Recorder artifact path. The
-Control API also has knowledge/memory ingestion, a D1-gated
+can execute read-only code-review fixture work, with fail-closed Runtime Profile
+enforcement for tools, scopes, budgets, duration, data reads, memory operations,
+and recomposition count. Runtime artifact redaction and retention planning are
+implemented for the Flight Recorder artifact path. The Control API also has
+knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
 before submitting approved candidates to Cloudflare durable memory.
 
-The next main implementation block is the Runtime Preflight Gate in
-`docs/runtime-preflight.md`, followed by the productive runtime core. Async
-indexing, AI Gateway live secret rollout, broader runtime expansion, and
-retention cleanup remain explicit backlog items and must not obscure the
-runtime entry gate.
+The Runtime Preflight Gate is complete. The current implementation block is the
+productive runtime core. Async indexing, AI Gateway live secret rollout, broader
+runtime expansion, and retention cleanup remain explicit backlog items and must
+not obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -42,7 +43,7 @@ runtime entry gate.
 - Seed the first project memory scope and make memory ingestion fail closed when
   a request references an unknown memory scope.
 
-Status: active. The durable gate is documented in `docs/runtime-preflight.md`.
+Status: complete. The durable gate is documented in `docs/runtime-preflight.md`.
 
 ## Phase 1: Foundation
 
@@ -136,7 +137,8 @@ Status: initial implementation complete; broader task coverage remains.
 - Implement validation before final response/action.
 
 Status: storage contracts, initial run start path, profile-scoped Tool Gateway,
-and minimal runtime loop complete for the current code-review fixture.
+fail-closed profile enforcement, and minimal runtime loop complete for the
+current code-review fixture.
 
 ## Phase 6B: Productive Runtime Core
 
@@ -145,7 +147,7 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 1. Finalize the generic runtime contract. (Initial docs and schema complete.)
 2. Define the Runtime API/CLI contract. (Initial docs and examples complete.)
 3. Wire runtime execution to real Hetzner PostgreSQL and artifact storage. (Initial CLI storage session complete.)
-4. Enforce all Runtime Agent Profile limits and access boundaries.
+4. Enforce all Runtime Agent Profile limits and access boundaries. (Initial fail-closed enforcer complete.)
 5. Harden the Tool Gateway for productive execution.
 6. Bind Context Manager retrieval to `POST /retrieval/context`.
 7. Make validation profile- and task-contract driven.
@@ -153,7 +155,7 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 9. Add a live dev end-to-end gate across Cloudflare and Hetzner.
 10. Add the operations baseline and runbooks.
 
-Status: queued behind Phase 0.
+Status: in progress. Steps 1-4 have initial implementations.
 
 ## Phase 7: Operational Hardening
 

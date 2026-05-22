@@ -1,12 +1,20 @@
 """Runtime entrypoint, storage, and Flight Recorder helpers."""
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore, redact_sensitive_data
+from skill_centric_agent_system.runtime.enforcement import (
+    ProfileEnforcementError,
+    RuntimeProfileEnforcer,
+)
 from skill_centric_agent_system.runtime.entrypoint import (
     RuntimeEntryPoint,
     RuntimeEntryPointError,
     RuntimeStartResult,
 )
-from skill_centric_agent_system.runtime.loop import MinimalRuntimeLoop, RuntimeLoopResult
+from skill_centric_agent_system.runtime.loop import (
+    MinimalRuntimeLoop,
+    RuntimeLoopError,
+    RuntimeLoopResult,
+)
 from skill_centric_agent_system.runtime.memory_candidates import (
     MemoryCandidateError,
     MemoryCandidateExtractor,
@@ -53,9 +61,12 @@ __all__ = [
     "MemoryCandidateValidator",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
+    "ProfileEnforcementError",
     "RuntimeRetentionPlan",
     "RuntimeRetentionPlanner",
     "RuntimeRetentionPolicy",
+    "RuntimeProfileEnforcer",
+    "RuntimeLoopError",
     "RuntimeLoopResult",
     "RuntimeEntryPoint",
     "RuntimeEntryPointError",

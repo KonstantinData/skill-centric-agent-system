@@ -79,6 +79,29 @@ to `schemas/runtime-profile.schema.json` and include:
 
 The runtime must enforce the profile at every access boundary.
 
+## Runtime Profile Enforcement
+
+The runtime must enforce the active profile as executable policy, not as
+guidance text.
+
+Hard enforcement covers:
+
+- selected tools,
+- selected knowledge scopes,
+- selected data scopes,
+- selected memory scopes,
+- `limits.max_tool_calls`,
+- `limits.max_tokens`,
+- `limits.max_duration_seconds`,
+- `limits.max_data_reads`,
+- `limits.max_memory_ops`,
+- `limits.max_recompositions`,
+- module version pins for every selected module.
+
+Denied access must emit a Flight Recorder event with a constrained stop reason.
+The runtime must fail closed when a limit is exceeded or an unselected scope is
+requested. The active profile must never be mutated to resolve the denial.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

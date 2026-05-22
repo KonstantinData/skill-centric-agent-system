@@ -14,7 +14,10 @@ from skill_centric_agent_system.runtime import (
     InMemoryRuntimeStore,
     JsonArtifactStore,
     MinimalRuntimeLoop,
+    ProfileEnforcementError,
     RuntimeEntryPoint,
+    RuntimeLoopError,
+    RuntimeProfileEnforcer,
     ToolDeniedError,
     ToolGateway,
 )
@@ -30,6 +33,37 @@ RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schem
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_profile_enforcer_denies_unselected_knowledge_and_memory_scopes() -> None:
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    enforcer = RuntimeProfileEnforcer(profile)
+
+    with pytest.raises(ProfileEnforcementError) as knowledge_error:
+        enforcer.require_knowledge_scopes(["outside-knowledge"])
+    with pytest.raises(ProfileEnforcementError) as memory_error:
+        enforcer.require_memory_scopes(["project-memory"])
+
+    assert knowledge_error.value.stop_reason == "policy_denied"
+    assert knowledge_error.value.code == "knowledge_scope_not_in_runtime_profile"
+    assert memory_error.value.stop_reason == "policy_denied"
+    assert memory_error.value.code == "memory_scope_not_in_runtime_profile"
+
+
+def test_profile_enforcer_enforces_token_and_memory_budgets() -> None:
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["limits"]["max_tokens"] = 1
+    profile["limits"]["max_memory_ops"] = 0
+    token_enforcer = RuntimeProfileEnforcer(profile)
+    memory_enforcer = RuntimeProfileEnforcer(profile)
+
+    with pytest.raises(ProfileEnforcementError) as token_error:
+        token_enforcer.consume_tokens(2)
+    with pytest.raises(ProfileEnforcementError) as memory_error:
+        memory_enforcer.record_memory_op()
+
+    assert token_error.value.stop_reason == "max_tokens"
+    assert memory_error.value.stop_reason == "max_memory_ops"
 
 
 def test_tool_gateway_denies_tools_not_in_runtime_profile(tmp_path: Path) -> None:
@@ -54,6 +88,54 @@ def test_tool_gateway_denies_tools_not_in_runtime_profile(tmp_path: Path) -> Non
     assert event["event_type"] == "access_attempted"
     assert event["actor_role"] == "policy_engine"
     assert event["stop_reason"] == "policy_denied"
+    assert store.tool_invocations == []
+
+
+def test_tool_gateway_enforces_profile_tool_call_budget(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["limits"]["max_tool_calls"] = 0
+    run = recorder.start_run(task_id="task-code-review-latest-commit", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(ToolDeniedError) as exc_info:
+        gateway.invoke("git-read", {"args": ["status", "--short"]})
+
+    assert exc_info.value.stop_reason == "max_tool_calls"
+    assert store.runtime_events[-1]["event_type"] == "access_attempted"
+    assert store.runtime_events[-1]["stop_reason"] == "max_tool_calls"
+    assert store.tool_invocations == []
+
+
+def test_tool_gateway_enforces_required_data_scope(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["data_scopes"] = []
+    run = recorder.start_run(task_id="task-code-review-latest-commit", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(ToolDeniedError) as exc_info:
+        gateway.invoke("filesystem-read", {"path": "README.md"})
+
+    assert exc_info.value.stop_reason == "policy_denied"
+    assert store.runtime_events[-1]["event_type"] == "access_attempted"
+    assert store.runtime_events[-1]["stop_reason"] == "policy_denied"
     assert store.tool_invocations == []
 
 
@@ -122,6 +204,32 @@ def test_minimal_runtime_loop_executes_profile_scoped_read_tools(tmp_path: Path)
 
     recordset = store.as_runtime_plane_recordset()
     Draft202012Validator(load_json(RUNTIME_PLANE_SCHEMA_PATH)).validate(recordset)
+
+
+def test_minimal_runtime_loop_fails_closed_when_profile_limit_is_exceeded(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["limits"]["max_tool_calls"] = 1
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
+    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "max_tool_calls"
+    assert store.runtime_events[-1]["event_type"] == "runtime_failed"
+    assert store.runtime_events[-1]["stop_reason"] == "max_tool_calls"
 
 
 def test_postgres_runtime_store_uses_uri_tool_and_validation_payloads() -> None:

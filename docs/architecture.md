@@ -122,9 +122,12 @@ The current repository has implemented the first control-plane slice:
   profile, writes initial Flight Recorder events, and stores event/checkpoint
   payloads as artifact URIs,
 - runtime storage ports with an in-memory implementation for tests and a
-  Postgres adapter shape for Hetzner integration,
+  PostgreSQL storage session for Hetzner integration,
 - a profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
   `test-runner`,
+- a Runtime Profile Enforcer that fail-closes unselected tools/scopes and
+  exhausted tool, token, duration, data-read, memory-op, and recomposition
+  budgets,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
@@ -139,11 +142,7 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
-- Runtime Preflight Gate completion as defined in `docs/runtime-preflight.md`,
-- productive Runtime API/CLI contract,
-- real Hetzner Postgres/artifact storage wiring for runtime execution paths,
-- full Runtime Agent Profile enforcement for tools, knowledge, data, memory,
-  tokens, duration, data reads, memory operations, and recomposition count,
+- productive Runtime API/CLI implementation beyond the current start-run alias,
 - generic validator framework and controlled recomposition path,
 - live dev end-to-end gate across Cloudflare composition and Hetzner runtime
   persistence,

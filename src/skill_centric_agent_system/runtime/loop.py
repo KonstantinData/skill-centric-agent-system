@@ -6,11 +6,19 @@ from pathlib import Path
 from typing import Any
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
+from skill_centric_agent_system.runtime.enforcement import (
+    ProfileEnforcementError,
+    RuntimeProfileEnforcer,
+)
 from skill_centric_agent_system.runtime.entrypoint import RuntimeStartResult
 from skill_centric_agent_system.runtime.models import iso_timestamp, selected_modules, slug_id
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.storage import FlightRecorder, RuntimeStore
-from skill_centric_agent_system.runtime.tool_gateway import ToolGateway
+from skill_centric_agent_system.runtime.tool_gateway import (
+    ToolDeniedError,
+    ToolExecutionError,
+    ToolGateway,
+)
 
 
 @dataclass(frozen=True)
@@ -19,6 +27,10 @@ class RuntimeLoopResult:
     status: str
     stop_reason: str
     response: Mapping[str, Any]
+
+
+class RuntimeLoopError(RuntimeError):
+    """Raised when the runtime loop fails closed."""
 
 
 class MinimalRuntimeLoop:
@@ -40,11 +52,40 @@ class MinimalRuntimeLoop:
         profile = start_result.profile
         run_id = start_result.run_id
         redact_sensitive_data = profile_redacts_sensitive_data(profile)
+        enforcer = RuntimeProfileEnforcer(profile)
 
-        context = self._context_step(run_id, profile, redact_sensitive_data)
-        plan = self._planner_step(run_id, profile, context, redact_sensitive_data)
-        execution = self._executor_step(run_id, profile, plan, redact_sensitive_data)
-        response = self._validator_step(run_id, profile, execution, redact_sensitive_data)
+        try:
+            enforcer.validate_profile_for_runtime()
+            context = self._context_step(run_id, profile, redact_sensitive_data, enforcer)
+            plan = self._planner_step(run_id, profile, context, redact_sensitive_data, enforcer)
+            execution = self._executor_step(run_id, profile, plan, redact_sensitive_data, enforcer)
+            response = self._validator_step(
+                run_id,
+                profile,
+                execution,
+                redact_sensitive_data,
+                enforcer,
+            )
+        except (ProfileEnforcementError, ToolDeniedError, ToolExecutionError) as error:
+            stop_reason = str(getattr(error, "stop_reason", "tool_error"))
+            self.recorder.record_event(
+                run_id=run_id,
+                event_type="runtime_failed",
+                actor_role="policy_engine" if stop_reason != "tool_error" else "executor",
+                result={
+                    "error": str(error),
+                    "error_type": type(error).__name__,
+                },
+                stop_reason=stop_reason,  # type: ignore[arg-type]
+                redact_sensitive_data=redact_sensitive_data,
+            )
+            self.recorder.complete_run(
+                run_id=run_id,
+                status="failed",
+                stop_reason=stop_reason,  # type: ignore[arg-type]
+                tokens_used_total=enforcer.tokens_used,
+            )
+            raise RuntimeLoopError(str(error)) from error
 
         self.recorder.record_event(
             run_id=run_id,
@@ -58,7 +99,7 @@ class MinimalRuntimeLoop:
             run_id=run_id,
             status="succeeded",
             stop_reason="completed",
-            tokens_used_total=0,
+            tokens_used_total=enforcer.tokens_used,
         )
         return RuntimeLoopResult(
             run_id=run_id,
@@ -72,7 +113,12 @@ class MinimalRuntimeLoop:
         run_id: str,
         profile: Mapping[str, Any],
         redact_sensitive_data: bool,
+        enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        enforcer.check_duration()
+        enforcer.require_knowledge_scopes(profile.get("knowledge_scopes", []))
+        enforcer.require_memory_scopes(profile.get("memory_scopes", []))
+        enforcer.require_data_scopes(profile.get("data_scopes", []))
         step = self.recorder.start_step(run_id=run_id, step_index=0, kind="context")
         self.recorder.record_event(
             run_id=run_id,
@@ -118,7 +164,9 @@ class MinimalRuntimeLoop:
         profile: Mapping[str, Any],
         context: Mapping[str, Any],
         redact_sensitive_data: bool,
+        enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=1, kind="planner")
         self.recorder.record_event(
             run_id=run_id,
@@ -165,7 +213,9 @@ class MinimalRuntimeLoop:
         profile: Mapping[str, Any],
         plan: Mapping[str, Any],
         redact_sensitive_data: bool,
+        enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=2, kind="executor")
         self.recorder.record_event(
             run_id=run_id,
@@ -181,25 +231,44 @@ class MinimalRuntimeLoop:
             step_id=str(step["id"]),
             recorder=self.recorder,
             repository_root=self.repository_root,
+            enforcer=enforcer,
             redact_sensitive_data=redact_sensitive_data,
         )
         tool_results = []
-        for action in plan.get("actions", []):
-            if not isinstance(action, Mapping):
-                continue
-            tool_name = str(action["tool"])
-            payload = action.get("payload", {})
-            if not isinstance(payload, Mapping):
-                payload = {}
-            result = gateway.invoke(tool_name, payload)
-            tool_results.append(
-                {
-                    "id": result.id,
-                    "tool_name": result.tool_name,
-                    "status": result.status,
-                    "output_uri": result.output_uri,
-                }
+        try:
+            for action in plan.get("actions", []):
+                if not isinstance(action, Mapping):
+                    continue
+                tool_name = str(action["tool"])
+                payload = action.get("payload", {})
+                if not isinstance(payload, Mapping):
+                    payload = {}
+                result = gateway.invoke(tool_name, payload)
+                tool_results.append(
+                    {
+                        "id": result.id,
+                        "tool_name": result.tool_name,
+                        "status": result.status,
+                        "output_uri": result.output_uri,
+                    }
+                )
+        except (ToolDeniedError, ToolExecutionError) as error:
+            stop_reason = str(getattr(error, "stop_reason", "tool_error"))
+            self.recorder.record_event(
+                run_id=run_id,
+                step_id=str(step["id"]),
+                event_type="step_completed",
+                actor_role="executor",
+                result={"status": "failed", "error": str(error)},
+                stop_reason=stop_reason,  # type: ignore[arg-type]
+                redact_sensitive_data=redact_sensitive_data,
             )
+            self.recorder.complete_step(
+                step_id=str(step["id"]),
+                status="failed",
+                stop_reason=stop_reason,  # type: ignore[arg-type]
+            )
+            raise
         execution = {"tool_results": tool_results}
         self.recorder.checkpoint(
             run_id=run_id,
@@ -230,7 +299,9 @@ class MinimalRuntimeLoop:
         profile: Mapping[str, Any],
         execution: Mapping[str, Any],
         redact_sensitive_data: bool,
+        enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=3, kind="validator")
         self.recorder.record_event(
             run_id=run_id,

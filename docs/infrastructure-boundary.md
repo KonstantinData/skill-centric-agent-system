@@ -284,6 +284,8 @@ Implemented:
 - Runtime CLI storage can switch between in-memory fixture storage and
   PostgreSQL-backed Hetzner Runtime Plane storage through
   `SCAS_RUNTIME_DATABASE_URL`.
+- Runtime Profile Enforcement fail-closes unselected tools/scopes and exhausted
+  tool, token, duration, data-read, memory-op, and recomposition budgets.
 - Profile-scoped Tool Gateway exists for `git-read`, `filesystem-read`, and
   `test-runner`.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
@@ -308,8 +310,7 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
-- Full profile enforcement, generic validators, controlled recomposition, and
-  live dev E2E runtime gate.
+- Generic validators, controlled recomposition, and live dev E2E runtime gate.
 - Remote live dev runtime gate proving the full path against Cloudflare Control
   API, Hetzner PostgreSQL, and Hetzner artifact storage.
 
@@ -334,6 +335,7 @@ Completed:
 15. Vectorize-ready retrieval endpoint and AI Gateway route.
 16. Memory Candidate Extraction, Validation, and controlled learning fixture.
 17. Runtime storage session for PostgreSQL-backed Hetzner execution.
+18. Runtime Profile Enforcement for selected capabilities and profile budgets.
 
 Next:
 
