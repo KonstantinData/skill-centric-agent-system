@@ -259,6 +259,8 @@ Implemented:
 - Runtime redaction policy and retention planner exist for runtime artifacts.
 - Cloudflare Control API knowledge and memory ingestion endpoints write R2
   objects, D1 metadata, ingestion jobs, and audit events.
+- Hetzner Memory Feedback Pipeline client submits only validator-approved and
+  policy-approved memory candidates to Cloudflare.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -266,7 +268,6 @@ Not yet implemented:
 
 - Cloudflare knowledge ingestion API and queue/workflow execution.
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
-- Hetzner-to-Cloudflare memory feedback client integration.
 - Vectorize index creation and retrieval flow.
 - Production OpenAI routing through AI Gateway.
 - Expanded runtime loop beyond the initial code-review fixture.
@@ -292,5 +293,5 @@ Completed:
 
 Next:
 
-1. Hetzner memory feedback client integration.
-2. Vectorize and AI Gateway production integration.
+1. Vectorize and AI Gateway production integration.
+2. Async ingestion/indexing workers.

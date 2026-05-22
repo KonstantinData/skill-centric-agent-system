@@ -7,6 +7,11 @@ from skill_centric_agent_system.runtime.entrypoint import (
     RuntimeStartResult,
 )
 from skill_centric_agent_system.runtime.loop import MinimalRuntimeLoop, RuntimeLoopResult
+from skill_centric_agent_system.runtime.memory_feedback import (
+    CloudflareMemoryIngestionClient,
+    MemoryFeedbackError,
+    MemoryFeedbackPipeline,
+)
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.retention import (
     RuntimeRetentionPlan,
@@ -28,8 +33,11 @@ from skill_centric_agent_system.runtime.tool_gateway import (
 
 __all__ = [
     "FlightRecorder",
+    "CloudflareMemoryIngestionClient",
     "InMemoryRuntimeStore",
     "JsonArtifactStore",
+    "MemoryFeedbackError",
+    "MemoryFeedbackPipeline",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
     "RuntimeRetentionPlan",
