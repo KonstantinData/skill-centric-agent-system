@@ -83,10 +83,27 @@ Recommended remote checks:
 
 ```powershell
 npm run worker:deploy:dev
-curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/composition/context `
+curl -s -o NUL -w "%{http_code}" https://scas-control-api-dev.still-butterfly-bbff.workers.dev/health
+curl -s -o NUL -w "%{http_code}" -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/composition/context `
   -H "content-type: application/json" `
   --data-binary @examples/control-api/composition-context-request.json
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/composition/context `
+  -H "content-type: application/json" `
+  -H "authorization: Bearer $env:SCAS_CONTROL_API_TOKEN" `
+  --data-binary @examples/control-api/composition-context-request.json
 ```
+
+Expected Control API status codes:
+
+- `GET /health` returns `200` without authentication.
+- Any non-health route without a bearer token returns `401`.
+- `POST /composition/context` with a valid bearer token returns `200` and a
+  `composition_status` of `ready` for the seeded dev fixture.
+
+If an unauthenticated non-health route returns `200`, the dev Worker is stale
+or missing Worker secrets. Do not run the live Hetzner E2E gate until
+`CONTROL_API_TOKEN` is configured in GitHub Actions, the Worker secret exists
+in Cloudflare, and the dev Worker has been redeployed.
 
 Run the manual GitHub Actions infrastructure smoke workflow when secret and SSH
 reachability need to be verified from CI.

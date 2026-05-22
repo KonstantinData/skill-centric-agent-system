@@ -50,6 +50,85 @@ Migration rules:
 - Do not delete runtime artifacts during normal migrations.
 - Use `--rebuild` only for explicitly disposable dev environments.
 
+## Live Preflight
+
+Run this preflight before the live dev E2E and live Postgres concurrency gates.
+It verifies readiness without printing secret values.
+
+Local repository gates:
+
+```bash
+python -m pytest
+python -m ruff check .
+npm run worker:types
+npm run worker:typecheck
+npm run worker:test
+npm run worker:check
+```
+
+GitHub and local secret presence:
+
+```bash
+gh secret list --repo KonstantinData/skill-centric-agent-system
+```
+
+Required GitHub secrets for the live gates are:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ZONE_ID`
+- `HETZNER_HOST`
+- `HETZNER_SSH_KEY`
+- `HETZNER_USER`
+- `OPENAI_API_KEY`
+- `CONTROL_API_TOKEN`
+
+Cloudflare readiness:
+
+```bash
+npx wrangler whoami
+npx wrangler secret list --config workers/control-api/wrangler.toml
+npx wrangler d1 migrations list scas-control-dev --remote --config workers/control-api/wrangler.toml
+npx wrangler d1 execute scas-control-dev --remote --command "SELECT id, name, kind, current_version_id FROM modules ORDER BY id;" --config workers/control-api/wrangler.toml
+npx wrangler r2 bucket list --config workers/control-api/wrangler.toml
+npx wrangler vectorize list --config workers/control-api/wrangler.toml
+```
+
+Control API auth readiness:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" "$SCAS_CONTROL_API_URL/health"
+curl -s -o /dev/null -w "%{http_code}" -X POST "$SCAS_CONTROL_API_URL/composition/context" \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/composition-context-request.json
+curl -s -X POST "$SCAS_CONTROL_API_URL/composition/context" \
+  -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
+  --data-binary @examples/control-api/composition-context-request.json
+```
+
+Expected status codes:
+
+- `/health` without authentication: `200`
+- protected route without authentication: `401`
+- protected route with a valid bearer token: `200`
+
+If the unauthenticated protected route returns `200`, the dev Worker is stale
+or missing Worker secrets. Configure `CONTROL_API_TOKEN`, deploy the dev Worker,
+and repeat the preflight before running live runtime gates.
+
+Hetzner readiness:
+
+```bash
+ssh "$HETZNER_USER@$HETZNER_HOST" \
+  "test -w /opt/scas/runtime && sudo -u postgres psql -d scas_runtime -Atc 'SELECT count(*) FROM runtime.runtime_runs;'"
+```
+
+The live E2E gate also needs a usable `SCAS_RUNTIME_DATABASE_URL` on the
+machine that runs the gate. If the database URL is not available locally, run
+the E2E script from the Hetzner host or provide an agreed local connection
+string.
+
 ## Smoke Tests
 
 Repository validation:

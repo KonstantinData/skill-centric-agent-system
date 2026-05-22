@@ -8,6 +8,7 @@ PREFLIGHT_PATH = REPO_ROOT / "docs" / "runtime-preflight.md"
 ROADMAP_PATH = REPO_ROOT / "docs" / "repository-roadmap.md"
 ARCHITECTURE_PATH = REPO_ROOT / "docs" / "architecture.md"
 INFRASTRUCTURE_PATH = REPO_ROOT / "docs" / "infrastructure-boundary.md"
+OPERATIONS_RUNBOOK_PATH = REPO_ROOT / "docs" / "operations-runbook.md"
 
 
 PHASE_0_ITEMS = [
@@ -80,3 +81,13 @@ def test_runtime_gate_docs_use_the_english_backlog_titles() -> None:
     )
     assert "P0.01 Runtime Preflight Gate: Synchronize Backlog and Roadmap" in combined_docs
     assert "P1.10 Establish Operations Baseline" in combined_docs
+
+
+def test_live_preflight_docs_define_auth_and_secret_checks() -> None:
+    preflight = PREFLIGHT_PATH.read_text(encoding="utf-8")
+    runbook = OPERATIONS_RUNBOOK_PATH.read_text(encoding="utf-8")
+
+    assert "Any non-health route without a bearer token returns `401`." in preflight
+    assert "wrangler secret list --config workers/control-api/wrangler.toml" in runbook
+    assert "CONTROL_API_TOKEN" in runbook
+    assert "SCAS_RUNTIME_DATABASE_URL" in runbook
