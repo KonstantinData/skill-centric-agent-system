@@ -123,8 +123,9 @@ The current repository has implemented the first control-plane slice:
   payloads as artifact URIs,
 - runtime storage ports with an in-memory implementation for tests and a
   PostgreSQL storage session for Hetzner integration,
-- a profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
-  `test-runner`,
+- a hardened profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
+  `test-runner`, including risk gating, blocked argument checks, timeouts,
+  output limits, and access audit events,
 - a Runtime Profile Enforcer that fail-closes unselected tools/scopes and
   exhausted tool, token, duration, data-read, memory-op, and recomposition
   budgets,

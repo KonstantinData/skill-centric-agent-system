@@ -286,8 +286,9 @@ Implemented:
   `SCAS_RUNTIME_DATABASE_URL`.
 - Runtime Profile Enforcement fail-closes unselected tools/scopes and exhausted
   tool, token, duration, data-read, memory-op, and recomposition budgets.
-- Profile-scoped Tool Gateway exists for `git-read`, `filesystem-read`, and
-  `test-runner`.
+- Hardened profile-scoped Tool Gateway exists for `git-read`,
+  `filesystem-read`, and `test-runner`, with risk gating, blocked argument
+  checks, timeouts, output limits, and access audit events.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
@@ -336,6 +337,7 @@ Completed:
 16. Memory Candidate Extraction, Validation, and controlled learning fixture.
 17. Runtime storage session for PostgreSQL-backed Hetzner execution.
 18. Runtime Profile Enforcement for selected capabilities and profile budgets.
+19. Tool Gateway hardening for productive runtime execution.
 
 Next:
 

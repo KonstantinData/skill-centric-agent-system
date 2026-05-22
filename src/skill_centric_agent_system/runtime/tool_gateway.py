@@ -25,6 +25,19 @@ class ToolDeniedError(PermissionError):
 class ToolExecutionError(RuntimeError):
     """Raised when an allowed tool fails."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "tool_execution_failed",
+        stop_reason: str = "tool_error",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.stop_reason = stop_reason
+        self.details = dict(details or {})
+
 
 class ToolAdapter(Protocol):
     def invoke(self, payload: Mapping[str, Any]) -> Mapping[str, Any]: ...
@@ -74,6 +87,7 @@ class ToolGateway:
             self.enforcer.record_tool_invocation(
                 tool_name,
                 required_data_scopes=_tool_required_data_scopes(tool_name),
+                tool_risk_level=_tool_risk_level(tool_name),
             )
         except ProfileEnforcementError as error:
             self._record_denied_access(tool_name, payload, error)
@@ -81,7 +95,10 @@ class ToolGateway:
 
         adapter = self.adapters.get(tool_name)
         if adapter is None:
-            raise ToolExecutionError(f"No adapter is registered for tool: {tool_name}")
+            raise ToolExecutionError(
+                f"No adapter is registered for tool: {tool_name}",
+                code="tool_adapter_missing",
+            )
 
         invocation_id = slug_id(
             f"{self.run_id}-{tool_name}-{self._invocation_index}",
@@ -94,6 +111,19 @@ class ToolGateway:
             redact=self.redact_sensitive_data,
         )
         started_at = iso_timestamp(self.recorder.clock())
+        self.recorder.record_event(
+            run_id=self.run_id,
+            step_id=self.step_id,
+            event_type="access_attempted",
+            actor_role="policy_engine",
+            planned_action={"tool_name": tool_name, "input_uri": input_uri},
+            result={
+                "effect": "allow",
+                "risk_level": _tool_risk_level(tool_name),
+                "required_data_scopes": list(_tool_required_data_scopes(tool_name)),
+            },
+            redact_sensitive_data=self.redact_sensitive_data,
+        )
         self.recorder.record_event(
             run_id=self.run_id,
             step_id=self.step_id,
@@ -151,7 +181,10 @@ class ToolGateway:
             output=output,
         )
         if status != "succeeded":
-            raise ToolExecutionError(f"Tool {tool_name} failed: {output['error']}")
+            raise ToolExecutionError(
+                f"Tool {tool_name} failed: {output['error']}",
+                details=output,
+            )
         return result
 
     def _record_denied_access(
@@ -173,6 +206,8 @@ class ToolGateway:
 
 
 class FilesystemReadAdapter:
+    MAX_FILE_BYTES = 100_000
+
     def __init__(self, repository_root: Path) -> None:
         self.repository_root = repository_root
 
@@ -180,7 +215,10 @@ class FilesystemReadAdapter:
         relative_path = str(payload.get("path") or "")
         if not relative_path:
             raise ValueError("filesystem-read requires a path.")
-        max_bytes = int(payload.get("max_bytes") or 20000)
+        requested_max_bytes = int(payload.get("max_bytes") or 20000)
+        if requested_max_bytes < 0:
+            raise ValueError("filesystem-read max_bytes must be non-negative.")
+        max_bytes = min(requested_max_bytes, self.MAX_FILE_BYTES)
         target = (self.repository_root / relative_path).resolve()
         target.relative_to(self.repository_root)
         if not target.is_file():
@@ -196,6 +234,8 @@ class FilesystemReadAdapter:
 
 class GitReadAdapter:
     ALLOWED_SUBCOMMANDS = {"diff", "log", "show", "status"}
+    BLOCKED_ARGS = {"-c", "--config-env", "--exec-path", "--git-dir", "--work-tree"}
+    MAX_OUTPUT_BYTES = 50_000
 
     def __init__(self, repository_root: Path, *, timeout_seconds: int = 20) -> None:
         self.repository_root = repository_root
@@ -208,6 +248,7 @@ class GitReadAdapter:
         if not args or args[0] not in self.ALLOWED_SUBCOMMANDS:
             allowed = ", ".join(sorted(self.ALLOWED_SUBCOMMANDS))
             raise ValueError(f"git-read subcommand must be one of: {allowed}.")
+        _reject_blocked_args("git-read", args, self.BLOCKED_ARGS)
         completed = subprocess.run(
             ["git", *args],
             cwd=self.repository_root,
@@ -216,15 +257,22 @@ class GitReadAdapter:
             timeout=self.timeout_seconds,
             check=False,
         )
+        stdout, stdout_truncated = _limit_text(completed.stdout, self.MAX_OUTPUT_BYTES)
+        stderr, stderr_truncated = _limit_text(completed.stderr, self.MAX_OUTPUT_BYTES)
         return {
             "args": args,
             "returncode": completed.returncode,
-            "stdout": completed.stdout,
-            "stderr": completed.stderr,
+            "stdout": stdout,
+            "stderr": stderr,
+            "stdout_truncated": stdout_truncated,
+            "stderr_truncated": stderr_truncated,
         }
 
 
 class TestRunnerAdapter:
+    BLOCKED_ARGS = {"--override-ini", "--basetemp"}
+    MAX_OUTPUT_BYTES = 80_000
+
     def __init__(self, repository_root: Path, *, timeout_seconds: int = 120) -> None:
         self.repository_root = repository_root
         self.timeout_seconds = timeout_seconds
@@ -235,6 +283,7 @@ class TestRunnerAdapter:
             isinstance(arg, str) for arg in pytest_args
         ):
             raise ValueError("test-runner requires pytest_args as a string array.")
+        _reject_blocked_args("test-runner", pytest_args, self.BLOCKED_ARGS)
         completed = subprocess.run(
             ["python", "-m", "pytest", *pytest_args],
             cwd=self.repository_root,
@@ -243,11 +292,15 @@ class TestRunnerAdapter:
             timeout=self.timeout_seconds,
             check=False,
         )
+        stdout, stdout_truncated = _limit_text(completed.stdout, self.MAX_OUTPUT_BYTES)
+        stderr, stderr_truncated = _limit_text(completed.stderr, self.MAX_OUTPUT_BYTES)
         return {
             "command": ["python", "-m", "pytest", *pytest_args],
             "returncode": completed.returncode,
-            "stdout": completed.stdout,
-            "stderr": completed.stderr,
+            "stdout": stdout,
+            "stderr": stderr,
+            "stdout_truncated": stdout_truncated,
+            "stderr_truncated": stderr_truncated,
         }
 
 
@@ -263,3 +316,29 @@ def _tool_required_data_scopes(tool_name: str) -> tuple[str, ...]:
     if tool_name in {"filesystem-read", "git-read", "test-runner"}:
         return ("repository-readonly",)
     return ()
+
+
+def _tool_risk_level(tool_name: str) -> str:
+    risk_levels = {
+        "filesystem-read": "low",
+        "git-read": "low",
+        "test-runner": "medium",
+    }
+    return risk_levels.get(tool_name, "high")
+
+
+def _reject_blocked_args(tool_name: str, args: list[str], blocked_args: set[str]) -> None:
+    for arg in args:
+        if "\x00" in arg:
+            raise ValueError(f"{tool_name} arguments must not contain NUL bytes.")
+        for blocked in blocked_args:
+            if arg == blocked or arg.startswith(blocked + "="):
+                raise ValueError(f"{tool_name} argument is not allowed: {blocked}.")
+
+
+def _limit_text(value: str, max_bytes: int) -> tuple[str, bool]:
+    encoded = value.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return value, False
+    limited = encoded[:max_bytes].decode("utf-8", errors="replace")
+    return limited, True

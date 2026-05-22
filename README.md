@@ -20,11 +20,13 @@ profile-scoped Tool Gateway. The runtime CLI can now use either in-memory
 storage for local fixtures or PostgreSQL storage for the Hetzner Runtime Plane
 through `SCAS_RUNTIME_DATABASE_URL`. Runtime profile enforcement now fail-closes
 unselected tools/scopes and exhausted tool, token, duration, data-read,
-memory-op, and recomposition budgets. Runtime artifact writes now honor the
-profile's `observability.redact_sensitive_data` flag and expose a retention
-planner for runtime artifact cleanup jobs. The Cloudflare Control API also
-exposes initial knowledge and validated-memory ingestion endpoints that write R2
-objects, D1 metadata, ingestion jobs, and audit events. It now also exposes a
+memory-op, and recomposition budgets. The Tool Gateway now applies per-tool
+allowlists, risk gating, blocked argument checks, timeouts, output limits, and
+access audit events. Runtime artifact writes now honor the profile's
+`observability.redact_sensitive_data` flag and expose a retention planner for
+runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
+knowledge and validated-memory ingestion endpoints that write R2 objects, D1
+metadata, ingestion jobs, and audit events. It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
 completions. Hetzner can now extract memory candidates from completed runtime
@@ -34,9 +36,9 @@ only approved candidates through the Memory Feedback Pipeline client.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Generic validators, controlled recomposition, richer tool execution, async
-indexing workers, and production deployment hardening remain follow-up
-implementation work.
+Context retrieval binding, generic validators, controlled recomposition, richer
+tool execution, async indexing workers, and production deployment hardening
+remain follow-up implementation work.
 
 ## Core Flow
 
@@ -201,8 +203,8 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Harden the Tool Gateway for productive execution.
-2. Bind the Context Manager to `POST /retrieval/context`.
-3. Add generic validators and controlled recomposition.
-4. Prove the flow with a live dev E2E gate.
+1. Bind the Context Manager to `POST /retrieval/context`.
+2. Add generic validators and controlled recomposition.
+3. Prove the flow with a live dev E2E gate.
+4. Add the operations baseline and runbooks.
 5. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.

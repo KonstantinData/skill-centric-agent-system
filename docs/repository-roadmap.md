@@ -13,9 +13,11 @@ profile, create the runtime run, and emit initial artifact-backed Flight
 Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
 can execute read-only code-review fixture work, with fail-closed Runtime Profile
 enforcement for tools, scopes, budgets, duration, data reads, memory operations,
-and recomposition count. Runtime artifact redaction and retention planning are
-implemented for the Flight Recorder artifact path. The Control API also has
-knowledge/memory ingestion, a D1-gated
+and recomposition count. The Tool Gateway now enforces per-tool allowlists,
+risk gating, blocked argument checks, timeouts, output limits, and access audit
+events. Runtime artifact redaction and retention planning are implemented for
+the Flight Recorder artifact path. The Control API also has knowledge/memory
+ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
@@ -148,14 +150,14 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 2. Define the Runtime API/CLI contract. (Initial docs and examples complete.)
 3. Wire runtime execution to real Hetzner PostgreSQL and artifact storage. (Initial CLI storage session complete.)
 4. Enforce all Runtime Agent Profile limits and access boundaries. (Initial fail-closed enforcer complete.)
-5. Harden the Tool Gateway for productive execution.
+5. Harden the Tool Gateway for productive execution. (Initial hardening complete.)
 6. Bind Context Manager retrieval to `POST /retrieval/context`.
 7. Make validation profile- and task-contract driven.
 8. Implement controlled recomposition without runtime self-granting.
 9. Add a live dev end-to-end gate across Cloudflare and Hetzner.
 10. Add the operations baseline and runbooks.
 
-Status: in progress. Steps 1-4 have initial implementations.
+Status: in progress. Steps 1-5 have initial implementations.
 
 ## Phase 7: Operational Hardening
 

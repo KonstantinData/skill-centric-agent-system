@@ -69,9 +69,11 @@ class RuntimeProfileEnforcer:
         tool_name: str,
         *,
         required_data_scopes: Iterable[str] = (),
+        tool_risk_level: str = "low",
     ) -> None:
         self.check_duration()
         self.require_tool(tool_name)
+        self.require_tool_risk(tool_name, tool_risk_level)
         self._increment_limit("tool_calls", "max_tool_calls", 1)
 
         required_scopes = tuple(required_data_scopes)
@@ -105,6 +107,15 @@ class RuntimeProfileEnforcer:
                 f"Tool is not allowed by runtime profile: {tool_name}",
                 stop_reason="policy_denied",
                 code="tool_not_in_runtime_profile",
+            )
+
+    def require_tool_risk(self, tool_name: str, tool_risk_level: str) -> None:
+        profile_risk_level = str(self.profile.get("risk_level", "low"))
+        if _risk_rank(tool_risk_level) > _risk_rank(profile_risk_level):
+            raise ProfileEnforcementError(
+                f"Tool risk exceeds profile risk level: {tool_name}.",
+                stop_reason="policy_denied",
+                code="tool_risk_exceeds_profile",
             )
 
     def require_knowledge_scopes(self, scope_ids: Iterable[str]) -> None:
@@ -191,3 +202,13 @@ def _limit_stop_reason(limit_name: str) -> StopReason:
         "max_recompositions": "max_recompositions",
     }
     return mapping.get(limit_name, "runtime_error")
+
+
+def _risk_rank(risk_level: str) -> int:
+    order = {
+        "low": 0,
+        "medium": 1,
+        "high": 2,
+        "critical": 3,
+    }
+    return order.get(risk_level, 3)

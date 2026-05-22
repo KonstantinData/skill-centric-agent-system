@@ -102,6 +102,23 @@ Denied access must emit a Flight Recorder event with a constrained stop reason.
 The runtime must fail closed when a limit is exceeded or an unselected scope is
 requested. The active profile must never be mutated to resolve the denial.
 
+## Tool Gateway
+
+All tool execution must pass through the Tool Gateway. A productive Tool Gateway
+must enforce:
+
+- profile-selected tool allowlists,
+- profile-selected data scopes required by each tool,
+- per-tool risk gating against the profile risk level,
+- fixed command adapters instead of free shell command execution,
+- adapter-level timeouts,
+- adapter-level output limits,
+- allowed and denied access audit events,
+- structured tool failure details.
+
+Large tool input/output payloads must be written as artifacts and referenced by
+URI from runtime events and `tool_invocations`.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

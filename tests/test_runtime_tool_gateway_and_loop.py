@@ -21,6 +21,10 @@ from skill_centric_agent_system.runtime import (
     ToolDeniedError,
     ToolGateway,
 )
+from skill_centric_agent_system.runtime.tool_gateway import (
+    FilesystemReadAdapter,
+    GitReadAdapter,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "code-review-task.json"
@@ -33,6 +37,11 @@ RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schem
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_artifact(root: Path, uri: str) -> dict[str, Any]:
+    artifact_path = root / Path(uri.removeprefix("hetzner://runtime/"))
+    return load_json(artifact_path)
 
 
 def test_profile_enforcer_denies_unselected_knowledge_and_memory_scopes() -> None:
@@ -139,6 +148,30 @@ def test_tool_gateway_enforces_required_data_scope(tmp_path: Path) -> None:
     assert store.tool_invocations == []
 
 
+def test_tool_gateway_enforces_tool_risk_gate(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["risk_level"] = "low"
+    run = recorder.start_run(task_id="task-code-review-latest-commit", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(ToolDeniedError) as exc_info:
+        gateway.invoke("test-runner", {"pytest_args": ["tests/test_repository_neutrality.py"]})
+
+    assert exc_info.value.stop_reason == "policy_denied"
+    assert store.runtime_events[-1]["event_type"] == "access_attempted"
+    result_payload = load_artifact(tmp_path, str(store.runtime_events[-1]["result_uri"]))
+    assert result_payload["reason"] == "tool_risk_exceeds_profile"
+
+
 def test_tool_gateway_records_allowed_tool_invocation(tmp_path: Path) -> None:
     store = InMemoryRuntimeStore()
     recorder = FlightRecorder(store, JsonArtifactStore(tmp_path))
@@ -160,9 +193,30 @@ def test_tool_gateway_records_allowed_tool_invocation(tmp_path: Path) -> None:
     assert store.tool_invocations[0]["input_uri"].startswith("hetzner://runtime/")
     assert store.tool_invocations[0]["output_uri"].startswith("hetzner://runtime/")
     assert [event["event_type"] for event in store.runtime_events] == [
+        "access_attempted",
         "tool_invocation_started",
         "tool_invocation_completed",
     ]
+    result_payload = load_artifact(tmp_path, str(store.runtime_events[0]["result_uri"]))
+    assert result_payload["effect"] == "allow"
+
+
+def test_filesystem_read_adapter_clamps_output_bytes(tmp_path: Path) -> None:
+    large_file = tmp_path / "large.txt"
+    large_file.write_text("x" * 120_000, encoding="utf-8")
+    adapter = FilesystemReadAdapter(tmp_path)
+
+    output = adapter.invoke({"path": "large.txt", "max_bytes": 200_000})
+
+    assert output["bytes_read"] == FilesystemReadAdapter.MAX_FILE_BYTES
+    assert output["truncated"] is True
+
+
+def test_git_read_adapter_blocks_config_and_worktree_escape_args() -> None:
+    adapter = GitReadAdapter(REPO_ROOT)
+
+    with pytest.raises(ValueError, match="not allowed"):
+        adapter.invoke({"args": ["status", "--git-dir=.git"]})
 
 
 def test_minimal_runtime_loop_executes_profile_scoped_read_tools(tmp_path: Path) -> None:
