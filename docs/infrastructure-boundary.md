@@ -292,6 +292,8 @@ Implemented:
 - Runtime Context Manager calls `POST /retrieval/context` for bounded
   knowledge/memory context and rejects responses with scopes outside the active
   profile.
+- Runtime Validator Framework runs the validator IDs selected by the active
+  profile and fail-closes unknown or failed validators.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
@@ -342,6 +344,7 @@ Completed:
 18. Runtime Profile Enforcement for selected capabilities and profile budgets.
 19. Tool Gateway hardening for productive runtime execution.
 20. Runtime Context Manager binding to the Control API retrieval endpoint.
+21. Runtime Validator Framework driven by profile-selected validators.
 
 Next:
 

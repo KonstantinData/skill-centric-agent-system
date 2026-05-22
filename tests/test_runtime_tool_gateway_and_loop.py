@@ -249,7 +249,14 @@ def test_minimal_runtime_loop_executes_profile_scoped_read_tools(tmp_path: Path)
         "git-read",
         "filesystem-read",
     ]
-    assert store.validation_results[0]["status"] == "passed"
+    assert [result["validator_id"] for result in store.validation_results] == [
+        "runtime-profile-schema",
+        "review-findings-contract",
+    ]
+    assert [result["status"] for result in store.validation_results] == [
+        "passed",
+        "passed",
+    ]
 
     event_types = [event["event_type"] for event in store.runtime_events]
     assert "runtime_started" in event_types
@@ -351,6 +358,33 @@ def test_runtime_context_manager_rejects_retrieval_scopes_outside_profile() -> N
         manager.load(profile, query=profile["objective"])
 
     assert exc_info.value.code == "retrieval_response_scope_not_in_runtime_profile"
+
+
+def test_minimal_runtime_loop_fails_closed_for_unknown_profile_validator(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["validators"].append("unknown-validator")
+    start_result.profile["module_versions"]["unknown-validator"] = "0.1.0"
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
+    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "validator_failed"
+    assert store.validation_results[-1]["validator_id"] == "unknown-validator"
+    assert store.validation_results[-1]["status"] == "failed"
 
 
 def test_minimal_runtime_loop_fails_closed_when_profile_limit_is_exceeded(

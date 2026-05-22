@@ -17,9 +17,10 @@ and recomposition count. The Tool Gateway now enforces per-tool allowlists,
 risk gating, blocked argument checks, timeouts, output limits, and access audit
 events. The Runtime Context Manager now calls the bounded Control API retrieval
 endpoint and rejects retrieval responses containing scopes outside the active
-profile. Runtime artifact redaction and retention planning are implemented for
-the Flight Recorder artifact path. The Control API also has knowledge/memory
-ingestion, a D1-gated
+profile. The Validator phase now runs the validators selected by the active
+profile and fail-closes unknown or failed validators. Runtime artifact redaction
+and retention planning are implemented for the Flight Recorder artifact path.
+The Control API also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
 Plane can extract and validate memory candidates from completed runtime steps
@@ -154,12 +155,12 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 4. Enforce all Runtime Agent Profile limits and access boundaries. (Initial fail-closed enforcer complete.)
 5. Harden the Tool Gateway for productive execution. (Initial hardening complete.)
 6. Bind Context Manager retrieval to `POST /retrieval/context`. (Initial binding complete.)
-7. Make validation profile- and task-contract driven.
+7. Make validation profile- and task-contract driven. (Initial framework complete.)
 8. Implement controlled recomposition without runtime self-granting.
 9. Add a live dev end-to-end gate across Cloudflare and Hetzner.
 10. Add the operations baseline and runbooks.
 
-Status: in progress. Steps 1-6 have initial implementations.
+Status: in progress. Steps 1-7 have initial implementations.
 
 ## Phase 7: Operational Hardening
 

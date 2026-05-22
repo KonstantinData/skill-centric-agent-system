@@ -212,6 +212,20 @@ The runtime fails closed for unsafe ambiguity.
 - Validator failure: fail or request recomposition only when profile failure
   policy allows it.
 
+## Validator Framework
+
+The Validator phase must be driven by `profile.validators`. Each selected
+validator must produce a `validation_results` row with:
+
+- validator ID,
+- status,
+- findings artifact URI,
+- creation timestamp.
+
+Unknown validators fail closed. The runtime must not silently skip selected
+validators, and it must not substitute a task-specific hardcoded validator for
+the profile-selected validator set.
+
 ## Recomposition
 
 Recomposition is a controlled request to the Composer. It is allowed only when:

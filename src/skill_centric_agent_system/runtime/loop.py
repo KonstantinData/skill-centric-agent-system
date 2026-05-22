@@ -23,6 +23,11 @@ from skill_centric_agent_system.runtime.tool_gateway import (
     ToolExecutionError,
     ToolGateway,
 )
+from skill_centric_agent_system.runtime.validation import (
+    RuntimeValidationError,
+    RuntimeValidatorFramework,
+    assert_validation_passed,
+)
 
 
 @dataclass(frozen=True)
@@ -72,7 +77,12 @@ class MinimalRuntimeLoop:
                 redact_sensitive_data,
                 enforcer,
             )
-        except (ProfileEnforcementError, ToolDeniedError, ToolExecutionError) as error:
+        except (
+            ProfileEnforcementError,
+            RuntimeValidationError,
+            ToolDeniedError,
+            ToolExecutionError,
+        ) as error:
             stop_reason = str(getattr(error, "stop_reason", "tool_error"))
             self.recorder.record_event(
                 run_id=run_id,
@@ -311,37 +321,6 @@ class MinimalRuntimeLoop:
             planned_action={"phase": "validator", "validators": profile["validators"]},
             redact_sensitive_data=redact_sensitive_data,
         )
-        findings = {
-            "status": "passed",
-            "validators": profile["validators"],
-            "tool_result_count": len(execution.get("tool_results", [])),
-        }
-        findings_uri = self.artifacts.write_json(
-            ("traces", run_id, "validation", "minimal-runtime-findings"),
-            findings,
-            redact=redact_sensitive_data,
-        )
-        validation_id = slug_id(f"{run_id}-minimal-runtime", prefix="validation")
-        self.store.insert_validation_result(
-            {
-                "id": validation_id,
-                "run_id": run_id,
-                "step_id": str(step["id"]),
-                "validator_id": "review-findings-contract",
-                "status": "passed",
-                "findings_uri": findings_uri,
-                "created_at": iso_timestamp(self.recorder.clock()),
-            }
-        )
-        self.recorder.record_event(
-            run_id=run_id,
-            step_id=str(step["id"]),
-            event_type="validator_executed",
-            actor_role="validator",
-            execution={"validation_result_id": validation_id},
-            result={"status": "passed", "findings_uri": findings_uri},
-            redact_sensitive_data=redact_sensitive_data,
-        )
         response = {
             "run_id": run_id,
             "profile_id": profile["id"],
@@ -349,6 +328,57 @@ class MinimalRuntimeLoop:
             "summary": "Minimal runtime loop completed with read-only tool execution.",
             "tool_result_count": len(execution.get("tool_results", [])),
         }
+        outcomes = RuntimeValidatorFramework().validate(
+            profile=profile,
+            execution=execution,
+            response=response,
+        )
+        for outcome in outcomes:
+            findings_uri = self.artifacts.write_json(
+                ("traces", run_id, "validation", outcome.validator_id),
+                outcome.findings,
+                redact=redact_sensitive_data,
+            )
+            validation_id = slug_id(f"{run_id}-{outcome.validator_id}", prefix="validation")
+            self.store.insert_validation_result(
+                {
+                    "id": validation_id,
+                    "run_id": run_id,
+                    "step_id": str(step["id"]),
+                    "validator_id": outcome.validator_id,
+                    "status": outcome.status,
+                    "findings_uri": findings_uri,
+                    "created_at": iso_timestamp(self.recorder.clock()),
+                }
+            )
+            self.recorder.record_event(
+                run_id=run_id,
+                step_id=str(step["id"]),
+                event_type="validator_executed",
+                actor_role="validator",
+                execution={"validation_result_id": validation_id},
+                result={"status": outcome.status, "findings_uri": findings_uri},
+                stop_reason="validator_failed" if outcome.status == "failed" else None,
+                redact_sensitive_data=redact_sensitive_data,
+            )
+        try:
+            assert_validation_passed(outcomes)
+        except RuntimeValidationError:
+            self.recorder.record_event(
+                run_id=run_id,
+                step_id=str(step["id"]),
+                event_type="step_completed",
+                actor_role="validator",
+                result={"status": "failed"},
+                stop_reason="validator_failed",
+                redact_sensitive_data=redact_sensitive_data,
+            )
+            self.recorder.complete_step(
+                step_id=str(step["id"]),
+                status="failed",
+                stop_reason="validator_failed",
+            )
+            raise
         self.recorder.checkpoint(
             run_id=run_id,
             step_id=str(step["id"]),
