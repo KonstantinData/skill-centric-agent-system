@@ -31,6 +31,41 @@ const compositionRequest = {
   },
 };
 
+const knowledgeIngestRequest = {
+  contract_version: "0.1.0",
+  source: {
+    id: "knowledge-source-scas-docs",
+    name: "SCAS Docs",
+    source_type: "repo",
+    uri: "repo://docs",
+    owner: "repository-maintainer",
+    sensitivity: "internal",
+  },
+  document: {
+    id: "knowledge-doc-runtime",
+    version: "0.1.0",
+    content: "# Runtime\n\nRuntime notes for the control plane.",
+    scope_id: "mod-architecture-docs",
+  },
+};
+
+const memoryIngestRequest = {
+  contract_version: "0.1.0",
+  memory: {
+    id: "memory-runtime-decision",
+    memory_scope_id: "mod-project-memory",
+    version: "0.1.0",
+    content: {
+      summary: "Use Flight Recorder events for runtime reconstruction.",
+      evidence_uri: "hetzner://runtime/traces/run-code-review/events/000.json",
+    },
+    source_run_id: "run-code-review",
+    source_profile_id: "profile-code-review",
+    sensitivity: "internal",
+    retention_policy: "project-memory-180d",
+  },
+};
+
 async function fetchJson(path: string, init?: RequestInit): Promise<Response> {
   return SELF.fetch(`https://control-api.test${path}`, init);
 }
@@ -623,6 +658,108 @@ describe("control API worker", () => {
         message: "Use POST for /composition/context.",
       },
     });
+  });
+
+  it("ingests normalized knowledge into R2 and D1 metadata", async () => {
+    const response = await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(knowledgeIngestRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("succeeded");
+    expect(body.document_id).toBe("knowledge-doc-runtime");
+    expect(body.content_uri).toContain("knowledge/knowledge-source-scas-docs");
+    expect(body.chunk_count).toBe(1);
+    expect(body.vector_status).toBe("embedding_update_queued");
+
+    const stored = await env.SCAS_KNOWLEDGE_BUCKET.get(
+      "knowledge/knowledge-source-scas-docs/knowledge-doc-runtime/v0.1.0/normalized.md",
+    );
+    expect(await stored?.text()).toBe("# Runtime\n\nRuntime notes for the control plane.\n");
+
+    const document = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT id, source_id, content_uri, manifest_uri, status FROM knowledge_documents WHERE id = ?",
+    )
+      .bind("knowledge-doc-runtime")
+      .first();
+    expect(document).toEqual(
+      expect.objectContaining({
+        id: "knowledge-doc-runtime",
+        source_id: "knowledge-source-scas-docs",
+        status: "active",
+      }),
+    );
+
+    const chunk = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT id, document_id, scope_id, vector_id FROM knowledge_chunks WHERE document_id = ?",
+    )
+      .bind("knowledge-doc-runtime")
+      .first();
+    expect(chunk).toEqual(
+      expect.objectContaining({
+        id: "chunk-knowledge-doc-runtime-0",
+        document_id: "knowledge-doc-runtime",
+        scope_id: "mod-architecture-docs",
+        vector_id: "vec-knowledge-doc-runtime-0",
+      }),
+    );
+  });
+
+  it("ingests validated memory without copying raw runtime traces", async () => {
+    const response = await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(memoryIngestRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("succeeded");
+    expect(body.memory_id).toBe("memory-runtime-decision");
+    expect(body.vector_status).toBe("embedding_update_queued");
+
+    const stored = await env.SCAS_MEMORY_BUCKET.get(
+      "memory/mod-project-memory/memory-runtime-decision/v0.1.0/content.json",
+    );
+    expect(await stored?.json()).toEqual(memoryIngestRequest.memory.content);
+
+    const memory = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT id, memory_scope_id, source_run_id, status FROM memory_records WHERE id = ?",
+    )
+      .bind("memory-runtime-decision")
+      .first();
+    expect(memory).toEqual(
+      expect.objectContaining({
+        id: "memory-runtime-decision",
+        memory_scope_id: "mod-project-memory",
+        source_run_id: "run-code-review",
+        status: "active",
+      }),
+    );
+
+    const rejectedResponse = await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...memoryIngestRequest,
+        raw_runtime_trace: {
+          copied: true,
+        },
+      }),
+    });
+    const rejectedBody = await rejectedResponse.json();
+
+    expect(rejectedResponse.status).toBe(400);
+    expect(rejectedBody.error.message).toContain("Raw runtime traces");
   });
 
   it("rejects non-json composition context requests", async () => {

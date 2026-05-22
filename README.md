@@ -18,7 +18,9 @@ profile, emit Flight Recorder events, write artifact-backed trace payloads, and
 run the first minimal context/planner/executor/validator loop through a
 profile-scoped Tool Gateway. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
-runtime artifact cleanup jobs.
+runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
+knowledge and validated-memory ingestion endpoints that write R2 objects, D1
+metadata, ingestion jobs, and audit events.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
@@ -169,6 +171,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.
-2. Add knowledge and memory ingestion flows on top of the Cloudflare control-plane records.
-3. Add Vectorize retrieval and production AI Gateway routing.
+1. Add the Hetzner-to-Cloudflare memory feedback client.
+2. Add Vectorize retrieval and production AI Gateway routing.
+3. Expand the Single Agent Runtime loop beyond the minimal code-review fixture.

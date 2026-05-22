@@ -21,6 +21,23 @@ graph-validation summary for the selected context.
 D1 remains authoritative for registry and policy-sensitive reads. KV is used
 only for the optional `registry:version` value returned in the response.
 
+Additional ingestion endpoints are now available:
+
+```text
+POST /knowledge/ingest
+POST /memory/ingest
+```
+
+`POST /knowledge/ingest` accepts normalized knowledge source/document content,
+writes normalized objects, chunks, and a manifest to R2, then records
+`knowledge_sources`, `knowledge_documents`, `knowledge_chunks`,
+`ingestion_jobs`, and `audit_events` in D1.
+
+`POST /memory/ingest` accepts only validated consolidated memory records. It
+writes memory content and a manifest to R2, then records `memory_records`,
+`ingestion_jobs`, and `audit_events` in D1. Raw runtime traces and tool outputs
+are explicitly rejected by the endpoint.
+
 ## Dev Resource Names
 
 | Resource | Name |
@@ -131,6 +148,22 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/co
 The response must include `composition_status: "ready"` and a scored
 `git-diff-analysis` candidate.
 
+Smoke-test knowledge ingestion:
+
+```bash
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/knowledge/ingest \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/knowledge-ingest-request.json
+```
+
+Smoke-test memory ingestion:
+
+```bash
+curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/memory/ingest \
+  -H "content-type: application/json" \
+  --data-binary @examples/control-api/memory-ingest-request.json
+```
+
 ## Seed Scope
 
 `examples/control-plane/dev-seed.sql` is generated from
@@ -159,3 +192,5 @@ when Wrangler is authenticated.
   policy decisions.
 - The Worker must not store raw runtime traces or tool outputs. Those remain on
   the Hetzner Runtime Plane.
+- Knowledge and memory ingestion writes Cloudflare-owned metadata and
+  consolidated objects only.

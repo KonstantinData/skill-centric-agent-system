@@ -100,6 +100,38 @@ type CompositionContextResponse = {
   graph_validation: GraphValidation;
 };
 
+type KnowledgeIngestRequest = {
+  contract_version: string;
+  source: {
+    id: string;
+    name: string;
+    source_type: "repo" | "notion" | "r2" | "url" | "manual";
+    uri: string;
+    owner: string;
+    sensitivity: "public" | "internal" | "confidential" | "secret";
+  };
+  document: {
+    id: string;
+    version: string;
+    content: string;
+    scope_id: string;
+  };
+};
+
+type MemoryIngestRequest = {
+  contract_version: string;
+  memory: {
+    id: string;
+    memory_scope_id: string;
+    version: string;
+    content: Record<string, unknown>;
+    source_run_id: string;
+    source_profile_id: string;
+    sensitivity: "public" | "internal" | "confidential" | "secret";
+    retention_policy: string;
+  };
+};
+
 type RegistryModuleRow = {
   id: string;
   name: string;
@@ -241,6 +273,25 @@ function isModuleKind(value: unknown): value is ModuleKind {
   );
 }
 
+function isSensitivity(value: unknown): value is "public" | "internal" | "confidential" | "secret" {
+  return (
+    value === "public" ||
+    value === "internal" ||
+    value === "confidential" ||
+    value === "secret"
+  );
+}
+
+function isSourceType(value: unknown): value is "repo" | "notion" | "r2" | "url" | "manual" {
+  return (
+    value === "repo" ||
+    value === "notion" ||
+    value === "r2" ||
+    value === "url" ||
+    value === "manual"
+  );
+}
+
 function hasProperty(value: JsonObject, property: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, property);
 }
@@ -341,6 +392,92 @@ function validateCompositionRequest(body: unknown): string | null {
   return null;
 }
 
+function validateKnowledgeIngestRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (!isSemver(body.contract_version)) {
+    return "contract_version must be semver.";
+  }
+  if (!isObject(body.source)) {
+    return "source is required.";
+  }
+  if (!isId(body.source.id)) {
+    return "source.id must be a valid id.";
+  }
+  if (typeof body.source.name !== "string" || body.source.name.length === 0) {
+    return "source.name is required.";
+  }
+  if (!isSourceType(body.source.source_type)) {
+    return "source.source_type is invalid.";
+  }
+  if (typeof body.source.uri !== "string" || body.source.uri.length === 0) {
+    return "source.uri is required.";
+  }
+  if (typeof body.source.owner !== "string" || body.source.owner.length === 0) {
+    return "source.owner is required.";
+  }
+  if (!isSensitivity(body.source.sensitivity)) {
+    return "source.sensitivity is invalid.";
+  }
+  if (!isObject(body.document)) {
+    return "document is required.";
+  }
+  if (!isId(body.document.id)) {
+    return "document.id must be a valid id.";
+  }
+  if (!isSemver(body.document.version)) {
+    return "document.version must be semver.";
+  }
+  if (typeof body.document.content !== "string" || body.document.content.length === 0) {
+    return "document.content is required.";
+  }
+  if (!isId(body.document.scope_id)) {
+    return "document.scope_id must be a valid id.";
+  }
+  return null;
+}
+
+function validateMemoryIngestRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (hasProperty(body, "raw_runtime_trace") || hasProperty(body, "tool_output")) {
+    return "Raw runtime traces and tool outputs must not be ingested into Cloudflare.";
+  }
+  if (!isSemver(body.contract_version)) {
+    return "contract_version must be semver.";
+  }
+  if (!isObject(body.memory)) {
+    return "memory is required.";
+  }
+  if (!isId(body.memory.id)) {
+    return "memory.id must be a valid id.";
+  }
+  if (!isId(body.memory.memory_scope_id)) {
+    return "memory.memory_scope_id must be a valid id.";
+  }
+  if (!isSemver(body.memory.version)) {
+    return "memory.version must be semver.";
+  }
+  if (!isObject(body.memory.content)) {
+    return "memory.content must be a JSON object.";
+  }
+  if (!isId(body.memory.source_run_id)) {
+    return "memory.source_run_id must be a valid id.";
+  }
+  if (!isId(body.memory.source_profile_id)) {
+    return "memory.source_profile_id must be a valid id.";
+  }
+  if (!isSensitivity(body.memory.sensitivity)) {
+    return "memory.sensitivity is invalid.";
+  }
+  if (!isId(body.memory.retention_policy)) {
+    return "memory.retention_policy must be a valid id.";
+  }
+  return null;
+}
+
 async function readJson(request: Request): Promise<unknown> {
   const contentLength = request.headers.get("content-length");
   if (contentLength !== null && Number(contentLength) > MAX_JSON_BODY_BYTES) {
@@ -361,6 +498,52 @@ function parseStringArray(rawValue: string, field: string): string[] {
     throw new Error(`Invalid registry metadata array: ${field}`);
   }
   return value;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function versionPath(version: string): string {
+  return `v${version}`;
+}
+
+function versionId(version: string): string {
+  return version.replaceAll(".", "-");
+}
+
+function r2Uri(bucketName: string, key: string): string {
+  return `r2://${bucketName}/${key}`;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function normalizeKnowledgeContent(content: string): string {
+  return content.replaceAll("\r\n", "\n").trim() + "\n";
+}
+
+function chunkContent(content: string, maxChars = 1200): string[] {
+  const chunks: string[] = [];
+  let remaining = content.trim();
+  while (remaining.length > 0) {
+    const chunk = remaining.slice(0, maxChars).trim();
+    chunks.push(chunk);
+    remaining = remaining.slice(maxChars).trim();
+  }
+  return chunks.length > 0 ? chunks : [content.trim()];
+}
+
+async function putJson(bucket: R2Bucket, key: string, value: unknown): Promise<void> {
+  await bucket.put(key, JSON.stringify(value, null, 2), {
+    httpMetadata: {
+      contentType: "application/json; charset=utf-8",
+    },
+  });
 }
 
 function parseScoreModifiers(rawValue: string): ScoreModifier[] {
@@ -1013,6 +1196,279 @@ async function handleCompositionContext(request: Request, env: Env): Promise<Res
   }
 }
 
+async function readValidatedJson<T>(
+  request: Request,
+  validate: (body: unknown) => string | null,
+): Promise<{ body: T } | { response: Response }> {
+  if (request.method !== "POST") {
+    return { response: errorResponse(405, "method_not_allowed", "Use POST for this endpoint.") };
+  }
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return { response: errorResponse(415, "unsupported_media_type", "Request body must be JSON.") };
+  }
+
+  let body: unknown;
+  try {
+    body = await readJson(request);
+  } catch (error) {
+    if (error instanceof Error && error.message === "request_body_too_large") {
+      return {
+        response: errorResponse(413, "request_body_too_large", "Request body exceeds 64 KiB."),
+      };
+    }
+    return { response: errorResponse(400, "invalid_json", "Request body must be valid JSON.") };
+  }
+
+  const validationError = validate(body);
+  if (validationError !== null) {
+    return { response: errorResponse(400, "invalid_ingestion_request", validationError) };
+  }
+
+  return { body: body as T };
+}
+
+async function handleKnowledgeIngest(request: Request, env: Env): Promise<Response> {
+  const parsed = await readValidatedJson<KnowledgeIngestRequest>(
+    request,
+    validateKnowledgeIngestRequest,
+  );
+  if ("response" in parsed) {
+    return parsed.response;
+  }
+
+  const body = parsed.body;
+  const timestamp = nowIso();
+  const bucketName = `scas-knowledge-${env.ENVIRONMENT}`;
+  const baseKey = `knowledge/${body.source.id}/${body.document.id}/${versionPath(body.document.version)}`;
+  const normalized = normalizeKnowledgeContent(body.document.content);
+  const chunks = chunkContent(normalized);
+  const checksum = await sha256Hex(normalized);
+  const normalizedKey = `${baseKey}/normalized.md`;
+  const chunksKey = `${baseKey}/chunks.jsonl`;
+  const manifestKey = `${baseKey}/manifest.json`;
+  const chunkRows = chunks.map((chunk, index) => ({
+    id: `chunk-${body.document.id}-${index}`,
+    document_id: body.document.id,
+    chunk_index: index,
+    content_uri: r2Uri(bucketName, `${baseKey}/chunks/${index}.json`),
+    vector_id: `vec-${body.document.id}-${index}`,
+    scope_id: body.document.scope_id,
+    token_count: Math.max(1, Math.ceil(chunk.length / 4)),
+    content: chunk,
+  }));
+
+  await env.SCAS_KNOWLEDGE_BUCKET.put(normalizedKey, normalized, {
+    httpMetadata: {
+      contentType: "text/markdown; charset=utf-8",
+    },
+  });
+  await env.SCAS_KNOWLEDGE_BUCKET.put(
+    chunksKey,
+    chunkRows.map((chunk) => JSON.stringify(chunk)).join("\n") + "\n",
+    {
+      httpMetadata: {
+        contentType: "application/x-ndjson; charset=utf-8",
+      },
+    },
+  );
+  await putJson(env.SCAS_KNOWLEDGE_BUCKET, manifestKey, {
+    source_id: body.source.id,
+    document_id: body.document.id,
+    version: body.document.version,
+    checksum,
+    normalized_uri: r2Uri(bucketName, normalizedKey),
+    chunks_uri: r2Uri(bucketName, chunksKey),
+    chunk_count: chunkRows.length,
+  });
+  for (const chunk of chunkRows) {
+    await putJson(env.SCAS_KNOWLEDGE_BUCKET, `${baseKey}/chunks/${chunk.chunk_index}.json`, {
+      id: chunk.id,
+      document_id: chunk.document_id,
+      chunk_index: chunk.chunk_index,
+      content: chunk.content,
+    });
+  }
+
+  await env.SCAS_CONTROL_DB.batch([
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT OR REPLACE INTO knowledge_sources (
+        id, name, source_type, uri, owner, sensitivity, status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'active')
+      `,
+    ).bind(
+      body.source.id,
+      body.source.name,
+      body.source.source_type,
+      body.source.uri,
+      body.source.owner,
+      body.source.sensitivity,
+    ),
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT OR REPLACE INTO knowledge_documents (
+        id, source_id, version, content_uri, manifest_uri, checksum, status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'active')
+      `,
+    ).bind(
+      body.document.id,
+      body.source.id,
+      body.document.version,
+      r2Uri(bucketName, normalizedKey),
+      r2Uri(bucketName, manifestKey),
+      `sha256:${checksum}`,
+    ),
+  ]);
+  await env.SCAS_CONTROL_DB.prepare("DELETE FROM knowledge_chunks WHERE document_id = ?")
+    .bind(body.document.id)
+    .run();
+  for (const chunk of chunkRows) {
+    await env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT INTO knowledge_chunks (
+        id, document_id, chunk_index, content_uri, vector_id, scope_id, token_count
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+    )
+      .bind(
+        chunk.id,
+        chunk.document_id,
+        chunk.chunk_index,
+        chunk.content_uri,
+        chunk.vector_id,
+        chunk.scope_id,
+        chunk.token_count,
+      )
+      .run();
+  }
+  await writeIngestionAudit(
+    env,
+    "knowledge_import",
+    body.source.uri,
+    "knowledge_document",
+    body.document.id,
+    timestamp,
+  );
+
+  return jsonResponse({
+    status: "succeeded",
+    document_id: body.document.id,
+    content_uri: r2Uri(bucketName, normalizedKey),
+    manifest_uri: r2Uri(bucketName, manifestKey),
+    chunk_count: chunkRows.length,
+    vector_status: "embedding_update_queued",
+  });
+}
+
+async function handleMemoryIngest(request: Request, env: Env): Promise<Response> {
+  const parsed = await readValidatedJson<MemoryIngestRequest>(
+    request,
+    validateMemoryIngestRequest,
+  );
+  if ("response" in parsed) {
+    return parsed.response;
+  }
+
+  const body = parsed.body;
+  const timestamp = nowIso();
+  const bucketName = `scas-memory-${env.ENVIRONMENT}`;
+  const baseKey = `memory/${body.memory.memory_scope_id}/${body.memory.id}/${versionPath(body.memory.version)}`;
+  const contentKey = `${baseKey}/content.json`;
+  const manifestKey = `${baseKey}/manifest.json`;
+  await putJson(env.SCAS_MEMORY_BUCKET, contentKey, body.memory.content);
+  await putJson(env.SCAS_MEMORY_BUCKET, manifestKey, {
+    memory_id: body.memory.id,
+    memory_scope_id: body.memory.memory_scope_id,
+    version: body.memory.version,
+    source_run_id: body.memory.source_run_id,
+    source_profile_id: body.memory.source_profile_id,
+    sensitivity: body.memory.sensitivity,
+    retention_policy: body.memory.retention_policy,
+    content_uri: r2Uri(bucketName, contentKey),
+  });
+
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT OR REPLACE INTO memory_records (
+      id, memory_scope_id, version, content_uri, manifest_uri, source_run_id,
+      source_profile_id, sensitivity, retention_policy, status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+    `,
+  )
+    .bind(
+      body.memory.id,
+      body.memory.memory_scope_id,
+      body.memory.version,
+      r2Uri(bucketName, contentKey),
+      r2Uri(bucketName, manifestKey),
+      body.memory.source_run_id,
+      body.memory.source_profile_id,
+      body.memory.sensitivity,
+      body.memory.retention_policy,
+    )
+    .run();
+  await writeIngestionAudit(
+    env,
+    "memory_import",
+    r2Uri(bucketName, contentKey),
+    "memory_record",
+    body.memory.id,
+    timestamp,
+  );
+
+  return jsonResponse({
+    status: "succeeded",
+    memory_id: body.memory.id,
+    content_uri: r2Uri(bucketName, contentKey),
+    manifest_uri: r2Uri(bucketName, manifestKey),
+    vector_status: "embedding_update_queued",
+  });
+}
+
+async function writeIngestionAudit(
+  env: Env,
+  jobType: "knowledge_import" | "memory_import",
+  sourceUri: string,
+  targetKind: "knowledge_document" | "memory_record",
+  targetId: string,
+  timestamp: string,
+): Promise<void> {
+  const jobId = `job-${targetId}-${versionId(timestamp.slice(0, 10))}`;
+  const auditId = `audit-${targetId}-${versionId(timestamp.slice(0, 10))}`;
+  await env.SCAS_CONTROL_DB.batch([
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT OR REPLACE INTO ingestion_jobs (
+        id, job_type, status, source_uri, target_kind, target_id, attempts,
+        created_at, updated_at
+      )
+      VALUES (?, ?, 'succeeded', ?, ?, ?, 1, ?, ?)
+      `,
+    ).bind(jobId, jobType, sourceUri, targetKind, targetId, timestamp, timestamp),
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT OR REPLACE INTO audit_events (
+        id, event_type, actor_id, target_kind, target_id, created_at,
+        retention_policy, archive_after, archive_uri
+      )
+      VALUES (?, ?, 'control-api', ?, ?, ?, 'control-plane-audit-90d', ?, NULL)
+      `,
+    ).bind(
+      auditId,
+      `${jobType}_succeeded`,
+      targetKind,
+      targetId,
+      timestamp,
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    ),
+  ]);
+}
+
 function handleHealth(env: Env): Response {
   return jsonResponse({
     status: "ok",
@@ -1035,6 +1491,14 @@ export default {
 
     if (url.pathname === "/composition/context") {
       return handleCompositionContext(request, env);
+    }
+
+    if (url.pathname === "/knowledge/ingest") {
+      return handleKnowledgeIngest(request, env);
+    }
+
+    if (url.pathname === "/memory/ingest") {
+      return handleMemoryIngest(request, env);
     }
 
     return errorResponse(404, "not_found", "Endpoint not found.");

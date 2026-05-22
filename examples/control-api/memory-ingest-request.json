@@ -1,0 +1,16 @@
+{
+  "contract_version": "0.1.0",
+  "memory": {
+    "id": "memory-runtime-decision",
+    "memory_scope_id": "mod-project-memory",
+    "version": "0.1.0",
+    "content": {
+      "summary": "Use Flight Recorder events for runtime reconstruction.",
+      "evidence_uri": "hetzner://runtime/traces/run-code-review/events/000.json"
+    },
+    "source_run_id": "run-code-review",
+    "source_profile_id": "profile-code-review",
+    "sensitivity": "internal",
+    "retention_policy": "project-memory-180d"
+  }
+}

@@ -257,13 +257,16 @@ Implemented:
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
 - Runtime redaction policy and retention planner exist for runtime artifacts.
+- Cloudflare Control API knowledge and memory ingestion endpoints write R2
+  objects, D1 metadata, ingestion jobs, and audit events.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
 Not yet implemented:
 
 - Cloudflare knowledge ingestion API and queue/workflow execution.
-- Cloudflare memory ingestion API and feedback pipeline from Hetzner.
+- Async ingestion queue/workflow execution for knowledge and memory indexing.
+- Hetzner-to-Cloudflare memory feedback client integration.
 - Vectorize index creation and retrieval flow.
 - Production OpenAI routing through AI Gateway.
 - Expanded runtime loop beyond the initial code-review fixture.
@@ -285,8 +288,9 @@ Completed:
 11. Runtime Flight Recorder storage contract.
 12. Runtime Entry Point and Flight Recorder writer.
 13. Profile-scoped Tool Gateway and Minimal Runtime Loop.
+14. Cloudflare knowledge and memory ingestion endpoints.
 
 Next:
 
-1. Knowledge and memory ingestion.
+1. Hetzner memory feedback client integration.
 2. Vectorize and AI Gateway production integration.

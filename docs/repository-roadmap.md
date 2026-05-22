@@ -14,9 +14,9 @@ Recorder events. The profile-scoped Tool Gateway and first minimal runtime loop
 can execute read-only code-review fixture work. Runtime artifact redaction and
 retention planning are implemented for the Flight Recorder artifact path.
 
-The next main implementation block is Cloudflare knowledge and memory ingestion.
-Infrastructure follow-up work remains for Vectorize, AI Gateway, and broader
-Hetzner runtime execution.
+The next main implementation block is the Hetzner-to-Cloudflare memory feedback
+client plus retrieval/indexing. Infrastructure follow-up work remains for
+Vectorize, AI Gateway, and broader Hetzner runtime execution.
 
 ## Phase 1: Foundation
 
@@ -119,5 +119,6 @@ and minimal runtime loop complete for the current code-review fixture.
 - Add safety tests for permissions and scoped access.
 - Add documentation for deployment and operations.
 
-Status: initial runtime redaction and retention planning complete; operational
-cleanup jobs and broader telemetry remain pending.
+Status: initial runtime redaction and retention planning complete; Cloudflare
+knowledge and memory ingestion endpoints are implemented; operational cleanup
+jobs, async indexing, and broader telemetry remain pending.

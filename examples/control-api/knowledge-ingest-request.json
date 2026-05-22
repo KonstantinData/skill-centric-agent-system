@@ -1,0 +1,17 @@
+{
+  "contract_version": "0.1.0",
+  "source": {
+    "id": "knowledge-source-scas-docs",
+    "name": "SCAS Docs",
+    "source_type": "repo",
+    "uri": "repo://docs",
+    "owner": "repository-maintainer",
+    "sensitivity": "internal"
+  },
+  "document": {
+    "id": "knowledge-doc-runtime",
+    "version": "0.1.0",
+    "content": "# Runtime\n\nRuntime notes for the control plane.",
+    "scope_id": "mod-architecture-docs"
+  }
+}
