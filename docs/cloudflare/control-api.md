@@ -79,7 +79,9 @@ npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-ap
 ```
 
 Runtime clients use `SCAS_CONTROL_API_TOKEN` or the CLI
-`--control-plane-token` flag to send `Authorization: Bearer ...`.
+`--control-plane-token` flag to send `Authorization: Bearer ...`. Python
+runtime clients also send `User-Agent: skill-centric-agent-system/0.1` so
+Cloudflare does not classify the request as the default Python urllib client.
 
 ## Dev Resource Names
 

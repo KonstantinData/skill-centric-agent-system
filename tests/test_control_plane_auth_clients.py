@@ -22,6 +22,7 @@ def test_control_plane_client_sends_bearer_token(monkeypatch: Any) -> None:
 
     def fake_urlopen(request: Any, timeout: float) -> FakeResponse:
         captured["authorization"] = request.get_header("Authorization")
+        captured["user_agent"] = request.get_header("User-agent")
         captured["timeout"] = str(timeout)
         return FakeResponse()
 
@@ -38,6 +39,7 @@ def test_control_plane_client_sends_bearer_token(monkeypatch: Any) -> None:
 
     assert captured == {
         "authorization": "Bearer secret-token",
+        "user_agent": "skill-centric-agent-system/0.1",
         "timeout": "3.0",
     }
 
@@ -47,6 +49,7 @@ def test_memory_ingestion_client_sends_bearer_token(monkeypatch: Any) -> None:
 
     def fake_urlopen(request: Any, timeout: float) -> FakeResponse:
         captured["authorization"] = request.get_header("Authorization")
+        captured["user_agent"] = request.get_header("User-agent")
         captured["timeout"] = str(timeout)
         return FakeResponse()
 
@@ -63,5 +66,6 @@ def test_memory_ingestion_client_sends_bearer_token(monkeypatch: Any) -> None:
 
     assert captured == {
         "authorization": "Bearer memory-token",
+        "user_agent": "skill-centric-agent-system/0.1",
         "timeout": "4.0",
     }

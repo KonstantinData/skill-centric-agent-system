@@ -13,6 +13,9 @@ class ControlPlaneClientError(RuntimeError):
     """Raised when the Control Plane endpoint cannot provide composition context."""
 
 
+CONTROL_PLANE_USER_AGENT = "skill-centric-agent-system/0.1"
+
+
 @dataclass(frozen=True)
 class ControlPlaneClient:
     base_url: str
@@ -33,6 +36,7 @@ class ControlPlaneClient:
             headers={
                 "content-type": "application/json",
                 "accept": "application/json",
+                "user-agent": CONTROL_PLANE_USER_AGENT,
                 **self._authorization_headers(),
             },
             method="POST",

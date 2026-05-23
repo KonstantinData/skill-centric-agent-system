@@ -13,6 +13,9 @@ class MemoryFeedbackError(RuntimeError):
     """Raised when a memory candidate cannot be submitted safely."""
 
 
+CONTROL_PLANE_USER_AGENT = "skill-centric-agent-system/0.1"
+
+
 @dataclass(frozen=True)
 class CloudflareMemoryIngestionClient:
     base_url: str
@@ -27,6 +30,7 @@ class CloudflareMemoryIngestionClient:
             headers={
                 "content-type": "application/json",
                 "accept": "application/json",
+                "user-agent": CONTROL_PLANE_USER_AGENT,
                 **self._authorization_headers(),
             },
             method="POST",
