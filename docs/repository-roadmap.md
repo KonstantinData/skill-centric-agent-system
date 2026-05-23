@@ -194,5 +194,6 @@ implemented; memory candidate extraction/validation and the controlled learning
 fixture exist; Control API auth, atomic event indexing, chunked artifact
 persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
 are implemented; the AI Gateway secret rollout and live LLM smoke workflow is
-implemented; operational cleanup jobs, async indexing, and broader telemetry
-remain pending.
+implemented, with live execution gated by a Cloudflare API token that can write
+Worker scripts and secrets; operational cleanup jobs, async indexing, and
+broader telemetry remain pending.

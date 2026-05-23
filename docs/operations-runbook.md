@@ -83,6 +83,11 @@ Required GitHub secrets for the live gates are:
 - `OPENAI_API_KEY`
 - `CONTROL_API_TOKEN`
 
+`CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and must allow
+Worker script writes. The manual Control API rollout deploys Worker code and
+uploads Worker secrets through Wrangler; a token that only supports read-only
+connectivity checks will fail before the live LLM smoke runs.
+
 Cloudflare readiness:
 
 ```bash
@@ -149,7 +154,8 @@ gh workflow run live-runtime-gates.yml \
 ```
 
 Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
-when the Worker needs `OPENAI_API_KEY` and AI Gateway account configuration:
+when the Worker needs `OPENAI_API_KEY`, `CONTROL_API_TOKEN`, and AI Gateway
+account configuration:
 
 ```bash
 gh workflow run ci.yml \
@@ -157,6 +163,10 @@ gh workflow run ci.yml \
   -f run_ai_gateway_live_smoke=true \
   -f run_infra_smoke=false
 ```
+
+The workflow passes Worker secrets through a temporary runner-local JSON file
+and `wrangler deploy --secrets-file`. The file is deleted after the deploy
+step; the secret values must still originate from GitHub Actions secrets.
 
 ## Smoke Tests
 

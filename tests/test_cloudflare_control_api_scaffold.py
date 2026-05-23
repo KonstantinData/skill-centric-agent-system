@@ -128,7 +128,8 @@ def test_ci_runs_worker_checks_and_has_manual_dev_deploy_gate() -> None:
     assert "npm run worker:test" in workflow
     assert "npm run worker:check" in workflow
     assert "inputs.deploy_control_api_dev == true" in workflow
-    assert "npm run worker:deploy:dev" in workflow
+    assert "npx wrangler deploy" in workflow
+    assert "--secrets-file" in workflow
 
 
 def test_ai_gateway_live_smoke_script_is_documented_and_uses_control_api_route() -> None:

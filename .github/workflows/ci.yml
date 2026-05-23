@@ -134,7 +134,7 @@ jobs:
       - name: Dry-run Worker deploy
         run: npm run worker:check
 
-      - name: Configure dev Worker secrets
+      - name: Prepare dev Worker secrets
         shell: bash
         run: |
           set -euo pipefail
@@ -148,10 +148,24 @@ jobs:
             exit 1
           fi
 
-          printf '%s' "${CONTROL_API_TOKEN}" \
-            | npx wrangler secret put CONTROL_API_TOKEN --config workers/control-api/wrangler.toml
-          printf '%s' "${OPENAI_API_KEY}" \
-            | npx wrangler secret put OPENAI_API_KEY --config workers/control-api/wrangler.toml
+          echo "::notice::CLOUDFLARE_API_TOKEN must allow Worker script writes because this job deploys Worker code and secrets."
+          secrets_file="${RUNNER_TEMP}/scas-control-api-dev-secrets.json"
+          export SCAS_WORKER_SECRETS_FILE="${secrets_file}"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          secrets = {
+              "CONTROL_API_TOKEN": os.environ["CONTROL_API_TOKEN"],
+              "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
+          }
+          Path(os.environ["SCAS_WORKER_SECRETS_FILE"]).write_text(
+              json.dumps(secrets),
+              encoding="utf-8",
+          )
+          PY
+          echo "SCAS_WORKER_SECRETS_FILE=${secrets_file}" >> "${GITHUB_ENV}"
 
       - name: Configure AI Gateway dev vars
         shell: bash
@@ -185,7 +199,18 @@ jobs:
           PY
 
       - name: Deploy dev Worker
-        run: npm run worker:deploy:dev
+        run: |
+          npx wrangler deploy \
+            --config workers/control-api/wrangler.toml \
+            --secrets-file "${SCAS_WORKER_SECRETS_FILE}"
+
+      - name: Remove dev Worker secret file
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${SCAS_WORKER_SECRETS_FILE:-}" ]; then
+            rm -f "${SCAS_WORKER_SECRETS_FILE}"
+          fi
 
       - name: Run AI Gateway live smoke
         if: inputs.run_ai_gateway_live_smoke == true

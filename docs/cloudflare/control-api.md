@@ -167,10 +167,16 @@ gh workflow run ci.yml \
   -f run_infra_smoke=false
 ```
 
-The workflow writes `OPENAI_API_KEY` as a Worker secret, rewrites
-`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in
-the deployment workspace, deploys `scas-control-api-dev`, and runs
-`scripts/cloudflare/ai_gateway_live_smoke.py`.
+The workflow writes `OPENAI_API_KEY` and `CONTROL_API_TOKEN` to a temporary
+runner-local JSON secrets file, deploys `scas-control-api-dev` with
+`wrangler deploy --secrets-file`, rewrites `AI_GATEWAY_ACCOUNT_ID` from the
+GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in the deployment workspace, and
+runs `scripts/cloudflare/ai_gateway_live_smoke.py`.
+
+The GitHub `CLOUDFLARE_API_TOKEN` used by this workflow must allow Worker
+script writes on the target Cloudflare account. The rollout uploads Worker code
+and Worker secrets; a token that only passes read-only readiness checks will
+fail before the AI Gateway smoke request is sent.
 
 Apply D1 migrations locally:
 

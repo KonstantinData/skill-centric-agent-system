@@ -197,6 +197,11 @@ secrets are configured:
 - `OPENAI_API_KEY`
 - `CONTROL_API_TOKEN`
 
+`CLOUDFLARE_API_TOKEN` must be scoped for the Cloudflare account and allow
+Worker script writes. The AI Gateway rollout deploys Worker code and uploads
+Worker secrets through Wrangler, so a token that only reads account resources
+or validates Cloudflare connectivity is not sufficient.
+
 `CONTROL_API_TOKEN` is used by the manual dev Worker deployment job to
 configure the Worker secret. Endpoint-scoped Worker secrets can be configured
 manually with Wrangler when the single automation token is too broad.
@@ -219,10 +224,11 @@ gh workflow run ci.yml `
   -f run_infra_smoke=false
 ```
 
-That workflow installs `OPENAI_API_KEY` as a Worker secret, injects
-`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret at
-deploy time, keeps `AI_GATEWAY_ID` at `default` unless the repository variable
-overrides it, deploys the dev Worker, and calls
+That workflow uploads `OPENAI_API_KEY` and `CONTROL_API_TOKEN` as Worker
+secrets during the Worker deploy, injects `AI_GATEWAY_ACCOUNT_ID` from the
+GitHub `CLOUDFLARE_ACCOUNT_ID` secret at deploy time, keeps `AI_GATEWAY_ID` at
+`default` unless the repository variable overrides it, deploys the dev Worker,
+and calls
 `POST /ai-gateway/openai/chat/completions`.
 
 Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.

@@ -259,6 +259,12 @@ GitHub repository secrets are used for deployment:
 
 Workers receive runtime secrets through Cloudflare Worker Secrets or account-level secret bindings. `OPENAI_API_KEY` is used through AI Gateway in production and must not be committed to configuration files.
 
+The GitHub Actions `CLOUDFLARE_API_TOKEN` used for dev Worker rollout must
+allow Worker script writes on the target account. The live AI Gateway smoke
+deployment uploads Worker code and Worker secrets through Wrangler, so a
+read-only token can validate account connectivity but cannot complete the
+rollout.
+
 The Control API Worker requires bearer-token secrets for every non-health
 route. Endpoint-scoped secrets are:
 
@@ -335,9 +341,10 @@ Implemented:
   memory context with Vectorize bindings and D1 post-validation.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
   when the account configuration and `OPENAI_API_KEY` secret are present.
-- Manual GitHub Actions rollout installs the `OPENAI_API_KEY` Worker secret,
-  injects AI Gateway account configuration at deploy time, and can run a live
-  AI Gateway smoke without committing secrets.
+- Manual GitHub Actions rollout uploads `OPENAI_API_KEY` and
+  `CONTROL_API_TOKEN` as Worker secrets during deploy, injects AI Gateway
+  account configuration at deploy time, and can run a live AI Gateway smoke
+  without committing secrets.
 - Composition scoring evaluation fixtures cover positive and negative scoring
   evidence across code-review and project-memory task signals.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
