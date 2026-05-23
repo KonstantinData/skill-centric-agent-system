@@ -237,7 +237,10 @@ overrides it, deploys the dev Worker, and calls
 
 `OPENAI_API_KEY` remains the OpenAI provider key. `AI_GATEWAY_AUTH_TOKEN` is
 sent separately as `cf-aig-authorization` when the Cloudflare AI Gateway has
-Authenticated Gateway enabled.
+Authenticated Gateway enabled. The live-smoke workflow requires
+`AI_GATEWAY_AUTH_TOKEN` as a GitHub Actions secret because the workflow deploys
+Worker code and secrets from GitHub; setting it only on the Worker is not
+enough for repeatable deploys.
 
 Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.
 Run the live dev E2E gate with:

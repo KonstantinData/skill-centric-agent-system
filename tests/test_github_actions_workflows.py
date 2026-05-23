@@ -55,6 +55,8 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
     assert "OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
     assert "AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}" in workflow
     assert '"AI_GATEWAY_AUTH_TOKEN"' in workflow
+    assert "RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}" in workflow
+    assert "Missing required secret for live AI Gateway smoke: AI_GATEWAY_AUTH_TOKEN" in workflow
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "--secrets-file" in workflow
     assert "AI_GATEWAY_ACCOUNT_ID" in workflow

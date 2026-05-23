@@ -172,7 +172,9 @@ step; the secret values must still originate from GitHub Actions secrets.
 `OPENAI_API_KEY` is sent to the OpenAI provider through the standard
 `Authorization` header. `AI_GATEWAY_AUTH_TOKEN` is sent separately as
 `cf-aig-authorization` when Authenticated Gateway is enabled on Cloudflare AI
-Gateway.
+Gateway. For `run_ai_gateway_live_smoke=true`, `AI_GATEWAY_AUTH_TOKEN` must be
+set as a GitHub Actions secret; setting it only on the Worker is not enough for
+the workflow's fresh deployment.
 
 ## Smoke Tests
 

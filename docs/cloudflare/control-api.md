@@ -205,6 +205,12 @@ script writes on the target Cloudflare account. The rollout uploads Worker code
 and Worker secrets; a token that only passes read-only readiness checks will
 fail before the AI Gateway smoke request is sent.
 
+When `run_ai_gateway_live_smoke=true`, the workflow requires
+`AI_GATEWAY_AUTH_TOKEN` as a GitHub Actions secret and fails before deployment
+if it is missing. Setting the secret only on the already-deployed Worker is not
+enough because the workflow performs a fresh deployment with a temporary
+secrets file.
+
 Apply D1 migrations locally:
 
 ```bash

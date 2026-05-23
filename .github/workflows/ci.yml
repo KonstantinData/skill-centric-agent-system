@@ -108,6 +108,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}
       AI_GATEWAY_ID: ${{ vars.AI_GATEWAY_ID }}
+      RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}
       SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
     steps:
@@ -146,6 +147,11 @@ jobs:
           fi
           if [ -z "${OPENAI_API_KEY:-}" ]; then
             echo "::error::Missing required secret: OPENAI_API_KEY"
+            exit 1
+          fi
+          if [ "${RUN_AI_GATEWAY_LIVE_SMOKE:-false}" = "true" ] && [ -z "${AI_GATEWAY_AUTH_TOKEN:-}" ]; then
+            echo "::error::Missing required secret for live AI Gateway smoke: AI_GATEWAY_AUTH_TOKEN"
+            echo "::error::Set it as a GitHub Actions secret; setting it only on the Worker is not enough for this deployment workflow."
             exit 1
           fi
 
