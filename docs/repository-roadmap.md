@@ -195,6 +195,7 @@ implemented; memory candidate extraction/validation and the controlled learning
 fixture exist; Control API auth, atomic event indexing, chunked artifact
 persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
 are implemented; the AI Gateway secret rollout and live LLM smoke workflow is
-implemented, with live execution gated by a Cloudflare API token that can write
-Worker scripts and secrets; queue-backed embedding indexing is implemented;
+implemented, with live execution gated by Cloudflare Worker script permissions,
+OpenAI provider auth, and optional Authenticated Gateway auth; queue-backed
+embedding indexing is implemented;
 operational cleanup jobs and broader telemetry remain pending.

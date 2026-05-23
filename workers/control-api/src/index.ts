@@ -2012,10 +2012,7 @@ async function createEmbeddings(env: Env, inputs: string[]): Promise<number[][]>
 
   const response = await fetch(aiGatewayOpenAiEmbeddingsUrl(env), {
     method: "POST",
-    headers: {
-      "authorization": `Bearer ${gateway.openAiApiKey}`,
-      "content-type": "application/json",
-    },
+    headers: aiGatewayOpenAiHeaders(gateway),
     body: JSON.stringify({
       model: EMBEDDING_MODEL,
       input: inputs,
@@ -2265,22 +2262,39 @@ function aiGatewayEnv(env: Env): {
   accountId: string;
   gatewayId: string;
   openAiApiKey?: string;
+  gatewayAuthToken?: string;
 } {
   const extended = env as Env & {
     AI_GATEWAY_ACCOUNT_ID?: string;
     AI_GATEWAY_ID?: string;
     OPENAI_API_KEY?: string;
+    AI_GATEWAY_AUTH_TOKEN?: string;
   };
   return {
     accountId: extended.AI_GATEWAY_ACCOUNT_ID ?? "",
     gatewayId: extended.AI_GATEWAY_ID ?? "default",
     openAiApiKey: extended.OPENAI_API_KEY,
+    gatewayAuthToken: extended.AI_GATEWAY_AUTH_TOKEN,
   };
 }
 
 function aiGatewayOpenAiChatUrl(env: Env): string {
   const gateway = aiGatewayEnv(env);
   return `https://gateway.ai.cloudflare.com/v1/${gateway.accountId}/${gateway.gatewayId}/openai/chat/completions`;
+}
+
+function aiGatewayOpenAiHeaders(gateway: {
+  openAiApiKey?: string;
+  gatewayAuthToken?: string;
+}): Record<string, string> {
+  const headers: Record<string, string> = {
+    "authorization": `Bearer ${gateway.openAiApiKey ?? ""}`,
+    "content-type": "application/json",
+  };
+  if (gateway.gatewayAuthToken !== undefined && gateway.gatewayAuthToken.length > 0) {
+    headers["cf-aig-authorization"] = `Bearer ${gateway.gatewayAuthToken}`;
+  }
+  return headers;
 }
 
 async function handleAiGatewayOpenAiChat(request: Request, env: Env): Promise<Response> {
@@ -2320,10 +2334,7 @@ async function handleAiGatewayOpenAiChat(request: Request, env: Env): Promise<Re
   try {
     response = await fetch(aiGatewayOpenAiChatUrl(env), {
       method: "POST",
-      headers: {
-        "authorization": `Bearer ${gateway.openAiApiKey}`,
-        "content-type": "application/json",
-      },
+      headers: aiGatewayOpenAiHeaders(gateway),
       body: JSON.stringify(body),
     });
   } catch {

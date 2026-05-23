@@ -163,8 +163,9 @@ deterministic `embedding_update` job for the target record.
 Embedding workers must:
 
 - read source content only from the bound Cloudflare R2 bucket,
-- create embeddings through the configured AI Gateway and `OPENAI_API_KEY`
-  secret,
+- create embeddings through the configured AI Gateway with `OPENAI_API_KEY` as
+  provider auth and `AI_GATEWAY_AUTH_TOKEN` as optional Authenticated Gateway
+  auth,
 - upsert scoped vectors into the correct Vectorize index,
 - update the D1 `ingestion_jobs` row with queued, running, succeeded, or failed
   state,

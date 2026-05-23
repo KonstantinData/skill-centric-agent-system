@@ -82,6 +82,7 @@ type TestEnv = Env & {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   OPENAI_API_KEY?: string;
+  AI_GATEWAY_AUTH_TOKEN?: string;
 };
 
 function testEnv(overrides: Partial<TestEnv> = {}): TestEnv {
@@ -1322,6 +1323,67 @@ describe("control API worker", () => {
       code: "ai_gateway_not_configured",
       message: "AI Gateway account and OPENAI_API_KEY Worker secret must be configured.",
     });
+  });
+
+  it("forwards authenticated AI Gateway and OpenAI auth as separate headers", async () => {
+    const upstreamFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe(
+        "https://gateway.ai.cloudflare.com/v1/test-account/test-gateway/openai/chat/completions",
+      );
+      expect(init?.headers).toEqual({
+        "authorization": "Bearer test-openai-key",
+        "content-type": "application/json",
+        "cf-aig-authorization": "Bearer test-cloudflare-gateway-token",
+      });
+      return new Response(
+        JSON.stringify({
+          id: "chatcmpl-test",
+          object: "chat.completion",
+          model: "gpt-4.1-mini",
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: "ok",
+              },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      );
+    });
+    vi.stubGlobal("fetch", upstreamFetch);
+
+    const response = await fetchJson(
+      "/ai-gateway/openai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4.1-mini",
+          messages: [{ role: "user", content: "hello" }],
+        }),
+      },
+      {
+        AI_GATEWAY_ACCOUNT_ID: "test-account",
+        AI_GATEWAY_ID: "test-gateway",
+        OPENAI_API_KEY: "test-openai-key",
+        AI_GATEWAY_AUTH_TOKEN: "test-cloudflare-gateway-token",
+      },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.choices[0].message.content).toBe("ok");
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
   });
 
   it("rejects non-json composition context requests", async () => {

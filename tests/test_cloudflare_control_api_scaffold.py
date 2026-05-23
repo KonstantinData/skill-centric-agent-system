@@ -121,6 +121,7 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler vectorize create scas-knowledge-dev" in docs
     assert "npx wrangler vectorize create-metadata-index scas-knowledge-dev" in docs
     assert "npx wrangler secret put OPENAI_API_KEY" in docs
+    assert "npx wrangler secret put AI_GATEWAY_AUTH_TOKEN" in docs
     assert "npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN" in docs
     assert "npm run worker:deploy:dev" in docs
     assert "npx wrangler d1 create scas-control-dev" in script

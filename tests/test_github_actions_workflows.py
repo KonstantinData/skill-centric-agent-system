@@ -39,6 +39,7 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
         "HETZNER_SSH_KEY",
         "HETZNER_USER",
         "OPENAI_API_KEY",
+        "AI_GATEWAY_AUTH_TOKEN",
         "CONTROL_API_TOKEN",
     }
 
@@ -52,6 +53,8 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
     assert "run_ai_gateway_live_smoke:" in workflow
     assert "inputs.run_ai_gateway_live_smoke == true" in workflow
     assert "OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
+    assert "AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}" in workflow
+    assert '"AI_GATEWAY_AUTH_TOKEN"' in workflow
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "--secrets-file" in workflow
     assert "AI_GATEWAY_ACCOUNT_ID" in workflow

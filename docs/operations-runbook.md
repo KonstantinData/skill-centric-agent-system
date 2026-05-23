@@ -81,6 +81,7 @@ Required GitHub secrets for the live gates are:
 - `HETZNER_SSH_KEY`
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
+- `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
 - `CONTROL_API_TOKEN`
 
 `CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and must allow
@@ -155,8 +156,8 @@ gh workflow run live-runtime-gates.yml \
 ```
 
 Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
-when the Worker needs `OPENAI_API_KEY`, `CONTROL_API_TOKEN`, and AI Gateway
-account configuration:
+when the Worker needs `OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
+`CONTROL_API_TOKEN`, and AI Gateway account configuration:
 
 ```bash
 gh workflow run ci.yml \
@@ -168,6 +169,10 @@ gh workflow run ci.yml \
 The workflow passes Worker secrets through a temporary runner-local JSON file
 and `wrangler deploy --secrets-file`. The file is deleted after the deploy
 step; the secret values must still originate from GitHub Actions secrets.
+`OPENAI_API_KEY` is sent to the OpenAI provider through the standard
+`Authorization` header. `AI_GATEWAY_AUTH_TOKEN` is sent separately as
+`cf-aig-authorization` when Authenticated Gateway is enabled on Cloudflare AI
+Gateway.
 
 ## Smoke Tests
 
@@ -294,8 +299,9 @@ Emergency disable options:
 - Remove or deny D1 policy/scope bindings for the affected capability.
 - Remove a tool from the composed Runtime Agent Profile by policy.
 - Disable live runtime execution by withholding `SCAS_RUNTIME_DATABASE_URL`.
-- Disable OpenAI routing by removing the Worker `OPENAI_API_KEY` secret or
-  leaving AI Gateway account configuration unset.
+- Disable OpenAI routing by removing the Worker `OPENAI_API_KEY` secret,
+  removing the Worker `AI_GATEWAY_AUTH_TOKEN` secret when Authenticated Gateway
+  is required, or leaving AI Gateway account configuration unset.
 - Pause embedding population by removing `OPENAI_API_KEY`; ingestion can still
   persist D1/R2 records, but queued embedding jobs will fail closed and retry
   according to the queue policy.

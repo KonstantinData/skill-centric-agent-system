@@ -198,6 +198,7 @@ secrets are configured:
 - `HETZNER_SSH_KEY`
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
+- `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
 - `CONTROL_API_TOKEN`
 
 `CLOUDFLARE_API_TOKEN` must be scoped for the Cloudflare account and allow
@@ -227,12 +228,16 @@ gh workflow run ci.yml `
   -f run_infra_smoke=false
 ```
 
-That workflow uploads `OPENAI_API_KEY` and `CONTROL_API_TOKEN` as Worker
-secrets during the Worker deploy, injects `AI_GATEWAY_ACCOUNT_ID` from the
-GitHub `CLOUDFLARE_ACCOUNT_ID` secret at deploy time, keeps `AI_GATEWAY_ID` at
-`default` unless the repository variable overrides it, deploys the dev Worker,
-and calls
+That workflow uploads `OPENAI_API_KEY`, optional `AI_GATEWAY_AUTH_TOKEN`, and
+`CONTROL_API_TOKEN` as Worker secrets during the Worker deploy, injects
+`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret at
+deploy time, keeps `AI_GATEWAY_ID` at `default` unless the repository variable
+overrides it, deploys the dev Worker, and calls
 `POST /ai-gateway/openai/chat/completions`.
+
+`OPENAI_API_KEY` remains the OpenAI provider key. `AI_GATEWAY_AUTH_TOKEN` is
+sent separately as `cf-aig-authorization` when the Cloudflare AI Gateway has
+Authenticated Gateway enabled.
 
 Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.
 Run the live dev E2E gate with:

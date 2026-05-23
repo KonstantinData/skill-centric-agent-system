@@ -58,7 +58,10 @@ knowledge chunks and memory records before returning them.
 `POST /ai-gateway/openai/chat/completions` is a narrow pass-through route to
 Cloudflare AI Gateway's OpenAI chat completions endpoint. It fails closed with
 `503 ai_gateway_not_configured` unless `AI_GATEWAY_ACCOUNT_ID` and the
-`OPENAI_API_KEY` Worker secret are configured.
+`OPENAI_API_KEY` Worker secret are configured. When the Cloudflare AI Gateway
+has Authenticated Gateway enabled, the optional `AI_GATEWAY_AUTH_TOKEN` Worker
+secret is forwarded as `cf-aig-authorization`; `Authorization` remains reserved
+for the OpenAI provider key.
 
 ## Authentication And Authorization
 
@@ -171,6 +174,7 @@ Configure AI Gateway routing:
 
 ```bash
 npx wrangler secret put OPENAI_API_KEY --config workers/control-api/wrangler.toml
+npx wrangler secret put AI_GATEWAY_AUTH_TOKEN --config workers/control-api/wrangler.toml
 npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-api/wrangler.toml
 ```
 
@@ -189,11 +193,12 @@ gh workflow run ci.yml \
   -f run_infra_smoke=false
 ```
 
-The workflow writes `OPENAI_API_KEY` and `CONTROL_API_TOKEN` to a temporary
-runner-local JSON secrets file, deploys `scas-control-api-dev` with
-`wrangler deploy --secrets-file`, rewrites `AI_GATEWAY_ACCOUNT_ID` from the
-GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in the deployment workspace, and
-runs `scripts/cloudflare/ai_gateway_live_smoke.py`.
+The workflow writes `OPENAI_API_KEY`, optional `AI_GATEWAY_AUTH_TOKEN`, and
+`CONTROL_API_TOKEN` to a temporary runner-local JSON secrets file, deploys
+`scas-control-api-dev` with `wrangler deploy --secrets-file`, rewrites
+`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in
+the deployment workspace, and runs
+`scripts/cloudflare/ai_gateway_live_smoke.py`.
 
 The GitHub `CLOUDFLARE_API_TOKEN` used by this workflow must allow Worker
 script writes on the target Cloudflare account. The rollout uploads Worker code

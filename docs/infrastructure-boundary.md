@@ -261,9 +261,15 @@ GitHub repository secrets are used for deployment:
 - `HETZNER_SSH_KEY`
 - `HETZNER_USER`
 - `OPENAI_API_KEY`
+- `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
 - `CONTROL_API_TOKEN`
 
-Workers receive runtime secrets through Cloudflare Worker Secrets or account-level secret bindings. `OPENAI_API_KEY` is used through AI Gateway in production and must not be committed to configuration files.
+Workers receive runtime secrets through Cloudflare Worker Secrets or
+account-level secret bindings. `OPENAI_API_KEY` is used as the OpenAI provider
+key through AI Gateway in production and must not be committed to configuration
+files. `AI_GATEWAY_AUTH_TOKEN` is a separate Cloudflare Authenticated Gateway
+token and is forwarded as `cf-aig-authorization` when that gateway mode is
+enabled.
 
 The GitHub Actions `CLOUDFLARE_API_TOKEN` used for dev Worker rollout must
 allow Worker script writes on the target account. The live AI Gateway smoke
@@ -351,11 +357,13 @@ Implemented:
   calls OpenAI embeddings through Cloudflare AI Gateway, upserts scoped vectors
   into Vectorize, updates D1 job state, and writes terminal audit events.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
-  when the account configuration and `OPENAI_API_KEY` secret are present.
-- Manual GitHub Actions rollout uploads `OPENAI_API_KEY` and
-  `CONTROL_API_TOKEN` as Worker secrets during deploy, injects AI Gateway
-  account configuration at deploy time, and can run a live AI Gateway smoke
-  without committing secrets.
+  when the account configuration and `OPENAI_API_KEY` secret are present; when
+  `AI_GATEWAY_AUTH_TOKEN` is configured it is sent as Cloudflare gateway auth
+  separate from provider auth.
+- Manual GitHub Actions rollout uploads `OPENAI_API_KEY`, optional
+  `AI_GATEWAY_AUTH_TOKEN`, and `CONTROL_API_TOKEN` as Worker secrets during
+  deploy, injects AI Gateway account configuration at deploy time, and can run
+  a live AI Gateway smoke without committing secrets.
 - Composition scoring evaluation fixtures cover positive and negative scoring
   evidence across code-review and project-memory task signals.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
