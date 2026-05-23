@@ -140,6 +140,14 @@ That workflow executes the live dev E2E gate on the Hetzner host, connects to
 PostgreSQL over the local Unix socket, and stores artifacts below
 `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
 
+Use the same workflow for the live Postgres concurrency smoke:
+
+```bash
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=false \
+  -f run_postgres_concurrency_smoke=true
+```
+
 ## Smoke Tests
 
 Repository validation:
@@ -185,6 +193,10 @@ python scripts/runtime/live_dev_e2e.py \
 Postgres concurrency smoke:
 
 ```bash
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=false \
+  -f run_postgres_concurrency_smoke=true
+
 python scripts/runtime/postgres_concurrency_smoke.py --events 20
 ```
 

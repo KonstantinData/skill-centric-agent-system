@@ -54,6 +54,8 @@ system user, and writes gate artifacts under
 `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
 If the dev host does not yet have Python venv support, the workflow installs
 `python3-venv` and `python3.12-venv` before creating the gate environment.
+The same workflow can run the live Postgres concurrency smoke by setting
+`run_live_dev_e2e=false` and `run_postgres_concurrency_smoke=true`.
 
 Local or direct host command:
 

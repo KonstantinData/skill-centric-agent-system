@@ -72,8 +72,10 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
 
     assert "workflow_dispatch:" in workflow
     assert "run_live_dev_e2e:" in workflow
+    assert "run_postgres_concurrency_smoke:" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
+    assert "inputs.run_postgres_concurrency_smoke == true" in workflow
 
 
 def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
@@ -87,3 +89,12 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "scripts/runtime/live_dev_e2e.py" in workflow
     assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
     assert "/opt/scas/runtime/live-dev-gates" in workflow
+
+
+def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
+    workflow = load_live_runtime_gates_workflow()
+
+    assert "RUN_POSTGRES_CONCURRENCY_SMOKE" in workflow
+    assert "scripts/runtime/postgres_concurrency_smoke.py" in workflow
+    assert "--events 20" in workflow
+    assert "--profile-file examples/profiles/code-review-profile.json" in workflow

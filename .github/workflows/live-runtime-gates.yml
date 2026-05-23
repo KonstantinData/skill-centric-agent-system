@@ -8,15 +8,23 @@ on:
         required: true
         type: boolean
         default: true
+      run_postgres_concurrency_smoke:
+        description: Run the live Postgres concurrency smoke on the Hetzner runtime host
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  live-dev-e2e:
-    name: Live dev E2E on Hetzner
+  live-runtime-gates:
+    name: Live runtime gates on Hetzner
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.run_live_dev_e2e == true
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && (inputs.run_live_dev_e2e == true
+        || inputs.run_postgres_concurrency_smoke == true)
 
     env:
       CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
@@ -24,6 +32,8 @@ jobs:
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
       SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
+      RUN_LIVE_DEV_E2E: ${{ inputs.run_live_dev_e2e }}
+      RUN_POSTGRES_CONCURRENCY_SMOKE: ${{ inputs.run_postgres_concurrency_smoke }}
 
     steps:
       - name: Check out repository
@@ -92,7 +102,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -150,9 +160,18 @@ jobs:
           export SCAS_RUNTIME_ARTIFACT_ROOT="${artifact_root}"
           export SCAS_REPOSITORY_ROOT="${workdir}"
 
-          as_postgres_with_runtime_env \
-            "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
-              --task-file examples/tasks/code-review-task.json
+          if [ "${RUN_LIVE_DEV_E2E}" = "true" ]; then
+            as_postgres_with_runtime_env \
+              "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
+                --task-file examples/tasks/code-review-task.json
+          fi
+
+          if [ "${RUN_POSTGRES_CONCURRENCY_SMOKE}" = "true" ]; then
+            as_postgres_with_runtime_env \
+              "${workdir}/.venv/bin/python" scripts/runtime/postgres_concurrency_smoke.py \
+                --events 20 \
+                --profile-file examples/profiles/code-review-profile.json
+          fi
 
           rm -f "${archive}"
           REMOTE

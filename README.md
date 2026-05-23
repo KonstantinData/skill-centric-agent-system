@@ -217,8 +217,16 @@ Run the live dev E2E gate with:
 gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
 ```
 
+Run the live Postgres concurrency smoke with:
+
+```powershell
+gh workflow run live-runtime-gates.yml `
+  -f run_live_dev_e2e=false `
+  -f run_postgres_concurrency_smoke=true
+```
+
 The workflow uses GitHub Actions secrets, uploads the checked-out commit to the
-Hetzner host, runs `scripts/runtime/live_dev_e2e.py` there, and writes runtime
+Hetzner host, runs the selected live gate scripts there, and writes runtime
 artifacts below `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
 
 The current dev Worker is:
