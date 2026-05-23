@@ -27,7 +27,8 @@ manual live dev E2E gate script now covers the Cloudflare-to-Hetzner runtime
 path. Runtime
 operations now have a baseline runbook for migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact redaction and retention
-planning are implemented for the Flight Recorder artifact path. The Control API
+planning, safe retention cleanup execution, and dry-run-first cleanup CLI are
+implemented for the Flight Recorder artifact path. The Control API
 also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
@@ -40,9 +41,9 @@ has positive and negative evaluation fixtures, and runtime artifacts chunk large
 string payloads into manifest-referenced text chunks.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
-implemented. Queue-backed Cloudflare embedding indexing is implemented. Broader
-runtime expansion and retention cleanup remain explicit backlog items and must
-not obscure the runtime entry gate.
+implemented. Queue-backed Cloudflare embedding indexing and runtime retention
+cleanup execution are implemented. Broader runtime expansion remains an
+explicit backlog item and must not obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -183,7 +184,7 @@ new run attempt.
 ## Phase 7: Operational Hardening
 
 - Expand observability and trace export.
-- Plan and enforce runtime artifact retention. (Initial planner complete.)
+- Plan and enforce runtime artifact retention. (Initial cleanup executor complete.)
 - Add analyzer and composition-scoring evaluation fixtures. (Initial fixtures complete.)
 - Add safety tests for permissions and scoped access.
 - Add documentation for deployment and operations.
@@ -197,5 +198,7 @@ persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
 are implemented; the AI Gateway secret rollout and live LLM smoke workflow is
 implemented, with live execution gated by Cloudflare Worker script permissions,
 OpenAI provider auth, and optional Authenticated Gateway auth; queue-backed
-embedding indexing is implemented;
-operational cleanup jobs and broader telemetry remain pending.
+embedding indexing is implemented; runtime retention cleanup execution is
+implemented with dry-run-first apply behavior, safe URI resolution, missing-file
+reporting, and cleanup reports. Scheduled cleanup automation and broader
+telemetry remain pending.

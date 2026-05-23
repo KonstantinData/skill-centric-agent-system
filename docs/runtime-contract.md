@@ -273,6 +273,35 @@ Run-local event indexes must be allocated atomically by the runtime storage
 adapter. The runtime must not derive `event_index` by counting currently visible
 events in a way that can race under parallel writers.
 
+## Retention Cleanup
+
+Runtime retention cleanup applies only to artifact files, not runtime metadata
+rows, in the first cleanup slice.
+
+The cleanup flow is:
+
+```text
+Runtime Plane recordset
+-> RuntimeRetentionPlanner
+-> RuntimeRetentionPlan
+-> RuntimeRetentionExecutor
+-> Cleanup report artifact
+```
+
+Retention cleanup must obey these rules:
+
+- Dry-run is the default for apply operations.
+- Destructive cleanup requires explicit confirmation.
+- Only `hetzner://runtime/...` URIs under the configured artifact root can be
+  resolved.
+- Unknown URI schemes, parent traversal, absolute paths, and directories fail
+  closed.
+- Missing expired artifacts are reported as `missing` and skipped by default.
+- Strict missing mode may return a cleanup error when consistency is more
+  important than completing the cleanup pass.
+- Cleanup reports are retained under their own `cleanup_report_artifact_days`
+  policy so the cleanup mechanism does not create unbounded report artifacts.
+
 ## Runtime Result
 
 The runtime result must contain:

@@ -147,7 +147,11 @@ Runtime events follow the Flight Recorder pattern:
 - Artifact writes honor the Runtime Agent Profile's
   `observability.redact_sensitive_data` flag.
 - Runtime retention planning separates expired artifact URIs from retained
-  records before any cleanup job deletes data.
+  records before cleanup deletes data.
+- Runtime retention cleanup resolves only `hetzner://runtime/...` URIs under
+  the configured Hetzner artifact root, defaults to dry-run behavior, reports
+  missing files deterministically, and never deletes runtime metadata rows in
+  the first cleanup slice.
 
 Productive runtime work may only begin after the Runtime Preflight Gate in
 `docs/runtime-preflight.md` confirms that the dev Worker, D1, R2, Vectorize,
@@ -341,7 +345,9 @@ Implemented:
   separation, and disable paths.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
   phases against the code-review fixture.
-- Runtime redaction policy and retention planner exist for runtime artifacts.
+- Runtime redaction policy, retention planner, safe artifact URI resolver,
+  cleanup executor, cleanup report, and dry-run-first CLI exist for runtime
+  artifacts.
 - Cloudflare Control API knowledge and memory ingestion endpoints write R2
   objects, D1 metadata, ingestion jobs, and audit events.
 - Hetzner Memory Feedback Pipeline client submits only validator-approved and
@@ -372,7 +378,6 @@ Implemented:
 Not yet implemented:
 
 - Expanded runtime loop beyond the initial code-review fixture.
-- Runtime retention cleanup execution.
 
 ## Implementation Order
 
@@ -408,8 +413,9 @@ Completed:
 28. Chunked runtime artifact payload persistence.
 29. AI Gateway secret rollout and live LLM smoke workflow.
 30. Queue-backed embedding indexing worker and Vectorize population path.
+31. Runtime retention cleanup execution.
 
 Next:
 
-1. Implement runtime retention cleanup execution.
-2. Expand the runtime loop beyond the initial code-review fixture.
+1. Expand the runtime loop beyond the initial code-review fixture.
+2. Expand operational telemetry and scheduled cleanup automation.

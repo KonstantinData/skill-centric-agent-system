@@ -33,7 +33,8 @@ generation, and can continue through a new run attempt without mutating the
 active profile. A manual live dev E2E gate now exists for the Cloudflare-to-Hetzner
 runtime path, and the operations runbook defines migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact writes now honor the profile's
-`observability.redact_sensitive_data` flag and expose a retention planner for
+`observability.redact_sensitive_data` flag and expose a retention planner,
+safe URI resolver, cleanup executor, cleanup report, and dry-run-first CLI for
 runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
 knowledge and validated-memory ingestion endpoints that write R2 objects, D1
 metadata, ingestion jobs, and audit events. It now also exposes a
@@ -54,8 +55,8 @@ chunks large string payloads into manifest-referenced text chunks.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Richer tool execution, retention cleanup, broader runtime expansion, and
-production-scale deployment hardening remain follow-up implementation work.
+Richer tool execution, broader runtime expansion, and production-scale
+deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -158,6 +159,35 @@ scas-runtime-start `
   --storage-mode postgres `
   --database-url $env:SCAS_RUNTIME_DATABASE_URL `
   --run-minimal-loop
+```
+
+Plan runtime artifact retention cleanup without deleting anything:
+
+```powershell
+scas-runtime retention plan `
+  --storage-mode postgres `
+  --database-url $env:SCAS_RUNTIME_DATABASE_URL `
+  --artifact-root /opt/scas/runtime
+```
+
+Run the same cleanup in dry-run apply mode. This writes an auditable cleanup
+report but still does not delete artifacts:
+
+```powershell
+scas-runtime retention apply `
+  --storage-mode postgres `
+  --database-url $env:SCAS_RUNTIME_DATABASE_URL `
+  --artifact-root /opt/scas/runtime
+```
+
+Delete expired artifacts only after reviewing the dry-run output:
+
+```powershell
+scas-runtime retention apply `
+  --storage-mode postgres `
+  --database-url $env:SCAS_RUNTIME_DATABASE_URL `
+  --artifact-root /opt/scas/runtime `
+  --confirm
 ```
 
 Generate the Cloudflare D1 dev seed from module contracts:
@@ -277,5 +307,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Add the runtime retention cleanup job.
-2. Continue broader runtime planning and execution expansion as explicit backlog items.
+1. Continue broader runtime planning and execution expansion as explicit backlog items.
+2. Expand operational telemetry around runtime cleanup, retrieval, and validation gates.

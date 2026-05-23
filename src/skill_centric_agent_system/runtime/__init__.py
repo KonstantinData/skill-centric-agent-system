@@ -30,9 +30,15 @@ from skill_centric_agent_system.runtime.memory_feedback import (
 from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.retention import (
+    ResolvedArtifactUri,
+    RuntimeArtifactUriResolver,
+    RuntimeRetentionCleanupReport,
+    RuntimeRetentionError,
+    RuntimeRetentionExecutor,
     RuntimeRetentionPlan,
     RuntimeRetentionPlanner,
     RuntimeRetentionPolicy,
+    retention_plan_to_json,
 )
 from skill_centric_agent_system.runtime.storage import (
     FlightRecorder,
@@ -72,7 +78,12 @@ __all__ = [
     "RuntimeRetentionPlan",
     "RuntimeRetentionPlanner",
     "RuntimeRetentionPolicy",
+    "RuntimeArtifactUriResolver",
+    "RuntimeRetentionCleanupReport",
+    "RuntimeRetentionError",
+    "RuntimeRetentionExecutor",
     "RuntimeProfileEnforcer",
+    "ResolvedArtifactUri",
     "RuntimeContextManager",
     "RecompositionRequest",
     "RuntimeLoopError",
@@ -93,4 +104,5 @@ __all__ = [
     "profile_redacts_sensitive_data",
     "open_runtime_store_session",
     "redact_sensitive_data",
+    "retention_plan_to_json",
 ]

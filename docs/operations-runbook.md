@@ -257,6 +257,56 @@ This smoke test requires `SCAS_RUNTIME_DATABASE_URL` and verifies that
 concurrent Flight Recorder writes persist a contiguous per-run `event_index`
 sequence.
 
+Runtime retention cleanup:
+
+```bash
+scas-runtime retention plan \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
+The retention planner reads the Hetzner PostgreSQL runtime tables and separates
+expired artifact URIs from retained runs. It does not delete anything.
+
+Apply cleanup in dry-run mode before any destructive run:
+
+```bash
+scas-runtime retention apply \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
+Dry-run apply resolves artifact URIs, reports missing and unsafe paths, writes a
+cleanup report artifact, and keeps all files in place.
+
+Delete expired artifacts only after reviewing the plan and dry-run report:
+
+```bash
+scas-runtime retention apply \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --confirm
+```
+
+Cleanup rules:
+
+- Only `hetzner://runtime/...` artifact URIs under the configured artifact root
+  are eligible for deletion.
+- Unknown URI schemes, parent traversal, absolute paths, and directories fail
+  closed as unsafe entries.
+- Missing expired artifacts are deterministic warnings by default: they are
+  reported as `missing` and skipped while cleanup continues.
+- Use `--strict-missing` when a missing expired artifact should make cleanup
+  return an error.
+- Runtime metadata rows, including runs, steps, events, checkpoints, tool
+  invocations, validation results, and memory candidates, are retained in the
+  first cleanup slice.
+- Cleanup reports carry their own retention policy through
+  `cleanup_report_artifact_days`, defaulting to 180 days.
+
 ## Diagnostics
 
 Composition failures:

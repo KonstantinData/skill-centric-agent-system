@@ -63,6 +63,13 @@ class RuntimeStore(Protocol):
 
     def checkpoints_for_run(self, run_id: str) -> tuple[Mapping[str, Any], ...]: ...
 
+    def as_runtime_plane_recordset(
+        self,
+        *,
+        contract_version: str = "0.2.0",
+        environment: str = "dev",
+    ) -> Mapping[str, Any]: ...
+
 
 class InMemoryRuntimeStore:
     """Runtime store used by tests and local entrypoint dry-runs."""
@@ -500,6 +507,85 @@ class PostgresRuntimeStore:
             {"run_id": run_id},
         )
         return tuple(cursor.fetchall())
+
+    def as_runtime_plane_recordset(
+        self,
+        *,
+        contract_version: str = "0.2.0",
+        environment: str = "dev",
+    ) -> Mapping[str, Any]:
+        return {
+            "contract_version": contract_version,
+            "environment": environment,
+            "records": {
+                "runtime_runs": self._fetch_all(
+                    """
+                    SELECT id, task_id, profile_id, profile_version, status,
+                           started_at, completed_at, artifact_root_uri,
+                           token_budget_total, tokens_used_total, stop_reason
+                    FROM runtime.runtime_runs
+                    ORDER BY started_at, id
+                    """
+                ),
+                "runtime_steps": self._fetch_all(
+                    """
+                    SELECT id, run_id, step_index, kind, status, started_at,
+                           completed_at, stop_reason, token_budget, tokens_used,
+                           idempotency_key, attempt
+                    FROM runtime.runtime_steps
+                    ORDER BY run_id, step_index
+                    """
+                ),
+                "runtime_events": self._fetch_all(
+                    """
+                    SELECT id, run_id, step_id, event_index, event_type, actor_role,
+                           planned_action_uri, execution_uri, result_uri, stop_reason,
+                           idempotency_key, created_at
+                    FROM runtime.runtime_events
+                    ORDER BY run_id, event_index
+                    """
+                ),
+                "runtime_checkpoints": self._fetch_all(
+                    """
+                    SELECT id, run_id, step_id, checkpoint_index, phase, state_uri,
+                           tokens_used_total, created_at
+                    FROM runtime.runtime_checkpoints
+                    ORDER BY run_id, checkpoint_index
+                    """
+                ),
+                "tool_invocations": self._fetch_all(
+                    """
+                    SELECT id, run_id, step_id, tool_name, status, input_uri,
+                           output_uri, started_at, completed_at
+                    FROM runtime.tool_invocations
+                    ORDER BY run_id, started_at, id
+                    """
+                ),
+                "validation_results": self._fetch_all(
+                    """
+                    SELECT id, run_id, step_id, validator_id, status, findings_uri,
+                           created_at
+                    FROM runtime.validation_results
+                    ORDER BY run_id, created_at, id
+                    """
+                ),
+                "memory_candidates": self._fetch_all(
+                    """
+                    SELECT id, run_id, profile_id, source_step_id,
+                           target_memory_scope_id, content_uri, sensitivity,
+                           retention_policy, validator_status, validator_id,
+                           validation_reason, policy_status, policy_id,
+                           policy_reason, created_at
+                    FROM runtime.memory_candidates
+                    ORDER BY run_id, created_at, id
+                    """
+                ),
+            },
+        }
+
+    def _fetch_all(self, sql: str) -> list[Mapping[str, Any]]:
+        cursor = self.connection.execute(sql)
+        return list(cursor.fetchall())
 
 
 class RuntimeStorageError(RuntimeError):

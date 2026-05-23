@@ -17,6 +17,7 @@ runtime = [
 ]
 
 [project.scripts]
+scas-runtime = "skill_centric_agent_system.runtime.cli:main"
 scas-runtime-start = "skill_centric_agent_system.runtime.cli:main"
 
 [tool.pytest.ini_options]

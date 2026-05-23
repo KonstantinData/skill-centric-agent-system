@@ -159,6 +159,43 @@ Every command returns structured errors:
 
 Error codes are stable identifiers. Error messages are for operators.
 
+## Retention CLI
+
+Runtime retention cleanup is exposed through the shared runtime CLI:
+
+```bash
+scas-runtime retention plan \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
+`retention plan` reads runtime metadata and returns expired and retained run
+and artifact references without touching the filesystem.
+
+```bash
+scas-runtime retention apply \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
+`retention apply` is still a dry-run unless `--confirm` is present. Dry-run
+apply resolves artifact URIs, records missing or unsafe entries, writes a
+cleanup report, and keeps artifacts in place.
+
+```bash
+scas-runtime retention apply \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --confirm
+```
+
+Confirmed apply deletes only expired artifact files that resolve under the
+configured artifact root. It never deletes runtime metadata rows in the first
+cleanup slice.
+
 ## Storage Modes
 
 Supported storage modes:
