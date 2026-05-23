@@ -129,6 +129,17 @@ machine that runs the gate. If the database URL is not available locally, run
 the E2E script from the Hetzner host or provide an agreed local connection
 string.
 
+When the Control API token is available only as a GitHub Actions secret, use
+the manual live runtime workflow instead of copying the token to a local shell:
+
+```bash
+gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+```
+
+That workflow executes the live dev E2E gate on the Hetzner host, connects to
+PostgreSQL over the local Unix socket, and stores artifacts below
+`/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+
 ## Smoke Tests
 
 Repository validation:
@@ -165,6 +176,8 @@ ssh "$HETZNER_USER@$HETZNER_HOST" \
 Live dev E2E gate:
 
 ```bash
+gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+
 python scripts/runtime/live_dev_e2e.py \
   --task-file examples/tasks/code-review-task.json
 ```

@@ -1,0 +1,146 @@
+name: Live Runtime Gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_live_dev_e2e:
+        description: Run the live dev E2E gate on the Hetzner runtime host
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  live-dev-e2e:
+    name: Live dev E2E on Hetzner
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_dev_e2e == true
+
+    env:
+      CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Check required secrets are present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in CONTROL_API_TOKEN HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required secret: ${name}"
+              missing=1
+            fi
+          done
+
+          exit "${missing}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 600 "${HOME}/.ssh/hetzner_key"
+
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----"
+            exit 1
+          fi
+
+          ssh-keyscan -H "${HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Package repository snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --output scas-live-runtime-gate.tar.gz HEAD
+
+      - name: Upload snapshot to Hetzner
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            scas-live-runtime-gate.tar.gz \
+            "${HETZNER_USER}@${HETZNER_HOST}:/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Run live dev E2E gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          token_b64="$(printf '%s' "${CONTROL_API_TOKEN}" | base64 -w0)"
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${HETZNER_USER}@${HETZNER_HOST}" \
+            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo "$@"
+            fi
+          }
+
+          as_postgres_with_runtime_env() {
+            sudo \
+              --preserve-env=SCAS_CONTROL_API_URL,SCAS_CONTROL_API_TOKEN,SCAS_RUNTIME_DATABASE_URL,SCAS_RUNTIME_ARTIFACT_ROOT,SCAS_REPOSITORY_ROOT \
+              -u postgres \
+              "$@"
+          }
+
+          archive="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}.tar.gz"
+          workdir="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}"
+          artifact_root="/opt/scas/runtime/live-dev-gates/${GITHUB_RUN_ID}"
+
+          rm -rf "${workdir}"
+          install -d -m 755 "${workdir}"
+          tar -xzf "${archive}" -C "${workdir}"
+          chmod -R a+rX "${workdir}"
+
+          sudo_if_needed chgrp postgres /opt/scas/runtime
+          sudo_if_needed chmod 750 /opt/scas/runtime
+          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/live-dev-gates
+          sudo_if_needed install -d -o postgres -g postgres -m 750 "${artifact_root}"
+
+          python3 -m venv "${workdir}/.venv"
+          "${workdir}/.venv/bin/python" -m pip install --upgrade pip
+          "${workdir}/.venv/bin/python" -m pip install -e "${workdir}[runtime]"
+          chmod -R a+rX "${workdir}/.venv"
+
+          control_token="$(printf '%s' "${SCAS_CONTROL_API_TOKEN_B64}" | base64 -d)"
+
+          cd "${workdir}"
+          export SCAS_CONTROL_API_URL
+          export SCAS_CONTROL_API_TOKEN="${control_token}"
+          export SCAS_RUNTIME_DATABASE_URL="postgresql:///scas_runtime?host=/var/run/postgresql"
+          export SCAS_RUNTIME_ARTIFACT_ROOT="${artifact_root}"
+          export SCAS_REPOSITORY_ROOT="${workdir}"
+
+          as_postgres_with_runtime_env \
+            "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
+              --task-file examples/tasks/code-review-task.json
+
+          rm -f "${archive}"
+          REMOTE

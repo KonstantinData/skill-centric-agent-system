@@ -210,6 +210,17 @@ Cloudflare Control API dev deployment is manual in the same workflow. Run it
 with `deploy_control_api_dev = true` or locally with `npm run worker:deploy:dev`
 when Wrangler is authenticated.
 
+Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.
+Run the live dev E2E gate with:
+
+```powershell
+gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+```
+
+The workflow uses GitHub Actions secrets, uploads the checked-out commit to the
+Hetzner host, runs `scripts/runtime/live_dev_e2e.py` there, and writes runtime
+artifacts below `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+
 The current dev Worker is:
 
 ```text

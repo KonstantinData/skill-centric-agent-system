@@ -41,6 +41,20 @@ Hetzner artifact root.
 
 ## Command
 
+Preferred manual GitHub Actions gate:
+
+```bash
+gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+```
+
+The workflow uses GitHub `CONTROL_API_TOKEN` and Hetzner SSH secrets, uploads
+the checked-out commit to the Hetzner host, installs the runtime dependencies
+there, connects to PostgreSQL over the local Unix socket as the `postgres`
+system user, and writes gate artifacts under
+`/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+
+Local or direct host command:
+
 ```bash
 python scripts/runtime/live_dev_e2e.py \
   --task-file examples/tasks/code-review-task.json
