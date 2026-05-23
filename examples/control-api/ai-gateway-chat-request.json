@@ -1,11 +1,11 @@
 {
-  "model": "gpt-4.1-mini",
+  "model": "gpt-5-mini",
   "messages": [
     {
       "role": "user",
       "content": "Reply with a short SCAS AI Gateway smoke confirmation."
     }
   ],
-  "max_tokens": 16,
-  "temperature": 0.2
+  "max_completion_tokens": 64,
+  "reasoning_effort": "minimal"
 }
