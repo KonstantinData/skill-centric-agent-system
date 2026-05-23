@@ -82,6 +82,8 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "secrets.CONTROL_API_TOKEN" in workflow
     assert "secrets.HETZNER_SSH_KEY" in workflow
     assert "git archive --format=tar.gz" in workflow
+    assert "apt-get install -y" in workflow
+    assert "python3.12-venv" in workflow
     assert "scripts/runtime/live_dev_e2e.py" in workflow
     assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
     assert "/opt/scas/runtime/live-dev-gates" in workflow

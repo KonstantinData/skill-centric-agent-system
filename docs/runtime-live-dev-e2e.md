@@ -52,6 +52,8 @@ the checked-out commit to the Hetzner host, installs the runtime dependencies
 there, connects to PostgreSQL over the local Unix socket as the `postgres`
 system user, and writes gate artifacts under
 `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+If the dev host does not yet have Python venv support, the workflow installs
+`python3-venv` and `python3.12-venv` before creating the gate environment.
 
 Local or direct host command:
 

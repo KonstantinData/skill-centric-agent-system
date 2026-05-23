@@ -124,7 +124,19 @@ jobs:
           sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/live-dev-gates
           sudo_if_needed install -d -o postgres -g postgres -m 750 "${artifact_root}"
 
-          python3 -m venv "${workdir}/.venv"
+          if ! python3 -m venv "${workdir}/.venv"; then
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "python3 venv support is missing and apt-get is unavailable." >&2
+              exit 1
+            fi
+
+            sudo_if_needed env DEBIAN_FRONTEND=noninteractive apt-get update
+            sudo_if_needed env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              python3-venv \
+              python3.12-venv
+            python3 -m venv "${workdir}/.venv"
+          fi
+
           "${workdir}/.venv/bin/python" -m pip install --upgrade pip
           "${workdir}/.venv/bin/python" -m pip install -e "${workdir}[runtime]"
           chmod -R a+rX "${workdir}/.venv"
