@@ -148,6 +148,16 @@ gh workflow run live-runtime-gates.yml \
   -f run_postgres_concurrency_smoke=true
 ```
 
+Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
+when the Worker needs `OPENAI_API_KEY` and AI Gateway account configuration:
+
+```bash
+gh workflow run ci.yml \
+  -f deploy_control_api_dev=false \
+  -f run_ai_gateway_live_smoke=true \
+  -f run_infra_smoke=false
+```
+
 ## Smoke Tests
 
 Repository validation:
@@ -172,6 +182,9 @@ curl -s -X POST "$SCAS_CONTROL_API_URL/retrieval/context" \
   -H "content-type: application/json" \
   -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/retrieval-context-request.json
+
+python scripts/cloudflare/ai_gateway_live_smoke.py \
+  --control-api-url "$SCAS_CONTROL_API_URL"
 ```
 
 Hetzner Runtime Plane:

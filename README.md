@@ -51,9 +51,8 @@ chunks large string payloads into manifest-referenced text chunks.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Richer tool execution, async indexing workers, AI Gateway live smoke, retention
-cleanup, and production-scale deployment hardening remain follow-up
-implementation work.
+Richer tool execution, async indexing workers, retention cleanup, and
+production-scale deployment hardening remain follow-up implementation work.
 
 ## Core Flow
 
@@ -211,6 +210,21 @@ Cloudflare Control API dev deployment is manual in the same workflow. Run it
 with `deploy_control_api_dev = true` or locally with `npm run worker:deploy:dev`
 when Wrangler is authenticated.
 
+Run the AI Gateway dev deployment and live LLM smoke with:
+
+```powershell
+gh workflow run ci.yml `
+  -f deploy_control_api_dev=false `
+  -f run_ai_gateway_live_smoke=true `
+  -f run_infra_smoke=false
+```
+
+That workflow installs `OPENAI_API_KEY` as a Worker secret, injects
+`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret at
+deploy time, keeps `AI_GATEWAY_ID` at `default` unless the repository variable
+overrides it, deploys the dev Worker, and calls
+`POST /ai-gateway/openai/chat/completions`.
+
 Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.
 Run the live dev E2E gate with:
 
@@ -246,6 +260,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Run the AI Gateway secret rollout and live LLM smoke.
-2. Implement async knowledge/memory embedding indexing workers.
-3. Add the runtime retention cleanup job and continue broader runtime expansion as explicit backlog items.
+1. Implement async knowledge/memory embedding indexing workers.
+2. Add the runtime retention cleanup job.
+3. Continue broader runtime planning and execution expansion as explicit backlog items.

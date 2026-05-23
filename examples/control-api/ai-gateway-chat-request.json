@@ -1,10 +1,11 @@
 {
-  "model": "gpt-4o-mini",
+  "model": "gpt-4.1-mini",
   "messages": [
     {
       "role": "user",
-      "content": "Summarize the selected runtime context."
+      "content": "Reply with a short SCAS AI Gateway smoke confirmation."
     }
   ],
+  "max_tokens": 16,
   "temperature": 0.2
 }

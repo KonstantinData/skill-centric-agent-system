@@ -46,6 +46,18 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
         assert f"secrets.{secret}" in workflow
 
 
+def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
+    workflow = load_ci_workflow()
+
+    assert "run_ai_gateway_live_smoke:" in workflow
+    assert "inputs.run_ai_gateway_live_smoke == true" in workflow
+    assert "OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
+    assert "npx wrangler secret put OPENAI_API_KEY" in workflow
+    assert "AI_GATEWAY_ACCOUNT_ID" in workflow
+    assert "CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "scripts/cloudflare/ai_gateway_live_smoke.py" in workflow
+
+
 def test_ci_workflow_validates_hetzner_private_key_format() -> None:
     workflow = load_ci_workflow()
 

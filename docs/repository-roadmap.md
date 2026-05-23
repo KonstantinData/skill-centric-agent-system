@@ -40,9 +40,8 @@ has positive and negative evaluation fixtures, and runtime artifacts chunk large
 string payloads into manifest-referenced text chunks.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
-implemented. Async indexing, AI Gateway live secret rollout, broader runtime
-expansion, and retention cleanup remain explicit backlog items and must not
-obscure the runtime entry gate.
+implemented. Async indexing, broader runtime expansion, and retention cleanup
+remain explicit backlog items and must not obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -194,5 +193,6 @@ feedback client exists; Control API retrieval and AI Gateway routes are
 implemented; memory candidate extraction/validation and the controlled learning
 fixture exist; Control API auth, atomic event indexing, chunked artifact
 persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
-are implemented; operational cleanup jobs, async indexing, AI Gateway live
-smoke, and broader telemetry remain pending.
+are implemented; the AI Gateway secret rollout and live LLM smoke workflow is
+implemented; operational cleanup jobs, async indexing, and broader telemetry
+remain pending.

@@ -167,10 +167,11 @@ After Phase 0 is satisfied, implement Phase 1 in this order:
 9. `P1.09 Build Live Dev E2E Gate`
 10. `P1.10 Establish Operations Baseline`
 
-The existing follow-up items for async indexing, AI Gateway live secret rollout,
-runtime expansion beyond the initial fixture, and retention cleanup remain
-backlog work after the Phase 1 core runtime gate unless explicitly pulled
-forward by a failing entry criterion.
+The existing follow-up items for async indexing, runtime expansion beyond the
+initial fixture, and retention cleanup remain backlog work after the Phase 1
+core runtime gate unless explicitly pulled forward by a failing entry
+criterion. AI Gateway live secret rollout is handled by the manual dev
+deployment smoke workflow.
 
 The durable runtime contract lives in `docs/runtime-contract.md`. Runtime API
 and CLI semantics live in `docs/runtime-api.md`, with machine-readable examples

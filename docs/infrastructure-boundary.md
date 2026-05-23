@@ -335,6 +335,9 @@ Implemented:
   memory context with Vectorize bindings and D1 post-validation.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
   when the account configuration and `OPENAI_API_KEY` secret are present.
+- Manual GitHub Actions rollout installs the `OPENAI_API_KEY` Worker secret,
+  injects AI Gateway account configuration at deploy time, and can run a live
+  AI Gateway smoke without committing secrets.
 - Composition scoring evaluation fixtures cover positive and negative scoring
   evidence across code-review and project-memory task signals.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
@@ -345,7 +348,6 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
-- AI Gateway live secret rollout and live LLM smoke evidence.
 - Runtime retention cleanup execution.
 
 ## Implementation Order
@@ -380,9 +382,9 @@ Completed:
 26. Atomic Flight Recorder event-index allocation.
 27. Analyzer and scoring evaluation fixtures.
 28. Chunked runtime artifact payload persistence.
+29. AI Gateway secret rollout and live LLM smoke workflow.
 
 Next:
 
-1. Run the AI Gateway secret rollout and live LLM smoke.
-2. Implement async ingestion/indexing workers and remote Vectorize population.
-3. Implement runtime retention cleanup execution.
+1. Implement async ingestion/indexing workers and remote Vectorize population.
+2. Implement runtime retention cleanup execution.

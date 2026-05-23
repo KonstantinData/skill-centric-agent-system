@@ -157,6 +157,21 @@ to the intended AI Gateway name in the deployment environment. The committed
 dev default keeps `AI_GATEWAY_ACCOUNT_ID = "unset"` so local and unconfigured
 deployments fail closed.
 
+For the dev Worker, the manual GitHub Actions deployment can perform the
+rollout without committing secrets or account-specific config:
+
+```bash
+gh workflow run ci.yml \
+  -f deploy_control_api_dev=false \
+  -f run_ai_gateway_live_smoke=true \
+  -f run_infra_smoke=false
+```
+
+The workflow writes `OPENAI_API_KEY` as a Worker secret, rewrites
+`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in
+the deployment workspace, deploys `scas-control-api-dev`, and runs
+`scripts/cloudflare/ai_gateway_live_smoke.py`.
+
 Apply D1 migrations locally:
 
 ```bash
@@ -261,6 +276,13 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/ai
   -H "content-type: application/json" \
   -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/ai-gateway-chat-request.json
+```
+
+Smoke-test the configured live route without printing model output:
+
+```bash
+python scripts/cloudflare/ai_gateway_live_smoke.py \
+  --control-api-url https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 ```
 
 ## Seed Scope

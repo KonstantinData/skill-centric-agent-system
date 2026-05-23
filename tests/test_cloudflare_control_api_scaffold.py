@@ -14,6 +14,9 @@ CONTROL_API_DOC_PATH = REPO_ROOT / "docs" / "cloudflare" / "control-api.md"
 BOOTSTRAP_SCRIPT_PATH = (
     REPO_ROOT / "scripts" / "cloudflare" / "bootstrap_control_api_dev.sh"
 )
+AI_GATEWAY_LIVE_SMOKE_SCRIPT_PATH = (
+    REPO_ROOT / "scripts" / "cloudflare" / "ai_gateway_live_smoke.py"
+)
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
@@ -126,3 +129,13 @@ def test_ci_runs_worker_checks_and_has_manual_dev_deploy_gate() -> None:
     assert "npm run worker:check" in workflow
     assert "inputs.deploy_control_api_dev == true" in workflow
     assert "npm run worker:deploy:dev" in workflow
+
+
+def test_ai_gateway_live_smoke_script_is_documented_and_uses_control_api_route() -> None:
+    docs = load_text(CONTROL_API_DOC_PATH)
+    script = load_text(AI_GATEWAY_LIVE_SMOKE_SCRIPT_PATH)
+
+    assert "scripts/cloudflare/ai_gateway_live_smoke.py" in docs
+    assert "/ai-gateway/openai/chat/completions" in script
+    assert "SCAS_CONTROL_API_TOKEN" in script
+    assert "choices" in script

@@ -169,7 +169,6 @@ The current repository has implemented the first control-plane slice:
 The following architecture components are still pending implementation:
 
 - expanded runtime planning and execution beyond the initial code-review loop,
-- AI Gateway live secret rollout and live LLM smoke evidence,
 - async ingestion/indexing workers for knowledge and memory embeddings,
 - runtime retention cleanup execution.
 
