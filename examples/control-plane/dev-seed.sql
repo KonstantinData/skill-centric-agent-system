@@ -11,7 +11,19 @@ VALUES ('mod-coding-guidelines', 'coding-guidelines', 'knowledge_scope', 'active
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-filesystem-list', 'filesystem-list', 'tool', 'active', 'mv-filesystem-list-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-filesystem-read', 'filesystem-read', 'tool', 'active', 'mv-filesystem-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-general-output-contract', 'general-output-contract', 'validator', 'active', 'mv-general-output-contract-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-general-task-summary', 'general-task-summary', 'skill', 'active', 'mv-general-task-summary-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -39,7 +51,23 @@ VALUES ('mod-require-file-references', 'require-file-references', 'policy', 'act
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-research-context-synthesis', 'research-context-synthesis', 'skill', 'active', 'mv-research-context-synthesis-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-research-output-contract', 'research-output-contract', 'validator', 'active', 'mv-research-output-contract-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-review-findings-contract', 'review-findings-contract', 'validator', 'active', 'mv-review-findings-contract-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-task-execution-output-contract', 'task-execution-output-contract', 'validator', 'active', 'mv-task-execution-output-contract-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-task-execution-planning', 'task-execution-planning', 'skill', 'active', 'mv-task-execution-planning-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -55,7 +83,19 @@ VALUES ('mv-coding-guidelines-0-1-0', 'mod-coding-guidelines', '0.1.0', 'generat
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-filesystem-list-0-1-0', 'mod-filesystem-list', '0.1.0', 'generated://tool/filesystem-list', 'sha256:generated-filesystem-list', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-filesystem-read-0-1-0', 'mod-filesystem-read', '0.1.0', 'generated://tool/filesystem-read', 'sha256:generated-filesystem-read', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-general-output-contract-0-1-0', 'mod-general-output-contract', '0.1.0', 'generated://validator/general-output-contract', 'sha256:generated-general-output-contract', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-general-task-summary-0-1-0', 'mod-general-task-summary', '0.1.0', 'repo://examples/modules/general-task-summary.json', 'sha256:8cc4407a8dc591934dce32f2704d8fdf7b3dd233795f1c3af95277841a8c955f', 0.62, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -83,7 +123,23 @@ VALUES ('mv-require-file-references-0-1-0', 'mod-require-file-references', '0.1.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-research-context-synthesis-0-1-0', 'mod-research-context-synthesis', '0.1.0', 'repo://examples/modules/research-context-synthesis.json', 'sha256:0ee73f921e0d939a1d1d4b980600de8190588642c2125ba9cb40d669f7e72542', 0.68, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-research-output-contract-0-1-0', 'mod-research-output-contract', '0.1.0', 'generated://validator/research-output-contract', 'sha256:generated-research-output-contract', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-review-findings-contract-0-1-0', 'mod-review-findings-contract', '0.1.0', 'generated://validator/review-findings-contract', 'sha256:generated-review-findings-contract', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-task-execution-output-contract-0-1-0', 'mod-task-execution-output-contract', '0.1.0', 'generated://validator/task-execution-output-contract', 'sha256:generated-task-execution-output-contract', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-task-execution-planning-0-1-0', 'mod-task-execution-planning', '0.1.0', 'repo://examples/modules/task-execution-planning.json', 'sha256:3bf8ea05dc0137d4ce4e5b5dd20a31dc36250d89cd1793388ae5902618b8402f', 0.7, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -91,15 +147,27 @@ VALUES ('mv-test-runner-0-1-0', 'mod-test-runner', '0.1.0', 'generated://tool/te
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
-VALUES ('msm-architecture-docs-0-1-0', 'mv-architecture-docs-0-1-0', 'Generated knowledge_scope module for architecture-docs.', 'knowledge_access', '["git","software-engineering"]', '["code-review"]', '["low","medium"]', '["git","software-engineering"]', '[]', '["architecture-docs"]', '[]', '["architecture-docs"]', '[]', '["architecture-docs-output"]', '[]', 0)
+VALUES ('msm-architecture-docs-0-1-0', 'mv-architecture-docs-0-1-0', 'Generated knowledge_scope module for architecture-docs.', 'knowledge_access', '["git","knowledge-retrieval","repository","research","software-engineering","task-execution"]', '["code-review","research","task-execution"]', '["high","low","medium"]', '["git","knowledge-retrieval","repository","research","software-engineering","task-execution"]', '[]', '["architecture-docs"]', '[]', '["architecture-docs"]', '[]', '["architecture-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
-VALUES ('msm-coding-guidelines-0-1-0', 'mv-coding-guidelines-0-1-0', 'Generated knowledge_scope module for coding-guidelines.', 'knowledge_access', '["git","software-engineering"]', '["code-review"]', '["low","medium"]', '["git","software-engineering"]', '[]', '["coding-guidelines"]', '[]', '["coding-guidelines"]', '[]', '["coding-guidelines-output"]', '[]', 0)
+VALUES ('msm-coding-guidelines-0-1-0', 'mv-coding-guidelines-0-1-0', 'Generated knowledge_scope module for coding-guidelines.', 'knowledge_access', '["git","repository","software-engineering","task-execution"]', '["code-review","task-execution"]', '["high","low","medium"]', '["git","repository","software-engineering","task-execution"]', '[]', '["coding-guidelines"]', '[]', '["coding-guidelines"]', '[]', '["coding-guidelines-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-filesystem-list-0-1-0', 'mv-filesystem-list-0-1-0', 'Generated tool module for filesystem-list.', 'tool_access', '[]', '[]', '[]', '[]', '[]', '["filesystem-list"]', '[]', '["filesystem-list"]', '[]', '["filesystem-list-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-filesystem-read-0-1-0', 'mv-filesystem-read-0-1-0', 'Generated tool module for filesystem-read.', 'tool_access', '[]', '[]', '[]', '[]', '[]', '["filesystem-read"]', '[]', '["filesystem-read"]', '[]', '["filesystem-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-general-output-contract-0-1-0', 'mv-general-output-contract-0-1-0', 'Generated validator module for general-output-contract.', 'validation', '[]', '[]', '[]', '[]', '[]', '["general-output-contract"]', '[]', '["general-output-contract"]', '[]', '["general-output-contract-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-general-task-summary-0-1-0', 'mv-general-task-summary-0-1-0', 'Produce a bounded generic runtime summary when no specialized task strategy is selected.', 'planning', '["general-task"]', '["general-task"]', '["high","low","medium"]', '["general-task"]', '[]', '["general","outline","prepare"]', '["delete","deploy","destroy"]', '["general","outline","prepare"]', '[]', '["general-task-summary"]', '[{"reason":"General tasks should receive a bounded generic summary strategy.","signal":"task_type:general-task","weight":0.22},{"reason":"Destructive requests should not be handled by a generic summary module.","signal":"phrase:delete","weight":-0.3}]', 1)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -119,7 +187,7 @@ VALUES ('msm-project-memory-0-1-0', 'mv-project-memory-0-1-0', 'Allow access to 
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
-VALUES ('msm-repository-readonly-0-1-0', 'mv-repository-readonly-0-1-0', 'Generated data_scope module for repository-readonly.', 'data_access', '["git","software-engineering"]', '["code-review"]', '["low","medium"]', '["git","software-engineering"]', '[]', '["repository-readonly"]', '[]', '["repository-readonly"]', '[]', '["repository-readonly-output"]', '[]', 0)
+VALUES ('msm-repository-readonly-0-1-0', 'mv-repository-readonly-0-1-0', 'Generated data_scope module for repository-readonly.', 'data_access', '["git","repository","software-engineering","task-execution"]', '["code-review","task-execution"]', '["high","low","medium"]', '["git","repository","software-engineering","task-execution"]', '[]', '["repository-readonly"]', '[]', '["repository-readonly"]', '[]', '["repository-readonly-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -127,12 +195,36 @@ VALUES ('msm-require-file-references-0-1-0', 'mv-require-file-references-0-1-0',
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-research-context-synthesis-0-1-0', 'mv-research-context-synthesis-0-1-0', 'Synthesize profile-authorized knowledge and memory context into a bounded research output.', 'retrieval', '["knowledge-retrieval","research"]', '["research"]', '["low","medium"]', '["knowledge-retrieval","research"]', '[]', '["compare","investigate","research","summarize"]', '["apply changes","delete","deploy"]', '["compare","investigate","research","summarize"]', '["retrieval-context"]', '["research-summary"]', '[{"reason":"Research tasks require context synthesis rather than repository mutation.","signal":"task_type:research","weight":0.18},{"reason":"The module fits analyzer requests for retrieval capabilities.","signal":"capability_class:retrieval","weight":0.07},{"reason":"Deployment requests should not select a research-only module as an execution capability.","signal":"phrase:deploy","weight":-0.3}]', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-research-output-contract-0-1-0', 'mv-research-output-contract-0-1-0', 'Generated validator module for research-output-contract.', 'validation', '[]', '[]', '[]', '[]', '[]', '["research-output-contract"]', '[]', '["research-output-contract"]', '[]', '["research-output-contract-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-review-findings-contract-0-1-0', 'mv-review-findings-contract-0-1-0', 'Generated validator module for review-findings-contract.', 'validation', '[]', '[]', '[]', '[]', '[]', '["review-findings-contract"]', '[]', '["review-findings-contract"]', '[]', '["review-findings-contract-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-task-execution-output-contract-0-1-0', 'mv-task-execution-output-contract-0-1-0', 'Generated validator module for task-execution-output-contract.', 'validation', '[]', '[]', '[]', '[]', '[]', '["task-execution-output-contract"]', '[]', '["task-execution-output-contract"]', '[]', '["task-execution-output-contract-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-task-execution-planning-0-1-0', 'mv-task-execution-planning-0-1-0', 'Plan and summarize conservative repository task execution using read-only inspection tools.', 'planning', '["repository","software-engineering","task-execution"]', '["task-execution"]', '["high","low","medium"]', '["repository","software-engineering","task-execution"]', '["repository"]', '["fix","implement","migrate","refactor","update"]', '["delete production","destroy","reset production"]', '["fix","implement","migrate","refactor","update"]', '["repository"]', '["execution-plan","execution-summary"]', '[{"reason":"Task execution requests need bounded planning and read-only repository inspection.","signal":"task_type:task-execution","weight":0.18},{"reason":"Repository task execution is more reliable when repository context is available.","signal":"input:repository","weight":0.08},{"reason":"Destructive requests must not select the conservative execution module.","signal":"phrase:destroy","weight":-0.4}]', 1)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-test-runner-0-1-0', 'mv-test-runner-0-1-0', 'Generated tool module for test-runner.', 'tool_access', '[]', '[]', '[]', '[]', '[]', '["test-runner"]', '[]', '["test-runner"]', '[]', '["test-runner-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-general-task-summary-policies-no-destructive-commands', 'mv-general-task-summary-0-1-0', 'policy', 'mod-no-destructive-commands', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-general-task-summary-validators-general-output-contract', 'mv-general-task-summary-0-1-0', 'validator', 'mod-general-output-contract', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
 
 INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
 VALUES ('dep-git-diff-analysis-data-scopes-repository-readonly', 'mv-git-diff-analysis-0-1-0', 'data_scope', 'mod-repository-readonly', 1)
@@ -178,12 +270,72 @@ INSERT INTO module_dependencies (id, module_version_id, dependency_kind, depende
 VALUES ('dep-project-memory-validators-review-findings-contract', 'mv-project-memory-0-1-0', 'validator', 'mod-review-findings-contract', 1)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
 
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-research-context-synthesis-knowledge-scopes-architecture-docs', 'mv-research-context-synthesis-0-1-0', 'knowledge_scope', 'mod-architecture-docs', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-research-context-synthesis-policies-no-destructive-commands', 'mv-research-context-synthesis-0-1-0', 'policy', 'mod-no-destructive-commands', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-research-context-synthesis-validators-research-output-contract', 'mv-research-context-synthesis-0-1-0', 'validator', 'mod-research-output-contract', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-data-scopes-repository-readonly', 'mv-task-execution-planning-0-1-0', 'data_scope', 'mod-repository-readonly', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-knowledge-scopes-architecture-docs', 'mv-task-execution-planning-0-1-0', 'knowledge_scope', 'mod-architecture-docs', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-knowledge-scopes-coding-guidelines', 'mv-task-execution-planning-0-1-0', 'knowledge_scope', 'mod-coding-guidelines', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-optional-tools-test-runner', 'mv-task-execution-planning-0-1-0', 'tool', 'mod-test-runner', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-policies-no-destructive-commands', 'mv-task-execution-planning-0-1-0', 'policy', 'mod-no-destructive-commands', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-required-tools-filesystem-list', 'mv-task-execution-planning-0-1-0', 'tool', 'mod-filesystem-list', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-required-tools-filesystem-read', 'mv-task-execution-planning-0-1-0', 'tool', 'mod-filesystem-read', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-required-tools-git-read', 'mv-task-execution-planning-0-1-0', 'tool', 'mod-git-read', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
+VALUES ('dep-task-execution-planning-validators-task-execution-output-contract', 'mv-task-execution-planning-0-1-0', 'validator', 'mod-task-execution-output-contract', 1)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
+
+INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)
+VALUES ('pb-no-destructive-commands-general-task-summary', 'mod-no-destructive-commands', 'module', 'mod-general-task-summary', 'allow', 100)
+ON CONFLICT(id) DO UPDATE SET policy_id = excluded.policy_id, target_kind = excluded.target_kind, target_id = excluded.target_id, effect = excluded.effect, priority = excluded.priority;
+
 INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)
 VALUES ('pb-no-destructive-commands-git-diff-analysis', 'mod-no-destructive-commands', 'module', 'mod-git-diff-analysis', 'allow', 100)
 ON CONFLICT(id) DO UPDATE SET policy_id = excluded.policy_id, target_kind = excluded.target_kind, target_id = excluded.target_id, effect = excluded.effect, priority = excluded.priority;
 
 INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)
 VALUES ('pb-no-destructive-commands-project-memory', 'mod-no-destructive-commands', 'module', 'mod-project-memory', 'allow', 100)
+ON CONFLICT(id) DO UPDATE SET policy_id = excluded.policy_id, target_kind = excluded.target_kind, target_id = excluded.target_id, effect = excluded.effect, priority = excluded.priority;
+
+INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)
+VALUES ('pb-no-destructive-commands-research-context-synthesis', 'mod-no-destructive-commands', 'module', 'mod-research-context-synthesis', 'allow', 100)
+ON CONFLICT(id) DO UPDATE SET policy_id = excluded.policy_id, target_kind = excluded.target_kind, target_id = excluded.target_id, effect = excluded.effect, priority = excluded.priority;
+
+INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)
+VALUES ('pb-no-destructive-commands-task-execution-planning', 'mod-no-destructive-commands', 'module', 'mod-task-execution-planning', 'allow', 100)
 ON CONFLICT(id) DO UPDATE SET policy_id = excluded.policy_id, target_kind = excluded.target_kind, target_id = excluded.target_id, effect = excluded.effect, priority = excluded.priority;
 
 INSERT INTO policy_bindings (id, policy_id, target_kind, target_id, effect, priority)

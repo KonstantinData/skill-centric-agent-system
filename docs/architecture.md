@@ -64,7 +64,13 @@ flowchart TD
 
 `Task Intake` normalizes user/API input, attachments, environment, repository state, explicit constraints, and submitter identity into a task envelope.
 
-`Task Analyzer` converts the task envelope into structured task signals: task type, risk level, domains, required inputs, available inputs, capability hints, constraints, missing information, and auth claims. It may use rules, classifiers, or LLM assistance, but its output must be explicit and testable.
+`Task Analyzer` converts the task envelope into structured task signals: task
+type, risk level, domains, required inputs, available inputs, capability hints,
+constraints, missing information, auth claims, classification confidence,
+classification reasons, ambiguity markers, and human-review requirements. It
+may use rules, classifiers, or LLM assistance, but its output must be explicit
+and testable. Ambiguous specialized matches fall back to `general-task` rather
+than silently choosing the wrong strategy.
 
 `Agent Composer` consumes structured task signals and calls the Cloudflare
 Control API for D1-backed composition context. It scores candidate modules,
@@ -133,9 +139,9 @@ The current repository has implemented the first control-plane slice:
   payloads as artifact URIs,
 - runtime storage ports with an in-memory implementation for tests and a
   PostgreSQL storage session for Hetzner integration,
-- a hardened profile-scoped Tool Gateway for `git-read`, `filesystem-read`, and
-  `test-runner`, including risk gating, blocked argument checks, timeouts,
-  output limits, and access audit events,
+- a hardened profile-scoped Tool Gateway for `git-read`, `filesystem-read`,
+  `filesystem-list`, and `test-runner`, including risk gating, blocked
+  argument checks, timeouts, output limits, and access audit events,
 - a Runtime Profile Enforcer that fail-closes unselected tools/scopes and
   exhausted tool, token, duration, data-read, memory-op, and recomposition
   budgets,
@@ -151,11 +157,15 @@ The current repository has implemented the first control-plane slice:
 - a manual live dev E2E gate script for the Cloudflare composition/retrieval
   and Hetzner runtime persistence path,
 - analyzer and composition-scoring evaluation fixtures,
+- runtime output contracts for `code-review`, `research`, `task-execution`,
+  and `general-task`,
 - chunked runtime artifact persistence for large string payloads,
 - an operations runbook for migrations, smoke tests, diagnostics, environment
   separation, and disable paths,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
-  and validator phases against the composed profile,
+  and validator phases against the composed profile, with deterministic
+  strategies for `code-review`, `research`, `task-execution`, and
+  `general-task`,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
   R2 objects and D1 metadata,
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
@@ -167,12 +177,16 @@ The current repository has implemented the first control-plane slice:
 - Memory Candidate Extraction and Validation on the Hetzner Runtime Plane,
   including status/reason updates before Cloudflare ingestion,
 - a controlled learning evaluation fixture that proves approved memory can be
-  retrieved later while unauthorized retrieval is blocked.
+  retrieved later while unauthorized retrieval is blocked,
+- runtime retention cleanup execution with dry-run-first apply behavior,
+- an extended live runtime gate that can seed the dev Control Plane and run the
+  generic task suite against Cloudflare and Hetzner.
 
 The following architecture components are still pending implementation:
 
-- expanded runtime planning and execution beyond the initial code-review loop,
-- runtime retention cleanup execution.
+- scheduled retention cleanup automation,
+- broader operational telemetry around retrieval, validation, and cleanup,
+- richer task planning beyond the conservative first-slice strategies.
 
 ## Productive Runtime Gate
 

@@ -49,14 +49,20 @@ now extract memory candidates from completed runtime steps, validate their
 scope/sensitivity/provenance/policy status, and submit only approved candidates
 through the Memory Feedback Pipeline client. Analyzer and composition-scoring
 evaluation fixtures now cover code-review, research, task-execution, general
-tasks, and positive/negative scoring evidence. Runtime artifact persistence now
-chunks large string payloads into manifest-referenced text chunks.
+tasks, and positive/negative scoring evidence. The Analyzer now emits
+classification confidence, ambiguity, and human-review signals so mixed tasks
+fall back to `general-task` instead of silently dispatching to the wrong
+specialized strategy. Runtime artifact persistence now chunks large string
+payloads into manifest-referenced text chunks.
 
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Richer tool execution, broader runtime expansion, and production-scale
-deployment hardening remain follow-up implementation work.
+The Python runtime can execute deterministic first-slice strategies for
+`code-review`, `research`, `task-execution`, and `general-task`, and each
+strategy emits a task-class-specific `runtime_output` validated by the active
+profile. Production-scale deployment hardening and broader telemetry remain
+follow-up implementation work.
 
 ## Core Flow
 
@@ -85,6 +91,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
+- `schemas/runtime-output.schema.json`: JSON Schema for task-class-specific runtime outputs.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
@@ -105,6 +112,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/control-plane/`: representative Cloudflare control-plane storage records and generated dev D1 seed SQL.
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
+- `examples/runtime-outputs/`: representative validated runtime output payloads.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
@@ -276,7 +284,12 @@ Live runtime gates are manual in `.github/workflows/live-runtime-gates.yml`.
 Run the live dev E2E gate with:
 
 ```powershell
-gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+gh workflow run live-runtime-gates.yml `
+  -f run_live_dev_e2e=true `
+  -f run_postgres_concurrency_smoke=false `
+  -f run_live_retrieval_vectorize_smoke=false `
+  -f seed_control_plane_dev=true `
+  -f live_task_suite=generic
 ```
 
 Run the live Postgres concurrency smoke with:
@@ -284,7 +297,18 @@ Run the live Postgres concurrency smoke with:
 ```powershell
 gh workflow run live-runtime-gates.yml `
   -f run_live_dev_e2e=false `
-  -f run_postgres_concurrency_smoke=true
+  -f run_postgres_concurrency_smoke=true `
+  -f run_live_retrieval_vectorize_smoke=false
+```
+
+Run the live retrieval and Vectorize smoke with:
+
+```powershell
+gh workflow run live-runtime-gates.yml `
+  -f run_live_dev_e2e=false `
+  -f run_postgres_concurrency_smoke=false `
+  -f run_live_retrieval_vectorize_smoke=true `
+  -f seed_control_plane_dev=true
 ```
 
 The workflow uses GitHub Actions secrets, uploads the checked-out commit to the
@@ -307,5 +331,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Continue broader runtime planning and execution expansion as explicit backlog items.
-2. Expand operational telemetry around runtime cleanup, retrieval, and validation gates.
+1. Expand operational telemetry around runtime cleanup, retrieval, and validation gates.
+2. Add scheduled retention cleanup automation after the manual cleanup path is stable.

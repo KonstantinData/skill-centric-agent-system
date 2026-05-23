@@ -1,0 +1,24 @@
+{
+  "contract_version": "0.1.0",
+  "task_type": "research",
+  "status": "completed",
+  "summary": "Research completed from profile-bounded retrieval context.",
+  "artifacts": [
+    {
+      "kind": "retrieval-context",
+      "uri": "hetzner://runtime/traces/run-research/context/retrieval.json"
+    }
+  ],
+  "details": {
+    "key_points": [
+      "Loaded research context through the Control API retrieval boundary."
+    ],
+    "sources": [
+      {
+        "kind": "retrieval-context",
+        "uri": "hetzner://runtime/traces/run-research/context/retrieval.json"
+      }
+    ],
+    "open_questions": []
+  }
+}

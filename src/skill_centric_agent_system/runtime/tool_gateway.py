@@ -232,6 +232,42 @@ class FilesystemReadAdapter:
         }
 
 
+class FilesystemListAdapter:
+    MAX_ENTRIES = 500
+
+    def __init__(self, repository_root: Path) -> None:
+        self.repository_root = repository_root
+
+    def invoke(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        relative_path = str(payload.get("path") or ".")
+        requested_max_entries = int(payload.get("max_entries") or 100)
+        if requested_max_entries < 0:
+            raise ValueError("filesystem-list max_entries must be non-negative.")
+        max_entries = min(requested_max_entries, self.MAX_ENTRIES)
+        target = (self.repository_root / relative_path).resolve()
+        target.relative_to(self.repository_root)
+        if not target.is_dir():
+            raise NotADirectoryError(str(target))
+
+        entries = []
+        for child in sorted(target.iterdir(), key=lambda item: item.name.casefold())[:max_entries]:
+            stat = child.stat()
+            entries.append(
+                {
+                    "name": child.name,
+                    "path": child.relative_to(self.repository_root).as_posix(),
+                    "kind": "directory" if child.is_dir() else "file",
+                    "size_bytes": stat.st_size if child.is_file() else None,
+                }
+            )
+        return {
+            "path": str(target),
+            "entry_count": len(entries),
+            "entries": entries,
+            "truncated": sum(1 for _ in target.iterdir()) > max_entries,
+        }
+
+
 class GitReadAdapter:
     ALLOWED_SUBCOMMANDS = {"diff", "log", "show", "status"}
     BLOCKED_ARGS = {"-c", "--config-env", "--exec-path", "--git-dir", "--work-tree"}
@@ -307,13 +343,14 @@ class TestRunnerAdapter:
 def _default_adapters(repository_root: Path) -> Mapping[str, ToolAdapter]:
     return {
         "filesystem-read": FilesystemReadAdapter(repository_root),
+        "filesystem-list": FilesystemListAdapter(repository_root),
         "git-read": GitReadAdapter(repository_root),
         "test-runner": TestRunnerAdapter(repository_root),
     }
 
 
 def _tool_required_data_scopes(tool_name: str) -> tuple[str, ...]:
-    if tool_name in {"filesystem-read", "git-read", "test-runner"}:
+    if tool_name in {"filesystem-read", "filesystem-list", "git-read", "test-runner"}:
         return ("repository-readonly",)
     return ()
 
@@ -321,6 +358,7 @@ def _tool_required_data_scopes(tool_name: str) -> tuple[str, ...]:
 def _tool_risk_level(tool_name: str) -> str:
     risk_levels = {
         "filesystem-read": "low",
+        "filesystem-list": "low",
         "git-read": "low",
         "test-runner": "medium",
     }

@@ -1,0 +1,102 @@
+{
+  "name": "task-execution-planning",
+  "version": "0.1.0",
+  "kind": "skill",
+  "description": "Plan and summarize conservative repository task execution using read-only inspection tools.",
+  "capability_class": "planning",
+  "domain_tags": [
+    "task-execution",
+    "software-engineering",
+    "repository"
+  ],
+  "task_signals": {
+    "task_types": [
+      "task-execution"
+    ],
+    "risk_levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "domains": [
+      "task-execution",
+      "software-engineering",
+      "repository"
+    ],
+    "required_inputs": [
+      "repository"
+    ],
+    "phrases": [
+      "implement",
+      "fix",
+      "update",
+      "refactor",
+      "migrate"
+    ],
+    "negative_phrases": [
+      "delete production",
+      "reset production",
+      "destroy"
+    ]
+  },
+  "triggers": [
+    "implement",
+    "fix",
+    "update",
+    "refactor",
+    "migrate"
+  ],
+  "inputs": [
+    "repository"
+  ],
+  "outputs": [
+    "execution-plan",
+    "execution-summary"
+  ],
+  "required_tools": [
+    "filesystem-read",
+    "filesystem-list",
+    "git-read"
+  ],
+  "optional_tools": [
+    "test-runner"
+  ],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "validators": [
+    "task-execution-output-contract"
+  ],
+  "selection": {
+    "base_score": 0.7,
+    "score_modifiers": [
+      {
+        "signal": "task_type:task-execution",
+        "weight": 0.18,
+        "reason": "Task execution requests need bounded planning and read-only repository inspection."
+      },
+      {
+        "signal": "input:repository",
+        "weight": 0.08,
+        "reason": "Repository task execution is more reliable when repository context is available."
+      },
+      {
+        "signal": "phrase:destroy",
+        "weight": -0.4,
+        "reason": "Destructive requests must not select the conservative execution module."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": [
+    "task-execution-planning-positive",
+    "task-execution-planning-denies-destructive"
+  ]
+}

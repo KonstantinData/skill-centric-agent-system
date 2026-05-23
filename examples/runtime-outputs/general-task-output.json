@@ -1,0 +1,12 @@
+{
+  "contract_version": "0.1.0",
+  "task_type": "general-task",
+  "status": "completed",
+  "summary": "General task completed with the generic runtime strategy.",
+  "artifacts": [],
+  "details": {
+    "notes": [
+      "No specialized task strategy was selected for this run."
+    ]
+  }
+}

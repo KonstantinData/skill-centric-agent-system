@@ -17,6 +17,7 @@ CONTROL_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "cloudflare-control-plane.sc
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
+RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
 MODULE_EXAMPLE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
 CONTROL_PLANE_EXAMPLE_PATH = (
@@ -30,6 +31,9 @@ COMPOSITION_CONTEXT_REQUEST_EXAMPLE_PATH = (
 )
 COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
+)
+COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATHS = tuple(
+    sorted((REPO_ROOT / "examples" / "control-api").glob("composition-context-response*.json"))
 )
 RETRIEVAL_CONTEXT_REQUEST_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "retrieval-context-request.json"
@@ -87,6 +91,13 @@ def composition_context_schema() -> dict[str, Any]:
 @pytest.fixture(scope="module")
 def retrieval_context_schema() -> dict[str, Any]:
     schema = load_json(RETRIEVAL_CONTEXT_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
+@pytest.fixture(scope="module")
+def runtime_output_schema() -> dict[str, Any]:
+    schema = load_json(RUNTIME_OUTPUT_SCHEMA_PATH)
     Draft202012Validator.check_schema(schema)
     return schema
 
@@ -677,6 +688,14 @@ def test_composition_context_examples_match_schema(
     )
 
 
+def test_all_composition_context_response_fixtures_match_schema(
+    composition_context_schema: dict[str, Any],
+) -> None:
+    response_schema = schema_ref(composition_context_schema, "#/$defs/response")
+    for response_path in COMPOSITION_CONTEXT_RESPONSE_EXAMPLE_PATHS:
+        assert_valid(response_schema, load_json(response_path))
+
+
 def test_retrieval_context_examples_match_schema(
     retrieval_context_schema: dict[str, Any],
     retrieval_context_request_example: dict[str, Any],
@@ -690,6 +709,10 @@ def test_retrieval_context_examples_match_schema(
         schema_ref(retrieval_context_schema, "#/$defs/response"),
         retrieval_context_response_example,
     )
+
+
+def test_runtime_output_schema_is_valid(runtime_output_schema: dict[str, Any]) -> None:
+    assert runtime_output_schema["$id"] == "urn:scas:schema:runtime-output:0.1.0"
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,23 @@
+{
+  "id": "task-plan-runtime-priorities",
+  "request": "Prepare a concise agenda for discussing runtime priorities.",
+  "constraints": {
+    "write_access": false,
+    "destructive_actions": false
+  },
+  "context": {
+    "auth": {
+      "principal_id": "user-konstantin",
+      "principal_type": "user",
+      "roles": [
+        "repository-maintainer"
+      ],
+      "authorization_policies": [
+        "submitter-can-request-general-task"
+      ],
+      "control_plane_principal_kind": "role",
+      "control_plane_principal_id": "repository-maintainer",
+      "display_name": "Konstantin Milonas"
+    }
+  }
+}

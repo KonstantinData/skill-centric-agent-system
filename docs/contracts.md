@@ -36,8 +36,17 @@ Minimum analyzer output:
 - `constraints`: write access, destructive action allowance, privacy, environment, and time constraints.
 - `missing_information`: blockers that should trigger clarification before composition.
 - `auth_claims`: submitter identity and roles available for authorization checks.
+- `classification_confidence`: `high`, `medium`, or `low`.
+- `classification_reasons`: human-auditable reasons for the selected class.
+- `ambiguous_task_types`: specialized task types that matched when the analyzer
+  falls back to `general-task`.
+- `requires_human_review`: true when classification ambiguity should prevent
+  automatic specialized strategy dispatch.
 
 If required inputs or auth claims are missing, the Composer must fail closed or request clarification instead of composing a broad profile.
+If multiple specialized task classes match, the Analyzer must not silently pick
+one. It falls back to `general-task`, emits the ambiguity fields, and lets
+policy, validation, or operator review decide whether recomposition is needed.
 
 ## Module Metadata
 
@@ -132,7 +141,25 @@ The first adapters are read-oriented:
 - `git-read`: allows selected read-only git subcommands (`status`, `diff`,
   `log`, `show`),
 - `filesystem-read`: reads files under the configured repository root,
+- `filesystem-list`: lists directory entries under the configured repository
+  root with a fixed entry cap,
 - `test-runner`: invokes `python -m pytest` with explicit argument arrays.
+
+## Runtime Output Contract
+
+Runtime responses include a task-class-specific `runtime_output` object. The
+machine-readable contract lives in `schemas/runtime-output.schema.json`.
+
+The first supported output contracts are:
+
+- `review-findings-contract` for `code-review`,
+- `research-output-contract` for `research`,
+- `task-execution-output-contract` for `task-execution`,
+- `general-output-contract` for `general-task`.
+
+Validators must check the output shape selected by the active profile. A
+validator must fail closed when the response task type does not match the
+selected output contract.
 
 ## Retrieval Context Contract
 

@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:runtime-output:0.1.0",
+  "title": "Runtime Output Contract",
+  "description": "Task-class-specific result contract emitted by the Single Agent Runtime after validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "task_type",
+    "status",
+    "summary",
+    "artifacts",
+    "details"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "code-review",
+        "research",
+        "task-execution",
+        "general-task"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "blocked",
+        "failed"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifactReference"
+      }
+    },
+    "details": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "task_type": {
+            "const": "code-review"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "$ref": "#/$defs/codeReviewDetails"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_type": {
+            "const": "research"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "$ref": "#/$defs/researchDetails"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_type": {
+            "const": "task-execution"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "$ref": "#/$defs/taskExecutionDetails"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_type": {
+            "const": "general-task"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "details": {
+            "$ref": "#/$defs/generalTaskDetails"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "uri"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tool-output",
+            "validation",
+            "checkpoint",
+            "retrieval-context",
+            "plan",
+            "report"
+          ]
+        },
+        "uri": {
+          "type": "string",
+          "pattern": "^hetzner://runtime/.+"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "summary"
+      ],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "codeReviewDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findings",
+        "reviewed_artifacts"
+      ],
+      "properties": {
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "reviewed_artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifactReference"
+          }
+        }
+      }
+    },
+    "researchDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key_points",
+        "sources",
+        "open_questions"
+      ],
+      "properties": {
+        "key_points": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifactReference"
+          }
+        },
+        "open_questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "taskExecutionDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_changes",
+        "executed_actions",
+        "blocked_actions"
+      ],
+      "properties": {
+        "planned_changes": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "executed_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "blocked_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "generalTaskDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notes"
+      ],
+      "properties": {
+        "notes": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  }
+}

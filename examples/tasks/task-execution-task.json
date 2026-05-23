@@ -1,0 +1,27 @@
+{
+  "id": "task-update-runtime-docs",
+  "request": "Update the repository documentation for the new runtime contract.",
+  "context": {
+    "repository": {
+      "path": ".",
+      "default_branch": "main"
+    },
+    "auth": {
+      "principal_id": "user-konstantin",
+      "principal_type": "user",
+      "roles": [
+        "repository-maintainer"
+      ],
+      "authorization_policies": [
+        "submitter-can-request-task-execution"
+      ],
+      "control_plane_principal_kind": "role",
+      "control_plane_principal_id": "repository-maintainer",
+      "display_name": "Konstantin Milonas"
+    }
+  },
+  "constraints": {
+    "write_access": true,
+    "destructive_actions": false
+  }
+}

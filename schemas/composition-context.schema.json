@@ -196,7 +196,11 @@
         "domain_tags",
         "capability_hints",
         "available_inputs",
-        "constraints"
+        "constraints",
+        "classification_confidence",
+        "ambiguous_task_types",
+        "classification_reasons",
+        "requires_human_review"
       ],
       "properties": {
         "domain_tags": {
@@ -223,6 +227,31 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "classification_confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "ambiguous_task_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "classification_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "requires_human_review": {
+          "type": "boolean"
         }
       }
     },

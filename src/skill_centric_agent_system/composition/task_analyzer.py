@@ -10,6 +10,7 @@ DEFAULT_CONTROL_PLANE_PRINCIPAL_ID = "repository-maintainer"
 DEFAULT_PRINCIPAL_ID = "user-local"
 
 RiskLevel = Literal["low", "medium", "high", "critical"]
+ClassificationConfidence = Literal["high", "medium", "low"]
 PrincipalType = Literal["user", "service", "system"]
 ControlPlanePrincipalKind = Literal["role", "user", "service"]
 
@@ -26,6 +27,15 @@ class AuthClaims:
 
 
 @dataclass(frozen=True)
+class TaskClassification:
+    task_type: str
+    confidence: ClassificationConfidence
+    reasons: tuple[str, ...]
+    ambiguous_task_types: tuple[str, ...] = ()
+    requires_human_review: bool = False
+
+
+@dataclass(frozen=True)
 class AnalyzedTask:
     task_id: str
     task_type: str
@@ -38,6 +48,10 @@ class AnalyzedTask:
     constraints: tuple[str, ...]
     missing_information: tuple[str, ...]
     auth_claims: AuthClaims
+    classification_confidence: ClassificationConfidence
+    classification_reasons: tuple[str, ...]
+    ambiguous_task_types: tuple[str, ...]
+    requires_human_review: bool
 
     def to_composition_context_request(
         self,
@@ -67,6 +81,10 @@ class AnalyzedTask:
                     "capability_hints": list(self.capability_hints),
                     "available_inputs": list(self.available_inputs),
                     "constraints": list(self.constraints),
+                    "classification_confidence": self.classification_confidence,
+                    "ambiguous_task_types": list(self.ambiguous_task_types),
+                    "classification_reasons": list(self.classification_reasons),
+                    "requires_human_review": self.requires_human_review,
                 },
             },
         }
@@ -77,9 +95,10 @@ class TaskAnalyzer:
 
     def analyze(self, task: Mapping[str, Any]) -> AnalyzedTask:
         objective = _objective(task)
-        task_type = _task_type(objective)
+        classification = _classify_task(objective)
+        task_type = classification.task_type
         repository = _repository_context(task)
-        constraints = _constraints(task)
+        constraints = _constraints(task, classification)
         required_inputs = _required_inputs(task_type, objective, repository)
         available_inputs = _available_inputs(task_type, objective, repository, task)
         missing_information = tuple(
@@ -98,6 +117,10 @@ class TaskAnalyzer:
             constraints=constraints,
             missing_information=missing_information,
             auth_claims=_auth_claims(task, task_type),
+            classification_confidence=classification.confidence,
+            classification_reasons=classification.reasons,
+            ambiguous_task_types=classification.ambiguous_task_types,
+            requires_human_review=classification.requires_human_review,
         )
 
 
@@ -116,45 +139,87 @@ def _task_id(task: Mapping[str, Any], objective: str) -> str:
     return "task-" + _slugify(objective)
 
 
-def _task_type(objective: str) -> str:
+def _classify_task(objective: str) -> TaskClassification:
     text = objective.casefold()
-    review_terms = (
-        "review",
-        "pull request",
-        "pr",
-        "diff",
-        "commit",
-        "regression",
-        "missing tests",
+    categories: tuple[tuple[str, tuple[str, ...]], ...] = (
+        (
+            "code-review",
+            (
+                "review",
+                "pull request",
+                "pr",
+                "diff",
+                "commit",
+                "regression",
+                "missing tests",
+            ),
+        ),
+        (
+            "research",
+            (
+                "research",
+                "investigate",
+                "compare",
+                "summarize",
+                "find information",
+                "look up",
+                "survey",
+            ),
+        ),
+        (
+            "task-execution",
+            (
+                "implement",
+                "build",
+                "fix",
+                "update",
+                "change",
+                "create",
+                "refactor",
+                "migrate",
+                "add",
+                "remove",
+            ),
+        ),
     )
-    if any(_contains_task_term(text, term) for term in review_terms):
-        return "code-review"
-    research_terms = (
-        "research",
-        "investigate",
-        "compare",
-        "summarize",
-        "find information",
-        "look up",
-        "survey",
+    matches: list[tuple[str, tuple[str, ...]]] = []
+    for task_type, terms in categories:
+        matched_terms = tuple(term for term in terms if _contains_task_term(text, term))
+        if matched_terms:
+            matches.append((task_type, matched_terms))
+
+    if len(matches) == 1:
+        task_type, matched_terms = matches[0]
+        return TaskClassification(
+            task_type=task_type,
+            confidence="high",
+            reasons=(
+                f"Matched {task_type} task signals: {', '.join(matched_terms)}.",
+            ),
+        )
+
+    if len(matches) > 1:
+        ambiguous_task_types = tuple(task_type for task_type, _ in matches)
+        reasons = tuple(
+            f"Matched {task_type} task signals: {', '.join(matched_terms)}."
+            for task_type, matched_terms in matches
+        )
+        return TaskClassification(
+            task_type="general-task",
+            confidence="low",
+            reasons=(
+                *reasons,
+                "Fell back to general-task because multiple specialized task types matched.",
+            ),
+            ambiguous_task_types=ambiguous_task_types,
+            requires_human_review=True,
+        )
+
+    return TaskClassification(
+        task_type="general-task",
+        confidence="medium",
+        reasons=("No specialized task signals matched; using general-task fallback.",),
     )
-    if any(_contains_task_term(text, term) for term in research_terms):
-        return "research"
-    execution_terms = (
-        "implement",
-        "build",
-        "fix",
-        "update",
-        "change",
-        "create",
-        "refactor",
-        "migrate",
-        "add",
-        "remove",
-    )
-    if any(_contains_task_term(text, term) for term in execution_terms):
-        return "task-execution"
-    return "general-task"
 
 
 def _contains_task_term(text: str, term: str) -> bool:
@@ -245,7 +310,10 @@ def _capability_hints(task_type: str, objective: str) -> tuple[str, ...]:
     return _dedupe(hints)
 
 
-def _constraints(task: Mapping[str, Any]) -> tuple[str, ...]:
+def _constraints(
+    task: Mapping[str, Any],
+    classification: TaskClassification | None = None,
+) -> tuple[str, ...]:
     raw_constraints = task.get("constraints")
     constraints: list[str] = []
     if isinstance(raw_constraints, Mapping):
@@ -262,6 +330,11 @@ def _constraints(task: Mapping[str, Any]) -> tuple[str, ...]:
 
     if not constraints:
         constraints.append("Do not grant broad capabilities by default.")
+    if classification is not None and classification.requires_human_review:
+        constraints.append(
+            "Task classification is ambiguous; do not route to a specialized runtime "
+            "strategy without review."
+        )
     return _dedupe(constraints)
 
 

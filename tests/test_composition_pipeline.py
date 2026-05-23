@@ -70,6 +70,9 @@ def test_task_analyzer_emits_control_plane_request_contract() -> None:
     assert request["task"]["type"] == "code-review"
     assert request["task"]["risk_level"] == "medium"
     assert request["task"]["signals"]["available_inputs"] == ["repository", "diff"]
+    assert request["task"]["signals"]["classification_confidence"] == "high"
+    assert request["task"]["signals"]["ambiguous_task_types"] == []
+    assert request["task"]["signals"]["requires_human_review"] is False
     assert "software-engineering" in request["task"]["signals"]["domain_tags"]
     assert "analysis" in request["task"]["signals"]["capability_hints"]
     assert analyzed.missing_information == ()
@@ -90,6 +93,14 @@ def test_task_analyzer_matches_task_neutral_evaluation_cases() -> None:
         assert set(expected["capability_hints_include"]).issubset(
             analyzed.capability_hints
         ), case["name"]
+        assert analyzed.classification_confidence == expected["classification_confidence"], (
+            case["name"]
+        )
+        assert list(analyzed.ambiguous_task_types) == expected["ambiguous_task_types"], (
+            case["name"]
+        )
+        assert analyzed.requires_human_review is expected["requires_human_review"], case["name"]
+        assert analyzed.classification_reasons, case["name"]
 
 
 def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> None:

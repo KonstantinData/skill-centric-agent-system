@@ -317,6 +317,9 @@ Implemented:
   `scripts/cloudflare/generate_control_plane_seed.py`.
 - The dev Worker and remote dev D1 have been smoke-tested with a real
   `git-diff-analysis` candidate.
+- The dev registry seed includes first-slice modules for `code-review`,
+  `research`, `task-execution`, and `general-task`; the live gate workflow can
+  reseed dev D1 before running the generic runtime suite.
 - Python Task Analyzer and Profile Composer integration exists for code-review,
   research, task-execution, and general task evaluation cases and the Control
   Plane response contract.
@@ -329,8 +332,8 @@ Implemented:
 - Runtime Profile Enforcement fail-closes unselected tools/scopes and exhausted
   tool, token, duration, data-read, memory-op, and recomposition budgets.
 - Hardened profile-scoped Tool Gateway exists for `git-read`,
-  `filesystem-read`, and `test-runner`, with risk gating, blocked argument
-  checks, timeouts, output limits, and access audit events.
+  `filesystem-read`, `filesystem-list`, and `test-runner`, with risk gating,
+  blocked argument checks, timeouts, output limits, and access audit events.
 - Runtime Context Manager calls `POST /retrieval/context` for bounded
   knowledge/memory context and rejects responses with scopes outside the active
   profile.
@@ -344,7 +347,8 @@ Implemented:
 - Operations runbook defines migrations, smoke tests, diagnostics, environment
   separation, and disable paths.
 - Minimal Runtime Loop exists for context, planner, executor, and validator
-  phases against the code-review fixture.
+  phases against first-slice strategies for `code-review`, `research`,
+  `task-execution`, and `general-task`.
 - Runtime redaction policy, retention planner, safe artifact URI resolver,
   cleanup executor, cleanup report, and dry-run-first CLI exist for runtime
   artifacts.
@@ -372,12 +376,15 @@ Implemented:
   a live AI Gateway smoke without committing secrets.
 - Composition scoring evaluation fixtures cover positive and negative scoring
   evidence across code-review and project-memory task signals.
+- Runtime output contracts exist for `code-review`, `research`,
+  `task-execution`, and `general-task`, with profile-selected validators.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
 Not yet implemented:
 
-- Expanded runtime loop beyond the initial code-review fixture.
+- Scheduled runtime retention cleanup automation.
+- Broader telemetry for retrieval, validation, and cleanup operations.
 
 ## Implementation Order
 
@@ -414,8 +421,11 @@ Completed:
 29. AI Gateway secret rollout and live LLM smoke workflow.
 30. Queue-backed embedding indexing worker and Vectorize population path.
 31. Runtime retention cleanup execution.
+32. Generic runtime strategy dispatch and task-class output contracts.
+33. Extended live dev E2E and retrieval/Vectorize smoke gates.
 
 Next:
 
-1. Expand the runtime loop beyond the initial code-review fixture.
+1. Add scheduled retention cleanup automation.
+2. Expand operational telemetry around retrieval, validation, and cleanup.
 2. Expand operational telemetry and scheduled cleanup automation.

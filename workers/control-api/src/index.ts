@@ -68,6 +68,10 @@ type CompositionRequest = {
       capability_hints: string[];
       available_inputs: string[];
       constraints: string[];
+      classification_confidence: "high" | "medium" | "low";
+      ambiguous_task_types: string[];
+      classification_reasons: string[];
+      requires_human_review: boolean;
     };
   };
 };
@@ -567,6 +571,22 @@ function validateCompositionRequest(body: unknown): string | null {
     return "task.signals.constraints must be an array of non-empty strings.";
   }
 
+  if (!["high", "medium", "low"].includes(String(body.task.signals.classification_confidence))) {
+    return "task.signals.classification_confidence must be high, medium, or low.";
+  }
+
+  if (!idArray(body.task.signals.ambiguous_task_types)) {
+    return "task.signals.ambiguous_task_types must be an array of ids.";
+  }
+
+  if (!stringArray(body.task.signals.classification_reasons)) {
+    return "task.signals.classification_reasons must be an array of non-empty strings.";
+  }
+
+  if (typeof body.task.signals.requires_human_review !== "boolean") {
+    return "task.signals.requires_human_review must be a boolean.";
+  }
+
   return null;
 }
 
@@ -1050,6 +1070,14 @@ function signalMatches(
 }
 
 function scoreModule(module: RegistryModule, request: CompositionRequest): ScoredModule | null {
+  const normalizedModuleTaskTypes = module.taskTypes.map(normalize);
+  if (
+    normalizedModuleTaskTypes.length > 0 &&
+    !normalizedModuleTaskTypes.includes(normalize(request.task.type))
+  ) {
+    return null;
+  }
+
   if (!includesAll(request.task.signals.available_inputs, module.requiredInputs)) {
     return null;
   }

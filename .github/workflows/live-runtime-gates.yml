@@ -13,6 +13,24 @@ on:
         required: true
         type: boolean
         default: false
+      run_live_retrieval_vectorize_smoke:
+        description: Run the live Control API retrieval and Vectorize smoke
+        required: true
+        type: boolean
+        default: false
+      seed_control_plane_dev:
+        description: Apply migrations and seed the dev Control Plane before live gates
+        required: true
+        type: boolean
+        default: true
+      live_task_suite:
+        description: Runtime E2E task suite
+        required: true
+        type: choice
+        options:
+          - generic
+          - single
+        default: generic
 
 permissions:
   contents: read
@@ -24,16 +42,22 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch'
       && (inputs.run_live_dev_e2e == true
-        || inputs.run_postgres_concurrency_smoke == true)
+        || inputs.run_postgres_concurrency_smoke == true
+        || inputs.run_live_retrieval_vectorize_smoke == true)
 
     env:
       CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
       SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
       RUN_LIVE_DEV_E2E: ${{ inputs.run_live_dev_e2e }}
       RUN_POSTGRES_CONCURRENCY_SMOKE: ${{ inputs.run_postgres_concurrency_smoke }}
+      RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE: ${{ inputs.run_live_retrieval_vectorize_smoke }}
+      SEED_CONTROL_PLANE_DEV: ${{ inputs.seed_control_plane_dev }}
+      LIVE_TASK_SUITE: ${{ inputs.live_task_suite }}
 
     steps:
       - name: Check out repository
@@ -53,7 +77,35 @@ jobs:
             fi
           done
 
+          if [ "${SEED_CONTROL_PLANE_DEV}" = "true" ]; then
+            for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
+            do
+              if [ -z "${!name:-}" ]; then
+                echo "::error::Missing required secret for Control Plane seeding: ${name}"
+                missing=1
+              fi
+            done
+          fi
+
           exit "${missing}"
+
+      - name: Set up Node.js
+        if: env.SEED_CONTROL_PLANE_DEV == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Seed Cloudflare dev Control Plane
+        if: env.SEED_CONTROL_PLANE_DEV == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm ci
+          npx wrangler d1 migrations apply scas-control-dev --remote --config workers/control-api/wrangler.toml
+          python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
+          npx wrangler d1 execute scas-control-dev --remote --file examples/control-plane/dev-seed.sql --config workers/control-api/wrangler.toml --yes
 
       - name: Configure SSH
         shell: bash
@@ -102,7 +154,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' bash -s" <<'REMOTE'
+            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -163,7 +215,11 @@ jobs:
           if [ "${RUN_LIVE_DEV_E2E}" = "true" ]; then
             as_postgres_with_runtime_env \
               "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
-                --task-file examples/tasks/code-review-task.json
+                --task-suite "${LIVE_TASK_SUITE}"
+          fi
+
+          if [ "${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}" = "true" ]; then
+            "${workdir}/.venv/bin/python" scripts/runtime/live_retrieval_vectorize_smoke.py
           fi
 
           if [ "${RUN_POSTGRES_CONCURRENCY_SMOKE}" = "true" ]; then

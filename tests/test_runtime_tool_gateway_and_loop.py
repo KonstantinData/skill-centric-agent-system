@@ -23,6 +23,7 @@ from skill_centric_agent_system.runtime import (
     ToolGateway,
 )
 from skill_centric_agent_system.runtime.tool_gateway import (
+    FilesystemListAdapter,
     FilesystemReadAdapter,
     GitReadAdapter,
 )
@@ -32,6 +33,20 @@ TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "code-review-task.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
 COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
+)
+RESEARCH_TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "research-task.json"
+TASK_EXECUTION_TASK_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "tasks" / "task-execution-task.json"
+)
+GENERAL_TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "general-task.json"
+RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-research.json"
+)
+TASK_EXECUTION_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-task-execution.json"
+)
+GENERAL_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-general-task.json"
 )
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
 
@@ -211,6 +226,18 @@ def test_filesystem_read_adapter_clamps_output_bytes(tmp_path: Path) -> None:
 
     assert output["bytes_read"] == FilesystemReadAdapter.MAX_FILE_BYTES
     assert output["truncated"] is True
+
+
+def test_filesystem_list_adapter_clamps_entries(tmp_path: Path) -> None:
+    for index in range(3):
+        (tmp_path / f"file-{index}.txt").write_text("content", encoding="utf-8")
+    adapter = FilesystemListAdapter(tmp_path)
+
+    output = adapter.invoke({"path": ".", "max_entries": 2})
+
+    assert output["entry_count"] == 2
+    assert output["truncated"] is True
+    assert [entry["kind"] for entry in output["entries"]] == ["file", "file"]
 
 
 def test_git_read_adapter_blocks_config_and_worktree_escape_args() -> None:
@@ -620,3 +647,61 @@ def test_postgres_runtime_store_uses_uri_tool_and_validation_payloads() -> None:
     assert "input_json" not in sql
     assert "output_json" not in sql
     assert "findings_json" not in sql
+
+
+@pytest.mark.parametrize(
+    ("task_path", "context_response_path", "expected_task_type", "expected_validator"),
+    [
+        (
+            RESEARCH_TASK_EXAMPLE_PATH,
+            RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH,
+            "research",
+            "research-output-contract",
+        ),
+        (
+            TASK_EXECUTION_TASK_EXAMPLE_PATH,
+            TASK_EXECUTION_COMPOSITION_CONTEXT_RESPONSE_PATH,
+            "task-execution",
+            "task-execution-output-contract",
+        ),
+        (
+            GENERAL_TASK_EXAMPLE_PATH,
+            GENERAL_COMPOSITION_CONTEXT_RESPONSE_PATH,
+            "general-task",
+            "general-output-contract",
+        ),
+    ],
+)
+def test_minimal_runtime_loop_dispatches_task_type_strategies(
+    tmp_path: Path,
+    task_path: Path,
+    context_response_path: Path,
+    expected_task_type: str,
+    expected_validator: str,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(task_path),
+        composition_context_response=load_json(context_response_path),
+    )
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    result = loop.run(start_result)
+
+    assert result.status == "succeeded"
+    assert result.response["task_type"] == expected_task_type
+    assert result.response["runtime_output"]["task_type"] == expected_task_type
+    assert result.response["runtime_output"]["status"] == "completed"
+    assert expected_validator in [record["validator_id"] for record in store.validation_results]
+    validator_record = next(
+        record
+        for record in store.validation_results
+        if record["validator_id"] == expected_validator
+    )
+    assert validator_record["status"] == "passed"

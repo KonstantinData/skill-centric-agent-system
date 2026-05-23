@@ -273,6 +273,16 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/co
 The response must include `composition_status: "ready"` and a scored
 `git-diff-analysis` candidate.
 
+The generated dev seed also includes task-class modules for:
+
+- `research-context-synthesis`,
+- `task-execution-planning`,
+- `general-task-summary`.
+
+The Worker scoring path requires task-type compatibility before selecting a
+candidate module, so a broad domain or capability-class match cannot select a
+specialized module for the wrong task class.
+
 `/composition/context` fails closed with `composition_status: "denied"` when
 required policies are missing, graph validation fails, or no module candidate
 matches the task signals.
@@ -314,6 +324,14 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/re
 The response must include `retrieval_status: "ready"` and only D1-allowed
 knowledge chunks and memory records. Without `query_embedding`, the route
 returns `vectorize.status: "d1_prefilter_ready"` and no semantic matches.
+
+Smoke-test live retrieval with a deterministic query embedding and Vectorize
+post-validation:
+
+```bash
+python scripts/runtime/live_retrieval_vectorize_smoke.py \
+  --control-plane-url https://scas-control-api-dev.still-butterfly-bbff.workers.dev
+```
 
 Smoke-test AI Gateway fail-closed behavior before secrets are configured:
 

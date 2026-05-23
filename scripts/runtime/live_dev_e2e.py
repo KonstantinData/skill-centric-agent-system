@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from skill_centric_agent_system.composition import ControlPlaneClient
 from skill_centric_agent_system.runtime import (
@@ -15,6 +16,12 @@ from skill_centric_agent_system.runtime import (
 )
 
 DEFAULT_CONTROL_API_URL = "https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
+GENERIC_TASK_SUITE = (
+    ("code-review", "examples/tasks/code-review-task.json"),
+    ("research", "examples/tasks/research-task.json"),
+    ("task-execution", "examples/tasks/task-execution-task.json"),
+    ("general-task", "examples/tasks/general-task.json"),
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,6 +32,15 @@ def main(argv: list[str] | None = None) -> int:
         "--task-file",
         default="examples/tasks/code-review-task.json",
         help="Task intake JSON file.",
+    )
+    parser.add_argument(
+        "--task-suite",
+        choices=("single", "generic"),
+        default="single",
+        help=(
+            "Run only --task-file or run the generic suite covering code-review, "
+            "research, task-execution, and general-task."
+        ),
     )
     parser.add_argument(
         "--control-plane-url",
@@ -58,49 +74,74 @@ def main(argv: list[str] | None = None) -> int:
     if not args.control_plane_token:
         raise SystemExit("SCAS_CONTROL_API_TOKEN or --control-plane-token is required.")
 
-    task = _load_json(Path(args.task_file))
+    task_cases = (
+        tuple((label, Path(path)) for label, path in GENERIC_TASK_SUITE)
+        if args.task_suite == "generic"
+        else (("single", Path(args.task_file)),)
+    )
     control_plane_client = ControlPlaneClient(
         args.control_plane_url,
         api_token=args.control_plane_token,
     )
     artifacts = JsonArtifactStore(args.artifact_root)
+    run_suffix = os.getenv("GITHUB_RUN_ID") or uuid4().hex[:12]
 
     with open_runtime_store_session(
         mode="postgres",
         database_url=args.database_url,
     ) as storage:
-        runtime = RuntimeEntryPoint(
-            store=storage.store,
-            artifacts=artifacts,
-            control_plane_client=control_plane_client,
-            environment="dev",
-        )
-        start_result = runtime.start(task)
-        loop_result = MinimalRuntimeLoop(
-            store=storage.store,
-            artifacts=artifacts,
-            repository_root=args.repository_root,
-            control_plane_client=control_plane_client,
-        ).run(start_result)
-        run_record = storage.store.get_runtime_run(start_result.run_id)
-        events = storage.store.events_for_run(start_result.run_id)
-        checkpoints = storage.store.checkpoints_for_run(start_result.run_id)
+        results = []
+        for label, task_path in task_cases:
+            task = _load_json(task_path)
+            runtime = RuntimeEntryPoint(
+                store=storage.store,
+                artifacts=artifacts,
+                control_plane_client=control_plane_client,
+                environment="dev",
+            )
+            start_result = runtime.start(task, run_id=f"run-live-{run_suffix}-{label}")
+            loop_result = MinimalRuntimeLoop(
+                store=storage.store,
+                artifacts=artifacts,
+                repository_root=args.repository_root,
+                control_plane_client=control_plane_client,
+            ).run(start_result)
+            run_record = storage.store.get_runtime_run(start_result.run_id)
+            events = storage.store.events_for_run(start_result.run_id)
+            checkpoints = storage.store.checkpoints_for_run(start_result.run_id)
+            results.append(
+                {
+                    "case": label,
+                    "status": "passed" if loop_result.status == "succeeded" else "failed",
+                    "run_id": start_result.run_id,
+                    "task_type": start_result.profile["task_type"],
+                    "profile_id": start_result.profile["id"],
+                    "profile_version": start_result.profile["profile_version"],
+                    "run_status": run_record["status"] if run_record else None,
+                    "stop_reason": run_record["stop_reason"] if run_record else None,
+                    "composition_status": start_result.composition_context_response.get(
+                        "composition_status"
+                    ),
+                    "event_count": len(events),
+                    "checkpoint_count": len(checkpoints),
+                    "artifact_root_uri": run_record["artifact_root_uri"] if run_record else None,
+                    "runtime_output_task_type": loop_result.response["runtime_output"][
+                        "task_type"
+                    ],
+                }
+            )
 
     print(
         json.dumps(
             {
-                "status": "passed" if loop_result.status == "succeeded" else "failed",
-                "run_id": start_result.run_id,
-                "profile_id": start_result.profile["id"],
-                "profile_version": start_result.profile["profile_version"],
-                "run_status": run_record["status"] if run_record else None,
-                "stop_reason": run_record["stop_reason"] if run_record else None,
-                "composition_status": start_result.composition_context_response.get(
-                    "composition_status"
+                "status": (
+                    "passed"
+                    if all(result["status"] == "passed" for result in results)
+                    else "failed"
                 ),
-                "event_count": len(events),
-                "checkpoint_count": len(checkpoints),
-                "artifact_root_uri": run_record["artifact_root_uri"] if run_record else None,
+                "task_suite": args.task_suite,
+                "case_count": len(results),
+                "results": results,
             },
             indent=2,
             sort_keys=True,

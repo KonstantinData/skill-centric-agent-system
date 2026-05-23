@@ -41,9 +41,11 @@ has positive and negative evaluation fixtures, and runtime artifacts chunk large
 string payloads into manifest-referenced text chunks.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
-implemented. Queue-backed Cloudflare embedding indexing and runtime retention
-cleanup execution are implemented. Broader runtime expansion remains an
-explicit backlog item and must not obscure the runtime entry gate.
+implemented. Queue-backed Cloudflare embedding indexing, runtime retention
+cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
+output contracts, and first-slice generic runtime strategies are implemented.
+Broader runtime planning quality and production-scale telemetry remain explicit
+backlog themes and must not obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -143,7 +145,7 @@ population are implemented at Worker/API level.
 - Add recomposition tests with parent profile traceability. (Initial implementation complete.)
 - Add runtime entrypoint wiring from task intake to Control API client to composed profile. (Initial implementation complete.)
 - Expand analyzer coverage beyond code-review fixtures. (Initial evaluation
-  coverage complete.)
+  coverage complete, including confidence and ambiguity fallback semantics.)
 
 Status: initial implementation complete. Broader task coverage should now grow
 through evaluation fixtures before classifier or LLM-assisted analysis is
@@ -159,8 +161,9 @@ introduced.
 - Implement validation before final response/action.
 
 Status: storage contracts, initial run start path, profile-scoped Tool Gateway,
-fail-closed profile enforcement, and minimal runtime loop complete for the
-current code-review fixture.
+fail-closed profile enforcement, and minimal runtime loop complete for
+`code-review`, `research`, `task-execution`, and `general-task` first-slice
+strategies.
 
 ## Phase 6B: Productive Runtime Core
 
@@ -200,5 +203,7 @@ implemented, with live execution gated by Cloudflare Worker script permissions,
 OpenAI provider auth, and optional Authenticated Gateway auth; queue-backed
 embedding indexing is implemented; runtime retention cleanup execution is
 implemented with dry-run-first apply behavior, safe URI resolution, missing-file
-reporting, and cleanup reports. Scheduled cleanup automation and broader
-telemetry remain pending.
+reporting, and cleanup reports. Generic runtime output contracts, task-type
+strategy dispatch, research/task-execution/general runtime fixtures, and an
+extended live generic E2E gate are implemented. Scheduled cleanup automation and
+broader telemetry remain pending.

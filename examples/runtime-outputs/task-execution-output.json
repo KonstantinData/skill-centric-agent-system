@@ -1,0 +1,23 @@
+{
+  "contract_version": "0.1.0",
+  "task_type": "task-execution",
+  "status": "completed",
+  "summary": "Task execution completed in conservative read-only mode.",
+  "artifacts": [
+    {
+      "kind": "tool-output",
+      "uri": "hetzner://runtime/tool_outputs/run-task-execution/tool-filesystem-read-output.json"
+    }
+  ],
+  "details": {
+    "planned_changes": [
+      "Inspect repository state and produce a bounded execution summary."
+    ],
+    "executed_actions": [
+      "Read repository metadata through profile-allowed tools."
+    ],
+    "blocked_actions": [
+      "Repository writes are outside the first productive runtime slice."
+    ]
+  }
+}

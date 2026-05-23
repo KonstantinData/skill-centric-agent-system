@@ -140,19 +140,38 @@ When the Control API token is available only as a GitHub Actions secret, use
 the manual live runtime workflow instead of copying the token to a local shell:
 
 ```bash
-gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=true \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=false \
+  -f seed_control_plane_dev=true \
+  -f live_task_suite=generic
 ```
 
 That workflow executes the live dev E2E gate on the Hetzner host, connects to
 PostgreSQL over the local Unix socket, and stores artifacts below
-`/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+`/opt/scas/runtime/live-dev-gates/<github-run-id>`. With
+`live_task_suite=generic`, it runs `code-review`, `research`,
+`task-execution`, and `general-task` cases against the live Control Plane and
+Hetzner Runtime Plane.
 
 Use the same workflow for the live Postgres concurrency smoke:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
   -f run_live_dev_e2e=false \
-  -f run_postgres_concurrency_smoke=true
+  -f run_postgres_concurrency_smoke=true \
+  -f run_live_retrieval_vectorize_smoke=false
+```
+
+Use the same workflow for the live retrieval and Vectorize smoke:
+
+```bash
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=false \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=true \
+  -f seed_control_plane_dev=true
 ```
 
 Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
@@ -237,10 +256,28 @@ ssh "$HETZNER_USER@$HETZNER_HOST" \
 Live dev E2E gate:
 
 ```bash
-gh workflow run live-runtime-gates.yml -f run_live_dev_e2e=true
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=true \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=false \
+  -f seed_control_plane_dev=true \
+  -f live_task_suite=generic
 
 python scripts/runtime/live_dev_e2e.py \
-  --task-file examples/tasks/code-review-task.json
+  --task-suite generic
+```
+
+Live retrieval and Vectorize smoke:
+
+```bash
+gh workflow run live-runtime-gates.yml \
+  -f run_live_dev_e2e=false \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=true \
+  -f seed_control_plane_dev=true
+
+python scripts/runtime/live_retrieval_vectorize_smoke.py \
+  --control-plane-url "$SCAS_CONTROL_API_URL"
 ```
 
 Postgres concurrency smoke:

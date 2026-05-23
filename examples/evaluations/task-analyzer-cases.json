@@ -33,7 +33,10 @@
       ],
       "capability_hints_include": [
         "analysis"
-      ]
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
     }
   },
   {
@@ -58,7 +61,10 @@
       "capability_hints_include": [
         "retrieval",
         "analysis"
-      ]
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
     }
   },
   {
@@ -94,7 +100,10 @@
       "capability_hints_include": [
         "execution",
         "schema-validation"
-      ]
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
     }
   },
   {
@@ -113,7 +122,47 @@
       "required_inputs": [],
       "available_inputs": [],
       "domains_include": [],
-      "capability_hints_include": []
+      "capability_hints_include": [],
+      "classification_confidence": "medium",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
+    }
+  },
+  {
+    "name": "ambiguous research and execution task falls back to general",
+    "task": {
+      "id": "task-research-and-implement",
+      "request": "Research runtime strategy options and implement the best one.",
+      "context": {
+        "repository": {
+          "path": ".",
+          "default_branch": "main"
+        }
+      },
+      "constraints": {
+        "write_access": true,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "general-task",
+      "risk_level": "high",
+      "required_inputs": [
+        "repository"
+      ],
+      "available_inputs": [
+        "repository"
+      ],
+      "domains_include": [
+        "repository"
+      ],
+      "capability_hints_include": [],
+      "classification_confidence": "low",
+      "ambiguous_task_types": [
+        "research",
+        "task-execution"
+      ],
+      "requires_human_review": true
     }
   }
 ]

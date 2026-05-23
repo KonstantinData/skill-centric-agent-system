@@ -29,10 +29,18 @@ from skill_centric_agent_system.runtime.tool_gateway import (
     ToolGateway,
 )
 from skill_centric_agent_system.runtime.validation import (
+    RUNTIME_OUTPUT_CONTRACT_VERSION,
     RuntimeValidationError,
     RuntimeValidatorFramework,
     assert_validation_passed,
 )
+
+SUPPORTED_RUNTIME_TASK_TYPES = {
+    "code-review",
+    "research",
+    "task-execution",
+    "general-task",
+}
 
 
 @dataclass(frozen=True)
@@ -80,6 +88,7 @@ class MinimalRuntimeLoop:
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
         profile = start_result.profile
         run_id = start_result.run_id
+        task_id = start_result.analyzed_task.task_id
         redact_sensitive_data = profile_redacts_sensitive_data(profile)
         enforcer = RuntimeProfileEnforcer(profile)
 
@@ -90,7 +99,10 @@ class MinimalRuntimeLoop:
             execution = self._executor_step(run_id, profile, plan, redact_sensitive_data, enforcer)
             response = self._validator_step(
                 run_id,
+                task_id,
                 profile,
+                context,
+                plan,
                 execution,
                 redact_sensitive_data,
                 enforcer,
@@ -322,14 +334,7 @@ class MinimalRuntimeLoop:
             planned_action={"phase": "planner", "context_keys": sorted(context)},
             redact_sensitive_data=redact_sensitive_data,
         )
-        plan = {
-            "objective": profile["objective"],
-            "selected_modules": selected_modules(profile),
-            "actions": [
-                {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
-                {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
-            ],
-        }
+        plan = _plan_for_profile(profile)
         self.recorder.checkpoint(
             run_id=run_id,
             step_id=str(step["id"]),
@@ -415,7 +420,10 @@ class MinimalRuntimeLoop:
                 stop_reason=stop_reason,  # type: ignore[arg-type]
             )
             raise
-        execution = {"tool_results": tool_results}
+        execution = {
+            "strategy": plan.get("strategy", "generic"),
+            "tool_results": tool_results,
+        }
         self.recorder.checkpoint(
             run_id=run_id,
             step_id=str(step["id"]),
@@ -442,7 +450,10 @@ class MinimalRuntimeLoop:
     def _validator_step(
         self,
         run_id: str,
+        task_id: str,
         profile: Mapping[str, Any],
+        context: Mapping[str, Any],
+        plan: Mapping[str, Any],
         execution: Mapping[str, Any],
         redact_sensitive_data: bool,
         enforcer: RuntimeProfileEnforcer,
@@ -457,13 +468,14 @@ class MinimalRuntimeLoop:
             planned_action={"phase": "validator", "validators": profile["validators"]},
             redact_sensitive_data=redact_sensitive_data,
         )
-        response = {
-            "run_id": run_id,
-            "profile_id": profile["id"],
-            "status": "succeeded",
-            "summary": "Minimal runtime loop completed with read-only tool execution.",
-            "tool_result_count": len(execution.get("tool_results", [])),
-        }
+        response = _runtime_response(
+            run_id=run_id,
+            task_id=task_id,
+            profile=profile,
+            context=context,
+            plan=plan,
+            execution=execution,
+        )
         outcomes = RuntimeValidatorFramework().validate(
             profile=profile,
             execution=execution,
@@ -569,3 +581,206 @@ def _recomposition_reason(error: Exception) -> str | None:
     if stop_reason.startswith("max_"):
         return "budget_exhausted"
     return None
+
+
+def _task_type(profile: Mapping[str, Any]) -> str:
+    task_type = str(profile.get("task_type", "general-task"))
+    if task_type in SUPPORTED_RUNTIME_TASK_TYPES:
+        return task_type
+    return "general-task"
+
+
+def _plan_for_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
+    task_type = _task_type(profile)
+    tools = {str(tool) for tool in profile.get("tools", [])}
+    base = {
+        "objective": profile["objective"],
+        "task_type": task_type,
+        "selected_modules": selected_modules(profile),
+    }
+
+    if task_type == "code-review":
+        return {
+            **base,
+            "strategy": "code-review-readonly",
+            "output_contract": "review-findings-contract",
+            "actions": [
+                {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
+                {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
+            ],
+        }
+
+    if task_type == "research":
+        return {
+            **base,
+            "strategy": "research-context-synthesis",
+            "output_contract": "research-output-contract",
+            "actions": [],
+        }
+
+    if task_type == "task-execution":
+        actions: list[dict[str, Any]] = []
+        if "git-read" in tools:
+            actions.append({"tool": "git-read", "payload": {"args": ["status", "--short"]}})
+        if "filesystem-list" in tools:
+            actions.append({"tool": "filesystem-list", "payload": {"path": ".", "max_entries": 80}})
+        if "filesystem-read" in tools:
+            actions.append(
+                {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}}
+            )
+        return {
+            **base,
+            "strategy": "conservative-task-execution",
+            "output_contract": "task-execution-output-contract",
+            "actions": actions,
+        }
+
+    return {
+        **base,
+        "strategy": "general-task-summary",
+        "output_contract": "general-output-contract",
+        "actions": [],
+    }
+
+
+def _runtime_response(
+    *,
+    run_id: str,
+    task_id: str,
+    profile: Mapping[str, Any],
+    context: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    execution: Mapping[str, Any],
+) -> dict[str, Any]:
+    task_type = _task_type(profile)
+    runtime_output = _runtime_output(
+        task_type=task_type,
+        context=context,
+        plan=plan,
+        execution=execution,
+    )
+    return {
+        "run_id": run_id,
+        "task_id": task_id,
+        "profile_id": profile["id"],
+        "task_type": task_type,
+        "status": "succeeded",
+        "summary": runtime_output["summary"],
+        "tool_result_count": len(execution.get("tool_results", [])),
+        "runtime_output": runtime_output,
+    }
+
+
+def _runtime_output(
+    *,
+    task_type: str,
+    context: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    execution: Mapping[str, Any],
+) -> dict[str, Any]:
+    tool_artifacts = _tool_artifacts(execution)
+    if task_type == "code-review":
+        return {
+            "contract_version": RUNTIME_OUTPUT_CONTRACT_VERSION,
+            "task_type": "code-review",
+            "status": "completed",
+            "summary": "Code review completed with profile-scoped read-only tools.",
+            "artifacts": tool_artifacts,
+            "details": {
+                "findings": [],
+                "reviewed_artifacts": tool_artifacts,
+            },
+        }
+
+    if task_type == "research":
+        retrieval_artifacts = _retrieval_artifacts(context)
+        knowledge_count = len(context.get("knowledge_chunks", []))
+        memory_count = len(context.get("memory_records", []))
+        open_questions = []
+        if knowledge_count == 0 and memory_count == 0:
+            open_questions.append(
+                "No profile-authorized knowledge or memory records were returned."
+            )
+        return {
+            "contract_version": RUNTIME_OUTPUT_CONTRACT_VERSION,
+            "task_type": "research",
+            "status": "completed",
+            "summary": "Research completed from profile-bounded retrieval context.",
+            "artifacts": retrieval_artifacts,
+            "details": {
+                "key_points": [
+                    (
+                        "Loaded "
+                        f"{knowledge_count} knowledge chunk(s) and {memory_count} memory "
+                        "record(s) through the Control API retrieval boundary."
+                    )
+                ],
+                "sources": retrieval_artifacts,
+                "open_questions": open_questions,
+            },
+        }
+
+    if task_type == "task-execution":
+        executed_actions = [
+            f"{result['tool_name']}:{result['status']}"
+            for result in execution.get("tool_results", [])
+            if isinstance(result, Mapping)
+        ]
+        return {
+            "contract_version": RUNTIME_OUTPUT_CONTRACT_VERSION,
+            "task_type": "task-execution",
+            "status": "completed",
+            "summary": "Task execution completed in conservative read-only mode.",
+            "artifacts": tool_artifacts,
+            "details": {
+                "planned_changes": [
+                    "Inspect repository state and produce a bounded execution summary."
+                ],
+                "executed_actions": executed_actions,
+                "blocked_actions": [
+                    "Repository writes are outside the first productive runtime slice."
+                ],
+            },
+        }
+
+    return {
+        "contract_version": RUNTIME_OUTPUT_CONTRACT_VERSION,
+        "task_type": "general-task",
+        "status": "completed",
+        "summary": "General task completed with the generic runtime strategy.",
+        "artifacts": [],
+        "details": {
+            "notes": [
+                f"Runtime strategy: {plan.get('strategy', 'general-task-summary')}.",
+            ],
+        },
+    }
+
+
+def _tool_artifacts(execution: Mapping[str, Any]) -> list[dict[str, str]]:
+    artifacts: list[dict[str, str]] = []
+    for result in execution.get("tool_results", []):
+        if not isinstance(result, Mapping):
+            continue
+        output_uri = result.get("output_uri")
+        if isinstance(output_uri, str) and output_uri:
+            artifacts.append({"kind": "tool-output", "uri": output_uri})
+    return artifacts
+
+
+def _retrieval_artifacts(context: Mapping[str, Any]) -> list[dict[str, str]]:
+    response = context.get("retrieval_response")
+    if not isinstance(response, Mapping):
+        return []
+    artifacts: list[dict[str, str]] = []
+    for field in ("knowledge_chunks", "memory_records"):
+        values = response.get(field, [])
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if not isinstance(value, Mapping):
+                continue
+            content_uri = value.get("content_uri")
+            if isinstance(content_uri, str) and content_uri.startswith("hetzner://runtime/"):
+                artifacts.append({"kind": "retrieval-context", "uri": content_uri})
+    return artifacts

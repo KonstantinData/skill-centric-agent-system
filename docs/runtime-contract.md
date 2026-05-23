@@ -57,10 +57,17 @@ Analyzer Output must contain:
 - `capability_hints`,
 - `constraints`,
 - `missing_information`,
-- `auth_claims`.
+- `auth_claims`,
+- `classification_confidence`,
+- `classification_reasons`,
+- `ambiguous_task_types`,
+- `requires_human_review`.
 
 If required information is missing, the Composer must fail closed or request
 clarification instead of composing a broad profile.
+If several specialized task classes match, the Analyzer must fall back to
+`general-task` with low confidence and mark the task for review. The runtime
+must not dispatch to a specialized strategy from ambiguous analyzer output.
 
 ## Runtime Agent Profile
 
@@ -229,6 +236,17 @@ Unknown validators fail closed. The runtime must not silently skip selected
 validators, and it must not substitute a task-specific hardcoded validator for
 the profile-selected validator set.
 
+The first runtime output validators are task-class aware:
+
+- `review-findings-contract` validates `code-review` output,
+- `research-output-contract` validates `research` output,
+- `task-execution-output-contract` validates `task-execution` output,
+- `general-output-contract` validates `general-task` output.
+
+Each validator checks the `runtime_output` object against the task class chosen
+by the active profile. The machine-readable result schema is
+`schemas/runtime-output.schema.json`.
+
 ## Recomposition
 
 Recomposition is a controlled request to the Composer. It is allowed only when:
@@ -316,3 +334,14 @@ The runtime result must contain:
 - artifact root URI,
 - event/checkpoint references,
 - recomposition or retry references when applicable.
+
+The first generic runtime loop dispatches deterministic strategies from the
+active profile's `task_type`:
+
+- `code-review`: read-only git and filesystem inspection,
+- `research`: profile-bounded retrieval synthesis,
+- `task-execution`: conservative read-only repository inspection,
+- `general-task`: bounded generic summary.
+
+These are execution strategies inside the single runtime agent. They are not
+separate agents and must not expand the active profile.

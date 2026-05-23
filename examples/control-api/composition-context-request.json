@@ -29,7 +29,13 @@
       ],
       "constraints": [
         "Do not grant write tools by default."
-      ]
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "classification_reasons": [
+        "Matched code-review task signals: review."
+      ],
+      "requires_human_review": false
     }
   }
 }

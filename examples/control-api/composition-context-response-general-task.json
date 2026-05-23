@@ -1,0 +1,76 @@
+{
+  "contract_version": "0.1.0",
+  "registry_version": "0.1.0",
+  "composition_status": "ready",
+  "candidate_modules": [
+    {
+      "id": "mod-general-task-summary",
+      "name": "general-task-summary",
+      "kind": "skill",
+      "version": "0.1.0",
+      "score": 0.84,
+      "reason": "General tasks should receive a bounded generic summary strategy."
+    }
+  ],
+  "applicable_policies": [
+    {
+      "id": "mod-no-destructive-commands",
+      "name": "no-destructive-commands",
+      "kind": "policy",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Required by selected module."
+    }
+  ],
+  "allowed_knowledge_scopes": [],
+  "allowed_data_scopes": [],
+  "allowed_memory_scopes": [],
+  "validation_requirements": [
+    {
+      "id": "mod-general-output-contract",
+      "name": "general-output-contract",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 0.5,
+      "reason": "Required by selected module."
+    }
+  ],
+  "policy_decisions": [
+    {
+      "module": {
+        "id": "mod-general-task-summary",
+        "name": "general-task-summary",
+        "kind": "skill",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Required policies are allowed for the module."
+      ]
+    }
+  ],
+  "graph_validation": {
+    "is_valid": true,
+    "errors": [],
+    "reachable_modules": [
+      {
+        "id": "mod-general-output-contract",
+        "name": "general-output-contract",
+        "kind": "validator",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-general-task-summary",
+        "name": "general-task-summary",
+        "kind": "skill",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-no-destructive-commands",
+        "name": "no-destructive-commands",
+        "kind": "policy",
+        "version": "0.1.0"
+      }
+    ]
+  }
+}

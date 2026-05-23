@@ -67,6 +67,9 @@ The generator writes idempotent upserts for `modules`, `module_versions`,
 `module_selection_metadata`, `module_dependencies`, `policy_bindings`, and
 `scope_bindings`. Referenced tools, scopes, policies, and validators are emitted
 as generated stub modules until first-class module contracts exist for them.
+The current seed includes first-slice skill modules for `code-review`,
+`research`, `task-execution`, and `general-task`, plus generated tool, scope,
+policy, and validator dependencies needed by those modules.
 
 `examples/control-plane/cloudflare-control-plane.json` remains a storage
 contract fixture for the broader Cloudflare record model, including knowledge

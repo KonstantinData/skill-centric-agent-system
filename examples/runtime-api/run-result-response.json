@@ -16,7 +16,34 @@
   },
   "result": {
     "response": {
-      "summary": "Runtime completed successfully."
+      "run_id": "run-code-review-latest-commit",
+      "task_id": "task-code-review-latest-commit",
+      "profile_id": "profile-code-review-latest-commit",
+      "task_type": "code-review",
+      "status": "succeeded",
+      "summary": "Code review completed with profile-scoped read-only tools.",
+      "tool_result_count": 1,
+      "runtime_output": {
+        "contract_version": "0.1.0",
+        "task_type": "code-review",
+        "status": "completed",
+        "summary": "Code review completed with profile-scoped read-only tools.",
+        "artifacts": [
+          {
+            "kind": "tool-output",
+            "uri": "hetzner://runtime/tool_outputs/run-code-review/tool-git-read-output.json"
+          }
+        ],
+        "details": {
+          "findings": [],
+          "reviewed_artifacts": [
+            {
+              "kind": "tool-output",
+              "uri": "hetzner://runtime/tool_outputs/run-code-review/tool-git-read-output.json"
+            }
+          ]
+        }
+      }
     },
     "validation_result_uris": [
       "hetzner://runtime/traces/run-code-review-latest-commit/validation/minimal-runtime-findings.json"

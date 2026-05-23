@@ -70,6 +70,11 @@ Output:
 The command must fail before execution when no Control Plane client or explicit
 composition context response is available.
 
+When the minimal loop is enabled, the runtime dispatches a deterministic
+strategy from `profile.task_type`. The supported first-slice strategies are
+`code-review`, `research`, `task-execution`, and `general-task`. The response
+contains `runtime_output`, which conforms to `schemas/runtime-output.schema.json`.
+
 When runtime execution continues after a controlled recomposition request, the
 result must expose the attempted run IDs and recomposed profile IDs. The
 original run remains terminal with `needs_recomposition`; the continued attempt

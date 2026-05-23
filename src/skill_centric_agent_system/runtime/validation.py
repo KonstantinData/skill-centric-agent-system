@@ -4,6 +4,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+RUNTIME_OUTPUT_CONTRACT_VERSION = "0.1.0"
+TASK_OUTPUT_VALIDATORS = {
+    "review-findings-contract": "code-review",
+    "research-output-contract": "research",
+    "task-execution-output-contract": "task-execution",
+    "general-output-contract": "general-task",
+}
+
 
 class RuntimeValidationError(RuntimeError):
     """Raised when profile-selected validation fails."""
@@ -64,8 +72,10 @@ class RuntimeProfileSchemaValidator:
         )
 
 
-class MinimalResponseContractValidator:
-    validator_id = "review-findings-contract"
+class RuntimeOutputContractValidator:
+    def __init__(self, validator_id: str, task_type: str) -> None:
+        self.validator_id = validator_id
+        self.task_type = task_type
 
     def validate(
         self,
@@ -75,11 +85,15 @@ class MinimalResponseContractValidator:
         response: Mapping[str, Any],
     ) -> RuntimeValidationOutcome:
         tool_results = execution.get("tool_results", [])
-        has_required_response = all(
-            field in response for field in ("run_id", "profile_id", "status", "summary")
-        )
+        runtime_output = response.get("runtime_output")
+        has_required_response = _has_required_response(response)
         has_tool_result_count = response.get("tool_result_count") == len(tool_results)
-        status = "passed" if has_required_response and has_tool_result_count else "failed"
+        output_errors = _runtime_output_errors(runtime_output, self.task_type)
+        status = (
+            "passed"
+            if has_required_response and has_tool_result_count and not output_errors
+            else "failed"
+        )
         return RuntimeValidationOutcome(
             validator_id=self.validator_id,
             status=status,
@@ -88,6 +102,7 @@ class MinimalResponseContractValidator:
                 "required_response_fields_present": has_required_response,
                 "tool_result_count_matches_execution": has_tool_result_count,
                 "tool_result_count": len(tool_results),
+                "runtime_output_errors": output_errors,
             },
         )
 
@@ -101,7 +116,10 @@ class RuntimeValidatorFramework:
     ) -> None:
         builtin_validators: dict[str, RuntimeValidator] = {
             "runtime-profile-schema": RuntimeProfileSchemaValidator(),
-            "review-findings-contract": MinimalResponseContractValidator(),
+            **{
+                validator_id: RuntimeOutputContractValidator(validator_id, task_type)
+                for validator_id, task_type in TASK_OUTPUT_VALIDATORS.items()
+            },
         }
         self.validators = {**builtin_validators, **dict(validators or {})}
 
@@ -142,3 +160,73 @@ def assert_validation_passed(outcomes: tuple[RuntimeValidationOutcome, ...]) -> 
     if failed:
         validators = ", ".join(failed)
         raise RuntimeValidationError(f"Runtime validation failed: {validators}.")
+
+
+def _has_required_response(response: Mapping[str, Any]) -> bool:
+    return all(
+        field in response
+        for field in (
+            "run_id",
+            "task_id",
+            "profile_id",
+            "task_type",
+            "status",
+            "summary",
+            "runtime_output",
+        )
+    )
+
+
+def _runtime_output_errors(value: Any, expected_task_type: str) -> list[str]:
+    if not isinstance(value, Mapping):
+        return ["runtime_output_missing"]
+
+    errors: list[str] = []
+    if value.get("contract_version") != RUNTIME_OUTPUT_CONTRACT_VERSION:
+        errors.append("invalid_contract_version")
+    if value.get("task_type") != expected_task_type:
+        errors.append("task_type_mismatch")
+    if value.get("status") not in {"completed", "blocked", "failed"}:
+        errors.append("invalid_status")
+    if not isinstance(value.get("summary"), str) or not str(value.get("summary")).strip():
+        errors.append("summary_missing")
+    artifacts = value.get("artifacts")
+    if not isinstance(artifacts, list):
+        errors.append("artifacts_not_array")
+    details = value.get("details")
+    if not isinstance(details, Mapping):
+        errors.append("details_missing")
+        return errors
+
+    if expected_task_type == "code-review":
+        errors.extend(_require_array(details, "findings"))
+        errors.extend(_require_array(details, "reviewed_artifacts"))
+    elif expected_task_type == "research":
+        errors.extend(_require_non_empty_array(details, "key_points"))
+        errors.extend(_require_array(details, "sources"))
+        errors.extend(_require_array(details, "open_questions"))
+    elif expected_task_type == "task-execution":
+        errors.extend(_require_non_empty_array(details, "planned_changes"))
+        errors.extend(_require_array(details, "executed_actions"))
+        errors.extend(_require_array(details, "blocked_actions"))
+    elif expected_task_type == "general-task":
+        errors.extend(_require_non_empty_array(details, "notes"))
+    else:
+        errors.append("unsupported_task_type")
+
+    return errors
+
+
+def _require_array(value: Mapping[str, Any], field: str) -> list[str]:
+    if not isinstance(value.get(field), list):
+        return [f"{field}_not_array"]
+    return []
+
+
+def _require_non_empty_array(value: Mapping[str, Any], field: str) -> list[str]:
+    errors = _require_array(value, field)
+    if errors:
+        return errors
+    if not value[field]:
+        return [f"{field}_empty"]
+    return []
