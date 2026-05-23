@@ -221,6 +221,12 @@
             "checkpoint_count": {
               "type": "integer",
               "minimum": 0
+            },
+            "attempt_run_ids": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "recomposed_profile_ids": {
+              "$ref": "#/$defs/stringArray"
             }
           }
         }

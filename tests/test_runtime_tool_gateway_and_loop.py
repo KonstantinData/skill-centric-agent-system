@@ -405,17 +405,89 @@ def test_minimal_runtime_loop_requests_recomposition_for_missing_capability(
         repository_root=REPO_ROOT,
     )
 
-    with pytest.raises(RuntimeLoopError):
+    with pytest.raises(RuntimeLoopError) as exc_info:
         loop.run(start_result)
 
     assert store.runtime_runs[start_result.run_id]["status"] == "failed"
     assert store.runtime_runs[start_result.run_id]["stop_reason"] == "needs_recomposition"
+    assert exc_info.value.stop_reason == "needs_recomposition"
+    assert exc_info.value.recomposition_request is not None
+    assert exc_info.value.recomposition_request.source_run_id == start_result.run_id
     recomposition_event = store.runtime_events[-1]
     assert recomposition_event["event_type"] == "recomposition_requested"
     result_payload = load_artifact(tmp_path, str(recomposition_event["result_uri"]))
+    assert result_payload["source_run_id"] == start_result.run_id
     assert result_payload["parent_profile_id"] == start_result.profile["id"]
     assert result_payload["requested_profile_generation"] == 2
     assert result_payload["recomposition_reason"] == "missing_capability"
+
+
+def test_minimal_runtime_loop_continues_with_newly_composed_profile(
+    tmp_path: Path,
+) -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        task,
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["tools"].remove("git-read")
+    start_result.profile["failure_policy"]["on_policy_denial"] = "recompose_once"
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    result = loop.run_with_recomposition(
+        start_result,
+        task=task,
+        entrypoint=entrypoint,
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+
+    assert result.status == "succeeded"
+    assert result.run_id == "run-code-review-latest-commit-generation-2"
+    assert result.attempt_run_ids == (
+        "run-code-review-latest-commit",
+        "run-code-review-latest-commit-generation-2",
+    )
+    assert result.recomposed_profile_ids == ("profile-code-review-latest-commit-g2",)
+    assert store.runtime_runs["run-code-review-latest-commit"]["status"] == "failed"
+    assert store.runtime_runs["run-code-review-latest-commit"]["stop_reason"] == (
+        "needs_recomposition"
+    )
+    assert store.runtime_runs[result.run_id]["status"] == "succeeded"
+    assert "git-read" not in start_result.profile["tools"]
+    profile_emitted_event = next(
+        event
+        for event in store.events_for_run(result.run_id)
+        if event["event_type"] == "profile_emitted"
+    )
+    recomposed_profile_payload = load_artifact(tmp_path, str(profile_emitted_event["result_uri"]))
+    recomposed_profile = recomposed_profile_payload["profile"]
+    assert recomposed_profile["id"] == "profile-code-review-latest-commit-g2"
+    assert recomposed_profile["profile_generation"] == 2
+    assert recomposed_profile["parent_profile_id"] == start_result.profile["id"]
+    assert recomposed_profile["recomposition_reason"] == "missing_capability"
+    assert "git-read" in recomposed_profile["tools"]
+    assert (
+        recomposed_profile["observability"]["trace_id"]
+        == start_result.profile["observability"]["trace_id"]
+    )
+    candidates_event = next(
+        event
+        for event in store.events_for_run(result.run_id)
+        if event["event_type"] == "candidates_discovered"
+    )
+    context_request = load_artifact(tmp_path, str(candidates_event["planned_action_uri"]))
+    assert context_request["requested_profile_generation"] == {
+        "mode": "recomposition",
+        "parent_profile_id": start_result.profile["id"],
+    }
+    assert result.response["attempt_run_ids"] == list(result.attempt_run_ids)
 
 
 def test_minimal_runtime_loop_respects_recomposition_budget(

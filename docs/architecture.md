@@ -71,7 +71,10 @@ Control API for D1-backed composition context. It scores candidate modules,
 applies policies, validates the dependency graph, pins module versions, and
 emits a runtime profile. It does not load broad capabilities by default.
 
-`Runtime Agent Profile` is the task-local execution contract. It is immutable for a single execution attempt. Recomposition creates a new profile generation with a parent profile reference and reason.
+`Runtime Agent Profile` is the task-local execution contract. It is immutable
+for a single execution attempt. Recomposition creates a new profile generation
+with a parent profile reference and reason, then continues through a new run
+attempt instead of changing the active profile in place.
 
 `Single Agent Runtime` executes the task through context management, planning, execution, validation, and response. It cannot grant itself tools, data, memory, or knowledge outside the profile.
 
@@ -141,9 +144,10 @@ The current repository has implemented the first control-plane slice:
   outside the active profile,
 - a Runtime Validator Framework that runs the validator IDs selected by the
   active profile and fail-closes unknown or failed validators,
-- a controlled recomposition request path that emits `recomposition_requested`
-  and stops the current run with `needs_recomposition` instead of mutating the
-  active profile,
+- a controlled recomposition continuation path that emits
+  `recomposition_requested`, stops the current run with `needs_recomposition`,
+  composes a new version-pinned profile generation, and continues through a new
+  run attempt without mutating the active profile,
 - a manual live dev E2E gate script for the Cloudflare composition/retrieval
   and Hetzner runtime persistence path,
 - analyzer and composition-scoring evaluation fixtures,
@@ -164,12 +168,10 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
-- live recomposition continuation with a newly composed profile,
-- executed live dev gate evidence against the remote Hetzner runtime database,
-- live Postgres concurrency evidence against the remote Hetzner runtime
-  database,
 - expanded runtime planning and execution beyond the initial code-review loop,
-- async ingestion/indexing workers for knowledge and memory embeddings.
+- AI Gateway live secret rollout and live LLM smoke evidence,
+- async ingestion/indexing workers for knowledge and memory embeddings,
+- runtime retention cleanup execution.
 
 ## Productive Runtime Gate
 

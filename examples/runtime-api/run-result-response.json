@@ -21,6 +21,10 @@
     "validation_result_uris": [
       "hetzner://runtime/traces/run-code-review-latest-commit/validation/minimal-runtime-findings.json"
     ],
+    "attempt_run_ids": [
+      "run-code-review-latest-commit"
+    ],
+    "recomposed_profile_ids": [],
     "event_count": 20,
     "checkpoint_count": 5
   }

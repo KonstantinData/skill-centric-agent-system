@@ -20,9 +20,11 @@ events. The Runtime Context Manager now calls the bounded Control API retrieval
 endpoint and rejects retrieval responses containing scopes outside the active
 profile. The Validator phase now runs the validators selected by the active
 profile and fail-closes unknown or failed validators. Controlled recomposition
-requests now emit `recomposition_requested` and stop the current run with
-`needs_recomposition` instead of mutating the active profile. A manual live dev
-E2E gate script now covers the Cloudflare-to-Hetzner runtime path. Runtime
+now emits `recomposition_requested`, stops the current run with
+`needs_recomposition`, composes a new immutable profile generation, and
+continues through a new run attempt without mutating the active profile. A
+manual live dev E2E gate script now covers the Cloudflare-to-Hetzner runtime
+path. Runtime
 operations now have a baseline runbook for migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact redaction and retention
 planning are implemented for the Flight Recorder artifact path. The Control API
@@ -37,10 +39,9 @@ code-review, research, task-execution, and general tasks. Composition scoring
 has positive and negative evaluation fixtures, and runtime artifacts chunk large
 string payloads into manifest-referenced text chunks.
 
-The Runtime Preflight Gate is complete. The current implementation block is the
-productive runtime core. Async indexing, AI Gateway live secret rollout, broader
-runtime expansion, retention cleanup, live Hetzner E2E evidence, and live
-Postgres concurrency evidence remain explicit backlog items and must not
+The Runtime Preflight Gate is complete. The initial productive runtime core is
+implemented. Async indexing, AI Gateway live secret rollout, broader runtime
+expansion, and retention cleanup remain explicit backlog items and must not
 obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
@@ -171,11 +172,13 @@ Implement this phase only after the Runtime Preflight Gate is satisfied:
 5. Harden the Tool Gateway for productive execution. (Initial hardening complete.)
 6. Bind Context Manager retrieval to `POST /retrieval/context`. (Initial binding complete.)
 7. Make validation profile- and task-contract driven. (Initial framework complete.)
-8. Implement controlled recomposition without runtime self-granting. (Initial request path complete.)
+8. Implement controlled recomposition without runtime self-granting. (Initial continuation path complete.)
 9. Add a live dev end-to-end gate across Cloudflare and Hetzner. (Manual gate script complete.)
 10. Add the operations baseline and runbooks. (Initial runbook complete.)
 
 Status: initial implementation complete. Steps 1-10 have initial implementations.
+Controlled recomposition can now continue through a newly composed profile and
+new run attempt.
 
 ## Phase 7: Operational Hardening
 
@@ -189,7 +192,7 @@ Status: initial runtime redaction and retention planning complete; Cloudflare
 knowledge and memory ingestion endpoints are implemented; the Hetzner memory
 feedback client exists; Control API retrieval and AI Gateway routes are
 implemented; memory candidate extraction/validation and the controlled learning
-fixture exist; Control API auth, atomic event indexing, and chunked artifact
-persistence are implemented; operational cleanup jobs, async indexing, live
-Hetzner E2E evidence, live Postgres concurrency evidence, and broader telemetry
-remain pending.
+fixture exist; Control API auth, atomic event indexing, chunked artifact
+persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
+are implemented; operational cleanup jobs, async indexing, AI Gateway live
+smoke, and broader telemetry remain pending.

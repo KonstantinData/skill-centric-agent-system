@@ -11,6 +11,12 @@ from skill_centric_agent_system.composition import (
     TaskAnalyzer,
 )
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
+from skill_centric_agent_system.runtime.models import (
+    RECOMPOSITION_REASONS,
+    RecompositionRequest,
+    require_choice,
+    slug_id,
+)
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.storage import (
     FlightRecorder,
@@ -59,20 +65,38 @@ class RuntimeEntryPoint:
         *,
         composition_context_response: Mapping[str, Any] | None = None,
         run_id: str | None = None,
+        generation_mode: Literal["initial", "recomposition"] = "initial",
+        profile_generation: int = 1,
+        parent_profile_id: str | None = None,
+        recomposition_reason: str | None = None,
     ) -> RuntimeStartResult:
+        self._assert_profile_generation_request(
+            generation_mode=generation_mode,
+            profile_generation=profile_generation,
+            parent_profile_id=parent_profile_id,
+            recomposition_reason=recomposition_reason,
+        )
         analyzed_task = self.analyzer.analyze(task)
         context_request = analyzed_task.to_composition_context_request(
-            environment=self.environment
+            environment=self.environment,
+            generation_mode=generation_mode,
+            parent_profile_id=parent_profile_id,
         )
         context_response = composition_context_response or self._fetch_composition_context(
             context_request
         )
-        profile = self.composer.compose(analyzed_task, context_response)
+        profile = self.composer.compose(
+            analyzed_task,
+            context_response,
+            profile_generation=profile_generation,
+            parent_profile_id=parent_profile_id,
+            recomposition_reason=recomposition_reason,
+        )
         redact_sensitive_data = profile_redacts_sensitive_data(profile)
         run = self.flight_recorder.start_run(
             task_id=analyzed_task.task_id,
             profile=profile,
-            run_id=run_id,
+            run_id=run_id or _default_run_id(analyzed_task.task_id, profile_generation),
         )
         run_identifier = str(run["id"])
 
@@ -143,6 +167,33 @@ class RuntimeEntryPoint:
             profile=profile,
         )
 
+    def continue_recomposition(
+        self,
+        task: Mapping[str, Any],
+        *,
+        recomposition_request: RecompositionRequest | Mapping[str, Any],
+        composition_context_response: Mapping[str, Any] | None = None,
+        run_id: str | None = None,
+    ) -> RuntimeStartResult:
+        request = (
+            recomposition_request
+            if isinstance(recomposition_request, RecompositionRequest)
+            else RecompositionRequest.from_mapping(recomposition_request)
+        )
+        return self.start(
+            task,
+            composition_context_response=composition_context_response,
+            run_id=run_id
+            or slug_id(
+                f"{request.source_run_id}-generation-{request.requested_profile_generation}",
+                prefix="run",
+            ),
+            generation_mode="recomposition",
+            profile_generation=request.requested_profile_generation,
+            parent_profile_id=request.parent_profile_id,
+            recomposition_reason=request.recomposition_reason,
+        )
+
     def _fetch_composition_context(self, context_request: Mapping[str, Any]) -> dict[str, Any]:
         if self.control_plane_client is None:
             raise RuntimeEntryPointError(
@@ -150,3 +201,35 @@ class RuntimeEntryPoint:
                 "composition_context_response."
             )
         return self.control_plane_client.composition_context(context_request)
+
+    def _assert_profile_generation_request(
+        self,
+        *,
+        generation_mode: Literal["initial", "recomposition"],
+        profile_generation: int,
+        parent_profile_id: str | None,
+        recomposition_reason: str | None,
+    ) -> None:
+        if profile_generation < 1:
+            raise RuntimeEntryPointError("profile_generation must be greater than zero.")
+        if generation_mode == "initial":
+            if profile_generation != 1 or parent_profile_id is not None or recomposition_reason:
+                raise RuntimeEntryPointError(
+                    "Initial composition cannot include recomposition traceability."
+                )
+            return
+        if parent_profile_id is None or recomposition_reason is None:
+            raise RuntimeEntryPointError(
+                "Recomposition requires parent_profile_id and recomposition_reason."
+            )
+        require_choice(recomposition_reason, RECOMPOSITION_REASONS, "recomposition_reason")
+        if profile_generation <= 1:
+            raise RuntimeEntryPointError(
+                "Recomposition requires profile_generation greater than 1."
+            )
+
+
+def _default_run_id(task_id: str, profile_generation: int) -> str | None:
+    if profile_generation <= 1:
+        return None
+    return slug_id(f"{task_id}-generation-{profile_generation}", prefix="run")

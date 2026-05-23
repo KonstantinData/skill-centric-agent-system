@@ -27,9 +27,10 @@ access audit events. The Runtime Context Manager now calls the Control API
 retrieval endpoint for profile-bounded knowledge/memory context and rejects
 scope-expanded responses. The Validator phase now runs the validator IDs
 selected by the active profile and fail-closes unknown or failed validators.
-Controlled recomposition requests now emit `recomposition_requested` and stop
-the current run with `needs_recomposition` instead of mutating the active
-profile. A manual live dev E2E gate now exists for the Cloudflare-to-Hetzner
+Controlled recomposition now emits `recomposition_requested`, stops the current
+run with `needs_recomposition`, asks the Composer for a new immutable profile
+generation, and can continue through a new run attempt without mutating the
+active profile. A manual live dev E2E gate now exists for the Cloudflare-to-Hetzner
 runtime path, and the operations runbook defines migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner for
@@ -50,9 +51,9 @@ chunks large string payloads into manifest-referenced text chunks.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Live recomposition continuation, richer tool execution, async indexing workers,
-remote live Hetzner E2E evidence, live Postgres concurrency evidence, and
-production-scale deployment hardening remain follow-up implementation work.
+Richer tool execution, async indexing workers, AI Gateway live smoke, retention
+cleanup, and production-scale deployment hardening remain follow-up
+implementation work.
 
 ## Core Flow
 
@@ -88,7 +89,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
-- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
+- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
@@ -245,6 +246,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Execute the live dev E2E gate against remote Hetzner with Control API auth configured.
-2. Capture live Postgres concurrency evidence after the atomic event-index change.
-3. Continue async indexing, AI Gateway live secret rollout, runtime expansion, and retention cleanup as explicit backlog items.
+1. Run the AI Gateway secret rollout and live LLM smoke.
+2. Implement async knowledge/memory embedding indexing workers.
+3. Add the runtime retention cleanup job and continue broader runtime expansion as explicit backlog items.

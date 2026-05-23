@@ -14,8 +14,13 @@ from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
     RuntimeProfileEnforcer,
 )
-from skill_centric_agent_system.runtime.entrypoint import RuntimeStartResult
-from skill_centric_agent_system.runtime.models import iso_timestamp, selected_modules, slug_id
+from skill_centric_agent_system.runtime.entrypoint import RuntimeEntryPoint, RuntimeStartResult
+from skill_centric_agent_system.runtime.models import (
+    RecompositionRequest,
+    iso_timestamp,
+    selected_modules,
+    slug_id,
+)
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.storage import FlightRecorder, RuntimeStore
 from skill_centric_agent_system.runtime.tool_gateway import (
@@ -36,10 +41,23 @@ class RuntimeLoopResult:
     status: str
     stop_reason: str
     response: Mapping[str, Any]
+    attempt_run_ids: tuple[str, ...] = ()
+    recomposed_profile_ids: tuple[str, ...] = ()
 
 
 class RuntimeLoopError(RuntimeError):
     """Raised when the runtime loop fails closed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        stop_reason: str | None = None,
+        recomposition_request: RecompositionRequest | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.stop_reason = stop_reason
+        self.recomposition_request = recomposition_request
 
 
 class MinimalRuntimeLoop:
@@ -83,14 +101,18 @@ class MinimalRuntimeLoop:
             ToolDeniedError,
             ToolExecutionError,
         ) as error:
-            self._handle_runtime_error(
+            stop_reason, recomposition_request = self._handle_runtime_error(
                 run_id=run_id,
                 start_result=start_result,
                 error=error,
                 enforcer=enforcer,
                 redact_sensitive_data=redact_sensitive_data,
             )
-            raise RuntimeLoopError(str(error)) from error
+            raise RuntimeLoopError(
+                str(error),
+                stop_reason=stop_reason,
+                recomposition_request=recomposition_request,
+            ) from error
 
         self.recorder.record_event(
             run_id=run_id,
@@ -111,7 +133,47 @@ class MinimalRuntimeLoop:
             status="succeeded",
             stop_reason="completed",
             response=response,
+            attempt_run_ids=(run_id,),
         )
+
+    def run_with_recomposition(
+        self,
+        start_result: RuntimeStartResult,
+        *,
+        task: Mapping[str, Any],
+        entrypoint: RuntimeEntryPoint,
+        composition_context_response: Mapping[str, Any] | None = None,
+    ) -> RuntimeLoopResult:
+        attempt_run_ids: list[str] = []
+        recomposed_profile_ids: list[str] = []
+        current_start_result = start_result
+
+        while True:
+            attempt_run_ids.append(current_start_result.run_id)
+            try:
+                result = self.run(current_start_result)
+            except RuntimeLoopError as error:
+                if error.recomposition_request is None:
+                    raise
+                current_start_result = entrypoint.continue_recomposition(
+                    task,
+                    recomposition_request=error.recomposition_request,
+                    composition_context_response=composition_context_response,
+                )
+                recomposed_profile_ids.append(current_start_result.profile["id"])
+                continue
+
+            response = dict(result.response)
+            response["attempt_run_ids"] = list(attempt_run_ids)
+            response["recomposed_profile_ids"] = list(recomposed_profile_ids)
+            return RuntimeLoopResult(
+                run_id=result.run_id,
+                status=result.status,
+                stop_reason=result.stop_reason,
+                response=response,
+                attempt_run_ids=tuple(attempt_run_ids),
+                recomposed_profile_ids=tuple(recomposed_profile_ids),
+            )
 
     def _handle_runtime_error(
         self,
@@ -121,30 +183,34 @@ class MinimalRuntimeLoop:
         error: Exception,
         enforcer: RuntimeProfileEnforcer,
         redact_sensitive_data: bool,
-    ) -> str:
+    ) -> tuple[str, RecompositionRequest | None]:
         profile = start_result.profile
         recomposition_reason = _recomposition_reason(error)
         if recomposition_reason is not None and _profile_allows_recomposition(profile, error):
             try:
                 enforcer.record_recomposition_request()
             except ProfileEnforcementError as budget_error:
-                return self._fail_run(
-                    run_id=run_id,
-                    error=budget_error,
-                    enforcer=enforcer,
-                    redact_sensitive_data=redact_sensitive_data,
+                return (
+                    self._fail_run(
+                        run_id=run_id,
+                        error=budget_error,
+                        enforcer=enforcer,
+                        redact_sensitive_data=redact_sensitive_data,
+                    ),
+                    None,
                 )
-            next_generation = int(profile["profile_generation"]) + 1
+            recomposition_request = RecompositionRequest(
+                source_run_id=run_id,
+                task_id=start_result.analyzed_task.task_id,
+                parent_profile_id=profile["id"],
+                requested_profile_generation=int(profile["profile_generation"]) + 1,
+                recomposition_reason=recomposition_reason,
+            )
             self.recorder.record_event(
                 run_id=run_id,
                 event_type="recomposition_requested",
                 actor_role="composer",
-                result={
-                    "task_id": start_result.analyzed_task.task_id,
-                    "parent_profile_id": profile["id"],
-                    "requested_profile_generation": next_generation,
-                    "recomposition_reason": recomposition_reason,
-                },
+                result=recomposition_request.as_event_result(),
                 stop_reason="needs_recomposition",
                 redact_sensitive_data=redact_sensitive_data,
             )
@@ -154,13 +220,16 @@ class MinimalRuntimeLoop:
                 stop_reason="needs_recomposition",
                 tokens_used_total=enforcer.tokens_used,
             )
-            return "needs_recomposition"
+            return "needs_recomposition", recomposition_request
 
-        return self._fail_run(
-            run_id=run_id,
-            error=error,
-            enforcer=enforcer,
-            redact_sensitive_data=redact_sensitive_data,
+        return (
+            self._fail_run(
+                run_id=run_id,
+                error=error,
+                enforcer=enforcer,
+                redact_sensitive_data=redact_sensitive_data,
+            ),
+            None,
         )
 
     def _fail_run(

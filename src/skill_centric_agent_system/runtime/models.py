@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -63,6 +64,13 @@ RuntimePhase = Literal[
     "validator",
     "finalization",
 ]
+RecompositionReason = Literal[
+    "task_reclassified",
+    "missing_capability",
+    "policy_change",
+    "budget_exhausted",
+    "validator_failure",
+]
 
 RUNTIME_STATUSES = frozenset(RuntimeStatus.__args__)  # type: ignore[attr-defined]
 RUNTIME_STEP_KINDS = frozenset(RuntimeStepKind.__args__)  # type: ignore[attr-defined]
@@ -70,6 +78,37 @@ STOP_REASONS = frozenset(StopReason.__args__)  # type: ignore[attr-defined]
 RUNTIME_EVENT_TYPES = frozenset(RuntimeEventType.__args__)  # type: ignore[attr-defined]
 RUNTIME_ACTOR_ROLES = frozenset(RuntimeActorRole.__args__)  # type: ignore[attr-defined]
 RUNTIME_PHASES = frozenset(RuntimePhase.__args__)  # type: ignore[attr-defined]
+RECOMPOSITION_REASONS = frozenset(RecompositionReason.__args__)  # type: ignore[attr-defined]
+
+
+@dataclass(frozen=True)
+class RecompositionRequest:
+    source_run_id: str
+    task_id: str
+    parent_profile_id: str
+    requested_profile_generation: int
+    recomposition_reason: RecompositionReason
+
+    def as_event_result(self) -> dict[str, Any]:
+        return {
+            "source_run_id": self.source_run_id,
+            "task_id": self.task_id,
+            "parent_profile_id": self.parent_profile_id,
+            "requested_profile_generation": self.requested_profile_generation,
+            "recomposition_reason": self.recomposition_reason,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> RecompositionRequest:
+        reason = str(value["recomposition_reason"])
+        require_choice(reason, RECOMPOSITION_REASONS, "recomposition_reason")
+        return cls(
+            source_run_id=str(value["source_run_id"]),
+            task_id=str(value["task_id"]),
+            parent_profile_id=str(value["parent_profile_id"]),
+            requested_profile_generation=int(value["requested_profile_generation"]),
+            recomposition_reason=reason,  # type: ignore[arg-type]
+        )
 
 
 def utc_now() -> datetime:

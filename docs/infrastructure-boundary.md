@@ -314,9 +314,9 @@ Implemented:
   profile.
 - Runtime Validator Framework runs the validator IDs selected by the active
   profile and fail-closes unknown or failed validators.
-- Controlled recomposition request path emits `recomposition_requested` and
-  stops the current run with `needs_recomposition` without mutating the active
-  profile.
+- Controlled recomposition emits `recomposition_requested`, stops the current
+  run with `needs_recomposition`, composes a new immutable profile generation,
+  and continues through a new run attempt without mutating the active profile.
 - Manual live dev E2E gate script runs Cloudflare composition/retrieval and
   Hetzner PostgreSQL/artifact persistence in one path.
 - Operations runbook defines migrations, smoke tests, diagnostics, environment
@@ -345,8 +345,8 @@ Not yet implemented:
 - Async ingestion queue/workflow execution for knowledge and memory indexing.
 - Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
-- Remote live dev runtime gate proving the full path against Cloudflare Control
-  API, Hetzner PostgreSQL, and Hetzner artifact storage.
+- AI Gateway live secret rollout and live LLM smoke evidence.
+- Runtime retention cleanup execution.
 
 ## Implementation Order
 
@@ -373,7 +373,7 @@ Completed:
 19. Tool Gateway hardening for productive runtime execution.
 20. Runtime Context Manager binding to the Control API retrieval endpoint.
 21. Runtime Validator Framework driven by profile-selected validators.
-22. Controlled recomposition request path without runtime self-granting.
+22. Controlled recomposition continuation path without runtime self-granting.
 23. Manual live dev E2E gate script for Cloudflare and Hetzner.
 24. Operations runbook for migrations, smoke tests, diagnostics, and disable paths.
 25. Control API bearer authentication and endpoint-scoped authorization.
@@ -383,6 +383,6 @@ Completed:
 
 Next:
 
-1. Implement the productive runtime core in the Phase 1 order documented in
-   `docs/repository-roadmap.md`.
+1. Run the AI Gateway secret rollout and live LLM smoke.
 2. Implement async ingestion/indexing workers and remote Vectorize population.
+3. Implement runtime retention cleanup execution.

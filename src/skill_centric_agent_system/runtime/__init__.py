@@ -27,6 +27,7 @@ from skill_centric_agent_system.runtime.memory_feedback import (
     MemoryFeedbackError,
     MemoryFeedbackPipeline,
 )
+from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.retention import (
     RuntimeRetentionPlan,
@@ -73,6 +74,7 @@ __all__ = [
     "RuntimeRetentionPolicy",
     "RuntimeProfileEnforcer",
     "RuntimeContextManager",
+    "RecompositionRequest",
     "RuntimeLoopError",
     "RuntimeLoopResult",
     "RuntimeEntryPoint",

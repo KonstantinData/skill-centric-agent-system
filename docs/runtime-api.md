@@ -70,6 +70,11 @@ Output:
 The command must fail before execution when no Control Plane client or explicit
 composition context response is available.
 
+When runtime execution continues after a controlled recomposition request, the
+result must expose the attempted run IDs and recomposed profile IDs. The
+original run remains terminal with `needs_recomposition`; the continued attempt
+uses a new run ID and a new immutable profile generation.
+
 ## Get Status
 
 Input:
@@ -99,6 +104,8 @@ Output:
 - stop reason,
 - validation result references,
 - runtime response summary,
+- attempt run IDs,
+- recomposed profile IDs,
 - artifact references,
 - event and checkpoint counts.
 

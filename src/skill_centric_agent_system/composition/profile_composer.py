@@ -39,6 +39,15 @@ DEFAULT_CAPTURE_EVENTS = (
     "profile_validated",
     "runtime_completed",
 )
+RECOMPOSITION_REASONS = frozenset(
+    (
+        "task_reclassified",
+        "missing_capability",
+        "policy_change",
+        "budget_exhausted",
+        "validator_failure",
+    )
+)
 
 
 class CompositionError(ValueError):
@@ -57,6 +66,11 @@ class RuntimeProfileComposer:
         parent_profile_id: str | None = None,
         recomposition_reason: str | None = None,
     ) -> dict[str, Any]:
+        _assert_recomposition_traceability(
+            profile_generation=profile_generation,
+            parent_profile_id=parent_profile_id,
+            recomposition_reason=recomposition_reason,
+        )
         self._assert_composable(analyzed_task, context_response)
 
         candidate_modules = _references(context_response, "candidate_modules")
@@ -109,7 +123,7 @@ class RuntimeProfileComposer:
         )
 
         return {
-            "id": _profile_id(analyzed_task.task_id),
+            "id": _profile_id(analyzed_task.task_id, profile_generation),
             "profile_version": RUNTIME_PROFILE_VERSION,
             "profile_generation": profile_generation,
             "parent_profile_id": parent_profile_id,
@@ -244,6 +258,29 @@ def _version_for(
     raise CompositionError(f"No version pin is available for selected module: {name}.")
 
 
+def _assert_recomposition_traceability(
+    *,
+    profile_generation: int,
+    parent_profile_id: str | None,
+    recomposition_reason: str | None,
+) -> None:
+    if profile_generation < 1:
+        raise CompositionError("profile_generation must be greater than zero.")
+    if profile_generation == 1:
+        if parent_profile_id is not None or recomposition_reason is not None:
+            raise CompositionError("Initial profiles cannot include recomposition traceability.")
+        return
+    if parent_profile_id is None or recomposition_reason is None:
+        raise CompositionError(
+            "Recomposed profiles require parent_profile_id and recomposition_reason."
+        )
+    if recomposition_reason not in RECOMPOSITION_REASONS:
+        allowed = ", ".join(sorted(RECOMPOSITION_REASONS))
+        raise CompositionError(
+            f"recomposition_reason must be one of: {allowed}. Got: {recomposition_reason}."
+        )
+
+
 def _auth_context(analyzed_task: AnalyzedTask) -> dict[str, Any]:
     principal: dict[str, Any] = {
         "id": analyzed_task.auth_claims.principal_id,
@@ -259,10 +296,14 @@ def _auth_context(analyzed_task: AnalyzedTask) -> dict[str, Any]:
     }
 
 
-def _profile_id(task_id: str) -> str:
+def _profile_id(task_id: str, profile_generation: int = 1) -> str:
     if task_id.startswith("task-"):
-        return "profile-" + task_id.removeprefix("task-")
-    return "profile-" + task_id
+        profile_id = "profile-" + task_id.removeprefix("task-")
+    else:
+        profile_id = "profile-" + task_id
+    if profile_generation <= 1:
+        return profile_id
+    return f"{profile_id}-g{profile_generation}"
 
 
 def _trace_id(task_id: str) -> str:

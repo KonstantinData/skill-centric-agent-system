@@ -154,8 +154,24 @@ def test_profile_composer_preserves_recomposition_traceability() -> None:
     )
 
     assert profile["profile_generation"] == 2
+    assert profile["id"] == "profile-code-review-latest-commit-g2"
     assert profile["parent_profile_id"] == "profile-code-review-latest-commit"
     assert profile["recomposition_reason"] == "missing_capability"
+
+
+def test_profile_composer_rejects_invalid_recomposition_traceability() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="recomposition_reason"):
+        RuntimeProfileComposer().compose(
+            analyzed,
+            context_response,
+            profile_generation=2,
+            parent_profile_id="profile-code-review-latest-commit",
+            recomposition_reason="freeform-capability-grant",
+        )
 
 
 def test_profile_composer_fails_when_required_inputs_are_missing() -> None:

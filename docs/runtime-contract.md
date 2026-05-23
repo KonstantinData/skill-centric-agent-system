@@ -243,6 +243,9 @@ The new profile must set:
 - `parent_profile_id`,
 - `recomposition_reason`.
 
+The new profile must also have a distinct profile ID for the new generation so
+the parent and child profiles are reproducible independently.
+
 The runtime must not self-grant tools, memory, data, knowledge, skills, or
 validators.
 
@@ -255,7 +258,10 @@ with:
 - schema-defined recomposition reason.
 
 The current run must stop with `needs_recomposition`. A new profile must come
-from the Composer; the runtime must not edit the active profile in place.
+from the Composer; the runtime must not edit the active profile in place. When
+continuation is enabled, the runtime starts a new run attempt from the
+recomposed profile and records attempt run IDs and recomposed profile IDs in the
+runtime result.
 
 ## Observability
 

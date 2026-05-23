@@ -193,6 +193,10 @@ The new profile must set:
 
 Recomposition must respect `limits.max_recompositions` and must run the same registry, scoring, policy, graph, and profile validation pipeline as the first composition.
 
+The active profile must remain immutable. If recomposition is allowed, the
+current run stops with `needs_recomposition`; continuation happens through a new
+run attempt using the newly composed profile generation.
+
 ## Failure Semantics
 
 The Composer and runtime must fail closed for unsafe ambiguity.
