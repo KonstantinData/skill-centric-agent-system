@@ -369,6 +369,17 @@
         "attempts": 1,
         "created_at": "2026-05-21T20:00:00Z",
         "updated_at": "2026-05-21T20:01:00Z"
+      },
+      {
+        "id": "ij-architecture-doc-embedding",
+        "job_type": "embedding_update",
+        "status": "succeeded",
+        "source_uri": "repo://docs/architecture.md",
+        "target_kind": "knowledge_document",
+        "target_id": "kd-architecture-doc",
+        "attempts": 1,
+        "created_at": "2026-05-21T20:01:00Z",
+        "updated_at": "2026-05-21T20:02:00Z"
       }
     ],
     "audit_events": [
@@ -381,6 +392,17 @@
         "created_at": "2026-05-21T20:01:00Z",
         "retention_policy": "archive-after-30-days",
         "archive_after": "2026-06-20T20:01:00Z",
+        "archive_uri": "r2://scas-control-dev/audit/2026/06/20/audit-events-000.jsonl"
+      },
+      {
+        "id": "ae-architecture-doc-embedding-succeeded",
+        "event_type": "embedding_update_succeeded",
+        "actor_id": "service-scas-ingest",
+        "target_kind": "knowledge_document",
+        "target_id": "kd-architecture-doc",
+        "created_at": "2026-05-21T20:02:00Z",
+        "retention_policy": "archive-after-30-days",
+        "archive_after": "2026-06-20T20:02:00Z",
         "archive_uri": "r2://scas-control-dev/audit/2026/06/20/audit-events-000.jsonl"
       }
     ]

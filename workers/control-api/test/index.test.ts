@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
 import { env, reset } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import migration0001 from "../../../migrations/cloudflare/d1/0001_control_plane.sql?raw";
 import migration0002 from "../../../migrations/cloudflare/d1/0002_module_selection_metadata.sql?raw";
@@ -79,6 +79,9 @@ type TestEnv = Env & {
   CONTROL_API_INGESTION_TOKEN?: string;
   CONTROL_API_RETRIEVAL_TOKEN?: string;
   CONTROL_API_AI_GATEWAY_TOKEN?: string;
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ID?: string;
+  OPENAI_API_KEY?: string;
 };
 
 function testEnv(overrides: Partial<TestEnv> = {}): TestEnv {
@@ -580,10 +583,85 @@ async function seedControlPlane(): Promise<void> {
   await env.SCAS_CONFIG.put("registry:version", "0.1.0");
 }
 
+function embeddingVector(seed: number): number[] {
+  return Array.from({ length: 1536 }, (_value, index) => (index === 0 ? seed : 0));
+}
+
+function stubEmbeddingFetch(): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const inputs = Array.isArray(body.input) ? body.input : [body.input];
+      return new Response(
+        JSON.stringify({
+          object: "list",
+          data: inputs.map((_inputValue: unknown, index: number) => ({
+            object: "embedding",
+            index,
+            embedding: embeddingVector(index + 1),
+          })),
+          model: "text-embedding-3-small",
+          usage: {
+            prompt_tokens: inputs.length,
+            total_tokens: inputs.length,
+          },
+        }),
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      );
+    }),
+  );
+}
+
+function queueMessage(body: unknown): {
+  message: Message<unknown>;
+  ack: ReturnType<typeof vi.fn>;
+  retry: ReturnType<typeof vi.fn>;
+} {
+  const ack = vi.fn();
+  const retry = vi.fn();
+  return {
+    message: {
+      id: "msg-embedding-1",
+      timestamp: new Date("2026-05-23T16:00:00Z"),
+      body,
+      attempts: 1,
+      ack,
+      retry,
+    } as unknown as Message<unknown>,
+    ack,
+    retry,
+  };
+}
+
+function messageBatch(message: Message<unknown>): MessageBatch<unknown> {
+  return {
+    queue: "scas-ingest-dev",
+    messages: [message],
+    metadata: {
+      metrics: {
+        backlogCount: 1,
+        backlogBytes: 256,
+      },
+    },
+    retryAll() {},
+    ackAll() {},
+  };
+}
+
 beforeEach(async () => {
   await reset();
   await migrateControlPlane();
   await seedControlPlane();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("control API worker", () => {
@@ -869,6 +947,7 @@ describe("control API worker", () => {
     expect(body.content_uri).toContain("knowledge/knowledge-source-scas-docs");
     expect(body.chunk_count).toBe(1);
     expect(body.vector_status).toBe("embedding_update_queued");
+    expect(body.embedding_job_id).toBe("ij-embedding-knowledge-doc-runtime");
 
     const stored = await env.SCAS_KNOWLEDGE_BUCKET.get(
       "knowledge/knowledge-source-scas-docs/knowledge-doc-runtime/v0.1.0/normalized.md",
@@ -901,6 +980,22 @@ describe("control API worker", () => {
         vector_id: "vec-knowledge-doc-runtime-0",
       }),
     );
+
+    const embeddingJob = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT id, job_type, status, target_kind, target_id, attempts FROM ingestion_jobs WHERE id = ?",
+    )
+      .bind("ij-embedding-knowledge-doc-runtime")
+      .first();
+    expect(embeddingJob).toEqual(
+      expect.objectContaining({
+        id: "ij-embedding-knowledge-doc-runtime",
+        job_type: "embedding_update",
+        status: "queued",
+        target_kind: "knowledge_document",
+        target_id: "knowledge-doc-runtime",
+        attempts: 0,
+      }),
+    );
   });
 
   it("ingests validated memory without copying raw runtime traces", async () => {
@@ -917,6 +1012,7 @@ describe("control API worker", () => {
     expect(body.status).toBe("succeeded");
     expect(body.memory_id).toBe("memory-runtime-decision");
     expect(body.vector_status).toBe("embedding_update_queued");
+    expect(body.embedding_job_id).toBe("ij-embedding-memory-runtime-decision");
 
     const stored = await env.SCAS_MEMORY_BUCKET.get(
       "memory/mod-project-memory/memory-runtime-decision/v0.1.0/content.json",
@@ -937,6 +1033,21 @@ describe("control API worker", () => {
       }),
     );
 
+    const embeddingJob = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT id, job_type, status, target_kind, target_id FROM ingestion_jobs WHERE id = ?",
+    )
+      .bind("ij-embedding-memory-runtime-decision")
+      .first();
+    expect(embeddingJob).toEqual(
+      expect.objectContaining({
+        id: "ij-embedding-memory-runtime-decision",
+        job_type: "embedding_update",
+        status: "queued",
+        target_kind: "memory_record",
+        target_id: "memory-runtime-decision",
+      }),
+    );
+
     const rejectedResponse = await fetchJson("/memory/ingest", {
       method: "POST",
       headers: {
@@ -953,6 +1064,121 @@ describe("control API worker", () => {
 
     expect(rejectedResponse.status).toBe(400);
     expect(rejectedBody.error.message).toContain("Raw runtime traces");
+  });
+
+  it("processes queued knowledge embeddings through AI Gateway and Vectorize", async () => {
+    const ingestResponse = await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(knowledgeIngestRequest),
+    });
+    const ingestBody = await ingestResponse.json();
+    const knowledgeUpsert = vi.fn(async (vectors: VectorizeVector[]) => ({
+      ids: vectors.map((vector) => vector.id),
+      count: vectors.length,
+    }));
+    const { message, ack, retry } = queueMessage({
+      contract_version: "0.1.0",
+      job_id: ingestBody.embedding_job_id,
+      target_kind: "knowledge_document",
+      target_id: "knowledge-doc-runtime",
+      source_uri: "repo://docs",
+      queued_at: "2026-05-23T16:00:00Z",
+    });
+    stubEmbeddingFetch();
+
+    await worker.queue?.(
+      messageBatch(message),
+      testEnv({
+        AI_GATEWAY_ACCOUNT_ID: "test-account",
+        AI_GATEWAY_ID: "default",
+        OPENAI_API_KEY: "test-openai-key",
+        SCAS_KNOWLEDGE_INDEX: {
+          upsert: knowledgeUpsert,
+        } as unknown as VectorizeIndex,
+      }),
+      testContext(),
+    );
+
+    expect(ack).toHaveBeenCalledTimes(1);
+    expect(retry).not.toHaveBeenCalled();
+    expect(knowledgeUpsert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "vec-knowledge-doc-runtime-0",
+        values: embeddingVector(1),
+        metadata: expect.objectContaining({
+          document_id: "knowledge-doc-runtime",
+          chunk_id: "chunk-knowledge-doc-runtime-0",
+          scope_id: "mod-architecture-docs",
+          target_kind: "knowledge_chunk",
+        }),
+      }),
+    ]);
+
+    const job = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT status, attempts FROM ingestion_jobs WHERE id = ?",
+    )
+      .bind("ij-embedding-knowledge-doc-runtime")
+      .first();
+    expect(job).toEqual(
+      expect.objectContaining({
+        status: "succeeded",
+        attempts: 1,
+      }),
+    );
+  });
+
+  it("marks embedding jobs failed and retries when AI Gateway is unavailable", async () => {
+    const ingestResponse = await fetchJson("/memory/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(memoryIngestRequest),
+    });
+    const ingestBody = await ingestResponse.json();
+    const { message, ack, retry } = queueMessage({
+      contract_version: "0.1.0",
+      job_id: ingestBody.embedding_job_id,
+      target_kind: "memory_record",
+      target_id: "memory-runtime-decision",
+      source_uri: "r2://scas-memory-dev/memory/mod-project-memory/memory-runtime-decision/v0.1.0/content.json",
+      queued_at: "2026-05-23T16:00:00Z",
+    });
+
+    await worker.queue?.(messageBatch(message), testEnv(), testContext());
+
+    expect(ack).not.toHaveBeenCalled();
+    expect(retry).toHaveBeenCalledWith({
+      delaySeconds: 30,
+    });
+
+    const job = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT status, attempts FROM ingestion_jobs WHERE id = ?",
+    )
+      .bind("ij-embedding-memory-runtime-decision")
+      .first();
+    expect(job).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        attempts: 1,
+      }),
+    );
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("embedding_update_failed", "memory-runtime-decision")
+      .first();
+    expect(audit).toEqual(
+      expect.objectContaining({
+        event_type: "embedding_update_failed",
+        target_kind: "memory_record",
+        target_id: "memory-runtime-decision",
+      }),
+    );
   });
 
   it("fails closed when memory ingestion references an unknown memory scope", async () => {

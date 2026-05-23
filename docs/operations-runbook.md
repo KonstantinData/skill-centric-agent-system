@@ -97,6 +97,7 @@ npx wrangler d1 migrations list scas-control-dev --remote --config workers/contr
 npx wrangler d1 execute scas-control-dev --remote --command "SELECT id, name, kind, current_version_id FROM modules ORDER BY id;" --config workers/control-api/wrangler.toml
 npx wrangler r2 bucket list --config workers/control-api/wrangler.toml
 npx wrangler vectorize list --config workers/control-api/wrangler.toml
+npx wrangler queues list --config workers/control-api/wrangler.toml
 ```
 
 Control API auth readiness:
@@ -197,6 +198,28 @@ python scripts/cloudflare/ai_gateway_live_smoke.py \
   --control-api-url "$SCAS_CONTROL_API_URL"
 ```
 
+Cloudflare ingestion and async indexing:
+
+```bash
+curl -s -X POST "$SCAS_CONTROL_API_URL/knowledge/ingest" \
+  -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
+  --data-binary @examples/control-api/knowledge-ingest-request.json
+
+curl -s -X POST "$SCAS_CONTROL_API_URL/memory/ingest" \
+  -H "content-type: application/json" \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
+  --data-binary @examples/control-api/memory-ingest-request.json
+
+npx wrangler d1 execute scas-control-dev --remote \
+  --command "SELECT id, job_type, status, attempts FROM ingestion_jobs WHERE job_type = 'embedding_update' ORDER BY updated_at DESC LIMIT 10;" \
+  --config workers/control-api/wrangler.toml
+```
+
+Ingestion responses must include `vector_status: "embedding_update_queued"`
+and an `embedding_job_id`. Failed embedding updates remain visible in
+`ingestion_jobs` and `audit_events`; D1/R2 ingestion is still authoritative.
+
 Hetzner Runtime Plane:
 
 ```bash
@@ -273,6 +296,9 @@ Emergency disable options:
 - Disable live runtime execution by withholding `SCAS_RUNTIME_DATABASE_URL`.
 - Disable OpenAI routing by removing the Worker `OPENAI_API_KEY` secret or
   leaving AI Gateway account configuration unset.
+- Pause embedding population by removing `OPENAI_API_KEY`; ingestion can still
+  persist D1/R2 records, but queued embedding jobs will fail closed and retry
+  according to the queue policy.
 
 Disable rules:
 

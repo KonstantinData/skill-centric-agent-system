@@ -39,8 +39,11 @@ knowledge and validated-memory ingestion endpoints that write R2 objects, D1
 metadata, ingestion jobs, and audit events. It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
-completions. Every non-health Control API route now requires bearer
-authentication and supports endpoint-scoped authorization tokens. Hetzner can
+completions. Ingestion now queues deterministic `embedding_update` jobs through
+Cloudflare Queues; the queue consumer creates embeddings through AI Gateway and
+upserts scoped vectors into Vectorize. Every non-health Control API route now
+requires bearer authentication and supports endpoint-scoped authorization
+tokens. Hetzner can
 now extract memory candidates from completed runtime steps, validate their
 scope/sensitivity/provenance/policy status, and submit only approved candidates
 through the Memory Feedback Pipeline client. Analyzer and composition-scoring
@@ -51,7 +54,7 @@ chunks large string payloads into manifest-referenced text chunks.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-Richer tool execution, async indexing workers, retention cleanup, and
+Richer tool execution, retention cleanup, broader runtime expansion, and
 production-scale deployment hardening remain follow-up implementation work.
 
 ## Core Flow
@@ -91,7 +94,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
-- `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, retrieval, and AI Gateway routes.
+- `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, queue-backed indexing, retrieval, and AI Gateway routes.
 - `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `scripts/runtime/`: live runtime gate scripts.
@@ -266,6 +269,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Implement async knowledge/memory embedding indexing workers.
-2. Add the runtime retention cleanup job.
-3. Continue broader runtime planning and execution expansion as explicit backlog items.
+1. Add the runtime retention cleanup job.
+2. Continue broader runtime planning and execution expansion as explicit backlog items.

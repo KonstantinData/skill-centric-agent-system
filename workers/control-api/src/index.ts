@@ -1,6 +1,9 @@
 const CONTRACT_VERSION = "0.1.0";
 const DEFAULT_REGISTRY_VERSION = "0.1.0";
 const MAX_JSON_BODY_BYTES = 64 * 1024;
+const EMBEDDING_MODEL = "text-embedding-3-small";
+const EMBEDDING_DIMENSIONS = 1536;
+const EMBEDDING_QUEUE_MAX_RETRY_DELAY_SECONDS = 300;
 
 const CANDIDATE_KINDS = new Set<ModuleKind>(["instruction", "skill", "tool"]);
 const SCOPE_KINDS = new Set<ModuleKind>([
@@ -180,6 +183,29 @@ type MemoryRetrievalRow = {
   retention_policy: string;
   status: string;
   vector_id: string;
+};
+
+type EmbeddingTargetKind = "knowledge_document" | "memory_record";
+
+type EmbeddingIndexMessage = {
+  contract_version: string;
+  job_id: string;
+  target_kind: EmbeddingTargetKind;
+  target_id: string;
+  source_uri: string;
+  queued_at: string;
+};
+
+type IngestionJobRow = {
+  id: string;
+  job_type: string;
+  status: string;
+  source_uri: string;
+  target_kind: string;
+  target_id: string;
+  attempts: number;
+  created_at: string;
+  updated_at: string;
 };
 
 type RegistryModuleRow = {
@@ -431,6 +457,10 @@ function isSourceType(value: unknown): value is "repo" | "notion" | "r2" | "url"
   );
 }
 
+function isEmbeddingTargetKind(value: unknown): value is EmbeddingTargetKind {
+  return value === "knowledge_document" || value === "memory_record";
+}
+
 function hasProperty(value: JsonObject, property: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, property);
 }
@@ -660,6 +690,31 @@ function validateRetrievalRequest(body: unknown): string | null {
   return null;
 }
 
+function validateEmbeddingIndexMessage(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Queue message body must be a JSON object.";
+  }
+  if (!isSemver(body.contract_version)) {
+    return "contract_version must be semver.";
+  }
+  if (!isId(body.job_id)) {
+    return "job_id must be a valid id.";
+  }
+  if (!isEmbeddingTargetKind(body.target_kind)) {
+    return "target_kind must be knowledge_document or memory_record.";
+  }
+  if (!isId(body.target_id)) {
+    return "target_id must be a valid id.";
+  }
+  if (typeof body.source_uri !== "string" || body.source_uri.length === 0) {
+    return "source_uri is required.";
+  }
+  if (typeof body.queued_at !== "string" || body.queued_at.length === 0) {
+    return "queued_at is required.";
+  }
+  return null;
+}
+
 async function readJson(request: Request): Promise<unknown> {
   const contentLength = request.headers.get("content-length");
   if (contentLength !== null && Number(contentLength) > MAX_JSON_BODY_BYTES) {
@@ -696,6 +751,14 @@ function versionId(version: string): string {
 
 function r2Uri(bucketName: string, key: string): string {
   return `r2://${bucketName}/${key}`;
+}
+
+function r2KeyFromUri(bucketName: string, uri: string): string {
+  const prefix = `r2://${bucketName}/`;
+  if (!uri.startsWith(prefix)) {
+    throw new Error("r2_uri_bucket_mismatch");
+  }
+  return uri.slice(prefix.length);
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -1546,6 +1609,22 @@ async function handleKnowledgeIngest(request: Request, env: Env): Promise<Respon
     body.document.id,
     timestamp,
   );
+  let embeddingJobId: string;
+  try {
+    embeddingJobId = await queueEmbeddingUpdate(
+      env,
+      "knowledge_document",
+      body.document.id,
+      body.source.uri,
+      timestamp,
+    );
+  } catch {
+    return errorResponse(
+      503,
+      "embedding_queue_unavailable",
+      "Embedding update job could not be queued.",
+    );
+  }
 
   return jsonResponse({
     status: "succeeded",
@@ -1554,6 +1633,7 @@ async function handleKnowledgeIngest(request: Request, env: Env): Promise<Respon
     manifest_uri: r2Uri(bucketName, manifestKey),
     chunk_count: chunkRows.length,
     vector_status: "embedding_update_queued",
+    embedding_job_id: embeddingJobId,
   });
 }
 
@@ -1637,6 +1717,22 @@ async function handleMemoryIngest(request: Request, env: Env): Promise<Response>
     body.memory.id,
     timestamp,
   );
+  let embeddingJobId: string;
+  try {
+    embeddingJobId = await queueEmbeddingUpdate(
+      env,
+      "memory_record",
+      body.memory.id,
+      r2Uri(bucketName, contentKey),
+      timestamp,
+    );
+  } catch {
+    return errorResponse(
+      503,
+      "embedding_queue_unavailable",
+      "Embedding update job could not be queued.",
+    );
+  }
 
   return jsonResponse({
     status: "succeeded",
@@ -1644,6 +1740,7 @@ async function handleMemoryIngest(request: Request, env: Env): Promise<Response>
     content_uri: r2Uri(bucketName, contentKey),
     manifest_uri: r2Uri(bucketName, manifestKey),
     vector_status: "embedding_update_queued",
+    embedding_job_id: embeddingJobId,
   });
 }
 
@@ -1684,6 +1781,320 @@ async function writeIngestionAudit(
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
     ),
   ]);
+}
+
+async function queueEmbeddingUpdate(
+  env: Env,
+  targetKind: EmbeddingTargetKind,
+  targetId: string,
+  sourceUri: string,
+  timestamp: string,
+): Promise<string> {
+  const jobId = `ij-embedding-${targetId}`;
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT OR REPLACE INTO ingestion_jobs (
+      id, job_type, status, source_uri, target_kind, target_id, attempts,
+      created_at, updated_at
+    )
+    VALUES (?, 'embedding_update', 'queued', ?, ?, ?, 0, ?, ?)
+    `,
+  )
+    .bind(jobId, sourceUri, targetKind, targetId, timestamp, timestamp)
+    .run();
+  await writeAuditEvent(env, "embedding_update_queued", targetKind, targetId, timestamp);
+
+  try {
+    await env.SCAS_INGEST_QUEUE.send(
+      {
+        contract_version: CONTRACT_VERSION,
+        job_id: jobId,
+        target_kind: targetKind,
+        target_id: targetId,
+        source_uri: sourceUri,
+        queued_at: timestamp,
+      } satisfies EmbeddingIndexMessage,
+      { contentType: "json" },
+    );
+  } catch (error) {
+    await markEmbeddingJobFailed(env, jobId, targetKind, targetId, nowIso());
+    throw error;
+  }
+
+  return jobId;
+}
+
+async function processEmbeddingIndexMessage(
+  env: Env,
+  message: EmbeddingIndexMessage,
+): Promise<{ job_id: string; status: "succeeded" | "skipped"; vector_count: number }> {
+  const job = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id, job_type, status, source_uri, target_kind, target_id, attempts,
+      created_at, updated_at
+    FROM ingestion_jobs
+    WHERE id = ?
+    LIMIT 1
+    `,
+  )
+    .bind(message.job_id)
+    .first<IngestionJobRow>();
+  if (job === null) {
+    throw new Error("embedding_job_not_found");
+  }
+  if (
+    job.job_type !== "embedding_update" ||
+    job.target_kind !== message.target_kind ||
+    job.target_id !== message.target_id
+  ) {
+    throw new Error("embedding_job_mismatch");
+  }
+  if (job.status === "succeeded") {
+    return { job_id: job.id, status: "skipped", vector_count: 0 };
+  }
+
+  const attempt = job.attempts + 1;
+  const runningAt = nowIso();
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    UPDATE ingestion_jobs
+    SET status = 'running', attempts = ?, updated_at = ?
+    WHERE id = ?
+    `,
+  )
+    .bind(attempt, runningAt, job.id)
+    .run();
+
+  try {
+    const vectorCount =
+      message.target_kind === "knowledge_document"
+        ? await indexKnowledgeDocument(env, message.target_id)
+        : await indexMemoryRecord(env, message.target_id);
+    const succeededAt = nowIso();
+    await env.SCAS_CONTROL_DB.prepare(
+      `
+      UPDATE ingestion_jobs
+      SET status = 'succeeded', updated_at = ?
+      WHERE id = ?
+      `,
+    )
+      .bind(succeededAt, job.id)
+      .run();
+    await writeAuditEvent(
+      env,
+      "embedding_update_succeeded",
+      message.target_kind,
+      message.target_id,
+      succeededAt,
+    );
+    return { job_id: job.id, status: "succeeded", vector_count: vectorCount };
+  } catch (error) {
+    await markEmbeddingJobFailed(env, job.id, message.target_kind, message.target_id, nowIso());
+    throw error;
+  }
+}
+
+async function indexKnowledgeDocument(env: Env, documentId: string): Promise<number> {
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT
+      kc.id,
+      kc.document_id,
+      kc.chunk_index,
+      kc.content_uri,
+      kc.vector_id,
+      kc.scope_id,
+      kc.token_count
+    FROM knowledge_chunks AS kc
+    INNER JOIN knowledge_documents AS kd
+      ON kd.id = kc.document_id
+    WHERE kc.document_id = ?
+      AND kd.status = 'active'
+    ORDER BY kc.chunk_index ASC
+    `,
+  )
+    .bind(documentId)
+    .all<KnowledgeRetrievalRow>();
+  const chunks = result.results ?? [];
+  if (chunks.length === 0) {
+    throw new Error("knowledge_document_has_no_active_chunks");
+  }
+
+  const bucketName = `scas-knowledge-${env.ENVIRONMENT}`;
+  const inputs = await Promise.all(
+    chunks.map((chunk) => readR2Text(env.SCAS_KNOWLEDGE_BUCKET, bucketName, chunk.content_uri)),
+  );
+  const embeddings = await createEmbeddings(env, inputs);
+  await env.SCAS_KNOWLEDGE_INDEX.upsert(
+    chunks.map((chunk, index) => ({
+      id: chunk.vector_id,
+      values: embeddings[index] ?? [],
+      metadata: {
+        document_id: chunk.document_id,
+        chunk_id: chunk.id,
+        scope_id: chunk.scope_id,
+        content_uri: chunk.content_uri,
+        target_kind: "knowledge_chunk",
+      },
+    })),
+  );
+  return chunks.length;
+}
+
+async function indexMemoryRecord(env: Env, memoryId: string): Promise<number> {
+  const memory = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT
+      id,
+      memory_scope_id,
+      version,
+      content_uri,
+      manifest_uri,
+      source_run_id,
+      source_profile_id,
+      sensitivity,
+      retention_policy,
+      status
+    FROM memory_records
+    WHERE id = ?
+      AND status = 'active'
+    LIMIT 1
+    `,
+  )
+    .bind(memoryId)
+    .first<Omit<MemoryRetrievalRow, "vector_id">>();
+  if (memory === null) {
+    throw new Error("memory_record_not_active");
+  }
+
+  const bucketName = `scas-memory-${env.ENVIRONMENT}`;
+  const input = await readR2Text(env.SCAS_MEMORY_BUCKET, bucketName, memory.content_uri);
+  const [embedding] = await createEmbeddings(env, [input]);
+  if (embedding === undefined) {
+    throw new Error("embedding_response_missing_memory_vector");
+  }
+
+  await env.SCAS_MEMORY_INDEX.upsert([
+    {
+      id: `vec-${memory.id}`,
+      values: embedding,
+      metadata: {
+        memory_record_id: memory.id,
+        memory_scope_id: memory.memory_scope_id,
+        content_uri: memory.content_uri,
+        source_run_id: memory.source_run_id,
+        target_kind: "memory_record",
+      },
+    },
+  ]);
+  return 1;
+}
+
+async function readR2Text(bucket: R2Bucket, bucketName: string, uri: string): Promise<string> {
+  const key = r2KeyFromUri(bucketName, uri);
+  const object = await bucket.get(key);
+  if (object === null) {
+    throw new Error("r2_object_not_found");
+  }
+  return object.text();
+}
+
+async function createEmbeddings(env: Env, inputs: string[]): Promise<number[][]> {
+  const gateway = aiGatewayEnv(env);
+  if (
+    gateway.accountId.length === 0 ||
+    gateway.accountId === "unset" ||
+    gateway.openAiApiKey === undefined ||
+    gateway.openAiApiKey.length === 0
+  ) {
+    throw new Error("ai_gateway_not_configured");
+  }
+
+  const response = await fetch(aiGatewayOpenAiEmbeddingsUrl(env), {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${gateway.openAiApiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: EMBEDDING_MODEL,
+      input: inputs,
+      encoding_format: "float",
+      dimensions: EMBEDDING_DIMENSIONS,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error("embedding_request_failed");
+  }
+
+  const payload: unknown = await response.json();
+  if (!isObject(payload) || !Array.isArray(payload.data)) {
+    throw new Error("embedding_response_invalid");
+  }
+  const embeddings = payload.data.map((item) => {
+    if (!isObject(item) || !finiteNumberArray(item.embedding)) {
+      throw new Error("embedding_response_invalid");
+    }
+    if (item.embedding.length !== EMBEDDING_DIMENSIONS) {
+      throw new Error("embedding_response_dimension_mismatch");
+    }
+    return item.embedding;
+  });
+  if (embeddings.length !== inputs.length) {
+    throw new Error("embedding_response_count_mismatch");
+  }
+  return embeddings;
+}
+
+function aiGatewayOpenAiEmbeddingsUrl(env: Env): string {
+  const gateway = aiGatewayEnv(env);
+  return `https://gateway.ai.cloudflare.com/v1/${gateway.accountId}/${gateway.gatewayId}/openai/embeddings`;
+}
+
+async function markEmbeddingJobFailed(
+  env: Env,
+  jobId: string,
+  targetKind: EmbeddingTargetKind,
+  targetId: string,
+  timestamp: string,
+): Promise<void> {
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    UPDATE ingestion_jobs
+    SET status = 'failed', updated_at = ?
+    WHERE id = ?
+    `,
+  )
+    .bind(timestamp, jobId)
+    .run();
+  await writeAuditEvent(env, "embedding_update_failed", targetKind, targetId, timestamp);
+}
+
+async function writeAuditEvent(
+  env: Env,
+  eventType: string,
+  targetKind: string,
+  targetId: string,
+  timestamp: string,
+): Promise<void> {
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT OR REPLACE INTO audit_events (
+      id, event_type, actor_id, target_kind, target_id, created_at,
+      retention_policy, archive_after, archive_uri
+    )
+    VALUES (?, ?, 'control-api', ?, ?, ?, 'control-plane-audit-90d', ?, NULL)
+    `,
+  )
+    .bind(
+      `audit-${targetId}-${eventType}-${await sha256Hex(timestamp)}`,
+      eventType,
+      targetKind,
+      targetId,
+      timestamp,
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    )
+    .run();
 }
 
 async function handleRetrievalContext(request: Request, env: Env): Promise<Response> {
@@ -1968,5 +2379,40 @@ export default {
     }
 
     return errorResponse(404, "not_found", "Endpoint not found.");
+  },
+  async queue(batch: MessageBatch<unknown>, env: Env, _ctx: ExecutionContext) {
+    for (const message of batch.messages) {
+      const validationError = validateEmbeddingIndexMessage(message.body);
+      if (validationError !== null) {
+        console.error(
+          JSON.stringify({
+            event: "embedding_queue_message_rejected",
+            message_id: message.id,
+            reason: validationError,
+          }),
+        );
+        message.ack();
+        continue;
+      }
+
+      try {
+        await processEmbeddingIndexMessage(env, message.body as EmbeddingIndexMessage);
+        message.ack();
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            event: "embedding_queue_message_failed",
+            message_id: message.id,
+            reason: error instanceof Error ? error.message : "unknown_error",
+          }),
+        );
+        message.retry({
+          delaySeconds: Math.min(
+            EMBEDDING_QUEUE_MAX_RETRY_DELAY_SECONDS,
+            Math.max(1, message.attempts) * 30,
+          ),
+        });
+      }
+    }
   },
 } satisfies ExportedHandler<Env>;

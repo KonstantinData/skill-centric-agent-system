@@ -66,12 +66,17 @@ def test_wrangler_config_defines_control_api_bindings() -> None:
     r2_bindings = {binding["binding"]: binding for binding in config["r2_buckets"]}
     kv_bindings = {binding["binding"]: binding for binding in config["kv_namespaces"]}
     vectorize_bindings = {binding["binding"]: binding for binding in config["vectorize"]}
+    queue_producers = {binding["binding"]: binding for binding in config["queues"]["producers"]}
+    queue_consumers = {binding["queue"]: binding for binding in config["queues"]["consumers"]}
 
     assert d1_bindings["SCAS_CONTROL_DB"]["database_name"] == "scas-control-dev"
     assert d1_bindings["SCAS_CONTROL_DB"]["migrations_dir"] == "../../migrations/cloudflare/d1"
     assert r2_bindings["SCAS_KNOWLEDGE_BUCKET"]["bucket_name"] == "scas-knowledge-dev"
     assert r2_bindings["SCAS_MEMORY_BUCKET"]["bucket_name"] == "scas-memory-dev"
     assert "SCAS_CONFIG" in kv_bindings
+    assert queue_producers["SCAS_INGEST_QUEUE"]["queue"] == "scas-ingest-dev"
+    assert queue_consumers["scas-ingest-dev"]["max_retries"] == 3
+    assert queue_consumers["scas-ingest-dev"]["dead_letter_queue"] == "scas-ingest-dev-dlq"
     assert vectorize_bindings["SCAS_KNOWLEDGE_INDEX"]["index_name"] == "scas-knowledge-dev"
     assert vectorize_bindings["SCAS_MEMORY_INDEX"]["index_name"] == "scas-memory-dev"
 
@@ -88,6 +93,8 @@ def test_worker_source_exposes_health_and_composition_context_routes() -> None:
     assert "request_body_too_large" in source
     assert "queryVectorize" in source
     assert "ai_gateway_not_configured" in source
+    assert "processEmbeddingIndexMessage" in source
+    assert "SCAS_INGEST_QUEUE" in source
 
 
 def test_worker_vitest_scaffold_is_present() -> None:
@@ -110,12 +117,16 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler d1 migrations apply scas-control-dev --remote" in docs
     assert "npx wrangler r2 bucket create scas-knowledge-dev" in docs
     assert "npx wrangler kv namespace create SCAS_CONFIG" in docs
+    assert "npx wrangler queues create scas-ingest-dev" in docs
     assert "npx wrangler vectorize create scas-knowledge-dev" in docs
+    assert "npx wrangler vectorize create-metadata-index scas-knowledge-dev" in docs
     assert "npx wrangler secret put OPENAI_API_KEY" in docs
     assert "npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN" in docs
     assert "npm run worker:deploy:dev" in docs
     assert "npx wrangler d1 create scas-control-dev" in script
+    assert "npx wrangler queues create scas-ingest-dev" in script
     assert "npx wrangler vectorize create scas-knowledge-dev" in script
+    assert "npx wrangler vectorize create-metadata-index scas-knowledge-dev" in script
 
 
 def test_ci_runs_worker_checks_and_has_manual_dev_deploy_gate() -> None:

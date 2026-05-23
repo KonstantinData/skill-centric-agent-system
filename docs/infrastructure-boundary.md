@@ -29,7 +29,7 @@ Runtime outputs can produce long-term memory, but only through a validated feedb
 | `scas-knowledge-{env}` | Vectorize | Knowledge embeddings |
 | `scas-memory-{env}` | Vectorize | Memory embeddings |
 | `scas-config-{env}` | KV | Versioned cache snapshots and non-sensitive config |
-| `scas-ingest-{env}` | Queues or Workflows | Async ingestion and re-indexing |
+| `scas-ingest-{env}` | Queues | Async embedding updates and re-indexing |
 
 `{env}` is one of `dev`, `staging`, or `prod`.
 
@@ -162,10 +162,11 @@ flowchart TD
     Candidate --> Validator["Memory Validator"]
     Validator --> Policy["Policy Gate"]
     Policy --> IngestApi["Cloudflare Memory Ingestion API"]
-    IngestApi --> Queue["Ingestion Queue / Workflow"]
-    Queue --> D1["D1 Metadata"]
-    Queue --> R2["R2 Memory Object"]
-    Queue --> Vectorize["Vectorize Memory Index"]
+    IngestApi --> D1["D1 Metadata"]
+    IngestApi --> R2["R2 Memory Object"]
+    IngestApi --> Queue["Embedding Update Queue"]
+    Queue --> Gateway["AI Gateway Embeddings"]
+    Gateway --> Vectorize["Vectorize Memory Index"]
 ```
 
 Rules:
@@ -178,6 +179,9 @@ Rules:
 - Validation and policy decisions are stored on the candidate as status fields
   and reason text before the feedback client can submit it.
 - Cloudflare stores the consolidated memory object and retrieval metadata.
+- Embedding updates are asynchronous. The ingestion response records an
+  `embedding_update` job ID; D1 and R2 are authoritative even while Vectorize
+  population is still queued, retrying, or failed.
 
 ## Composer Control API Flow
 
@@ -232,6 +236,8 @@ returns:
 Without `query_embedding`, the endpoint returns a D1-prefiltered retrieval
 context and no semantic matches. With `query_embedding`, Vectorize ranks
 candidate IDs and D1 post-validates every returned match.
+Because embedding population is asynchronous, retrieval callers must tolerate
+D1-authorized records that do not yet have a Vectorize match.
 
 ## Vector Search Flow
 
@@ -339,6 +345,11 @@ Implemented:
   rejected candidates.
 - Cloudflare Control API retrieval endpoint returns D1-gated knowledge and
   memory context with Vectorize bindings and D1 post-validation.
+- Cloudflare Control API ingestion queues deterministic `embedding_update`
+  jobs through `SCAS_INGEST_QUEUE`.
+- The Control API queue consumer processes knowledge and memory embedding jobs,
+  calls OpenAI embeddings through Cloudflare AI Gateway, upserts scoped vectors
+  into Vectorize, updates D1 job state, and writes terminal audit events.
 - Cloudflare Control API AI Gateway route proxies OpenAI chat completions only
   when the account configuration and `OPENAI_API_KEY` secret are present.
 - Manual GitHub Actions rollout uploads `OPENAI_API_KEY` and
@@ -352,8 +363,6 @@ Implemented:
 
 Not yet implemented:
 
-- Async ingestion queue/workflow execution for knowledge and memory indexing.
-- Remote Vectorize index provisioning and embedding population.
 - Expanded runtime loop beyond the initial code-review fixture.
 - Runtime retention cleanup execution.
 
@@ -390,8 +399,9 @@ Completed:
 27. Analyzer and scoring evaluation fixtures.
 28. Chunked runtime artifact payload persistence.
 29. AI Gateway secret rollout and live LLM smoke workflow.
+30. Queue-backed embedding indexing worker and Vectorize population path.
 
 Next:
 
-1. Implement async ingestion/indexing workers and remote Vectorize population.
-2. Implement runtime retention cleanup execution.
+1. Implement runtime retention cleanup execution.
+2. Expand the runtime loop beyond the initial code-review fixture.

@@ -22,8 +22,14 @@ echo
 echo "Copy the returned KV namespace id into workers/control-api/wrangler.toml."
 echo
 
+npx wrangler queues create scas-ingest-dev --config "$WRANGLER_CONFIG"
+npx wrangler queues create scas-ingest-dev-dlq --config "$WRANGLER_CONFIG"
+echo
+
 npx wrangler vectorize create scas-knowledge-dev --dimensions=1536 --metric=cosine --config "$WRANGLER_CONFIG"
 npx wrangler vectorize create scas-memory-dev --dimensions=1536 --metric=cosine --config "$WRANGLER_CONFIG"
+npx wrangler vectorize create-metadata-index scas-knowledge-dev --property-name=scope_id --type=string --config "$WRANGLER_CONFIG"
+npx wrangler vectorize create-metadata-index scas-memory-dev --property-name=memory_scope_id --type=string --config "$WRANGLER_CONFIG"
 echo
 
 npx wrangler d1 migrations apply scas-control-dev --local --config "$WRANGLER_CONFIG"

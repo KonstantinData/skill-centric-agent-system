@@ -33,12 +33,21 @@ POST /ai-gateway/openai/chat/completions
 `POST /knowledge/ingest` accepts normalized knowledge source/document content,
 writes normalized objects, chunks, and a manifest to R2, then records
 `knowledge_sources`, `knowledge_documents`, `knowledge_chunks`,
-`ingestion_jobs`, and `audit_events` in D1.
+`ingestion_jobs`, and `audit_events` in D1. It also creates an
+`embedding_update` job and publishes a message to `SCAS_INGEST_QUEUE`.
 
 `POST /memory/ingest` accepts only validated consolidated memory records. It
 writes memory content and a manifest to R2, then records `memory_records`,
-`ingestion_jobs`, and `audit_events` in D1. Raw runtime traces and tool outputs
-are explicitly rejected by the endpoint.
+`ingestion_jobs`, and `audit_events` in D1. It also creates an
+`embedding_update` job and publishes a message to `SCAS_INGEST_QUEUE`. Raw
+runtime traces and tool outputs are explicitly rejected by the endpoint.
+
+The Worker has a Cloudflare Queues consumer for `scas-ingest-dev`. The consumer
+processes `embedding_update` jobs, calls OpenAI embeddings through Cloudflare AI
+Gateway with `text-embedding-3-small` and 1536 dimensions, and upserts vectors
+into `SCAS_KNOWLEDGE_INDEX` or `SCAS_MEMORY_INDEX`. D1 `ingestion_jobs` remains
+the retry/idempotency ledger: queued jobs move to `running`, then `succeeded` or
+`failed`, and every terminal indexing result writes an `audit_events` row.
 
 `POST /retrieval/context` accepts a principal, query text, allowed candidate
 knowledge and memory scope IDs, and an optional `query_embedding`. D1 computes
@@ -93,6 +102,8 @@ Cloudflare does not classify the request as the default Python urllib client.
 | Memory R2 bucket | `scas-memory-dev` |
 | Knowledge Vectorize index | `scas-knowledge-dev` |
 | Memory Vectorize index | `scas-memory-dev` |
+| Ingestion queue | `scas-ingest-dev` |
+| Ingestion dead-letter queue | `scas-ingest-dev-dlq` |
 | KV namespace binding | `SCAS_CONFIG` |
 
 The dev Worker is deployed at:
@@ -134,16 +145,27 @@ npx wrangler kv namespace create SCAS_CONFIG --config workers/control-api/wrangl
 Copy the returned KV namespace `id` into
 `workers/control-api/wrangler.toml`.
 
+Create ingestion queues:
+
+```bash
+npx wrangler queues create scas-ingest-dev --config workers/control-api/wrangler.toml
+npx wrangler queues create scas-ingest-dev-dlq --config workers/control-api/wrangler.toml
+```
+
 Create Vectorize indexes:
 
 ```bash
 npx wrangler vectorize create scas-knowledge-dev --dimensions=1536 --metric=cosine --config workers/control-api/wrangler.toml
 npx wrangler vectorize create scas-memory-dev --dimensions=1536 --metric=cosine --config workers/control-api/wrangler.toml
+npx wrangler vectorize create-metadata-index scas-knowledge-dev --property-name=scope_id --type=string --config workers/control-api/wrangler.toml
+npx wrangler vectorize create-metadata-index scas-memory-dev --property-name=memory_scope_id --type=string --config workers/control-api/wrangler.toml
 ```
 
 The committed `wrangler.toml` binds these indexes as `SCAS_KNOWLEDGE_INDEX`
 and `SCAS_MEMORY_INDEX`. If the embedding model changes, create replacement
-indexes instead of mutating dimensions in place.
+indexes instead of mutating dimensions in place. The metadata indexes support
+the retrieval endpoint's Vectorize filters, but D1 prefiltering and
+post-validation remain the policy boundary.
 
 Configure AI Gateway routing:
 
@@ -253,6 +275,9 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/kn
   --data-binary @examples/control-api/knowledge-ingest-request.json
 ```
 
+The response includes `vector_status: "embedding_update_queued"` and an
+`embedding_job_id`. The queue consumer processes that job asynchronously.
+
 Smoke-test memory ingestion:
 
 ```bash
@@ -261,6 +286,10 @@ curl -s -X POST https://scas-control-api-dev.still-butterfly-bbff.workers.dev/me
   -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
   --data-binary @examples/control-api/memory-ingest-request.json
 ```
+
+The response includes `vector_status: "embedding_update_queued"` and an
+`embedding_job_id`. Failed embedding updates remain visible in
+`ingestion_jobs.status` and `audit_events`.
 
 Smoke-test retrieval after ingesting knowledge and memory:
 

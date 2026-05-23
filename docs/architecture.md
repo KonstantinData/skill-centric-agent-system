@@ -161,6 +161,9 @@ The current repository has implemented the first control-plane slice:
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
   D1 post-validation of semantic matches,
 - fail-closed production OpenAI routing through Cloudflare AI Gateway,
+- queue-backed Cloudflare indexing for knowledge chunks and approved memory
+  records, with AI Gateway embeddings, Vectorize upserts, D1 job state, and
+  audit events,
 - Memory Candidate Extraction and Validation on the Hetzner Runtime Plane,
   including status/reason updates before Cloudflare ingestion,
 - a controlled learning evaluation fixture that proves approved memory can be
@@ -169,7 +172,6 @@ The current repository has implemented the first control-plane slice:
 The following architecture components are still pending implementation:
 
 - expanded runtime planning and execution beyond the initial code-review loop,
-- async ingestion/indexing workers for knowledge and memory embeddings,
 - runtime retention cleanup execution.
 
 ## Productive Runtime Gate

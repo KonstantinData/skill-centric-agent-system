@@ -40,8 +40,9 @@ has positive and negative evaluation fixtures, and runtime artifacts chunk large
 string payloads into manifest-referenced text chunks.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
-implemented. Async indexing, broader runtime expansion, and retention cleanup
-remain explicit backlog items and must not obscure the runtime entry gate.
+implemented. Queue-backed Cloudflare embedding indexing is implemented. Broader
+runtime expansion and retention cleanup remain explicit backlog items and must
+not obscure the runtime entry gate.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -129,9 +130,9 @@ Status: initial implementation complete.
 
 Status: initial control-plane implementation complete. Runtime Entry Point and
 Flight Recorder writer are implemented for the first composition path.
-Knowledge ingestion, memory ingestion, Vectorize-ready retrieval, and
-AI Gateway routing are implemented at Worker/API level; async indexing workers
-and remote index population remain pending.
+Knowledge ingestion, memory ingestion, Vectorize-ready retrieval,
+AI Gateway routing, queue-backed embedding updates, and scoped Vectorize
+population are implemented at Worker/API level.
 
 ## Phase 5: Analyzer And Composer
 
@@ -195,5 +196,5 @@ fixture exist; Control API auth, atomic event indexing, chunked artifact
 persistence, live Hetzner E2E evidence, and live Postgres concurrency evidence
 are implemented; the AI Gateway secret rollout and live LLM smoke workflow is
 implemented, with live execution gated by a Cloudflare API token that can write
-Worker scripts and secrets; operational cleanup jobs, async indexing, and
-broader telemetry remain pending.
+Worker scripts and secrets; queue-backed embedding indexing is implemented;
+operational cleanup jobs and broader telemetry remain pending.

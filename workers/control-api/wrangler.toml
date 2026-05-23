@@ -32,6 +32,17 @@ bucket_name = "scas-memory-dev"
 binding = "SCAS_CONFIG"
 id = "816eb3a8c52b407abf11c81ef3b4074e"
 
+[[queues.producers]]
+queue = "scas-ingest-dev"
+binding = "SCAS_INGEST_QUEUE"
+
+[[queues.consumers]]
+queue = "scas-ingest-dev"
+max_batch_size = 5
+max_batch_timeout = 10
+max_retries = 3
+dead_letter_queue = "scas-ingest-dev-dlq"
+
 [[vectorize]]
 binding = "SCAS_KNOWLEDGE_INDEX"
 index_name = "scas-knowledge-dev"

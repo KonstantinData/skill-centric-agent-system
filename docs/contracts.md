@@ -154,6 +154,26 @@ lives in `schemas/retrieval-context.schema.json`.
 
 Vectorize metadata filtering is an optimization, not a policy engine.
 
+## Embedding Indexing Contract
+
+Knowledge and memory ingestion must not block on semantic indexing. The Control
+API must persist authoritative D1 metadata and R2 content first, then enqueue a
+deterministic `embedding_update` job for the target record.
+
+Embedding workers must:
+
+- read source content only from the bound Cloudflare R2 bucket,
+- create embeddings through the configured AI Gateway and `OPENAI_API_KEY`
+  secret,
+- upsert scoped vectors into the correct Vectorize index,
+- update the D1 `ingestion_jobs` row with queued, running, succeeded, or failed
+  state,
+- write audit events for queued and terminal indexing outcomes,
+- retry transient failures without creating duplicate successful jobs.
+
+Retrieval must continue to treat D1 as the authority. Missing or failed
+embedding jobs can reduce semantic recall but must not grant broader access.
+
 ## Version Pinning
 
 Profile arrays reference selected module names. `module_versions` pins every selected instruction, skill, tool, scope, policy, validator, and memory module to an exact semantic version.
