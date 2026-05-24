@@ -64,7 +64,7 @@ gh workflow run production-readiness.yml \
 ```
 
 Run certification mode only after the matching live runtime and AI Gateway
-smoke workflow runs have passed:
+smoke workflow runs have passed on the same repository commit:
 
 ```bash
 gh workflow run production-readiness.yml \
@@ -74,6 +74,11 @@ gh workflow run production-readiness.yml \
   -f live_runtime_gates_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   -f ai_gateway_smoke_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
 ```
+
+Certification mode validates the referenced GitHub Actions run metadata before
+writing `production-readiness-evidence.json`. The run URLs must be canonical,
+same-repository URLs, the runs must have completed successfully, and their
+`headSha` must match the release commit being evaluated.
 
 ## Migration Flow
 

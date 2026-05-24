@@ -229,7 +229,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    documentation, and dev artifact root split complete; resource provisioning
    remains pending.)
 3. Add a production release evidence workflow. (Initial evidence-only workflow
-   complete; target-environment live gate orchestration remains pending.)
+   and certification run metadata validation complete; full certification
+   remains pending until the later production gates are complete.)
 4. Add production skill handler runtime support.
 5. Add controlled write-capable execution only behind explicit safety gates.
 6. Add scheduled runtime retention cleanup automation.
@@ -241,7 +242,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
     environment.
 
 Status: started. The gate is defined, the first environment separation
-manifest exists, the initial evidence-only workflow exists, and the initial
-repository security/governance gate set is implemented. Provisioning,
-target-environment live validation, skill handler runtime, telemetry, and full
-security closure against live production infrastructure remain pending.
+manifest exists, the production evidence workflow can validate external live
+gate run metadata, and the initial repository security/governance gate set is
+implemented. Provisioning, skill handler runtime, telemetry, full security
+closure, and the final certification run against live production infrastructure
+remain pending.

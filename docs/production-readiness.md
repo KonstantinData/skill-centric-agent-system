@@ -74,9 +74,10 @@ The production readiness backlog is ordered by dependency and release risk:
 3. `P5.03 Production Release Evidence Workflow`
    Run required checks and live gates through a release workflow that writes a
    non-secret evidence summary.
-   Initial evidence-only workflow support is present in
-   `.github/workflows/production-readiness.yml`; target-environment live gate
-   orchestration remains pending.
+   Complete: `.github/workflows/production-readiness.yml` writes a
+   machine-readable evidence artifact in `evidence-only` mode and verifies
+   same-repository, same-commit, successful external live gate runs in
+   `certify` mode.
 4. `P5.04 Production Skill Handler Runtime`
    Move from example-only skill metadata and centralized strategies to
    version-pinned executable skill handlers.
@@ -132,5 +133,31 @@ and production infrastructure are still being prepared.
 `certify` mode requires references to matching live runtime and AI Gateway
 smoke workflow runs.
 
+The workflow builds the evidence artifact through
+`scripts/release/build_production_readiness_evidence.py`. In `certify` mode it
+uses `gh run view` to collect metadata for the referenced runs and fails closed
+unless each run:
+
+- belongs to the same repository,
+- uses the same release commit SHA as the evidence workflow,
+- completed successfully,
+- matches the expected workflow name (`Live Runtime Gates` for runtime gates
+  and `CI` for the AI Gateway smoke), and
+- uses a canonical `https://github.com/OWNER/REPO/actions/runs/RUN_ID` URL.
+
+The evidence artifact uses contract version `0.2.0` and includes:
+
+- release commit, target environment, release scope, workflow run ID, and
+  generated timestamp,
+- `gate_results` with `passed`, `pending`, or `not_required` statuses,
+- validated external run metadata in `external_evidence`,
+- `open_release_gaps` for required production gates that are not yet complete,
+- `status` and `final_decision`, and
+- a sensitive-data handling statement.
+
 This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
+The workflow alone does not bypass incomplete production gates: staging and
+production certification remain `not-production-ready` while required follow-up
+gates such as executable skill handlers, production telemetry, threat-model
+closure, and human-review quality gates are still open.

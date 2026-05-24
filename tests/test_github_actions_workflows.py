@@ -141,14 +141,16 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "npm run worker:typecheck" in workflow
     assert "npm run worker:test" in workflow
     assert "npm run worker:check" in workflow
+    assert "scripts/release/build_production_readiness_evidence.py" in workflow
     assert "production-readiness-evidence.json" in workflow
-    assert "No secret values are written" in workflow
-    assert "not-production-ready" in workflow
     assert "actions/upload-artifact" in workflow
 
 
 def test_production_readiness_certify_mode_requires_live_evidence() -> None:
     workflow = load_production_readiness_workflow()
 
-    assert "certify mode requires live_runtime_gates_run_url" in workflow
-    assert "certify mode requires ai_gateway_smoke_run_url" in workflow
+    assert "--validate-only" in workflow
+    assert "gh run view" in workflow
+    assert "production-evidence/live-runtime-gates-run.json" in workflow
+    assert "production-evidence/ai-gateway-smoke-run.json" in workflow
+    assert "actions: read" in workflow

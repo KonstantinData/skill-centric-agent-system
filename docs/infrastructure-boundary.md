@@ -389,8 +389,9 @@ Not yet implemented:
 - Provisioned staging and production Cloudflare/Hetzner resources. The
   environment separation manifest and documentation exist, but resources still
   need to be created and validated.
-- Production release certification orchestration against staging and production
-  live gates. The initial evidence-only workflow exists.
+- Production release certification run against staging and production live
+  infrastructure. The evidence workflow can verify external live run metadata,
+  but the final certification gate remains pending.
 - Production skill handler runtime with version-pinned executable handlers.
 - Controlled write-capable execution path, if production scope includes writes.
 - Scheduled runtime retention cleanup automation.
@@ -435,10 +436,12 @@ Completed:
 31. Runtime retention cleanup execution.
 32. Generic runtime strategy dispatch and task-class output contracts.
 33. Extended live dev E2E and retrieval/Vectorize smoke gates.
+34. Production release evidence workflow with same-repository, same-commit
+    external run metadata validation.
 
 Next:
 
-1. Complete `P5.02 Staging and Production Environment Separation`.
-2. Complete `P5.03 Production Release Evidence Workflow`.
-3. Complete `P5.04 Production Skill Handler Runtime`.
-4. Add scheduled retention cleanup automation and production telemetry.
+1. Provision and validate staging/prod resources from the environment manifest.
+2. Complete `P5.04 Production Skill Handler Runtime`.
+3. Add scheduled retention cleanup automation and production telemetry.
+4. Complete production security closure and final certification.
