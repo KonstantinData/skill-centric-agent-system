@@ -44,6 +44,13 @@ REPOSITORY_GATE_RESULTS = (
             "python scripts/runtime/skill_handler_coverage.py --check"
         ),
     ),
+    (
+        "Controlled write-capable execution",
+        (
+            "python -m pytest tests/test_controlled_write_execution.py "
+            "tests/test_runtime_tool_gateway_and_loop.py"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
@@ -241,15 +248,6 @@ def open_release_gaps(target_environment: str, release_scope: str) -> list[dict[
     gaps = []
     if target_environment in {"staging", "prod"}:
         gaps.extend(dict(gap) for gap in STAGING_PROD_OPEN_GAPS)
-
-    if "write" in release_scope.lower():
-        gaps.append(
-            {
-                "id": "P5.05",
-                "gate": "Write-capable execution scope",
-                "reason": "Controlled write-capable execution is not complete.",
-            }
-        )
 
     return gaps
 

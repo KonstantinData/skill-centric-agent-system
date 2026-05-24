@@ -69,11 +69,14 @@ class RuntimeProfileEnforcer:
         tool_name: str,
         *,
         required_data_scopes: Iterable[str] = (),
+        required_policies: Iterable[str] = (),
         tool_risk_level: str = "low",
     ) -> None:
         self.check_duration()
         self.require_tool(tool_name)
         self.require_tool_risk(tool_name, tool_risk_level)
+        for policy_id in required_policies:
+            self.require_policy(policy_id)
         self._increment_limit("tool_calls", "max_tool_calls", 1)
 
         required_scopes = tuple(required_data_scopes)
@@ -115,6 +118,14 @@ class RuntimeProfileEnforcer:
                 f"Skill is not allowed by runtime profile: {skill_name}",
                 stop_reason="policy_denied",
                 code="skill_not_in_runtime_profile",
+            )
+
+    def require_policy(self, policy_id: str) -> None:
+        if policy_id not in self.profile.get("policies", []):
+            raise ProfileEnforcementError(
+                f"Policy is not allowed by runtime profile: {policy_id}",
+                stop_reason="policy_denied",
+                code="policy_not_in_runtime_profile",
             )
 
     def require_module_version(self, module_name: str, expected_version: str) -> None:

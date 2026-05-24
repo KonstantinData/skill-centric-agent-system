@@ -25,6 +25,7 @@ from skill_centric_agent_system.runtime import (
 from skill_centric_agent_system.runtime.tool_gateway import (
     FilesystemListAdapter,
     FilesystemReadAdapter,
+    FilesystemWriteAdapter,
     GitReadAdapter,
 )
 
@@ -245,6 +246,172 @@ def test_git_read_adapter_blocks_config_and_worktree_escape_args() -> None:
 
     with pytest.raises(ValueError, match="not allowed"):
         adapter.invoke({"args": ["status", "--git-dir=.git"]})
+
+
+def write_enabled_profile() -> dict[str, Any]:
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["task_type"] = "task-execution"
+    profile["risk_level"] = "high"
+    profile["skills"] = []
+    profile["tools"] = ["filesystem-write"]
+    profile["knowledge_scopes"] = []
+    profile["data_scopes"] = ["repository-write"]
+    profile["memory_scopes"] = []
+    profile["policies"] = ["write-approval-required"]
+    profile["validators"] = ["task-execution-output-contract"]
+    profile["module_versions"].update(
+        {
+            "filesystem-write": "0.1.0",
+            "repository-write": "0.1.0",
+            "write-approval-required": "0.1.0",
+            "task-execution-output-contract": "0.1.0",
+        }
+    )
+    profile["limits"]["max_data_reads"] = 10
+    return profile
+
+
+def approved_write_payload(*, apply: bool = False) -> dict[str, Any]:
+    return {
+        "operation": "write_text_file",
+        "path": "notes/output.txt",
+        "content": "approved content\n",
+        "apply": apply,
+        "approval": {
+            "approval_id": "approval-p5-05-fixture",
+            "approved_by": "repository-maintainer",
+            "approved_at": "2026-05-24T18:00:00Z",
+            "policy_id": "write-approval-required",
+        },
+        "rollback": {
+            "strategy": "delete_created_file",
+            "reason": "Delete the newly created file if validation fails.",
+        },
+    }
+
+
+def test_filesystem_write_adapter_rejects_free_form_command(tmp_path: Path) -> None:
+    adapter = FilesystemWriteAdapter(tmp_path)
+
+    with pytest.raises(ValueError, match="structured write plans"):
+        adapter.invoke({"command": "rm -rf ."})
+
+
+def test_filesystem_write_adapter_rejects_non_boolean_apply(tmp_path: Path) -> None:
+    adapter = FilesystemWriteAdapter(tmp_path)
+    payload = approved_write_payload()
+    payload["apply"] = "false"
+
+    with pytest.raises(ValueError, match="apply must be a boolean"):
+        adapter.invoke(payload)
+
+
+def test_filesystem_write_adapter_rejects_absolute_path(tmp_path: Path) -> None:
+    adapter = FilesystemWriteAdapter(tmp_path)
+    payload = approved_write_payload()
+    payload["path"] = str(tmp_path / "output.txt")
+
+    with pytest.raises(ValueError, match="path must be relative"):
+        adapter.invoke(payload)
+
+
+def test_tool_gateway_plans_profile_approved_write_without_applying(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path / "artifacts"))
+    profile = write_enabled_profile()
+    run = recorder.start_run(task_id="task-controlled-write", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=workspace,
+    )
+
+    result = gateway.invoke("filesystem-write", approved_write_payload())
+
+    assert result.status == "succeeded"
+    assert result.output["status"] == "planned"
+    assert not (workspace / "notes" / "output.txt").exists()
+    access_event = store.runtime_events[0]
+    access_result = load_artifact(tmp_path / "artifacts", str(access_event["result_uri"]))
+    assert access_result["required_data_scopes"] == ["repository-write"]
+    assert access_result["required_policies"] == ["write-approval-required"]
+    output_payload = load_artifact(tmp_path / "artifacts", result.output_uri)
+    assert output_payload["output"]["approval"]["approval_id"] == "approval-p5-05-fixture"
+    assert output_payload["output"]["rollback"]["metadata_only"] is True
+
+
+def test_tool_gateway_applies_profile_approved_write(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path / "artifacts"))
+    profile = write_enabled_profile()
+    run = recorder.start_run(task_id="task-controlled-write", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=workspace,
+    )
+
+    result = gateway.invoke("filesystem-write", approved_write_payload(apply=True))
+
+    assert result.output["status"] == "applied"
+    assert (workspace / "notes" / "output.txt").read_text(encoding="utf-8") == (
+        "approved content\n"
+    )
+    assert store.tool_invocations[0]["tool_name"] == "filesystem-write"
+
+
+def test_tool_gateway_denies_write_without_required_policy(tmp_path: Path) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, JsonArtifactStore(tmp_path / "artifacts"))
+    profile = write_enabled_profile()
+    profile["policies"] = []
+    run = recorder.start_run(task_id="task-controlled-write", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=workspace,
+    )
+
+    with pytest.raises(ToolDeniedError, match="Policy is not allowed"):
+        gateway.invoke("filesystem-write", approved_write_payload(apply=True))
+
+    assert not (workspace / "notes" / "output.txt").exists()
+
+
+def test_filesystem_write_adapter_requires_restore_rollback_for_overwrite(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "notes" / "output.txt"
+    target.parent.mkdir()
+    target.write_text("previous\n", encoding="utf-8")
+    adapter = FilesystemWriteAdapter(tmp_path)
+    payload = approved_write_payload(apply=True)
+
+    with pytest.raises(ValueError, match="restore_previous_content"):
+        adapter.invoke(payload)
+
+    payload["rollback"]["strategy"] = "restore_previous_content"
+    output = adapter.invoke(payload)
+
+    assert output["status"] == "applied"
+    assert output["existed_before"] is True
+    assert output["previous_content_sha256"] is not None
+    assert target.read_text(encoding="utf-8") == "approved content\n"
 
 
 def test_minimal_runtime_loop_executes_profile_scoped_read_tools(tmp_path: Path) -> None:

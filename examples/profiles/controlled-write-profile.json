@@ -1,0 +1,76 @@
+{
+  "id": "profile-controlled-write-fixture",
+  "profile_version": "0.2.0",
+  "profile_generation": 1,
+  "parent_profile_id": null,
+  "recomposition_reason": null,
+  "task_type": "task-execution",
+  "objective": "Create an approved fixture file through the controlled write path.",
+  "risk_level": "high",
+  "auth_context": {
+    "principal": {
+      "id": "repository-maintainer",
+      "type": "user",
+      "display_name": "Repository Maintainer"
+    },
+    "roles": [
+      "repository-maintainer"
+    ],
+    "authorization_policies": [
+      "write-approval-required"
+    ]
+  },
+  "instructions": [
+    "repository-task-execution"
+  ],
+  "skills": [],
+  "tools": [
+    "filesystem-write"
+  ],
+  "knowledge_scopes": [],
+  "data_scopes": [
+    "repository-write"
+  ],
+  "memory_scopes": [],
+  "policies": [
+    "write-approval-required"
+  ],
+  "validators": [
+    "task-execution-output-contract"
+  ],
+  "module_versions": {
+    "repository-task-execution": "0.1.0",
+    "filesystem-write": "0.1.0",
+    "repository-write": "0.1.0",
+    "write-approval-required": "0.1.0",
+    "task-execution-output-contract": "0.1.0"
+  },
+  "limits": {
+    "max_tool_calls": 3,
+    "max_tokens": 2000,
+    "max_duration_seconds": 120,
+    "max_data_reads": 10,
+    "max_memory_ops": 0,
+    "max_recompositions": 0
+  },
+  "failure_policy": {
+    "on_composer_failure": "fail_closed",
+    "on_validator_failure": "return_error",
+    "on_policy_denial": "return_error",
+    "on_budget_exhausted": "return_error"
+  },
+  "observability": {
+    "trace_id": "trace-controlled-write-fixture",
+    "log_level": "info",
+    "capture_events": [
+      "runtime_started",
+      "access_attempted",
+      "tool_invocation_started",
+      "tool_invocation_completed",
+      "validator_executed",
+      "runtime_completed",
+      "runtime_failed"
+    ],
+    "redact_sensitive_data": true
+  }
+}
