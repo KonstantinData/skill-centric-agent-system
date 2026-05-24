@@ -212,6 +212,7 @@ jobs:
           control_token="$(printf '%s' "${SCAS_CONTROL_API_TOKEN_B64}" | base64 -d)"
 
           cd "${workdir}"
+          install -d -m 755 live-runtime-evidence
           export SCAS_CONTROL_API_URL
           export SCAS_CONTROL_API_TOKEN="${control_token}"
           export SCAS_RUNTIME_DATABASE_URL="postgresql:///scas_runtime?host=/var/run/postgresql"
@@ -221,7 +222,8 @@ jobs:
           if [ "${RUN_LIVE_DEV_E2E}" = "true" ]; then
             as_postgres_with_runtime_env \
               "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
-                --task-suite "${LIVE_TASK_SUITE}"
+                --task-suite "${LIVE_TASK_SUITE}" \
+              | tee live-runtime-evidence/live-dev-e2e.json
           fi
 
           if [ "${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}" = "true" ]; then
@@ -237,3 +239,25 @@ jobs:
 
           rm -f "${archive}"
           REMOTE
+
+      - name: Download live handler binding evidence
+        if: env.RUN_LIVE_DEV_E2E == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p live-runtime-evidence
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${HETZNER_USER}@${HETZNER_HOST}:/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}/live-runtime-evidence/live-dev-e2e.json" \
+            live-runtime-evidence/live-dev-e2e.json
+
+      - name: Upload live handler binding evidence
+        if: env.RUN_LIVE_DEV_E2E == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-runtime-handler-binding-evidence
+          path: live-runtime-evidence/live-dev-e2e.json
+          if-no-files-found: error

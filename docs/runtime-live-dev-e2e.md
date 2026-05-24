@@ -78,6 +78,9 @@ The script uses the Cloudflare Control API for both composition and retrieval,
 opens the Hetzner PostgreSQL runtime store, writes JSON artifacts to the
 configured artifact root, runs the minimal runtime loop, and prints a JSON
 summary. Use `--task-suite single --task-file ...` to run one task fixture.
+For every case, the summary includes the planner checkpoint URI and sanitized
+`skill_handlers` bindings (`name`, `version`, and `handler_id`) so release
+evidence can prove which executable handler ran without copying raw traces.
 
 Live retrieval and Vectorize post-validation smoke:
 
@@ -97,6 +100,13 @@ The gate passes when the output includes:
 - each case has `event_count` greater than zero
 - each case has `checkpoint_count` greater than zero
 - each case has `runtime_output_task_type` equal to the profile task type
+- each case has `handler_binding_status: "passed"`
+- each case has at least one `skill_handlers` binding where
+  `handler_id` equals `name@version`
 
 Any failed composition, retrieval scope expansion, profile enforcement denial,
 tool failure, validator failure, or PostgreSQL persistence error fails the gate.
+When run through GitHub Actions, the live E2E gate uploads
+`live-runtime-handler-binding-evidence` with `live-dev-e2e.json`. Production
+certification downloads and validates that artifact before accepting the live
+runtime gate.

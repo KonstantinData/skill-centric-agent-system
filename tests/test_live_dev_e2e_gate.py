@@ -4,8 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from scripts.runtime.live_dev_e2e import main as live_dev_e2e_main
+from scripts.runtime.live_dev_e2e import (
+    handler_binding_evidence_from_checkpoints,
+)
+from scripts.runtime.live_dev_e2e import (
+    main as live_dev_e2e_main,
+)
 from scripts.runtime.postgres_concurrency_smoke import main as postgres_concurrency_smoke_main
+from skill_centric_agent_system.runtime import JsonArtifactStore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LIVE_DEV_E2E_PATH = REPO_ROOT / "scripts" / "runtime" / "live_dev_e2e.py"
@@ -27,6 +33,40 @@ def test_live_dev_e2e_gate_documents_required_live_surfaces() -> None:
     assert "MinimalRuntimeLoop" in source
     assert "SCAS_RUNTIME_DATABASE_URL" in source
     assert "SCAS_CONTROL_API_TOKEN" in source
+    assert "handler_binding_status" in source
+    assert "skill_handlers" in source
+
+
+def test_live_dev_e2e_extracts_handler_binding_evidence(tmp_path: Path) -> None:
+    artifacts = JsonArtifactStore(tmp_path)
+    state_uri = artifacts.write_json(
+        ("traces", "run-example", "checkpoints", "001-planner"),
+        {
+            "skill_handlers": [
+                {
+                    "name": "git-diff-analysis",
+                    "version": "0.1.0",
+                    "handler_id": "git-diff-analysis@0.1.0",
+                }
+            ]
+        },
+        redact=False,
+    )
+
+    evidence = handler_binding_evidence_from_checkpoints(
+        ({"phase": "planner", "state_uri": state_uri},),
+        artifact_root=tmp_path,
+    )
+
+    assert evidence["handler_binding_status"] == "passed"
+    assert evidence["planner_checkpoint_uri"] == state_uri
+    assert evidence["skill_handlers"] == [
+        {
+            "name": "git-diff-analysis",
+            "version": "0.1.0",
+            "handler_id": "git-diff-analysis@0.1.0",
+        }
+    ]
 
 
 def test_live_dev_e2e_gate_requires_database_url(

@@ -42,7 +42,10 @@ string payloads into manifest-referenced text chunks. The first production
 skill handler runtime slice now binds selected skill metadata to exact
 `name@version` executable handlers, fails closed on unknown or mismatched
 handler bindings before tool execution, and has a committed handler coverage
-manifest gate for the current production-required skill fixtures.
+manifest gate for the current production-required skill fixtures. The live dev
+runtime gate now emits sanitized handler-binding evidence from planner
+checkpoints, and the production-readiness certification flow downloads and
+validates that artifact before accepting a live runtime run.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
 implemented. Queue-backed Cloudflare embedding indexing, runtime retention
@@ -236,7 +239,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    and certification run metadata validation complete; full certification
    remains pending until the later production gates are complete.)
 4. Add production skill handler runtime support. (Initial version-pinned
-   built-in handler registry and coverage manifest gate complete.)
+   built-in handler registry, coverage manifest gate, and live handler-binding
+   evidence gate complete.)
 5. Add controlled write-capable execution only behind explicit safety gates.
 6. Add scheduled runtime retention cleanup automation.
 7. Add production telemetry and alerting.

@@ -387,6 +387,9 @@ Implemented:
 - A committed skill handler coverage manifest maps each production-required
   skill fixture to its handler ID, runtime path, module tests, and runtime
   tests; CI fails if the manifest is stale or a required handler is missing.
+- The live runtime gate emits sanitized handler-binding evidence from planner
+  checkpoints and uploads it as a GitHub Actions artifact for production
+  certification.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -449,6 +452,7 @@ Completed:
     handlers.
 36. Skill handler coverage manifest and CI gate for current production-required
     skill fixtures.
+37. Live handler-binding evidence artifact and production-readiness validation.
 
 Next:
 

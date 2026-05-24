@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -109,14 +110,27 @@ def main(argv: list[str] | None = None) -> int:
             run_record = storage.store.get_runtime_run(start_result.run_id)
             events = storage.store.events_for_run(start_result.run_id)
             checkpoints = storage.store.checkpoints_for_run(start_result.run_id)
+            handler_evidence = handler_binding_evidence_from_checkpoints(
+                checkpoints,
+                artifact_root=Path(args.artifact_root),
+            )
+            case_status = (
+                "passed"
+                if loop_result.status == "succeeded"
+                and handler_evidence["handler_binding_status"] == "passed"
+                else "failed"
+            )
             results.append(
                 {
                     "case": label,
-                    "status": "passed" if loop_result.status == "succeeded" else "failed",
+                    "status": case_status,
                     "run_id": start_result.run_id,
                     "task_type": start_result.profile["task_type"],
                     "profile_id": start_result.profile["id"],
                     "profile_version": start_result.profile["profile_version"],
+                    "handler_binding_status": handler_evidence["handler_binding_status"],
+                    "planner_checkpoint_uri": handler_evidence["planner_checkpoint_uri"],
+                    "skill_handlers": handler_evidence["skill_handlers"],
                     "run_status": run_record["status"] if run_record else None,
                     "stop_reason": run_record["stop_reason"] if run_record else None,
                     "composition_status": start_result.composition_context_response.get(
@@ -139,6 +153,13 @@ def main(argv: list[str] | None = None) -> int:
                     if all(result["status"] == "passed" for result in results)
                     else "failed"
                 ),
+                "handler_binding_status": (
+                    "passed"
+                    if all(
+                        result["handler_binding_status"] == "passed" for result in results
+                    )
+                    else "failed"
+                ),
                 "task_suite": args.task_suite,
                 "case_count": len(results),
                 "results": results,
@@ -150,11 +171,67 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def handler_binding_evidence_from_checkpoints(
+    checkpoints: tuple[Mapping[str, Any], ...],
+    *,
+    artifact_root: Path,
+) -> dict[str, Any]:
+    planner_checkpoint = next(
+        (checkpoint for checkpoint in checkpoints if checkpoint.get("phase") == "planner"),
+        None,
+    )
+    if planner_checkpoint is None:
+        return {
+            "handler_binding_status": "failed",
+            "planner_checkpoint_uri": "",
+            "skill_handlers": [],
+        }
+
+    state_uri = str(planner_checkpoint.get("state_uri", ""))
+    planner_payload = _load_runtime_artifact(artifact_root, state_uri)
+    skill_handlers = planner_payload.get("skill_handlers", [])
+    if not isinstance(skill_handlers, list):
+        skill_handlers = []
+
+    sanitized_handlers = [
+        {
+            "handler_id": str(handler.get("handler_id", "")),
+            "name": str(handler.get("name", "")),
+            "version": str(handler.get("version", "")),
+        }
+        for handler in skill_handlers
+        if isinstance(handler, Mapping)
+    ]
+    return {
+        "handler_binding_status": (
+            "passed" if _handler_bindings_are_valid(sanitized_handlers) else "failed"
+        ),
+        "planner_checkpoint_uri": state_uri,
+        "skill_handlers": sanitized_handlers,
+    }
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     parsed = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(parsed, dict):
         raise ValueError(f"{path} must contain a JSON object.")
     return parsed
+
+
+def _load_runtime_artifact(artifact_root: Path, uri: str) -> dict[str, Any]:
+    relative = uri.removeprefix("hetzner://runtime/").strip("/")
+    return _load_json(artifact_root / Path(relative))
+
+
+def _handler_bindings_are_valid(skill_handlers: list[dict[str, str]]) -> bool:
+    if not skill_handlers:
+        return False
+    return all(
+        handler["handler_id"] == f"{handler['name']}@{handler['version']}"
+        and handler["name"]
+        and handler["version"]
+        for handler in skill_handlers
+    )
 
 
 if __name__ == "__main__":
