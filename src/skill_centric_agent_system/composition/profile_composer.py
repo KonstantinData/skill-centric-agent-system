@@ -5,7 +5,7 @@ from typing import Any
 
 from skill_centric_agent_system.composition.task_analyzer import AnalyzedTask
 
-RUNTIME_PROFILE_VERSION = "0.2.0"
+RUNTIME_PROFILE_VERSION = "0.3.0"
 BASELINE_MODULE_VERSIONS = {
     "base-agent-rules": "0.1.0",
     "runtime-profile-schema": "0.1.0",
@@ -27,6 +27,19 @@ DEFAULT_FAILURE_POLICY = {
     "on_composer_failure": "request_clarification",
     "on_validator_failure": "fail_closed",
     "on_policy_denial": "return_error",
+    "on_budget_exhausted": "return_error",
+}
+HUMAN_REVIEW_LIMITS = {
+    **DEFAULT_LIMITS,
+    "max_tool_calls": 0,
+    "max_data_reads": 0,
+    "max_memory_ops": 0,
+    "max_recompositions": 0,
+}
+HUMAN_REVIEW_FAILURE_POLICY = {
+    "on_composer_failure": "fail_closed",
+    "on_validator_failure": "fail_closed",
+    "on_policy_denial": "fail_closed",
     "on_budget_exhausted": "return_error",
 }
 DEFAULT_CAPTURE_EVENTS = (
@@ -87,6 +100,16 @@ class RuntimeProfileComposer:
             ]
         )
 
+        if analyzed_task.requires_human_review:
+            return _human_review_profile(
+                analyzed_task,
+                context_response,
+                version_by_name,
+                profile_generation=profile_generation,
+                parent_profile_id=parent_profile_id,
+                recomposition_reason=recomposition_reason,
+            )
+
         instructions = _dedupe(
             (
                 "base-agent-rules",
@@ -132,6 +155,7 @@ class RuntimeProfileComposer:
             "objective": analyzed_task.objective,
             "risk_level": analyzed_task.risk_level,
             "auth_context": _auth_context(analyzed_task),
+            "human_review": _human_review_not_required(analyzed_task),
             "instructions": list(instructions),
             "skills": list(skills),
             "tools": list(tools),
@@ -179,8 +203,10 @@ class RuntimeProfileComposer:
             raise CompositionError("Control Plane graph validation failed.")
 
         candidate_modules = _references(context_response, "candidate_modules")
-        if not candidate_modules:
+        if not candidate_modules and not analyzed_task.requires_human_review:
             raise CompositionError("Control Plane returned no candidate modules.")
+        if analyzed_task.requires_human_review:
+            return
 
         policy_effects = {
             decision["module"]["name"]: decision["effect"]
@@ -193,6 +219,87 @@ class RuntimeProfileComposer:
                 raise CompositionError(
                     f"Candidate module {module['name']} is not policy-allowed: {effect}."
                 )
+
+
+def _human_review_profile(
+    analyzed_task: AnalyzedTask,
+    context_response: Mapping[str, Any],
+    version_by_name: Mapping[str, str],
+    *,
+    profile_generation: int,
+    parent_profile_id: str | None,
+    recomposition_reason: str | None,
+) -> dict[str, Any]:
+    instructions = ("base-agent-rules",)
+    policies = _dedupe(_names(_references(context_response, "applicable_policies")))
+    validators = ("runtime-profile-schema",)
+    if not policies:
+        raise CompositionError("Control Plane returned no applicable policies.")
+
+    selected_modules = (*instructions, *policies, *validators)
+    return {
+        "id": _profile_id(analyzed_task.task_id, profile_generation),
+        "profile_version": RUNTIME_PROFILE_VERSION,
+        "profile_generation": profile_generation,
+        "parent_profile_id": parent_profile_id,
+        "recomposition_reason": recomposition_reason,
+        "task_type": analyzed_task.task_type,
+        "objective": analyzed_task.objective,
+        "risk_level": analyzed_task.risk_level,
+        "auth_context": _auth_context(analyzed_task),
+        "human_review": _human_review_required(analyzed_task),
+        "instructions": list(instructions),
+        "skills": [],
+        "tools": [],
+        "knowledge_scopes": [],
+        "data_scopes": [],
+        "memory_scopes": [],
+        "policies": list(policies),
+        "validators": list(validators),
+        "module_versions": {
+            name: _version_for(name, version_by_name, analyzed_task.task_type)
+            for name in selected_modules
+        },
+        "limits": dict(HUMAN_REVIEW_LIMITS),
+        "failure_policy": dict(HUMAN_REVIEW_FAILURE_POLICY),
+        "observability": {
+            "trace_id": _trace_id(analyzed_task.task_id),
+            "log_level": "info",
+            "capture_events": list(DEFAULT_CAPTURE_EVENTS),
+            "redact_sensitive_data": True,
+        },
+    }
+
+
+def _human_review_required(analyzed_task: AnalyzedTask) -> dict[str, Any]:
+    return {
+        "required": True,
+        "status": "required",
+        "reason": (
+            "Task classification matched multiple specialized task types; "
+            "specialized runtime composition requires human approval."
+        ),
+        "ambiguous_task_types": list(analyzed_task.ambiguous_task_types),
+        "classification_confidence": analyzed_task.classification_confidence,
+        "classification_reasons": list(analyzed_task.classification_reasons),
+        "allowed_before_approval": [
+            "profile_validation",
+            "audit_recording",
+            "clarification_request",
+        ],
+    }
+
+
+def _human_review_not_required(analyzed_task: AnalyzedTask) -> dict[str, Any]:
+    return {
+        "required": False,
+        "status": "not_required",
+        "reason": "Analyzer did not require human review.",
+        "ambiguous_task_types": list(analyzed_task.ambiguous_task_types),
+        "classification_confidence": analyzed_task.classification_confidence,
+        "classification_reasons": list(analyzed_task.classification_reasons),
+        "allowed_before_approval": [],
+    }
 
 
 def _references(context_response: Mapping[str, Any], field: str) -> tuple[Mapping[str, Any], ...]:

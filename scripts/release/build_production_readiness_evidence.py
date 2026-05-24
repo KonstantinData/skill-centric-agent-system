@@ -77,14 +77,24 @@ REPOSITORY_GATE_RESULTS = (
             "tests/test_security_governance.py"
         ),
     ),
+    (
+        "Analyzer, composer, and human review quality",
+        (
+            "python -m pytest tests/test_composition_pipeline.py "
+            "tests/test_contract_schemas.py -k human_review"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
     {
-        "id": "P5.09",
-        "gate": "Analyzer, composer, and human review quality",
-        "reason": "Ambiguous production task review gates are not complete.",
+        "id": "P5.11",
+        "gate": "Broader production skill handler coverage",
+        "reason": (
+            "Production handler coverage beyond the current manifest-covered fixture "
+            "set is not complete."
+        ),
     },
 )
 

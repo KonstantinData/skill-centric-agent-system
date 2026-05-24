@@ -49,6 +49,7 @@ is satisfied for the target environment.
 | Write-capable execution scope | If production scope includes writes, every write adapter has explicit authorization, approval, policy, audit, validation, and rollback coverage. If production scope is read-only, that limitation is stated in the release evidence. |
 | Operational telemetry | Retrieval, validation, cleanup, AI Gateway, queue processing, runtime failures, and policy denials have observable signals and runbook-backed diagnostics. |
 | Security closure | Threat model is current, security scan findings are closed or explicitly accepted, token scopes are verified, secret rotation is documented, and data-plane boundaries are tested. |
+| Human-review quality | Ambiguous analyzer output produces review-required profiles with explicit ambiguity evidence and no selected specialized capabilities before approval. |
 | Release decision | The release evidence records commit, target environment, gate results, unresolved risks, waivers, owner, timestamp, and final decision. |
 
 ## Evidence Rules
@@ -125,7 +126,14 @@ The production readiness backlog is ordered by dependency and release risk:
 9. `P5.09 Analyzer, Composer, and Human Review Quality Gate`
    Expand evaluation coverage and make ambiguous production tasks enter a
    human-review path instead of overgranting.
-10. `P5.10 Production Readiness Certification Run`
+   Complete: Runtime profile contract `0.3.0` includes a machine-readable
+   `human_review` block, and the Composer now turns ambiguous analyzer output
+   into a review-required profile with no selected skills, tools, knowledge
+   scopes, data scopes, or memory scopes.
+10. `P5.11 Expand Production Skill Handler Coverage`
+    Expand production-required skill fixtures and executable handler coverage
+    beyond the current manifest-covered first slice.
+11. `P5.10 Production Readiness Certification Run`
     Run the complete gate against the target environment and record the release
     decision.
 
@@ -190,6 +198,9 @@ The evidence artifact uses contract version `0.3.0` and includes:
   aggregate policy, snapshot, evaluator, and tests are present,
 - security hardening and threat-model closure as a passed repository gate once
   the threat model, token-scope review, validator, and tests are present,
+- analyzer, composer, and human-review quality as a passed repository gate once
+  ambiguous tasks emit review-required profiles without selected runtime
+  capabilities,
 - validated external run metadata and live handler-binding summaries in
   `external_evidence`,
 - `open_release_gaps` for required production gates that are not yet complete,
@@ -200,5 +211,4 @@ This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
 production certification remain `not-production-ready` while required follow-up
-gates such as human-review quality gates and broader production handler
-coverage are still open.
+gates such as broader production handler coverage are still open.

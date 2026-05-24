@@ -75,7 +75,9 @@ than silently choosing the wrong strategy.
 `Agent Composer` consumes structured task signals and calls the Cloudflare
 Control API for D1-backed composition context. It scores candidate modules,
 applies policies, validates the dependency graph, pins module versions, and
-emits a runtime profile. It does not load broad capabilities by default.
+emits a runtime profile. It does not load broad capabilities by default. If
+analyzer output requires human review, it emits a constrained review-required
+profile with no specialized skills, tools, or scopes.
 
 `Runtime Agent Profile` is the task-local execution contract. It is immutable
 for a single execution attempt. Recomposition creates a new profile generation
@@ -195,6 +197,9 @@ The current repository has implemented the first control-plane slice:
   policy denials,
 - production threat model closure with token-scope review, data-boundary
   evidence, and security closure validation,
+- analyzer/composer human-review quality gates that convert ambiguous tasks
+  into machine-readable review-required profiles without granting specialized
+  capabilities,
 - an extended live runtime gate that can seed the dev Control Plane and run the
   generic task suite against Cloudflare and Hetzner.
 
@@ -203,7 +208,6 @@ The following architecture components are still pending implementation:
 - staging and production environment separation,
 - broader production skill handler coverage beyond the current manifest-covered
   fixture set,
-- human-review flow for ambiguous production tasks,
 - richer task planning beyond the conservative first-slice strategies.
 
 ## Productive Runtime Gate
@@ -219,9 +223,9 @@ validation scenarios live in `docs/runtime-preflight.md`.
 Production-ready status is a separate release decision. It requires the
 evidence gate in `docs/production-readiness.md`, including environment
 separation, release evidence, broader production handler coverage,
-human-review quality gates, and certification against the target environment.
-Until that gate passes, the repository must be described as
-`not-production-ready` for a full production launch.
+and certification against the target environment. Until that gate passes, the
+repository must be described as `not-production-ready` for a full production
+launch.
 
 ## Operational Baseline
 

@@ -77,6 +77,7 @@ to `schemas/runtime-profile.schema.json` and include:
 - profile version and generation,
 - parent profile and recomposition reason,
 - auth context,
+- human-review requirement and analyzer classification evidence,
 - selected instructions, skills, tools, knowledge scopes, data scopes, memory
   scopes, policies, and validators,
 - exact module version pins,
@@ -85,6 +86,25 @@ to `schemas/runtime-profile.schema.json` and include:
 - observability settings.
 
 The runtime must enforce the profile at every access boundary.
+
+## Human Review Gate
+
+Ambiguous analyzer output is a profile-shaping control, not only a note for
+operators. When `requires_human_review` is true, the Composer must emit a
+machine-readable `human_review` block with:
+
+- `required = true`,
+- `status = required`,
+- the ambiguous task types,
+- analyzer confidence and classification reasons,
+- the only pre-approval activities allowed.
+
+The corresponding profile must not select specialized skills, tools, knowledge
+scopes, data scopes, or memory scopes before approval. Its limits set tool
+calls, data reads, memory operations, and recomposition to zero, and its
+failure policy fails closed. A later approved path must create a new composed
+profile through the normal analyzer, registry, scoring, policy, graph, and
+profile-validation path instead of mutating the review-required profile.
 
 ## Runtime Profile Enforcement
 

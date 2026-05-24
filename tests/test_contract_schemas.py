@@ -20,6 +20,9 @@ RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schem
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
 MODULE_EXAMPLE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
+HUMAN_REVIEW_PROFILE_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "profiles" / "human-review-required-profile.json"
+)
 CONTROL_PLANE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-plane" / "cloudflare-control-plane.json"
 )
@@ -110,6 +113,11 @@ def module_example() -> dict[str, Any]:
 @pytest.fixture
 def profile_example() -> dict[str, Any]:
     return load_json(PROFILE_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def human_review_profile_example() -> dict[str, Any]:
+    return load_json(HUMAN_REVIEW_PROFILE_EXAMPLE_PATH)
 
 
 @pytest.fixture
@@ -657,6 +665,20 @@ def test_runtime_profile_example_matches_schema_and_version_contract(
     assert_profile_version_pins_selected_modules(profile_example)
 
 
+def test_human_review_profile_example_matches_schema_and_version_contract(
+    profile_schema: dict[str, Any],
+    human_review_profile_example: dict[str, Any],
+) -> None:
+    assert_valid(profile_schema, human_review_profile_example)
+    assert_profile_version_pins_selected_modules(human_review_profile_example)
+    assert human_review_profile_example["human_review"]["required"] is True
+    assert human_review_profile_example["skills"] == []
+    assert human_review_profile_example["tools"] == []
+    assert human_review_profile_example["knowledge_scopes"] == []
+    assert human_review_profile_example["data_scopes"] == []
+    assert human_review_profile_example["memory_scopes"] == []
+
+
 def test_control_plane_example_matches_schema_and_reference_contract(
     control_plane_schema: dict[str, Any],
     control_plane_example: dict[str, Any],
@@ -786,6 +808,14 @@ def test_keyword_only_module_metadata_is_rejected(
                 "continue_anyway",
             ),
             "'continue_anyway' is not one of",
+        ),
+        (
+            lambda profile: profile.pop("human_review"),
+            "'human_review' is a required property",
+        ),
+        (
+            lambda profile: profile["human_review"].__setitem__("status", "maybe"),
+            "'maybe' is not one of",
         ),
     ],
 )

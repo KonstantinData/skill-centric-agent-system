@@ -1,6 +1,6 @@
 {
   "id": "profile-code-review-latest-commit",
-  "profile_version": "0.2.0",
+  "profile_version": "0.3.0",
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
@@ -18,6 +18,17 @@
     "authorization_policies": [
       "submitter-can-request-code-review"
     ]
+  },
+  "human_review": {
+    "required": false,
+    "status": "not_required",
+    "reason": "Analyzer did not require human review.",
+    "ambiguous_task_types": [],
+    "classification_confidence": "high",
+    "classification_reasons": [
+      "Matched code-review task signals: review, commit, missing tests."
+    ],
+    "allowed_before_approval": []
   },
   "instructions": [
     "base-agent-rules",

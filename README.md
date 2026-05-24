@@ -59,7 +59,10 @@ evaluation fixtures now cover code-review, research, task-execution, general
 tasks, and positive/negative scoring evidence. The Analyzer now emits
 classification confidence, ambiguity, and human-review signals so mixed tasks
 fall back to `general-task` instead of silently dispatching to the wrong
-specialized strategy. Runtime artifact persistence now chunks large string
+specialized strategy. The Composer now turns those review-required ambiguous
+tasks into runtime profiles with explicit `human_review` evidence and no
+selected specialized skills, tools, knowledge scopes, data scopes, or memory
+scopes before approval. Runtime artifact persistence now chunks large string
 payloads into manifest-referenced text chunks.
 
 The current dev Control Plane can answer `POST /composition/context` with real
@@ -71,6 +74,8 @@ The Python runtime now resolves profile-selected skills to exact
 and `general-task-summary`. Unknown selected skills and handler version
 mismatches fail closed before tool execution, and each run still emits a
 task-class-specific `runtime_output` validated by the active profile. A
+review-required profile can now carry machine-readable ambiguity evidence
+without selecting executable runtime capabilities. A
 committed skill handler coverage manifest now maps every production-required
 skill module fixture to its executable handler, runtime path, module tests,
 and runtime tests; CI fails if the manifest is stale or a required handler is
@@ -79,9 +84,9 @@ missing.
 The repository is currently `not-production-ready` for a full production
 launch. It has an initial productive runtime core, but production-ready status
 requires the release evidence gate in `docs/production-readiness.md`, including
-staging/prod environment separation, broader production handler coverage,
-human-review quality gates, and a certification run against the target
-environment. The first environment separation manifest is now recorded in
+staging/prod environment separation, broader production handler coverage, and a
+certification run against the target environment. The first environment
+separation manifest is now recorded in
 `examples/infrastructure/environment-manifest.json`, and production telemetry
 policy fixtures now define aggregate Control Plane and Runtime Plane alert
 signals without moving raw runtime traces out of Hetzner. The production
@@ -453,4 +458,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered fixture set.
-3. Complete human-review quality gates, broader handler coverage, and the final certification run.
+3. Run the final certification after live infrastructure and handler coverage gates are complete.

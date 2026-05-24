@@ -400,6 +400,8 @@ Implemented:
   Runtime Plane alert signals without moving raw traces out of Hetzner.
 - Production security closure validates the threat model, token-scope review,
   secret rotation expectations, and data-plane boundary evidence.
+- Analyzer and Composer human-review quality gates turn ambiguous tasks into
+  review-required profiles without selected specialized capabilities.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -413,7 +415,6 @@ Not yet implemented:
   but the final certification gate remains pending.
 - Broader production skill handler coverage beyond the current manifest-covered
   fixture set.
-- Human-review quality gate for ambiguous production tasks.
 
 ## Implementation Order
 
@@ -464,10 +465,12 @@ Completed:
 40. Scheduled runtime retention cleanup automation.
 41. Production telemetry and alerting policy with aggregate snapshot evaluation.
 42. Production security hardening and threat model closure.
+43. Analyzer, Composer, and human-review quality gate.
 
 Next:
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered
    fixture set.
-3. Complete human-review quality gates and final certification.
+3. Run the final certification after live infrastructure and handler coverage
+   gates are complete.

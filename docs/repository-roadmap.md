@@ -57,7 +57,9 @@ cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
 output contracts, first-slice executable skill handlers, and scheduled
 retention cleanup automation are implemented. Production telemetry policy,
 aggregate snapshot contracts, alert evaluation, and production security
-closure are implemented.
+closure are implemented. Analyzer/Composer human-review quality gates now
+convert ambiguous tasks into review-required profiles without selected
+specialized capabilities.
 Broader runtime planning quality remains an explicit backlog theme and must not
 obscure the runtime entry gate. The repository now has a dedicated Production
 Readiness Gate in `docs/production-readiness.md`.
@@ -169,6 +171,8 @@ population are implemented at Worker/API level.
 - Add runtime entrypoint wiring from task intake to Control API client to composed profile. (Initial implementation complete.)
 - Expand analyzer coverage beyond code-review fixtures. (Initial evaluation
   coverage complete, including confidence and ambiguity fallback semantics.)
+- Make ambiguous tasks enter a machine-readable human-review path without
+  overgranting. (Initial Composer profile gate complete.)
 
 Status: initial implementation complete. Broader task coverage should now grow
 through evaluation fixtures before classifier or LLM-assisted analysis is
@@ -261,8 +265,11 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    security, supply-chain, review, and data-governance gates complete.
    Production threat model, token-scope review, finding closure policy, and
    security closure validator complete.)
-9. Expand analyzer, composer, and human-review quality gates.
-10. Run the production readiness certification gate against the target
+9. Expand analyzer, composer, and human-review quality gates. (Initial
+   review-required profile contract and Composer restriction complete.)
+10. Expand production skill handler coverage beyond the current
+    manifest-covered fixture set.
+11. Run the production readiness certification gate against the target
     environment.
 
 Status: started. The gate is defined, the first environment separation
@@ -272,5 +279,5 @@ implemented. The first production skill handler runtime slice, controlled write
 path, scheduled retention cleanup automation, production telemetry alerting,
 and production security closure are implemented. Provisioning, broader
 production handler coverage beyond the current manifest-covered fixture set,
-human-review quality gates, and the final certification run against live
-production infrastructure remain pending.
+and the final certification run against live production infrastructure remain
+pending.

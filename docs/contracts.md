@@ -47,6 +47,9 @@ If required inputs or auth claims are missing, the Composer must fail closed or 
 If multiple specialized task classes match, the Analyzer must not silently pick
 one. It falls back to `general-task`, emits the ambiguity fields, and lets
 policy, validation, or operator review decide whether recomposition is needed.
+For review-required output, the Composer must produce a constrained profile
+that carries the review requirement as structured data and does not grant
+specialized runtime capabilities before approval.
 
 ## Module Metadata
 
@@ -106,6 +109,7 @@ Required profile concerns:
 - parent profile and recomposition reason,
 - risk level,
 - authorization context,
+- human-review status, ambiguity markers, and analyzer classification evidence,
 - selected instructions and skills,
 - allowed tools,
 - scoped knowledge, data, and memory access,
@@ -122,6 +126,12 @@ The initial Composer consumes the Control Plane composition context and injects
 baseline instruction and profile-schema validator pins until instruction and
 baseline-validator registries are backed by D1 records. These baseline modules
 are still explicit profile entries with version pins.
+
+When analyzer output requires human review, the Composer emits a
+review-required profile instead of selecting candidate skills or tools. That
+profile retains baseline instructions, applicable policies, and the
+profile-schema validator, but leaves skills, tools, knowledge scopes, data
+scopes, and memory scopes empty and sets capability-expansion limits to zero.
 
 ## Tool Gateway Contract
 
