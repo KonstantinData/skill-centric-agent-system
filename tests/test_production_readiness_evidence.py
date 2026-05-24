@@ -83,6 +83,7 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
     assert payload["open_release_gaps"] == []
     assert "Credential values are not written" in payload["sensitive_data_handling"]
     assert any(result["gate"] == "Repository integrity" for result in payload["gate_results"])
+    assert any(result["gate"] == "Executable skill runtime" for result in payload["gate_results"])
 
 
 def test_certify_mode_requires_both_external_run_urls() -> None:
@@ -135,7 +136,8 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
     assert payload["external_evidence"]["ai_gateway_smoke"]["validation_status"] == "passed"
     assert payload["status"] == "not-production-ready"
     assert payload["final_decision"] == "not-certified"
-    assert any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
+    assert not any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
+    assert any(gap["id"] == "P5.06" for gap in payload["open_release_gaps"])
 
 
 def test_certify_mode_rejects_wrong_external_workflow() -> None:

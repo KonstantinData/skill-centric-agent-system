@@ -79,8 +79,9 @@ The production readiness backlog is ordered by dependency and release risk:
    same-repository, same-commit, successful external live gate runs in
    `certify` mode.
 4. `P5.04 Production Skill Handler Runtime`
-   Move from example-only skill metadata and centralized strategies to
-   version-pinned executable skill handlers.
+   Initial code-backed handler registry complete. The runtime now resolves
+   profile-selected skills to exact `name@version` executable handlers and
+   fail-closes unknown or mismatched handlers before tool execution.
 5. `P5.05 Controlled Write-Capable Execution Path`
    Add write adapters only behind authorization, approval, policy, audit,
    validation, and rollback gates.
@@ -159,5 +160,5 @@ This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
 production certification remain `not-production-ready` while required follow-up
-gates such as executable skill handlers, production telemetry, threat-model
-closure, and human-review quality gates are still open.
+gates such as production telemetry, threat-model closure, human-review quality
+gates, and broader production handler coverage are still open.

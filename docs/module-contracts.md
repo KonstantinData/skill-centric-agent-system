@@ -55,6 +55,10 @@ registry. Pattern: `^[a-z][a-z0-9-]*$`.
 
 `version` - Semantic version (`MAJOR.MINOR.PATCH`). Increment when the module
 contract changes. The registry uses this for version pinning in runtime profiles.
+For `skill` modules that have executable runtime behavior, the runtime handler
+registry binds code by the exact `name@version` pair selected in
+`profile.skills` and `profile.module_versions`. Unknown or mismatched handler
+versions fail closed before tool execution.
 
 `kind` - The composition role of the module. Determines which registry slot the
 module occupies and which profile fields it populates.

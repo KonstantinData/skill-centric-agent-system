@@ -93,6 +93,7 @@ guidance text.
 
 Hard enforcement covers:
 
+- selected skills,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,
@@ -104,10 +105,40 @@ Hard enforcement covers:
 - `limits.max_memory_ops`,
 - `limits.max_recompositions`,
 - module version pins for every selected module.
+- exact executable handler binding for every selected skill that has a runtime
+  handler.
 
 Denied access must emit a Flight Recorder event with a constrained stop reason.
 The runtime must fail closed when a limit is exceeded or an unselected scope is
 requested. The active profile must never be mutated to resolve the denial.
+
+## Skill Handler Runtime
+
+Executable skills live under the Python runtime implementation path:
+
+```text
+src/skill_centric_agent_system/runtime/skill_handlers.py
+```
+
+The first production handler slice binds executable code to selected skill
+metadata by exact `skill name + module_versions[skill]`. The runtime does not
+accept free-form handler entrypoints from task input, prompt text, or runtime
+state. A selected skill may execute only when:
+
+- the skill appears in `profile.skills`,
+- the skill has an exact version pin in `profile.module_versions`,
+- the runtime has a registered executable handler for that exact skill/version,
+- the handler emits actions that still pass Tool Gateway enforcement.
+
+Unknown selected skills and mismatched handler versions are policy denials and
+fail closed before tool execution. The Planner records the resolved
+`skill_handlers` binding in its checkpoint so release evidence can prove which
+metadata-backed code path was used.
+
+Task class still shapes output validation and task-specific result formatting,
+but it is no longer the authority that grants executable behavior. Runtime
+capabilities continue to come from the immutable profile and the exact
+version-pinned skill handler registry.
 
 ## Tool Gateway
 
@@ -335,13 +366,13 @@ The runtime result must contain:
 - event/checkpoint references,
 - recomposition or retry references when applicable.
 
-The first generic runtime loop dispatches deterministic strategies from the
-active profile's `task_type`:
+The first generic runtime loop resolves deterministic executable handlers from
+the active profile's selected skills:
 
-- `code-review`: read-only git and filesystem inspection,
-- `research`: profile-bounded retrieval synthesis,
-- `task-execution`: conservative read-only repository inspection,
-- `general-task`: bounded generic summary.
+- `git-diff-analysis@0.1.0`: read-only git and filesystem inspection,
+- `research-context-synthesis@0.1.0`: profile-bounded retrieval synthesis,
+- `task-execution-planning@0.1.0`: conservative read-only repository inspection,
+- `general-task-summary@0.1.0`: bounded generic summary.
 
-These are execution strategies inside the single runtime agent. They are not
-separate agents and must not expand the active profile.
+These handlers run inside the single runtime agent. They are not separate
+agents and must not expand the active profile.

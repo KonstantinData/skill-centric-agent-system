@@ -35,15 +35,11 @@ REPOSITORY_GATE_RESULTS = (
         "security governance scripts; Actions-BOM; release SBOM",
     ),
     ("Contract and documentation consistency", "tracked JSON parse; committed docs gate"),
+    ("Executable skill runtime", "python -m pytest tests/test_runtime_skill_handlers.py"),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
-    {
-        "id": "P5.04",
-        "gate": "Executable skill runtime",
-        "reason": "Production skill handler runtime is not complete.",
-    },
     {
         "id": "P5.06",
         "gate": "Operational telemetry",
