@@ -107,6 +107,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
 - `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
 - `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
+- `docs/skill-handler-version-policy.md`: executable skill handler versioning, deprecation, and rollback policy.
 - `docs/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
@@ -124,9 +125,11 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `schemas/knowledge-quality-policy.schema.json`: JSON Schema for generic knowledge/data-quality policy metadata.
 - `schemas/skill-handler-coverage.schema.json`: JSON Schema for the production skill handler coverage manifest.
+- `schemas/skill-handler-version-policy.schema.json`: JSON Schema for executable skill handler version policy.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
+- `policies/runtime/`: runtime policy fixtures for skill handler versioning and rollback.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
 - `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, executable skill handlers, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.

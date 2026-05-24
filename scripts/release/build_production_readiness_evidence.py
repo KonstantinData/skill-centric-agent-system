@@ -39,7 +39,8 @@ REPOSITORY_GATE_RESULTS = (
         "Executable skill runtime",
         (
             "python -m pytest tests/test_runtime_skill_handlers.py "
-            "tests/test_skill_handler_coverage.py; "
+            "tests/test_skill_handler_coverage.py "
+            "tests/test_skill_handler_version_policy.py; "
             "python scripts/runtime/skill_handler_coverage.py --check"
         ),
     ),

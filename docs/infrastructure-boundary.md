@@ -390,6 +390,9 @@ Implemented:
 - The live runtime gate emits sanitized handler-binding evidence from planner
   checkpoints and uploads it as a GitHub Actions artifact for production
   certification.
+- Handler upgrades, deprecations, and rollback are governed by a repository
+  policy that preserves immutable profile version pins and fail-closed rollback
+  behavior.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -453,6 +456,7 @@ Completed:
 36. Skill handler coverage manifest and CI gate for current production-required
     skill fixtures.
 37. Live handler-binding evidence artifact and production-readiness validation.
+38. Skill handler version upgrade and rollback policy.
 
 Next:
 

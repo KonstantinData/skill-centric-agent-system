@@ -35,6 +35,7 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
         "Live runtime gates",
         "Live handler binding evidence",
         "Executable skill runtime",
+        "Skill handler version policy",
         "Operational telemetry",
         "Security closure",
         "Release decision",

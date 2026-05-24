@@ -149,8 +149,16 @@ python scripts/runtime/skill_handler_coverage.py --check
 
 The manifest maps each production-required skill module fixture to the exact
 handler ID, runtime implementation path, strategy, output contract, module
-tests, and runtime tests. CI fails if a production-required skill lacks a
-matching executable handler or if the committed manifest is stale.
+tests, runtime tests, and handler lifecycle status. CI fails if a
+production-required skill lacks a matching executable handler or if the
+committed manifest is stale.
+
+Handler upgrades and rollback must follow
+`docs/skill-handler-version-policy.md` and the machine-readable policy in
+`policies/runtime/skill-handler-version-policy.json`. Upgrades register new
+handler versions side by side with previous versions. Rollback composes a new
+runtime profile with the previous version pin instead of mutating the active
+profile.
 
 Task class still shapes output validation and task-specific result formatting,
 but it is no longer the authority that grants executable behavior. Runtime

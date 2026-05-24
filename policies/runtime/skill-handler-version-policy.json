@@ -1,0 +1,47 @@
+{
+  "applies_to": [
+    "skill_handler_registry",
+    "runtime_profile",
+    "coverage_manifest",
+    "release_evidence"
+  ],
+  "compatibility_rules": [
+    {
+      "failure_action": "block",
+      "requirement": "Runtime execution must bind selected skills by exact skill name and module version pin.",
+      "rule_id": "exact-version-binding",
+      "severity": "mandatory"
+    },
+    {
+      "failure_action": "block",
+      "requirement": "Upgrades must register the new handler version side by side with the previous version until release evidence passes.",
+      "rule_id": "side-by-side-upgrades",
+      "severity": "mandatory"
+    },
+    {
+      "failure_action": "request_review",
+      "requirement": "Deprecated handler versions must remain registered while any active runtime profile, rollback plan, or live release can still reference them.",
+      "rule_id": "deprecated-handlers-stay-registered",
+      "severity": "guardrail"
+    },
+    {
+      "failure_action": "block",
+      "requirement": "Rollback must compose a new immutable runtime profile with the previous version pin instead of mutating the active profile.",
+      "rule_id": "no-in-place-profile-mutation",
+      "severity": "mandatory"
+    }
+  ],
+  "contract_version": "0.1.0",
+  "policy_id": "skill-handler-version-upgrade-rollback",
+  "release_evidence": {
+    "requires_live_handler_binding_evidence_for_certify": true,
+    "requires_static_coverage_manifest": true,
+    "requires_version_policy_tests": true
+  },
+  "rollback_policy": {
+    "branch_policy": "rollback-through-reviewed-repository-change",
+    "evidence_required": true,
+    "profile_policy": "compose-new-runtime-profile-with-previous-version-pin",
+    "rollback_action": "restore-or-select-previous-registered-handler-version"
+  }
+}

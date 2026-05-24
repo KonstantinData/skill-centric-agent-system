@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:skill-handler-version-policy:0.1.0",
+  "title": "SCAS Skill Handler Version Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "policy_id",
+    "applies_to",
+    "compatibility_rules",
+    "release_evidence",
+    "rollback_policy"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "policy_id": {
+      "const": "skill-handler-version-upgrade-rollback"
+    },
+    "applies_to": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "skill_handler_registry",
+          "runtime_profile",
+          "coverage_manifest",
+          "release_evidence"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "compatibility_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    },
+    "release_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requires_static_coverage_manifest",
+        "requires_live_handler_binding_evidence_for_certify",
+        "requires_version_policy_tests"
+      ],
+      "properties": {
+        "requires_static_coverage_manifest": {
+          "const": true
+        },
+        "requires_live_handler_binding_evidence_for_certify": {
+          "const": true
+        },
+        "requires_version_policy_tests": {
+          "const": true
+        }
+      }
+    },
+    "rollback_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rollback_action",
+        "profile_policy",
+        "evidence_required",
+        "branch_policy"
+      ],
+      "properties": {
+        "rollback_action": {
+          "const": "restore-or-select-previous-registered-handler-version"
+        },
+        "profile_policy": {
+          "const": "compose-new-runtime-profile-with-previous-version-pin"
+        },
+        "evidence_required": {
+          "const": true
+        },
+        "branch_policy": {
+          "const": "rollback-through-reviewed-repository-change"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "severity",
+        "requirement",
+        "failure_action"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "mandatory",
+            "guardrail"
+          ]
+        },
+        "requirement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failure_action": {
+          "type": "string",
+          "enum": [
+            "block",
+            "request_review"
+          ]
+        }
+      }
+    }
+  }
+}
