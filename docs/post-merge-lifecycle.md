@@ -1,0 +1,69 @@
+# Post-Merge Lifecycle
+
+## Purpose
+
+This runbook standardizes the repository cleanup sequence after a topic branch
+has been merged to `main`.
+
+It is intentionally compatible with the current fast setup workflow where main
+branch protection is prepared but not yet enforced. It does not replace review,
+CI, or Notion lifecycle tracking.
+
+## Required Order
+
+1. Verify the PR is merged and record the PR URL and merge commit.
+2. Verify all required PR checks passed.
+3. Sync local `main` with `origin/main`.
+4. Delete the merged local topic branch.
+5. Delete or prune the merged remote topic branch.
+6. Verify `git status --short --branch` is clean on `main`.
+7. Update the matching Issues & Open Questions page:
+   - `Status = Done`,
+   - `Completed At` with datetime,
+   - PR URL,
+   - merge commit,
+   - verification performed,
+   - branch cleanup evidence.
+8. Update the matching Feature Backlog entry to `Done` with the same PR URL and
+   completion timestamp.
+
+## Script
+
+Use dry-run mode first:
+
+```powershell
+python scripts\repo\post_merge_cleanup.py --pr 10
+```
+
+Apply cleanup only after reviewing the plan:
+
+```powershell
+python scripts\repo\post_merge_cleanup.py --pr 10 --apply
+```
+
+The script fails closed unless:
+
+- the PR state is `MERGED`,
+- the PR base is the expected base branch, default `main`,
+- the topic branch starts with `codex/`,
+- the target branch is not a protected branch name, and
+- the working tree is clean before `--apply`.
+
+The script prints a JSON cleanup report. That report is safe to summarize in
+Notion because it contains branch names, commands, PR references, and merge
+commit IDs, not secrets or runtime artifacts.
+
+## Notion
+
+The script cannot update Notion because the Notion connector is not part of the
+repository runtime. The agent or maintainer must still write a page-level
+comment on the active Issues & Open Questions task and then mark both the issue
+and Feature Backlog entry complete.
+
+Every post-merge Notion completion note should include:
+
+- PR number and URL,
+- merge commit,
+- local and remote branch cleanup result,
+- main check result,
+- any remaining follow-up.
