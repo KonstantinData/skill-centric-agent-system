@@ -11,7 +11,7 @@
     "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.8",
+    "@cloudflare/vitest-pool-workers": "^0.16.9",
     "@cloudflare/workers-types": "4.20260524.1",
     "@types/node": "^22.10.0",
     "typescript": "^6.0.3",
