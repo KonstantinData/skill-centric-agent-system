@@ -50,6 +50,11 @@ has a dedicated Production Readiness Gate in `docs/production-readiness.md`.
 That gate is the authority for any future `production-ready` claim and
 currently classifies the repository as `not-production-ready` for a full
 production launch while recognizing the initial productive runtime core.
+Repository security and governance gates now cover secret scanning, tracked
+`.env` protection, CODEOWNERS, main-protection desired-state validation,
+dependency policy, workflow hardening, pinned Actions, Actions-BOM, release
+SBOM generation, Data Governance documentation, and a generic
+knowledge/data-quality policy schema.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -229,12 +234,14 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 5. Add controlled write-capable execution only behind explicit safety gates.
 6. Add scheduled runtime retention cleanup automation.
 7. Add production telemetry and alerting.
-8. Complete security hardening and threat model closure.
+8. Complete security hardening and threat model closure. (Initial repository
+   security, supply-chain, review, and data-governance gates complete.)
 9. Expand analyzer, composer, and human-review quality gates.
 10. Run the production readiness certification gate against the target
     environment.
 
 Status: started. The gate is defined, the first environment separation
-manifest exists, and the initial evidence-only workflow exists. Provisioning,
-target-environment live validation, skill handler runtime, telemetry, and
-security closure remain pending.
+manifest exists, the initial evidence-only workflow exists, and the initial
+repository security/governance gate set is implemented. Provisioning,
+target-environment live validation, skill handler runtime, telemetry, and full
+security closure against live production infrastructure remain pending.

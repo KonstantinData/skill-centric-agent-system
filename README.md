@@ -92,6 +92,8 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
 - `docs/environment-separation.md`: staging and production environment separation rules and resource naming manifest.
+- `docs/data-governance.md`: data classification, model privacy, audit minimization, and knowledge/data-quality rules.
+- `docs/review-gates.md`: review, waiver, and governance-gate rules for high-impact changes.
 - `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
 - `docs/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
 - `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
@@ -101,6 +103,8 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
+- `SECURITY.md`: security reporting, secret handling, remediation, and required security gates.
+- `AGENTS.md`: repository rules for autonomous agent work and SCAS-specific governance.
 - `schemas/module.schema.json`: JSON Schema for selectable module metadata.
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
@@ -110,8 +114,10 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
+- `schemas/knowledge-quality-policy.schema.json`: JSON Schema for generic knowledge/data-quality policy metadata.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
+- `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
 - `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
@@ -120,6 +126,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `scripts/runtime/`: live runtime gate scripts.
+- `scripts/security/`: secret, workflow, ruleset, dependency, Actions-BOM, and SBOM governance scripts.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.
@@ -128,6 +135,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
 - `examples/runtime-outputs/`: representative validated runtime output payloads.
 - `examples/infrastructure/`: environment separation manifest for dev, staging, and prod.
+- `examples/governance/`: representative knowledge/data-quality policy fixtures.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
@@ -150,6 +158,19 @@ Run linting:
 
 ```powershell
 python -m ruff check .
+```
+
+Run security and governance checks:
+
+```powershell
+python scripts\security\check_no_dotenv_files.py
+python scripts\security\validate_ruleset_config.py
+python scripts\security\validate_dependency_policy.py
+python scripts\security\check_workflow_hardening.py
+python scripts\security\generate_actions_bom.py --output security-evidence\actions-bom.json
+python scripts\security\validate_actions_bom.py security-evidence\actions-bom.json
+python scripts\security\generate_sbom.py --output security-evidence\release-sbom.json
+python scripts\security\validate_sbom.py security-evidence\release-sbom.json
 ```
 
 Start a local fixture-backed runtime run:
@@ -240,6 +261,13 @@ npm run worker:check
 Worker type checks, and Worker Vitest tests on pushes to `main` and pull
 requests.
 
+`.github/workflows/security-governance.yml` runs repository governance,
+secret-scanning, dependency-audit, workflow-hardening, Actions-BOM, and
+release-SBOM gates. `.github/workflows/dependency-review.yml` runs GitHub
+Dependency Review for pull requests. `.github/workflows/codeql.yml` runs CodeQL
+analysis for Python and Worker code. External GitHub Actions in workflows are
+pinned to full commit SHAs and checked by `scripts/security/check_workflow_hardening.py`.
+
 The same workflow also has a manual `workflow_dispatch` infrastructure smoke
 test. Run it with `run_infra_smoke = true` after the required GitHub Actions
 secrets are configured:
@@ -264,9 +292,8 @@ configure the Worker secret. Endpoint-scoped Worker secrets can be configured
 manually with Wrangler when the single automation token is too broad.
 
 `HETZNER_SSH_KEY` must contain the complete private OpenSSH key block, including
-the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`
-lines. Do not use the public `ssh-ed25519 ...` line or the `SHA256:...`
-fingerprint as this secret.
+the private OpenSSH key header and footer lines. Do not use the public
+`ssh-ed25519 ...` line or the `SHA256:...` fingerprint as this secret.
 
 Cloudflare Control API dev deployment is manual in the same workflow. Run it
 with `deploy_control_api_dev = true` or locally with `npm run worker:deploy:dev`
@@ -366,6 +393,8 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 - Use registries, scoring, policies, and validators for self-assembly.
 - Version durable decisions in `docs/adr/`.
 - Track repository tasks in Notion through `$notion-repo-work-tracker`.
+- Follow `AGENTS.md`, `SECURITY.md`, `docs/data-governance.md`, and
+  `docs/review-gates.md` for autonomous repository changes.
 
 ## Next Steps
 

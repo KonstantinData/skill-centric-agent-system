@@ -1,0 +1,16 @@
+title = "SCAS historical secret scan"
+
+[allowlist]
+description = "Generated outputs, caches, and local runtime state are excluded from secret history scans."
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)\.mypy_cache/''',
+  '''(^|/)\.pytest_cache/''',
+  '''(^|/)\.ruff_cache/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)venv/''',
+  '''(^|/)security-evidence/''',
+  '''(^|/)production-readiness-evidence\.json$''',
+  '''(^|/)\.scas-runtime/'''
+]

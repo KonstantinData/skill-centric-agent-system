@@ -1,0 +1,26 @@
+fail-on-severity: high
+vulnerability-check: true
+license-check: true
+fail-on-scopes:
+  - runtime
+warn-only: false
+
+allow-licenses:
+  - MIT
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - BSD-3-Clause-Clear
+  - ISC
+  - Unlicense
+  - CC0-1.0
+  - CC-BY-4.0
+  - PSF-2.0
+  - Python-2.0
+  - 0BSD
+  - MPL-2.0
+
+allow-dependencies-licenses:
+  - pkg:pypi/jsonschema
+  - pkg:pypi/pytest
+  - pkg:pypi/ruff

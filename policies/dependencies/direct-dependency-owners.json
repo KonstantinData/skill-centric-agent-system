@@ -1,0 +1,65 @@
+{
+  "contract_version": "0.1.0",
+  "registry": [
+    {
+      "ecosystem": "python",
+      "package": "jsonschema",
+      "owner": "@KonstantinData",
+      "usage": "JSON Schema validation for repository contracts and examples."
+    },
+    {
+      "ecosystem": "python",
+      "package": "pytest",
+      "owner": "@KonstantinData",
+      "usage": "Repository contract, governance, and runtime tests."
+    },
+    {
+      "ecosystem": "python",
+      "package": "ruff",
+      "owner": "@KonstantinData",
+      "usage": "Python linting and code-quality gate."
+    },
+    {
+      "ecosystem": "python",
+      "package": "psycopg",
+      "owner": "@KonstantinData",
+      "usage": "Hetzner runtime PostgreSQL storage adapter."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "@cloudflare/vitest-pool-workers",
+      "owner": "@KonstantinData",
+      "usage": "Cloudflare Worker test runtime."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "@cloudflare/workers-types",
+      "owner": "@KonstantinData",
+      "usage": "Cloudflare Worker type definitions."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "@types/node",
+      "owner": "@KonstantinData",
+      "usage": "Node.js type definitions for Worker tooling."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "typescript",
+      "owner": "@KonstantinData",
+      "usage": "Cloudflare Worker type checking."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "vitest",
+      "owner": "@KonstantinData",
+      "usage": "Cloudflare Worker unit tests."
+    },
+    {
+      "ecosystem": "npm",
+      "package": "wrangler",
+      "owner": "@KonstantinData",
+      "usage": "Cloudflare Worker type generation, dry-run deploy, and deployment."
+    }
+  ]
+}

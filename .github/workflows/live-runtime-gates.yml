@@ -35,10 +35,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: live-runtime-gates-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   live-runtime-gates:
     name: Live runtime gates on Hetzner
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: >-
       github.event_name == 'workflow_dispatch'
       && (inputs.run_live_dev_e2e == true
@@ -61,7 +66,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Check required secrets are present
         shell: bash
@@ -91,7 +96,7 @@ jobs:
 
       - name: Set up Node.js
         if: env.SEED_CONTROL_PLANE_DEV == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
           cache: npm
@@ -118,7 +123,7 @@ jobs:
 
           if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
             echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
-            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----"
+            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" # pragma: allowlist secret
             exit 1
           fi
 

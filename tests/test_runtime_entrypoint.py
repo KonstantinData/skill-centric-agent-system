@@ -137,8 +137,8 @@ def test_artifact_store_redacts_sensitive_payload_fields(tmp_path: Path) -> None
         actor_role="composer",
         result={
             "public": "visible",
-            "openai_api_key": "must-not-leak",
-            "nested": {"authorization": "Bearer token"},
+            "openai_api_key": "must-not-leak",  # pragma: allowlist secret
+            "nested": {"authorization": "Bearer token"},  # pragma: allowlist secret
         },
     )
 
