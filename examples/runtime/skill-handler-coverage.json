@@ -8,6 +8,7 @@
     {
       "coverage_status": "covered",
       "handler_id": "general-task-summary@0.1.0",
+      "lifecycle_status": "active",
       "module_path": "examples/modules/general-task-summary.json",
       "module_tests": [
         "general-task-summary-positive",
@@ -27,6 +28,7 @@
     {
       "coverage_status": "covered",
       "handler_id": "git-diff-analysis@0.1.0",
+      "lifecycle_status": "active",
       "module_path": "examples/modules/git-diff-analysis.json",
       "module_tests": [
         "detects-risky-diff-fixture",
@@ -50,6 +52,7 @@
     {
       "coverage_status": "covered",
       "handler_id": "research-context-synthesis@0.1.0",
+      "lifecycle_status": "active",
       "module_path": "examples/modules/research-context-synthesis.json",
       "module_tests": [
         "research-context-synthesis-positive",
@@ -69,6 +72,7 @@
     {
       "coverage_status": "covered",
       "handler_id": "task-execution-planning@0.1.0",
+      "lifecycle_status": "active",
       "module_path": "examples/modules/task-execution-planning.json",
       "module_tests": [
         "task-execution-planning-positive",

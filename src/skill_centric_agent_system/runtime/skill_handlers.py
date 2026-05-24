@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
@@ -10,6 +10,7 @@ from skill_centric_agent_system.runtime.enforcement import (
 )
 
 PlanBuilder = Callable[[Mapping[str, Any]], tuple[dict[str, Any], ...]]
+SkillHandlerLifecycle = Literal["active", "deprecated"]
 SKILL_HANDLER_RUNTIME_PATH = "src/skill_centric_agent_system/runtime/skill_handlers.py"
 
 
@@ -47,6 +48,7 @@ class SkillHandler:
     build_actions: PlanBuilder
     runtime_path: str = SKILL_HANDLER_RUNTIME_PATH
     test_coverage: tuple[str, ...] = ()
+    lifecycle_status: SkillHandlerLifecycle = "active"
 
     @property
     def handler_id(self) -> str:
@@ -69,6 +71,7 @@ class SkillHandler:
             "strategy": self.strategy,
             "output_contract": self.output_contract,
             "test_coverage": list(self.test_coverage),
+            "lifecycle_status": self.lifecycle_status,
         }
 
 

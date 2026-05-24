@@ -179,6 +179,7 @@ def _coverage_entry(
             "strategy": None,
             "output_contract": None,
             "test_coverage": [],
+            "lifecycle_status": None,
         }
     else:
         coverage_status = "covered"
@@ -187,6 +188,7 @@ def _coverage_entry(
     return {
         "coverage_status": coverage_status,
         "handler_id": descriptor["handler_id"],
+        "lifecycle_status": descriptor["lifecycle_status"],
         "module_path": _repo_path(module_path),
         "module_tests": list(module["tests"]),
         "output_contract": descriptor["output_contract"],

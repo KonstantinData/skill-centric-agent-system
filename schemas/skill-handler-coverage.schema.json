@@ -102,6 +102,7 @@
         "runtime_path",
         "strategy",
         "output_contract",
+        "lifecycle_status",
         "module_tests",
         "runtime_tests",
         "required_tools"
@@ -154,6 +155,17 @@
           "type": [
             "string",
             "null"
+          ]
+        },
+        "lifecycle_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "active",
+            "deprecated",
+            null
           ]
         },
         "module_tests": {
