@@ -43,7 +43,7 @@ def test_skill_handler_coverage_fails_closed_for_missing_required_handler() -> N
     )
 
     assert manifest["coverage_status"] == "failed"
-    assert manifest["summary"]["missing_handler_count"] == 4
+    assert manifest["summary"]["missing_handler_count"] == 6
     assert {
         skill["coverage_status"]
         for skill in manifest["skills"]

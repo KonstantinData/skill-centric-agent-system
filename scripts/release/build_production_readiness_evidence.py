@@ -84,16 +84,24 @@ REPOSITORY_GATE_RESULTS = (
             "tests/test_contract_schemas.py -k human_review"
         ),
     ),
+    (
+        "Expanded production skill handler coverage",
+        (
+            "python -m pytest tests/test_runtime_skill_handlers.py "
+            "tests/test_skill_handler_coverage.py; "
+            "python scripts/runtime/skill_handler_coverage.py --check"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
     {
-        "id": "P5.11",
-        "gate": "Broader production skill handler coverage",
+        "id": "P5.10",
+        "gate": "Production readiness certification run",
         "reason": (
-            "Production handler coverage beyond the current manifest-covered fixture "
-            "set is not complete."
+            "The full production readiness certification gate has not yet been run "
+            "against the target live environment."
         ),
     },
 )
@@ -627,14 +635,4 @@ def main(argv: list[str] | None = None) -> int:
             ai_gateway_smoke_metadata=metadata_from_path(args.ai_gateway_smoke_metadata),
             live_handler_binding_evidence=metadata_from_path(
                 args.live_handler_binding_evidence
-            ),
-        )
-        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True), encoding="utf-8")
-    except EvidenceError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+  

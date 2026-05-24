@@ -1,0 +1,102 @@
+{
+  "name": "dependency-audit",
+  "version": "0.1.0",
+  "kind": "skill",
+  "description": "Audit project dependency manifests for license compliance, known risk signals, and policy-restricted packages.",
+  "capability_class": "analysis",
+  "domain_tags": [
+    "software-engineering",
+    "dependencies",
+    "compliance"
+  ],
+  "task_signals": {
+    "task_types": [
+      "code-review"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "software-engineering",
+      "dependencies"
+    ],
+    "required_inputs": [
+      "repository"
+    ],
+    "phrases": [
+      "dependency",
+      "license",
+      "audit",
+      "package",
+      "compliance"
+    ],
+    "negative_phrases": [
+      "deploy",
+      "apply changes",
+      "delete"
+    ]
+  },
+  "triggers": [
+    "dependency",
+    "license",
+    "audit",
+    "package",
+    "compliance"
+  ],
+  "inputs": [
+    "repository"
+  ],
+  "outputs": [
+    "dependency-audit-report"
+  ],
+  "required_tools": [
+    "filesystem-read"
+  ],
+  "optional_tools": [
+    "git-read"
+  ],
+  "knowledge_scopes": [
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "policies": [
+    "no-destructive-commands",
+    "require-file-references"
+  ],
+  "validators": [
+    "review-findings-contract"
+  ],
+  "selection": {
+    "base_score": 0.70,
+    "score_modifiers": [
+      {
+        "signal": "task_type:code-review",
+        "weight": 0.15,
+        "reason": "Dependency audits are a specialised code-review activity targeting manifest files."
+      },
+      {
+        "signal": "phrase:dependency",
+        "weight": 0.10,
+        "reason": "An explicit dependency request raises the likelihood this module is the correct selection."
+      },
+      {
+        "signal": "phrase:license",
+        "weight": 0.08,
+        "reason": "License compliance questions are a primary use-case for this module."
+      },
+      {
+        "signal": "phrase:deploy",
+        "weight": -0.25,
+        "reason": "Deployment requests should not select a dependency-audit module as an execution capability."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": [
+    "dependency-audit-positive",
+    "dependency-audit-denies-destructive"
+  ]
+}

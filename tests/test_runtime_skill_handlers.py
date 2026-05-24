@@ -62,6 +62,8 @@ def test_builtin_skill_handler_registry_exposes_coverage_descriptors() -> None:
     handlers = BUILTIN_SKILL_HANDLER_REGISTRY.handlers()
 
     assert [handler.handler_id for handler in handlers] == [
+        "dependency-audit@0.1.0",
+        "document-synthesis@0.1.0",
         "general-task-summary@0.1.0",
         "git-diff-analysis@0.1.0",
         "research-context-synthesis@0.1.0",
@@ -72,6 +74,33 @@ def test_builtin_skill_handler_registry_exposes_coverage_descriptors() -> None:
         for descriptor in (handler.descriptor() for handler in handlers)
     )
     assert all(handler.test_coverage for handler in handlers)
+
+
+def test_dependency_audit_handler_builds_filesystem_read_actions() -> None:
+    handler = BUILTIN_SKILL_HANDLER_REGISTRY.handler_for("dependency-audit", "0.1.0")
+    assert handler is not None
+
+    plan = handler.build_plan({})
+
+    assert handler.strategy == "dependency-audit-readonly"
+    assert handler.output_contract == "review-findings-contract"
+    assert [action["tool"] for action in plan.actions] == [
+        "filesystem-read",
+        "filesystem-read",
+    ]
+    assert plan.actions[0]["payload"]["path"] == "pyproject.toml"
+    assert plan.actions[1]["payload"]["path"] == "package.json"
+
+
+def test_document_synthesis_handler_builds_no_tool_actions() -> None:
+    handler = BUILTIN_SKILL_HANDLER_REGISTRY.handler_for("document-synthesis", "0.1.0")
+    assert handler is not None
+
+    plan = handler.build_plan({})
+
+    assert handler.strategy == "document-synthesis"
+    assert handler.output_contract == "research-output-contract"
+    assert plan.actions == ()
 
 
 def test_profile_enforcer_denies_skill_not_selected_by_profile() -> None:
@@ -150,33 +179,4 @@ def test_runtime_loop_records_executed_skill_handler_binding(tmp_path: Path) -> 
     assert planner_payload["skill_handlers"] == [
         {
             "name": "git-diff-analysis",
-            "version": "0.1.0",
-            "handler_id": "git-diff-analysis@0.1.0",
-        }
-    ]
-
-
-def test_runtime_loop_fails_closed_before_executor_for_unknown_skill_handler(
-    tmp_path: Path,
-) -> None:
-    store = InMemoryRuntimeStore()
-    artifacts = JsonArtifactStore(tmp_path)
-    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
-    start_result = entrypoint.start(
-        load_json(TASK_EXAMPLE_PATH),
-        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
-    )
-    start_result.profile["skills"] = ["unregistered-production-skill"]
-    start_result.profile["module_versions"]["unregistered-production-skill"] = "0.1.0"
-    loop = MinimalRuntimeLoop(
-        store=store,
-        artifacts=artifacts,
-        repository_root=REPO_ROOT,
-    )
-
-    with pytest.raises(RuntimeLoopError):
-        loop.run(start_result)
-
-    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
-    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "policy_denied"
-    assert store.tool_invocations == []
+            "version": "0.1.0

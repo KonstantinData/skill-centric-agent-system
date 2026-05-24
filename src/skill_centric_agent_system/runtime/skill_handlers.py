@@ -155,6 +155,43 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
     return SkillHandlerRegistry(
         (
             SkillHandler(
+                skill_name="dependency-audit",
+                skill_version="0.1.0",
+                strategy="dependency-audit-readonly",
+                output_contract="review-findings-contract",
+                build_actions=_dependency_audit_actions,
+                test_coverage=(
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_builtin_skill_handler_registry_exposes_coverage_descriptors",
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_dependency_audit_handler_builds_filesystem_read_actions",
+                ),
+            ),
+            SkillHandler(
+                skill_name="document-synthesis",
+                skill_version="0.1.0",
+                strategy="document-synthesis",
+                output_contract="research-output-contract",
+                build_actions=_no_tool_actions,
+                test_coverage=(
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_builtin_skill_handler_registry_exposes_coverage_descriptors",
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_document_synthesis_handler_builds_no_tool_actions",
+                ),
+            ),
+            SkillHandler(
+                skill_name="general-task-summary",
+                skill_version="0.1.0",
+                strategy="general-task-summary",
+                output_contract="general-output-contract",
+                build_actions=_no_tool_actions,
+                test_coverage=(
+                    "tests/test_runtime_tool_gateway_and_loop.py::"
+                    "test_minimal_runtime_loop_dispatches_task_type_strategies",
+                ),
+            ),
+            SkillHandler(
                 skill_name="git-diff-analysis",
                 skill_version="0.1.0",
                 strategy="code-review-readonly",
@@ -184,17 +221,6 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 strategy="conservative-task-execution",
                 output_contract="task-execution-output-contract",
                 build_actions=_task_execution_planning_actions,
-                test_coverage=(
-                    "tests/test_runtime_tool_gateway_and_loop.py::"
-                    "test_minimal_runtime_loop_dispatches_task_type_strategies",
-                ),
-            ),
-            SkillHandler(
-                skill_name="general-task-summary",
-                skill_version="0.1.0",
-                strategy="general-task-summary",
-                output_contract="general-output-contract",
-                build_actions=_no_tool_actions,
                 test_coverage=(
                     "tests/test_runtime_tool_gateway_and_loop.py::"
                     "test_minimal_runtime_loop_dispatches_task_type_strategies",
@@ -234,37 +260,4 @@ def _aggregate_plans(plans: list[SkillHandlerPlan]) -> RuntimeSkillPlan:
         strategy=strategy,
         output_contract=output_contract,
         actions=actions,
-        skill_handlers=tuple(plan.handler_ref() for plan in plans),
-    )
-
-
-def _output_contract_for_task_type(profile: Mapping[str, Any]) -> str:
-    task_type = str(profile.get("task_type", "general-task"))
-    return {
-        "code-review": "review-findings-contract",
-        "research": "research-output-contract",
-        "task-execution": "task-execution-output-contract",
-        "general-task": "general-output-contract",
-    }.get(task_type, "general-output-contract")
-
-
-def _git_diff_analysis_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
-    return (
-        {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
-        {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
-    )
-
-
-def _task_execution_planning_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
-    return (
-        {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
-        {"tool": "filesystem-list", "payload": {"path": ".", "max_entries": 80}},
-        {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
-    )
-
-
-def _no_tool_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
-    return ()
-
-
-BUILTIN_SKILL_HANDLER_REGISTRY = builtin_skill_handler_registry()
+        skill_handlers=t

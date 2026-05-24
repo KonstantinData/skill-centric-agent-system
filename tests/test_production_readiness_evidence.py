@@ -200,7 +200,8 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
     assert not any(gap["id"] == "P5.07" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.08" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.09" for gap in payload["open_release_gaps"])
-    assert any(gap["id"] == "P5.11" for gap in payload["open_release_gaps"])
+    assert not any(gap["id"] == "P5.11" for gap in payload["open_release_gaps"])
+    assert any(gap["id"] == "P5.10" for gap in payload["open_release_gaps"])
 
 
 def test_write_release_scope_uses_controlled_write_gate_without_open_p5_05_gap() -> None:
@@ -281,5 +282,4 @@ def test_live_handler_binding_evidence_rejects_mismatched_handler_id() -> None:
     assert isinstance(handlers, list)
     handlers[0]["handler_id"] = "wrong-handler@0.1.0"
 
-    with pytest.raises(evidence.EvidenceError, match="does not match"):
-        evidence.validate_live_handler_binding_evidence(invalid_evidence)
+    with pytest.raises(evidence.EvidenceError, match="does not mat

@@ -1,0 +1,96 @@
+{
+  "name": "document-synthesis",
+  "version": "0.1.0",
+  "kind": "skill",
+  "description": "Synthesize profile-authorized knowledge and memory context into a bounded, structured document output.",
+  "capability_class": "synthesis",
+  "domain_tags": [
+    "documentation",
+    "knowledge-retrieval",
+    "research"
+  ],
+  "task_signals": {
+    "task_types": [
+      "research"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "documentation",
+      "knowledge-retrieval"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "document",
+      "write up",
+      "draft",
+      "synthesize",
+      "compile"
+    ],
+    "negative_phrases": [
+      "deploy",
+      "delete",
+      "apply changes",
+      "execute"
+    ]
+  },
+  "triggers": [
+    "document",
+    "write up",
+    "draft",
+    "synthesize",
+    "compile"
+  ],
+  "inputs": [
+    "retrieval-context",
+    "memory-context"
+  ],
+  "outputs": [
+    "document-draft"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "project-docs"
+  ],
+  "data_scopes": [],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "validators": [
+    "research-output-contract"
+  ],
+  "selection": {
+    "base_score": 0.65,
+    "score_modifiers": [
+      {
+        "signal": "task_type:research",
+        "weight": 0.15,
+        "reason": "Document synthesis targets research tasks that require compiling authorized knowledge into structured output."
+      },
+      {
+        "signal": "capability_class:synthesis",
+        "weight": 0.10,
+        "reason": "The module fits analyzer requests for synthesis capabilities beyond plain retrieval."
+      },
+      {
+        "signal": "phrase:document",
+        "weight": 0.08,
+        "reason": "An explicit document-production request raises the likelihood this module is the correct selection."
+      },
+      {
+        "signal": "phrase:deploy",
+        "weight": -0.30,
+        "reason": "Deployment requests should not select a document-synthesis module as an execution capability."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": [
+    "document-synthesis-positive",
+    "document-synthesis-denies-deploy"
+  ]
+}

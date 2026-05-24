@@ -59,7 +59,9 @@ retention cleanup automation are implemented. Production telemetry policy,
 aggregate snapshot contracts, alert evaluation, and production security
 closure are implemented. Analyzer/Composer human-review quality gates now
 convert ambiguous tasks into review-required profiles without selected
-specialized capabilities.
+specialized capabilities. Production skill handler coverage is expanded beyond
+the initial first slice: the registry now covers 6 production-required handlers
+including `document-synthesis` and `dependency-audit`.
 Broader runtime planning quality remains an explicit backlog theme and must not
 obscure the runtime entry gate. The repository now has a dedicated Production
 Readiness Gate in `docs/production-readiness.md`.
@@ -268,16 +270,13 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 9. Expand analyzer, composer, and human-review quality gates. (Initial
    review-required profile contract and Composer restriction complete.)
 10. Expand production skill handler coverage beyond the current
-    manifest-covered fixture set.
+    manifest-covered fixture set. (Complete: `document-synthesis@0.1.0` and
+    `dependency-audit@0.1.0` added; registry now covers 6 production-required
+    skill handlers; coverage manifest regenerated and gate passes.)
 11. Run the production readiness certification gate against the target
     environment.
 
 Status: started. The gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
-implemented. The first production skill handler runtime slice, controlled write
-path, scheduled retention cleanup automation, production telemetry alerting,
-and production security closure are implemented. Provisioning, broader
-production handler coverage beyond the current manifest-covered fixture set,
-and the final certification run against live production infrastructure remain
-pending.
+implemented. The f
