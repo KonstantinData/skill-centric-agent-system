@@ -92,6 +92,11 @@ The production readiness backlog is ordered by dependency and release risk:
 5. `P5.05 Controlled Write-Capable Execution Path`
    Add write adapters only behind authorization, approval, policy, audit,
    validation, and rollback gates.
+   Complete: the first controlled write path is `filesystem-write`, guarded by
+   profile-selected `repository-write` data scope, `write-approval-required`
+   policy, high-risk gating, structured approval payloads, rollback metadata,
+   dry-run-by-default behavior, and tests. Planners still emit read-only actions
+   until a later composition slice explicitly selects write profiles.
 6. `P5.06 Scheduled Runtime Retention Cleanup Automation`
    Automate dry-run-first retention cleanup with reports and failure signals.
 7. `P5.07 Production Telemetry and Alerting`
@@ -163,6 +168,8 @@ The evidence artifact uses contract version `0.3.0` and includes:
 - release commit, target environment, release scope, workflow run ID, and
   generated timestamp,
 - `gate_results` with `passed`, `pending`, or `not_required` statuses,
+- controlled write-capable execution as a passed repository gate for the first
+  `filesystem-write` slice,
 - validated external run metadata and live handler-binding summaries in
   `external_evidence`,
 - `open_release_gaps` for required production gates that are not yet complete,

@@ -1,0 +1,19 @@
+{
+  "tool": "filesystem-write",
+  "payload": {
+    "operation": "write_text_file",
+    "path": "docs/generated/approved-output.txt",
+    "content": "Approved content written by a controlled runtime action.\n",
+    "apply": false,
+    "approval": {
+      "approval_id": "approval-controlled-write-fixture",
+      "approved_by": "repository-maintainer",
+      "approved_at": "2026-05-24T18:00:00Z",
+      "policy_id": "write-approval-required"
+    },
+    "rollback": {
+      "strategy": "delete_created_file",
+      "reason": "Delete the created file if validation fails or the run is rejected."
+    }
+  }
+}

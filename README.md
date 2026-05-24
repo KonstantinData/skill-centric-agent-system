@@ -23,9 +23,13 @@ through `SCAS_RUNTIME_DATABASE_URL`. Runtime profile enforcement now fail-closes
 unselected tools/scopes and exhausted tool, token, duration, data-read,
 memory-op, and recomposition budgets. The Tool Gateway now applies per-tool
 allowlists, risk gating, blocked argument checks, timeouts, output limits, and
-access audit events. The Runtime Context Manager now calls the Control API
-retrieval endpoint for profile-bounded knowledge/memory context and rejects
-scope-expanded responses. The Validator phase now runs the validator IDs
+access audit events. It also exposes the first controlled write adapter,
+`filesystem-write`, which requires a profile-selected `repository-write` data
+scope, `write-approval-required` policy, high-risk gating, structured approval,
+rollback metadata, relative paths, and dry-run-by-default execution. The Runtime
+Context Manager now calls the Control API retrieval endpoint for
+profile-bounded knowledge/memory context and rejects scope-expanded responses.
+The Validator phase now runs the validator IDs
 selected by the active profile and fail-closes unknown or failed validators.
 Controlled recomposition now emits `recomposition_requested`, stops the current
 run with `needs_recomposition`, asks the Composer for a new immutable profile
@@ -120,6 +124,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
 - `schemas/runtime-output.schema.json`: JSON Schema for task-class-specific runtime outputs.
+- `schemas/write-approval-policy.schema.json`: JSON Schema for controlled write approval policy.
 - `schemas/notion-issue-comment-audit.schema.json`: JSON Schema for Notion issue comment audit summaries.
 - `schemas/environment-manifest.schema.json`: JSON Schema for the environment separation manifest.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
@@ -132,7 +137,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
-- `policies/runtime/`: runtime policy fixtures for skill handler versioning and rollback.
+- `policies/runtime/`: runtime policy fixtures for skill handler versioning, rollback, and controlled write approval.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
 - `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, executable skill handlers, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
@@ -150,7 +155,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
 - `examples/runtime-outputs/`: representative validated runtime output payloads.
-- `examples/runtime/`: deterministic runtime governance manifests such as skill handler coverage.
+- `examples/runtime/`: deterministic runtime governance manifests and action-plan examples.
 - `examples/infrastructure/`: environment separation manifest for dev, staging, and prod.
 - `examples/governance/`: representative knowledge/data-quality policy fixtures.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.

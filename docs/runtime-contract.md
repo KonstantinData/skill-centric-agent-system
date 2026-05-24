@@ -185,6 +185,55 @@ When a single string payload exceeds the artifact store inline threshold, it
 must be split into text chunks with a manifest URI stored in the parent JSON
 artifact.
 
+## Controlled Write Path
+
+Write-capable runtime execution is disabled unless the active profile selects a
+write tool, the matching write data scope, and the required write policy. The
+first controlled write adapter is:
+
+```text
+filesystem-write
+```
+
+It accepts only structured `write_text_file` action plans. It does not execute
+free-form shell strings, command arrays, or task-provided scripts.
+
+`filesystem-write` requires:
+
+- `tools` contains `filesystem-write`,
+- `data_scopes` contains `repository-write`,
+- `policies` contains `write-approval-required`,
+- `risk_level` is at least `high`,
+- the payload includes approval fields `approval_id`, `approved_by`,
+  `approved_at`, and `policy_id`,
+- the payload includes rollback metadata.
+
+Dry-run planning is the default when the payload does not set boolean
+`apply: true`; non-boolean apply values are rejected. Paths must be relative to
+the repository root. New files require rollback strategy `delete_created_file`;
+overwrites require rollback strategy `restore_previous_content`. The first
+slice records rollback metadata and content hashes, not raw previous content,
+to avoid leaking secrets through audit artifacts.
+
+The machine-readable policy is:
+
+```text
+policies/runtime/write-approval-required.json
+```
+
+The policy contract is:
+
+```text
+schemas/write-approval-policy.schema.json
+```
+
+The example profile and action plan are:
+
+```text
+examples/profiles/controlled-write-profile.json
+examples/runtime/controlled-write-action-plan.json
+```
+
 ## Context Retrieval
 
 The Context Manager must not read knowledge or memory stores directly. It must

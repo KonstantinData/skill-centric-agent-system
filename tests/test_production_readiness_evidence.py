@@ -114,6 +114,10 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
     assert "Credential values are not written" in payload["sensitive_data_handling"]
     assert any(result["gate"] == "Repository integrity" for result in payload["gate_results"])
     assert any(result["gate"] == "Executable skill runtime" for result in payload["gate_results"])
+    assert any(
+        result["gate"] == "Controlled write-capable execution"
+        for result in payload["gate_results"]
+    )
 
 
 def test_certify_mode_requires_both_external_run_urls() -> None:
@@ -175,7 +179,27 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
     assert payload["status"] == "not-production-ready"
     assert payload["final_decision"] == "not-certified"
     assert not any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
+    assert not any(gap["id"] == "P5.05" for gap in payload["open_release_gaps"])
     assert any(gap["id"] == "P5.06" for gap in payload["open_release_gaps"])
+
+
+def test_write_release_scope_uses_controlled_write_gate_without_open_p5_05_gap() -> None:
+    payload = evidence.build_evidence(
+        repository=REPOSITORY,
+        commit=COMMIT,
+        workflow_run_id="111",
+        workflow_run_attempt="1",
+        target_environment="dev",
+        release_scope="controlled-write-runtime",
+        certification_mode="evidence-only",
+        generated_at="2026-05-24T13:00:00+00:00",
+    )
+
+    assert any(
+        result["gate"] == "Controlled write-capable execution"
+        for result in payload["gate_results"]
+    )
+    assert not any(gap["id"] == "P5.05" for gap in payload["open_release_gaps"])
 
 
 def test_certify_mode_rejects_wrong_external_workflow() -> None:

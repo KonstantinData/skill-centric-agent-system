@@ -1,0 +1,23 @@
+{
+  "policy_id": "write-approval-required",
+  "version": "0.1.0",
+  "applies_to_tools": [
+    "filesystem-write"
+  ],
+  "required_data_scope": "repository-write",
+  "required_profile_policy": "write-approval-required",
+  "allowed_operations": [
+    "write_text_file"
+  ],
+  "approval_fields": [
+    "approval_id",
+    "approved_by",
+    "approved_at",
+    "policy_id"
+  ],
+  "rollback": {
+    "new_file_strategy": "delete_created_file",
+    "overwrite_strategy": "restore_previous_content",
+    "metadata_only_first_slice": true
+  }
+}
