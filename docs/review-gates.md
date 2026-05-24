@@ -42,6 +42,19 @@ These controls guide agent work and should be easy to run locally:
 Optional pre-commit hooks may run these checks locally, but the authoritative
 blocking decision belongs to CI and branch protection.
 
+## Post-Merge Lifecycle
+
+Merged topic branches should be cleaned up with the repository-owned runbook in
+`docs/post-merge-lifecycle.md`. The supporting dry-run command is:
+
+```powershell
+python scripts\repo\post_merge_cleanup.py --pr <number>
+```
+
+The cleanup script verifies that the PR is merged before planning local or
+remote branch deletion and records the Notion completion evidence that still
+must be written by the agent or maintainer.
+
 ## Waivers
 
 A waiver is allowed only when it records:
