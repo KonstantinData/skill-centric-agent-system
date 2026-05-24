@@ -381,6 +381,9 @@ Implemented:
   evidence across code-review and project-memory task signals.
 - Runtime output contracts exist for `code-review`, `research`,
   `task-execution`, and `general-task`, with profile-selected validators.
+- The first production skill handler runtime slice resolves selected skills to
+  exact `name@version` executable handlers and fails closed on unknown or
+  mismatched handler bindings.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -392,7 +395,8 @@ Not yet implemented:
 - Production release certification run against staging and production live
   infrastructure. The evidence workflow can verify external live run metadata,
   but the final certification gate remains pending.
-- Production skill handler runtime with version-pinned executable handlers.
+- Broader production skill handler coverage beyond the first built-in handler
+  set.
 - Controlled write-capable execution path, if production scope includes writes.
 - Scheduled runtime retention cleanup automation.
 - Broader telemetry for retrieval, validation, and cleanup operations.
@@ -438,10 +442,12 @@ Completed:
 33. Extended live dev E2E and retrieval/Vectorize smoke gates.
 34. Production release evidence workflow with same-repository, same-commit
     external run metadata validation.
+35. Production skill handler runtime first slice with version-pinned built-in
+    handlers.
 
 Next:
 
 1. Provision and validate staging/prod resources from the environment manifest.
-2. Complete `P5.04 Production Skill Handler Runtime`.
+2. Expand production skill handler coverage beyond the first built-in handler set.
 3. Add scheduled retention cleanup automation and production telemetry.
 4. Complete production security closure and final certification.

@@ -38,12 +38,15 @@ API now requires bearer authentication for every non-health route and supports
 endpoint-scoped tokens. The Task Analyzer has evaluation coverage for
 code-review, research, task-execution, and general tasks. Composition scoring
 has positive and negative evaluation fixtures, and runtime artifacts chunk large
-string payloads into manifest-referenced text chunks.
+string payloads into manifest-referenced text chunks. The first production
+skill handler runtime slice now binds selected skill metadata to exact
+`name@version` executable handlers and fails closed on unknown or mismatched
+handler bindings before tool execution.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
 implemented. Queue-backed Cloudflare embedding indexing, runtime retention
 cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
-output contracts, and first-slice generic runtime strategies are implemented.
+output contracts, and first-slice executable skill handlers are implemented.
 Broader runtime planning quality and production-scale telemetry remain explicit
 backlog themes and must not obscure the runtime entry gate. The repository now
 has a dedicated Production Readiness Gate in `docs/production-readiness.md`.
@@ -172,7 +175,7 @@ introduced.
 Status: storage contracts, initial run start path, profile-scoped Tool Gateway,
 fail-closed profile enforcement, and minimal runtime loop complete for
 `code-review`, `research`, `task-execution`, and `general-task` first-slice
-strategies.
+handlers.
 
 ## Phase 6B: Productive Runtime Core
 
@@ -213,9 +216,9 @@ OpenAI provider auth, and optional Authenticated Gateway auth; queue-backed
 embedding indexing is implemented; runtime retention cleanup execution is
 implemented with dry-run-first apply behavior, safe URI resolution, missing-file
 reporting, and cleanup reports. Generic runtime output contracts, task-type
-strategy dispatch, research/task-execution/general runtime fixtures, and an
-extended live generic E2E gate are implemented. Scheduled cleanup automation and
-broader telemetry remain pending.
+profile-selected skill handler dispatch, research/task-execution/general runtime
+fixtures, and an extended live generic E2E gate are implemented. Scheduled
+cleanup automation and broader telemetry remain pending.
 
 ## Phase 8: Production Release Readiness
 
@@ -231,7 +234,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 3. Add a production release evidence workflow. (Initial evidence-only workflow
    and certification run metadata validation complete; full certification
    remains pending until the later production gates are complete.)
-4. Add production skill handler runtime support.
+4. Add production skill handler runtime support. (Initial version-pinned
+   built-in handler registry complete.)
 5. Add controlled write-capable execution only behind explicit safety gates.
 6. Add scheduled runtime retention cleanup automation.
 7. Add production telemetry and alerting.
@@ -244,6 +248,7 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 Status: started. The gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
-implemented. Provisioning, skill handler runtime, telemetry, full security
-closure, and the final certification run against live production infrastructure
-remain pending.
+implemented. The first production skill handler runtime slice is implemented.
+Provisioning, telemetry, full security closure, broader production handler
+coverage, and the final certification run against live production
+infrastructure remain pending.

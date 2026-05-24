@@ -109,6 +109,29 @@ class RuntimeProfileEnforcer:
                 code="tool_not_in_runtime_profile",
             )
 
+    def require_skill(self, skill_name: str) -> None:
+        if skill_name not in self.profile.get("skills", []):
+            raise ProfileEnforcementError(
+                f"Skill is not allowed by runtime profile: {skill_name}",
+                stop_reason="policy_denied",
+                code="skill_not_in_runtime_profile",
+            )
+
+    def require_module_version(self, module_name: str, expected_version: str) -> None:
+        module_versions = self.profile.get("module_versions", {})
+        actual_version = (
+            module_versions.get(module_name) if isinstance(module_versions, Mapping) else None
+        )
+        if actual_version != expected_version:
+            raise ProfileEnforcementError(
+                (
+                    f"Module version mismatch for {module_name}: "
+                    f"expected {expected_version}, got {actual_version}."
+                ),
+                stop_reason="policy_denied",
+                code="module_version_mismatch",
+            )
+
     def require_tool_risk(self, tool_name: str, tool_risk_level: str) -> None:
         profile_risk_level = str(self.profile.get("risk_level", "low"))
         if _risk_rank(tool_risk_level) > _risk_rank(profile_risk_level):

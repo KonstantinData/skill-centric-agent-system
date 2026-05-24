@@ -58,17 +58,19 @@ payloads into manifest-referenced text chunks.
 The current dev Control Plane can answer `POST /composition/context` with real
 D1-backed module candidates such as `git-diff-analysis`. The Python composer can
 consume that Control Plane response and emit a version-pinned runtime profile.
-The Python runtime can execute deterministic first-slice strategies for
-`code-review`, `research`, `task-execution`, and `general-task`, and each
-strategy emits a task-class-specific `runtime_output` validated by the active
-profile.
+The Python runtime now resolves profile-selected skills to exact
+`name@version` executable handlers for the first runtime slice, including
+`git-diff-analysis`, `research-context-synthesis`, `task-execution-planning`,
+and `general-task-summary`. Unknown selected skills and handler version
+mismatches fail closed before tool execution, and each run still emits a
+task-class-specific `runtime_output` validated by the active profile.
 
 The repository is currently `not-production-ready` for a full production
 launch. It has an initial productive runtime core, but production-ready status
 requires the release evidence gate in `docs/production-readiness.md`, including
-staging/prod environment separation, executable skill handlers, operational
-telemetry, security closure, and a certification run against the target
-environment. The first environment separation manifest is now recorded in
+staging/prod environment separation, broader production handler coverage,
+operational telemetry, security closure, and a certification run against the
+target environment. The first environment separation manifest is now recorded in
 `examples/infrastructure/environment-manifest.json`, but staging/prod resources
 still need to be provisioned and validated before any production-ready claim.
 The manual Production Readiness Evidence workflow records repository and Worker
@@ -121,7 +123,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
 - `src/skill_centric_agent_system/composition/`: Task Analyzer, Control Plane client, and Runtime Profile Composer.
-- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
+- `src/skill_centric_agent_system/runtime/`: Runtime Entry Point, controlled recomposition continuation, Context Manager, executable skill handlers, Flight Recorder writer, profile enforcement, runtime storage ports, PostgreSQL storage session, and JSON artifact store.
 - `src/skill_centric_agent_system/registries/`: local deterministic registry implementation.
 - `src/skill_centric_agent_system/control_plane/`: control-plane seed generation utilities.
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, queue-backed indexing, retrieval, and AI Gateway routes.
@@ -401,5 +403,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 ## Next Steps
 
 1. Provision and validate staging/prod resources from the environment manifest.
-2. Implement `P5.04 Production Skill Handler Runtime`.
+2. Expand production skill handler coverage beyond the first built-in handler set.
 3. Add scheduled runtime retention cleanup automation and production telemetry.

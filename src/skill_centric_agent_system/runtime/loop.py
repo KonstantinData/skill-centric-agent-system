@@ -22,6 +22,10 @@ from skill_centric_agent_system.runtime.models import (
     slug_id,
 )
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
+from skill_centric_agent_system.runtime.skill_handlers import (
+    BUILTIN_SKILL_HANDLER_REGISTRY,
+    SkillHandlerRegistry,
+)
 from skill_centric_agent_system.runtime.storage import FlightRecorder, RuntimeStore
 from skill_centric_agent_system.runtime.tool_gateway import (
     ToolDeniedError,
@@ -78,11 +82,13 @@ class MinimalRuntimeLoop:
         artifacts: JsonArtifactStore,
         repository_root: str | Path,
         control_plane_client: RetrievalContextClient | None = None,
+        skill_handlers: SkillHandlerRegistry | None = None,
     ) -> None:
         self.store = store
         self.artifacts = artifacts
         self.repository_root = Path(repository_root)
         self.control_plane_client = control_plane_client
+        self.skill_handlers = skill_handlers or BUILTIN_SKILL_HANDLER_REGISTRY
         self.recorder = FlightRecorder(store, artifacts)
 
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
@@ -334,7 +340,11 @@ class MinimalRuntimeLoop:
             planned_action={"phase": "planner", "context_keys": sorted(context)},
             redact_sensitive_data=redact_sensitive_data,
         )
-        plan = _plan_for_profile(profile)
+        plan = _plan_for_profile(
+            profile,
+            enforcer=enforcer,
+            skill_handlers=self.skill_handlers,
+        )
         self.recorder.checkpoint(
             run_id=run_id,
             step_id=str(step["id"]),
@@ -590,56 +600,25 @@ def _task_type(profile: Mapping[str, Any]) -> str:
     return "general-task"
 
 
-def _plan_for_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
+def _plan_for_profile(
+    profile: Mapping[str, Any],
+    *,
+    enforcer: RuntimeProfileEnforcer,
+    skill_handlers: SkillHandlerRegistry,
+) -> dict[str, Any]:
     task_type = _task_type(profile)
-    tools = {str(tool) for tool in profile.get("tools", [])}
+    skill_plan = skill_handlers.build_plan(profile, enforcer=enforcer)
     base = {
         "objective": profile["objective"],
         "task_type": task_type,
         "selected_modules": selected_modules(profile),
     }
-
-    if task_type == "code-review":
-        return {
-            **base,
-            "strategy": "code-review-readonly",
-            "output_contract": "review-findings-contract",
-            "actions": [
-                {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
-                {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
-            ],
-        }
-
-    if task_type == "research":
-        return {
-            **base,
-            "strategy": "research-context-synthesis",
-            "output_contract": "research-output-contract",
-            "actions": [],
-        }
-
-    if task_type == "task-execution":
-        actions: list[dict[str, Any]] = []
-        if "git-read" in tools:
-            actions.append({"tool": "git-read", "payload": {"args": ["status", "--short"]}})
-        if "filesystem-list" in tools:
-            actions.append({"tool": "filesystem-list", "payload": {"path": ".", "max_entries": 80}})
-        if "filesystem-read" in tools:
-            actions.append(
-                {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}}
-            )
-        return {
-            **base,
-            "strategy": "conservative-task-execution",
-            "output_contract": "task-execution-output-contract",
-            "actions": actions,
-        }
-
     return {
         **base,
-        "strategy": "general-task-summary",
-        "output_contract": "general-output-contract",
-        "actions": [],
+        "strategy": skill_plan.strategy,
+        "output_contract": skill_plan.output_contract,
+        "skill_handlers": list(skill_plan.skill_handlers),
+        "actions": list(skill_plan.actions),
     }
 
 

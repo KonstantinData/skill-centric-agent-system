@@ -82,16 +82,21 @@ for a single execution attempt. Recomposition creates a new profile generation
 with a parent profile reference and reason, then continues through a new run
 attempt instead of changing the active profile in place.
 
-`Single Agent Runtime` executes the task through context management, planning, execution, validation, and response. It cannot grant itself tools, data, memory, or knowledge outside the profile.
+`Single Agent Runtime` executes the task through context management, planning,
+execution, validation, and response. It cannot grant itself skills, tools, data,
+memory, or knowledge outside the profile.
 
 `Context Manager` loads only relevant instructions, knowledge, memory, and prior
 tool results allowed by the profile. Knowledge and memory retrieval must go
 through the bounded Cloudflare `POST /retrieval/context` endpoint instead of
 direct broad store reads.
 
-`Planner` creates and revises the task plan inside profile constraints and budgets.
+`Planner` creates and revises the task plan inside profile constraints and
+budgets. Executable skill behavior is resolved through the runtime skill handler
+registry by exact selected skill name and `module_versions` pin.
 
-`Executor` invokes selected skills, allowed tools, and scoped data access. Every invocation must be checked against profile permissions and remaining limits.
+`Executor` invokes selected skills, allowed tools, and scoped data access. Every
+invocation must be checked against profile permissions and remaining limits.
 
 `Validator` checks profile integrity before execution, then output contracts, policy compliance, unauthorized access, and task completion before final response or action.
 
@@ -164,8 +169,9 @@ The current repository has implemented the first control-plane slice:
   separation, and disable paths,
 - a minimal Single Agent Runtime loop that executes context, planner, executor,
   and validator phases against the composed profile, with deterministic
-  strategies for `code-review`, `research`, `task-execution`, and
-  `general-task`,
+  version-pinned executable skill handlers for `git-diff-analysis`,
+  `research-context-synthesis`, `task-execution-planning`, and
+  `general-task-summary`,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
   R2 objects and D1 metadata,
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
@@ -186,7 +192,8 @@ The following architecture components are still pending implementation:
 
 - staging and production environment separation,
 - production release evidence workflow,
-- production skill handler runtime with metadata-to-code binding,
+- broader production skill handler coverage beyond the first built-in handler
+  set,
 - controlled write-capable execution path when production scope includes writes,
 - scheduled retention cleanup automation,
 - broader operational telemetry around retrieval, validation, and cleanup,
@@ -206,10 +213,10 @@ validation scenarios live in `docs/runtime-preflight.md`.
 
 Production-ready status is a separate release decision. It requires the
 evidence gate in `docs/production-readiness.md`, including environment
-separation, release evidence, executable skill handlers, operational telemetry,
-security closure, and certification against the target environment. Until that
-gate passes, the repository must be described as `not-production-ready` for a
-full production launch.
+separation, release evidence, broader production handler coverage, operational
+telemetry, security closure, and certification against the target environment.
+Until that gate passes, the repository must be described as
+`not-production-ready` for a full production launch.
 
 ## Operational Baseline
 

@@ -40,6 +40,14 @@ from skill_centric_agent_system.runtime.retention import (
     RuntimeRetentionPolicy,
     retention_plan_to_json,
 )
+from skill_centric_agent_system.runtime.skill_handlers import (
+    BUILTIN_SKILL_HANDLER_REGISTRY,
+    RuntimeSkillPlan,
+    SkillHandler,
+    SkillHandlerPlan,
+    SkillHandlerRegistrationError,
+    SkillHandlerRegistry,
+)
 from skill_centric_agent_system.runtime.storage import (
     FlightRecorder,
     InMemoryRuntimeStore,
@@ -83,6 +91,7 @@ __all__ = [
     "RuntimeRetentionError",
     "RuntimeRetentionExecutor",
     "RuntimeProfileEnforcer",
+    "RuntimeSkillPlan",
     "ResolvedArtifactUri",
     "RuntimeContextManager",
     "RecompositionRequest",
@@ -97,10 +106,15 @@ __all__ = [
     "RuntimeValidationError",
     "RuntimeValidationOutcome",
     "RuntimeValidatorFramework",
+    "SkillHandler",
+    "SkillHandlerPlan",
+    "SkillHandlerRegistrationError",
+    "SkillHandlerRegistry",
     "ToolDeniedError",
     "ToolExecutionError",
     "ToolGateway",
     "ToolInvocationResult",
+    "BUILTIN_SKILL_HANDLER_REGISTRY",
     "profile_redacts_sensitive_data",
     "open_runtime_store_session",
     "redact_sensitive_data",
