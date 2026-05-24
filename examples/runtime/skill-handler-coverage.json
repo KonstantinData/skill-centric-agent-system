@@ -97,4 +97,51 @@
       "coverage_status": "covered",
       "handler_id": "research-context-synthesis@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/rese
+      "module_path": "examples/modules/research-context-synthesis.json",
+      "module_tests": [
+        "research-context-synthesis-positive",
+        "research-context-synthesis-denies-deploy"
+      ],
+      "output_contract": "research-output-contract",
+      "production_required": true,
+      "required_tools": [],
+      "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_tests": [
+        "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+      ],
+      "skill_name": "research-context-synthesis",
+      "skill_version": "0.1.0",
+      "strategy": "research-context-synthesis"
+    },
+    {
+      "coverage_status": "covered",
+      "handler_id": "task-execution-planning@0.1.0",
+      "lifecycle_status": "active",
+      "module_path": "examples/modules/task-execution-planning.json",
+      "module_tests": [
+        "task-execution-planning-positive",
+        "task-execution-planning-denies-destructive"
+      ],
+      "output_contract": "task-execution-output-contract",
+      "production_required": true,
+      "required_tools": [
+        "filesystem-read",
+        "filesystem-list",
+        "git-read"
+      ],
+      "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_tests": [
+        "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+      ],
+      "skill_name": "task-execution-planning",
+      "skill_version": "0.1.0",
+      "strategy": "conservative-task-execution"
+    }
+  ],
+  "summary": {
+    "covered_skill_count": 6,
+    "missing_handler_count": 0,
+    "production_required_skill_count": 6,
+    "skill_count": 6
+  }
+}
