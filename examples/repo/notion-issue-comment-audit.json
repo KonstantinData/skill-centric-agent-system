@@ -1,0 +1,43 @@
+{
+  "audit_version": "1.0",
+  "audited_at": "2026-05-24T17:50:00+02:00",
+  "database": "SCAS - Issues & Open Questions",
+  "scope": "Example audit summary for active and recent SCAS issue records.",
+  "criteria": {
+    "requires_page_level_comment": true,
+    "requires_task_description": true,
+    "allows_retrospective_backfill": true
+  },
+  "summary": {
+    "audited_issue_count": 3,
+    "comment_covered_count": 3,
+    "backfilled_count": 1,
+    "tracked_follow_up_count": 0
+  },
+  "issues": [
+    {
+      "page_id": "36a1c1ac-5ec0-810f-896e-c76465bba135",
+      "topic": "Implement P6.03 Notion Issue Comment Coverage Audit",
+      "status": "In progress",
+      "has_task_describing_comment": true,
+      "coverage_status": "covered",
+      "comment_summary": "Task start comment describes the requested outcome, scope, assumption, and next action."
+    },
+    {
+      "page_id": "36a1c1ac-5ec0-8121-a2cc-d0269a9615ae",
+      "topic": "Complete P5.03 Production Release Evidence Workflow",
+      "status": "Done",
+      "has_task_describing_comment": true,
+      "coverage_status": "backfilled",
+      "comment_summary": "Retrospective task note describes the completed workflow, PR, verification, and branch cleanup."
+    },
+    {
+      "page_id": "36a1c1ac-5ec0-8175-8346-c686e83ccca5",
+      "topic": "Resume complete SCAS Feature Backlog execution",
+      "status": "In progress",
+      "has_task_describing_comment": true,
+      "coverage_status": "covered",
+      "comment_summary": "Existing comment thread records task start and backlog execution progress."
+    }
+  ]
+}

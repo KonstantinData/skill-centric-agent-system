@@ -108,6 +108,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
 - `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
 - `docs/skill-handler-version-policy.md`: executable skill handler versioning, deprecation, and rollback policy.
+- `docs/notion-issue-tracking.md`: Notion Issues & Open Questions comment and audit standard.
 - `docs/post-merge-lifecycle.md`: post-merge cleanup and Notion completion runbook.
 - `docs/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
@@ -119,6 +120,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
 - `schemas/runtime-output.schema.json`: JSON Schema for task-class-specific runtime outputs.
+- `schemas/notion-issue-comment-audit.schema.json`: JSON Schema for Notion issue comment audit summaries.
 - `schemas/environment-manifest.schema.json`: JSON Schema for the environment separation manifest.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
@@ -138,7 +140,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `workers/control-api/`: Cloudflare Control API Worker with composition, ingestion, queue-backed indexing, retrieval, and AI Gateway routes.
 - `scripts/cloudflare/`: Cloudflare bootstrap and D1 seed scripts.
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
-- `scripts/repo/`: repository lifecycle utilities such as post-merge branch cleanup.
+- `scripts/repo/`: repository lifecycle utilities such as post-merge branch cleanup and Notion issue-comment audit validation.
 - `scripts/runtime/`: live runtime gate scripts.
 - `scripts/security/`: secret, workflow, ruleset, dependency, Actions-BOM, and SBOM governance scripts.
 - `examples/modules/`: representative selectable module metadata.

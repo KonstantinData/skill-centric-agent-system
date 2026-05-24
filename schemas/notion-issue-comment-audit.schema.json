@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:notion-issue-comment-audit",
+  "title": "SCAS Notion Issue Comment Audit",
+  "type": "object",
+  "required": [
+    "audit_version",
+    "audited_at",
+    "database",
+    "scope",
+    "criteria",
+    "summary",
+    "issues"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "audit_version": {
+      "type": "string",
+      "pattern": "^1\\.0$"
+    },
+    "audited_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "database": {
+      "const": "SCAS - Issues & Open Questions"
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "criteria": {
+      "type": "object",
+      "required": [
+        "requires_page_level_comment",
+        "requires_task_description",
+        "allows_retrospective_backfill"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requires_page_level_comment": {
+          "const": true
+        },
+        "requires_task_description": {
+          "const": true
+        },
+        "allows_retrospective_backfill": {
+          "const": true
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "audited_issue_count",
+        "comment_covered_count",
+        "backfilled_count",
+        "tracked_follow_up_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "audited_issue_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "comment_covered_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backfilled_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tracked_follow_up_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "page_id",
+          "topic",
+          "status",
+          "has_task_describing_comment",
+          "coverage_status",
+          "comment_summary"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "topic": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": ["Not started", "In progress", "Done"]
+          },
+          "has_task_describing_comment": {
+            "type": "boolean"
+          },
+          "coverage_status": {
+            "enum": ["covered", "backfilled", "tracked_follow_up"]
+          },
+          "comment_summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "follow_up": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
