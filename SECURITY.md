@@ -41,6 +41,29 @@ If a secret is committed or logged:
 4. Record the affected path, remediation, owner, and timestamp in the security
    issue or release evidence.
 
+## Token Scope And Rotation
+
+Production security closure is tracked in
+`policies/security/production-security-closure.json` and validated by
+`python scripts/security/validate_security_closure.py`.
+
+Release candidates must review these secrets before certification:
+
+- `CLOUDFLARE_API_TOKEN`: scoped to the target account, environment, and
+  workflow purpose; Worker script write permission is required only for deploy
+  jobs.
+- `CONTROL_API_TOKEN`: endpoint-scoped where practical; all-scope automation
+  token only for trusted jobs that need all protected endpoints.
+- `OPENAI_API_KEY`: provider key stored as a Worker or GitHub Actions secret.
+- `AI_GATEWAY_AUTH_TOKEN`: optional Cloudflare Authenticated Gateway token,
+  rotated independently from the provider key.
+- `HETZNER_SSH_KEY`: environment-specific Runtime Plane host access, validated
+  as a private OpenSSH key before use.
+
+Rotate the relevant secret immediately after suspected exposure and before any
+production certification that depends on a stale, unknown-owner, or reused
+credential.
+
 ## Required Security Gates
 
 Production-ready claims require passing:
@@ -52,6 +75,7 @@ Production-ready claims require passing:
 - dependency and vulnerability review,
 - workflow hardening and pinned-action checks,
 - CODEOWNERS and main-branch protection desired-state validation,
+- production security closure validation,
 - data-governance and quality-contract tests.
 
 Security or governance waivers must include an owner, expiry condition, risk,

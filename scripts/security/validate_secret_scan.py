@@ -27,6 +27,7 @@ ALLOWED_FINDING_TYPES_BY_PATH = {
     ".github/workflows/live-runtime-gates.yml": {"Private Key"},
     ".github/workflows/runtime-retention-cleanup.yml": {"Private Key"},
     "examples/infrastructure/environment-manifest.json": {"Secret Keyword"},
+    "policies/security/production-security-closure.json": {"Secret Keyword"},
 }
 
 

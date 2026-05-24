@@ -69,15 +69,18 @@ REPOSITORY_GATE_RESULTS = (
             "python -m pytest tests/test_production_telemetry_alerting.py"
         ),
     ),
+    (
+        "Security hardening and threat model closure",
+        (
+            "python scripts/security/validate_security_closure.py; "
+            "python -m pytest tests/test_security_closure.py "
+            "tests/test_security_governance.py"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
-    {
-        "id": "P5.08",
-        "gate": "Security closure",
-        "reason": "Production threat model closure and token-scope review are not complete.",
-    },
     {
         "id": "P5.09",
         "gate": "Analyzer, composer, and human review quality",

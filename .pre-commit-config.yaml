@@ -16,3 +16,8 @@ repos:
         entry: python scripts/security/validate_dependency_policy.py
         language: system
         pass_filenames: false
+      - id: scas-security-closure
+        name: scas-security-closure
+        entry: python scripts/security/validate_security_closure.py
+        language: system
+        pass_filenames: false

@@ -19,6 +19,7 @@ or production evidence:
 - main-branch ruleset desired-state validation,
 - schema and contract tests,
 - data-governance and quality-policy tests,
+- production security closure validation,
 - production-readiness evidence for release claims.
 
 ## High-Impact Paths
@@ -35,6 +36,7 @@ These controls guide agent work and should be easy to run locally:
 - `python scripts/security/check_no_dotenv_files.py`
 - `python scripts/security/validate_ruleset_config.py`
 - `python scripts/security/validate_dependency_policy.py`
+- `python scripts/security/validate_security_closure.py`
 - `python scripts/security/check_workflow_hardening.py`
 - `python scripts/security/generate_actions_bom.py`
 - `python scripts/security/validate_actions_bom.py`

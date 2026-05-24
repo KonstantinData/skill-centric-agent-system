@@ -34,6 +34,7 @@ jobs:
           python scripts/security/check_no_dotenv_files.py
           python scripts/security/validate_ruleset_config.py
           python scripts/security/validate_dependency_policy.py
+          python scripts/security/validate_security_closure.py
 
   secret-scan:
     name: Secret scanning
