@@ -1,0 +1,61 @@
+{
+  "contract_version": "0.1.0",
+  "policy_id": "scas-knowledge-quality-baseline",
+  "applies_to": [
+    "knowledge_source",
+    "knowledge_document",
+    "memory_record",
+    "data_scope"
+  ],
+  "source_quality_rules": {
+    "required_metadata": [
+      "owner",
+      "source_type",
+      "uri",
+      "sensitivity",
+      "scope_id",
+      "retention_policy"
+    ],
+    "allowed_source_types": [
+      "repo",
+      "notion",
+      "r2",
+      "url",
+      "manual"
+    ],
+    "allowed_sensitivities": [
+      "public",
+      "internal",
+      "confidential"
+    ],
+    "minimum_confidence_weight": 0.5,
+    "freshness_review_days": 90
+  },
+  "ingestion_controls": {
+    "cloudflare_rejects_raw_runtime_artifacts": true,
+    "secret_sensitivity_allowed": false,
+    "requires_owner": true,
+    "requires_scope_binding": true,
+    "requires_retention_policy": true
+  },
+  "acceptance_gates": [
+    {
+      "gate_id": "owner-required",
+      "severity": "mandatory",
+      "condition": "Every production source declares an accountable owner.",
+      "failure_action": "block"
+    },
+    {
+      "gate_id": "secret-rejected",
+      "severity": "mandatory",
+      "condition": "Secret sensitivity is never accepted into knowledge, memory, CI artifacts, or release evidence.",
+      "failure_action": "block"
+    },
+    {
+      "gate_id": "low-confidence-review",
+      "severity": "quality",
+      "condition": "Sources below the minimum confidence weight require explicit review before production use.",
+      "failure_action": "request_review"
+    }
+  ]
+}

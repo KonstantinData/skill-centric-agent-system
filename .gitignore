@@ -52,6 +52,9 @@ coverage.xml
 cover/
 .wrangler/
 .scas-runtime/
+security-evidence/
+.secrets.scan.json
+.gitleaks.report.json
 coverage/
 node_modules/
 template/

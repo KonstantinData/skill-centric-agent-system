@@ -35,8 +35,10 @@ is satisfied for the target environment.
 
 | Gate | Required Evidence |
 | --- | --- |
-| Repository integrity | `python -m pytest`, `python -m ruff check .`, `npm run worker:typecheck`, `npm run worker:test`, and `npm run worker:check` pass on the release commit. |
+| Repository integrity | `python -m pytest`, `python -m ruff check .`, security governance scripts, `npm run worker:typecheck`, `npm run worker:test`, and `npm run worker:check` pass on the release commit. |
 | Contract and documentation consistency | README, architecture, contracts, schemas, examples, runbooks, and ADRs are consistent with the release scope. |
+| Repository security and supply chain | Secret scanning, tracked `.env` guard, dependency policy, Dependency Review, CodeQL, workflow hardening, pinned Actions, Actions-BOM, SBOM generation, CODEOWNERS, and main-protection desired-state validation pass. |
+| Data governance and quality | Data classification, model privacy, audit minimization, and knowledge/data-quality policy fixtures are current and tested. |
 | Environment separation | Cloudflare and Hetzner resources are separated for `staging` and `prod`; secrets, databases, artifact roots, queues, indexes, and roles do not share mutable production state with `dev`. |
 | Control Plane readiness | Cloudflare Worker, D1, R2, Vectorize, Queues, KV, AI Gateway, bearer auth, endpoint-scoped tokens, migrations, seed state, and rollback path are verified. |
 | Runtime Plane readiness | Hetzner PostgreSQL, runtime roles, migrations, artifact root, Flight Recorder writes, retention planning, backup, restore, and disable paths are verified. |
@@ -88,6 +90,10 @@ The production readiness backlog is ordered by dependency and release risk:
 8. `P5.08 Security Hardening and Threat Model Closure`
    Complete security review, threat model updates, token scope checks, and
    finding remediation.
+   Initial repository security and governance gates now cover secret scanning,
+   `.env` guard, CODEOWNERS, main-protection desired-state validation,
+   dependency policy, workflow hardening, Actions-BOM, release SBOM, data
+   governance, and quality-policy tests.
 9. `P5.09 Analyzer, Composer, and Human Review Quality Gate`
    Expand evaluation coverage and make ambiguous production tasks enter a
    human-review path instead of overgranting.
@@ -118,9 +124,11 @@ does not replace committed release criteria.
 ## Evidence Workflow
 
 The manual `.github/workflows/production-readiness.yml` workflow records
-repository and Worker gates in `production-readiness-evidence.json` and uploads
-that file as a workflow artifact. `evidence-only` mode supports implementation
-progress while staging and production infrastructure are still being prepared.
+repository, security governance, and Worker gates in
+`production-readiness-evidence.json`, generates non-secret
+`security-evidence/*.json` artifacts, and uploads those files as workflow
+artifacts. `evidence-only` mode supports implementation progress while staging
+and production infrastructure are still being prepared.
 `certify` mode requires references to matching live runtime and AI Gateway
 smoke workflow runs.
 

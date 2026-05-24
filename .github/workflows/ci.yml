@@ -26,17 +26,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contracts:
     name: Contract tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
 
@@ -64,13 +69,14 @@ jobs:
   worker:
     name: Cloudflare Worker
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           cache: npm
@@ -96,6 +102,7 @@ jobs:
   deploy-control-api-dev:
     name: Deploy Cloudflare Control API dev
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: worker
     if: |
       github.event_name == 'workflow_dispatch' &&
@@ -113,10 +120,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           cache: npm
@@ -233,6 +240,7 @@ jobs:
   infrastructure-smoke:
     name: Infrastructure smoke test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.event_name == 'workflow_dispatch' && inputs.run_infra_smoke == true
 
     env:
@@ -247,7 +255,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Check required secrets are present
         shell: bash
@@ -300,7 +308,7 @@ jobs:
 
           if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
             echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
-            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----"
+            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" # pragma: allowlist secret
             exit 1
           fi
 

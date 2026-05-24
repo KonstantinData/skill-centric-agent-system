@@ -27,6 +27,8 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
 
     required_gates = (
         "Repository integrity",
+        "Repository security and supply chain",
+        "Data governance and quality",
         "Environment separation",
         "Control Plane readiness",
         "Runtime Plane readiness",

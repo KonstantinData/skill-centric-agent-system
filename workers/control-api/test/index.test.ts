@@ -1103,7 +1103,7 @@ describe("control API worker", () => {
       testEnv({
         AI_GATEWAY_ACCOUNT_ID: "test-account",
         AI_GATEWAY_ID: "default",
-        OPENAI_API_KEY: "test-openai-key",
+        OPENAI_API_KEY: "test-openai-key", // pragma: allowlist secret
         SCAS_KNOWLEDGE_INDEX: {
           upsert: knowledgeUpsert,
         } as unknown as VectorizeIndex,
@@ -1383,8 +1383,8 @@ describe("control API worker", () => {
       {
         AI_GATEWAY_ACCOUNT_ID: "test-account",
         AI_GATEWAY_ID: "test-gateway",
-        OPENAI_API_KEY: "test-openai-key",
-        AI_GATEWAY_AUTH_TOKEN: "test-cloudflare-gateway-token",
+        OPENAI_API_KEY: "test-openai-key", // pragma: allowlist secret
+        AI_GATEWAY_AUTH_TOKEN: "test-cloudflare-gateway-token", // pragma: allowlist secret
       },
     );
     const body = await response.json();

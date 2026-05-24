@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: scas-no-dotenv-files
+        name: scas-no-dotenv-files
+        entry: python scripts/security/check_no_dotenv_files.py
+        language: system
+        pass_filenames: false
+      - id: scas-workflow-hardening
+        name: scas-workflow-hardening
+        entry: python scripts/security/check_workflow_hardening.py
+        language: system
+        pass_filenames: false
+      - id: scas-dependency-policy
+        name: scas-dependency-policy
+        entry: python scripts/security/validate_dependency_policy.py
+        language: system
+        pass_filenames: false

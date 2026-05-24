@@ -76,7 +76,7 @@ def test_ci_workflow_validates_hetzner_private_key_format() -> None:
 
     assert "ssh-keygen -y -f" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
-    assert "-----BEGIN OPENSSH PRIVATE KEY-----" in workflow
+    assert "-----BEGIN OPENSSH PRIVATE KEY-----" in workflow  # pragma: allowlist secret
 
 
 def test_infrastructure_smoke_test_is_manual_only() -> None:
