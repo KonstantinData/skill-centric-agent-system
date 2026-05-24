@@ -72,8 +72,10 @@ environment. The first environment separation manifest is now recorded in
 `examples/infrastructure/environment-manifest.json`, but staging/prod resources
 still need to be provisioned and validated before any production-ready claim.
 The manual Production Readiness Evidence workflow records repository and Worker
-gate results as a non-secret artifact and can require external live gate
-references for certification mode.
+gate results as a non-secret artifact. Certification mode verifies external
+live runtime and AI Gateway smoke run metadata against the same repository,
+same release commit, expected workflow names, and successful conclusions before
+writing release evidence.
 
 ## Core Flow
 
@@ -369,7 +371,7 @@ gh workflow run production-readiness.yml `
 ```
 
 Certification mode requires references to matching live runtime and AI Gateway
-smoke workflow runs:
+smoke workflow runs from the same repository and release commit:
 
 ```powershell
 gh workflow run production-readiness.yml `
@@ -399,5 +401,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 ## Next Steps
 
 1. Provision and validate staging/prod resources from the environment manifest.
-2. Extend the Production Readiness Evidence workflow to orchestrate target-environment live gates.
-3. Implement `P5.04 Production Skill Handler Runtime`.
+2. Implement `P5.04 Production Skill Handler Runtime`.
+3. Add scheduled runtime retention cleanup automation and production telemetry.

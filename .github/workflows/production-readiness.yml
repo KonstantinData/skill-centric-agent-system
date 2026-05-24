@@ -37,6 +37,7 @@ on:
         default: ""
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -55,6 +56,7 @@ jobs:
       CERTIFICATION_MODE: ${{ inputs.certification_mode }}
       LIVE_RUNTIME_GATES_RUN_URL: ${{ inputs.live_runtime_gates_run_url }}
       AI_GATEWAY_SMOKE_RUN_URL: ${{ inputs.ai_gateway_smoke_run_url }}
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Check out repository
@@ -119,90 +121,50 @@ jobs:
           npm run worker:check
 
       - name: Validate certification inputs
+        run: python scripts/release/build_production_readiness_evidence.py --validate-only
+
+      - name: Collect external live evidence metadata
+        if: ${{ inputs.certification_mode == 'certify' }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ "${CERTIFICATION_MODE}" = "certify" ]; then
-            if [ -z "${LIVE_RUNTIME_GATES_RUN_URL}" ]; then
-              echo "::error::certify mode requires live_runtime_gates_run_url"
-              exit 1
-            fi
-            if [ -z "${AI_GATEWAY_SMOKE_RUN_URL}" ]; then
-              echo "::error::certify mode requires ai_gateway_smoke_run_url"
-              exit 1
-            fi
-          fi
+          mkdir -p production-evidence
+          live_runtime_run_id="$(
+            python scripts/release/build_production_readiness_evidence.py \
+              --print-run-id "${LIVE_RUNTIME_GATES_RUN_URL}"
+          )"
+          ai_gateway_run_id="$(
+            python scripts/release/build_production_readiness_evidence.py \
+              --print-run-id "${AI_GATEWAY_SMOKE_RUN_URL}"
+          )"
 
-          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CERTIFICATION_MODE}" != "certify" ]; then
-            echo "::notice::prod evidence-only mode does not certify production-ready status."
-          fi
+          gh run view "${live_runtime_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json databaseId,workflowName,status,conclusion,headSha,url,event,displayTitle,createdAt,updatedAt \
+            > production-evidence/live-runtime-gates-run.json
+
+          gh run view "${ai_gateway_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json databaseId,workflowName,status,conclusion,headSha,url,event,displayTitle,createdAt,updatedAt \
+            > production-evidence/ai-gateway-smoke-run.json
 
       - name: Write evidence summary
         shell: bash
         run: |
           set -euo pipefail
 
-          python - <<'PY'
-          import json
-          import os
-          from datetime import UTC, datetime
-          from pathlib import Path
-
-          certification_mode = os.environ["CERTIFICATION_MODE"]
-          target_environment = os.environ["TARGET_ENVIRONMENT"]
-          if certification_mode != "certify":
-              status = "initial-productive-core" if target_environment == "dev" else "not-production-ready"
-          elif target_environment == "staging":
-              status = "staging-ready"
-          elif target_environment == "prod":
-              status = "production-ready"
-          else:
-              status = "initial-productive-core"
-
-          evidence = {
-              "contract_version": "0.1.0",
-              "generated_at": datetime.now(UTC).isoformat(),
-              "repository": os.environ["GITHUB_REPOSITORY"],
-              "commit": os.environ["GITHUB_SHA"],
-              "workflow_run": {
-                  "id": os.environ["GITHUB_RUN_ID"],
-                  "attempt": os.environ["GITHUB_RUN_ATTEMPT"],
-                  "url": (
-                      f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
-                      f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
-                  ),
-              },
-              "target_environment": target_environment,
-              "release_scope": os.environ["RELEASE_SCOPE"],
-              "certification_mode": certification_mode,
-              "status": status,
-              "passed_gates": [
-                  "python-tests",
-                  "python-ruff",
-                  "tracked-json-parse",
-                  "secret-dotenv-guard",
-                  "ruleset-validation",
-                  "dependency-policy",
-                  "workflow-hardening",
-                  "actions-bom",
-                  "release-sbom",
-                  "worker-types",
-                  "worker-typecheck",
-                  "worker-tests",
-                  "worker-dry-run",
-              ],
-              "external_evidence": {
-                  "live_runtime_gates_run_url": os.environ["LIVE_RUNTIME_GATES_RUN_URL"],
-                  "ai_gateway_smoke_run_url": os.environ["AI_GATEWAY_SMOKE_RUN_URL"],
-              },
-              "secret_handling": "No secret values are written to this evidence artifact.",
-          }
-          Path("production-readiness-evidence.json").write_text(
-              json.dumps(evidence, indent=2, sort_keys=True),
-              encoding="utf-8",
+          args=(
+            --output production-readiness-evidence.json
           )
-          PY
+          if [ "${CERTIFICATION_MODE}" = "certify" ]; then
+            args+=(
+              --live-runtime-gates-metadata production-evidence/live-runtime-gates-run.json
+              --ai-gateway-smoke-metadata production-evidence/ai-gateway-smoke-run.json
+            )
+          fi
+
+          python scripts/release/build_production_readiness_evidence.py "${args[@]}"
 
       - name: Upload evidence summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
