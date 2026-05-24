@@ -282,4 +282,5 @@ def test_live_handler_binding_evidence_rejects_mismatched_handler_id() -> None:
     assert isinstance(handlers, list)
     handlers[0]["handler_id"] = "wrong-handler@0.1.0"
 
-    with pytest.raises(evidence.EvidenceError, match="does not mat
+    with pytest.raises(evidence.EvidenceError, match="does not match"):
+        evidence.validate_live_handler_binding_evidence(invalid_evidence)

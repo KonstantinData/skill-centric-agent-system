@@ -279,4 +279,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 Status: started. The gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
-implemented. The f
+implemented. The first production skill handler runtime slice, controlled write
+path, scheduled retention cleanup automation, production telemetry alerting,
+production security closure, and expanded skill handler coverage are
+implemented. Provisioning and the final certification run against live
+production infrastructure remain pending.

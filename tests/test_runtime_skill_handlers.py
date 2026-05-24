@@ -179,4 +179,33 @@ def test_runtime_loop_records_executed_skill_handler_binding(tmp_path: Path) -> 
     assert planner_payload["skill_handlers"] == [
         {
             "name": "git-diff-analysis",
-            "version": "0.1.0
+            "version": "0.1.0",
+            "handler_id": "git-diff-analysis@0.1.0",
+        }
+    ]
+
+
+def test_runtime_loop_fails_closed_before_executor_for_unknown_skill_handler(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["skills"] = ["unregistered-production-skill"]
+    start_result.profile["module_versions"]["unregistered-production-skill"] = "0.1.0"
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    assert store.runtime_runs[start_result.run_id]["status"] == "failed"
+    assert store.runtime_runs[start_result.run_id]["stop_reason"] == "policy_denied"
+    assert store.tool_invocations == []

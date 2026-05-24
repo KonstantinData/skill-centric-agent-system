@@ -212,4 +212,8 @@ The evidence artifact uses contract version `0.3.0` and includes:
 - `status` and `final_decision`, and
 - a sensitive-data handling statement.
 
-This workflow does not write secret val
+This workflow does not write secret values to its evidence artifact. External
+live gate URLs must point to workflow runs whose logs also avoid secret output.
+The workflow alone does not bypass incomplete production gates: staging and
+production certification remain `not-production-ready` while required follow-up
+gates such as broader production handler coverage are still open.

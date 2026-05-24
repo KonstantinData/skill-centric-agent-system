@@ -635,4 +635,14 @@ def main(argv: list[str] | None = None) -> int:
             ai_gateway_smoke_metadata=metadata_from_path(args.ai_gateway_smoke_metadata),
             live_handler_binding_evidence=metadata_from_path(
                 args.live_handler_binding_evidence
-  
+            ),
+        )
+        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True), encoding="utf-8")
+    except EvidenceError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -260,4 +260,44 @@ def _aggregate_plans(plans: list[SkillHandlerPlan]) -> RuntimeSkillPlan:
         strategy=strategy,
         output_contract=output_contract,
         actions=actions,
-        skill_handlers=t
+        skill_handlers=tuple(plan.handler_ref() for plan in plans),
+    )
+
+
+def _output_contract_for_task_type(profile: Mapping[str, Any]) -> str:
+    task_type = str(profile.get("task_type", "general-task"))
+    return {
+        "code-review": "review-findings-contract",
+        "research": "research-output-contract",
+        "task-execution": "task-execution-output-contract",
+        "general-task": "general-output-contract",
+    }.get(task_type, "general-output-contract")
+
+
+def _git_diff_analysis_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return (
+        {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
+        {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
+    )
+
+
+def _task_execution_planning_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return (
+        {"tool": "git-read", "payload": {"args": ["status", "--short"]}},
+        {"tool": "filesystem-list", "payload": {"path": ".", "max_entries": 80}},
+        {"tool": "filesystem-read", "payload": {"path": "README.md", "max_bytes": 4000}},
+    )
+
+
+def _dependency_audit_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return (
+        {"tool": "filesystem-read", "payload": {"path": "pyproject.toml", "max_bytes": 8000}},
+        {"tool": "filesystem-read", "payload": {"path": "package.json", "max_bytes": 8000}},
+    )
+
+
+def _no_tool_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return ()
+
+
+BUILTIN_SKILL_HANDLER_REGISTRY = builtin_skill_handler_registry()
