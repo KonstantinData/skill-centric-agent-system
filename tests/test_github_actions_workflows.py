@@ -10,6 +10,9 @@ LIVE_RUNTIME_GATES_WORKFLOW_PATH = (
 PRODUCTION_READINESS_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "production-readiness.yml"
 )
+RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "runtime-retention-cleanup.yml"
+)
 
 
 def load_ci_workflow() -> str:
@@ -22,6 +25,10 @@ def load_live_runtime_gates_workflow() -> str:
 
 def load_production_readiness_workflow() -> str:
     return PRODUCTION_READINESS_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_runtime_retention_cleanup_workflow() -> str:
+    return RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -160,3 +167,47 @@ def test_production_readiness_certify_mode_requires_live_evidence() -> None:
     assert "production-evidence/live-runtime-gates-run.json" in workflow
     assert "production-evidence/ai-gateway-smoke-run.json" in workflow
     assert "actions: read" in workflow
+
+
+def test_runtime_retention_cleanup_workflow_exists() -> None:
+    assert RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH.exists()
+
+
+def test_runtime_retention_cleanup_workflow_is_scheduled_and_manual() -> None:
+    workflow = load_runtime_retention_cleanup_workflow()
+
+    assert "schedule:" in workflow
+    assert 'cron: "17 2 * * *"' in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "cleanup_mode:" in workflow
+    assert "confirmed-delete" in workflow
+    assert "strict_missing:" in workflow
+
+
+def test_runtime_retention_cleanup_workflow_defaults_to_dry_run() -> None:
+    workflow = load_runtime_retention_cleanup_workflow()
+
+    assert "CLEANUP_MODE: ${{ github.event_name == 'workflow_dispatch'" in workflow
+    assert "inputs.cleanup_mode || 'dry-run'" in workflow
+    assert "Scheduled retention cleanup must run in dry-run mode." in workflow
+    assert 'if [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then' in workflow
+    assert "cleanup_args+=(--confirm)" in workflow
+    assert "--confirm" not in workflow.split("cleanup_args=(")[1].split(")")[0]
+
+
+def test_runtime_retention_cleanup_workflow_runs_on_hetzner_and_uploads_evidence() -> None:
+    workflow = load_runtime_retention_cleanup_workflow()
+
+    assert "secrets.HETZNER_SSH_KEY" in workflow
+    assert "ssh-keygen -y -f" in workflow
+    assert "git archive --format=tar.gz" in workflow
+    assert "python3.12-venv" in workflow
+    assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
+    assert "scas-runtime\" \"${cleanup_args[@]}\"" in workflow
+    assert "/opt/scas/runtime/dev" in workflow
+    assert "/opt/scas/runtime/staging" in workflow
+    assert "/opt/scas/runtime/prod" in workflow
+    assert "runtime-retention-cleanup-report.json" in workflow
+    assert "exit-status.txt" in workflow
+    assert "runtime-retention-cleanup-evidence" in workflow

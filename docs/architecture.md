@@ -188,17 +188,16 @@ The current repository has implemented the first control-plane slice:
 - a controlled learning evaluation fixture that proves approved memory can be
   retrieved later while unauthorized retrieval is blocked,
 - runtime retention cleanup execution with dry-run-first apply behavior,
+- scheduled runtime retention cleanup automation with dry-run-only scheduled
+  runs and manual confirmed-delete dispatch,
 - an extended live runtime gate that can seed the dev Control Plane and run the
   generic task suite against Cloudflare and Hetzner.
 
 The following architecture components are still pending implementation:
 
 - staging and production environment separation,
-- production release evidence workflow,
 - broader production skill handler coverage beyond the current manifest-covered
   fixture set,
-- controlled write-capable execution path when production scope includes writes,
-- scheduled retention cleanup automation,
 - broader operational telemetry around retrieval, validation, and cleanup,
 - production security hardening and threat model closure,
 - human-review flow for ambiguous production tasks,

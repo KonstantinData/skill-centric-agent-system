@@ -95,6 +95,20 @@ def test_secret_scan_validators_reject_findings_and_accept_clean_reports(tmp_pat
     with pytest.raises(SystemExit, match="Gitleaks found"):
         validate_secret_scan.validate_gitleaks(gitleaks_report)
 
+    detect_report.write_text(
+        json.dumps(
+            {
+                "results": {
+                    ".github/workflows/runtime-retention-cleanup.yml": [
+                        {"type": "Private Key", "line_number": 1}
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    validate_secret_scan.validate_detect_secrets(detect_report)
+
     detect_report.write_text(json.dumps({"results": {}}), encoding="utf-8")
     gitleaks_report.write_text(json.dumps([]), encoding="utf-8")
     validate_secret_scan.validate_detect_secrets(detect_report)

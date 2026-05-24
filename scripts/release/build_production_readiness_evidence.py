@@ -51,15 +51,18 @@ REPOSITORY_GATE_RESULTS = (
             "tests/test_runtime_tool_gateway_and_loop.py"
         ),
     ),
+    (
+        "Scheduled runtime retention cleanup",
+        (
+            ".github/workflows/runtime-retention-cleanup.yml; "
+            "python -m pytest tests/test_runtime_redaction_retention.py "
+            "tests/test_github_actions_workflows.py"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
-    {
-        "id": "P5.06",
-        "gate": "Operational telemetry",
-        "reason": "Scheduled retention cleanup automation is not complete.",
-    },
     {
         "id": "P5.07",
         "gate": "Operational telemetry",

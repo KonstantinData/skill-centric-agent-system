@@ -28,7 +28,10 @@ path. Runtime
 operations now have a baseline runbook for migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact redaction and retention
 planning, safe retention cleanup execution, and dry-run-first cleanup CLI are
-implemented for the Flight Recorder artifact path. The Control API
+implemented for the Flight Recorder artifact path. Scheduled retention cleanup
+automation now runs the same CLI path through GitHub Actions against the
+Hetzner Runtime Plane with dry-run-only scheduled execution and manual
+confirmed-delete dispatch. The Control API
 also has knowledge/memory ingestion, a D1-gated
 `POST /retrieval/context` endpoint with Vectorize bindings and post-validation,
 and a fail-closed AI Gateway route for OpenAI chat completions. The Runtime
@@ -51,7 +54,8 @@ upgrade, deprecation, and rollback policy is now documented and tested.
 The Runtime Preflight Gate is complete. The initial productive runtime core is
 implemented. Queue-backed Cloudflare embedding indexing, runtime retention
 cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
-output contracts, and first-slice executable skill handlers are implemented.
+output contracts, first-slice executable skill handlers, and scheduled
+retention cleanup automation are implemented.
 Broader runtime planning quality and production-scale telemetry remain explicit
 backlog themes and must not obscure the runtime entry gate. The repository now
 has a dedicated Production Readiness Gate in `docs/production-readiness.md`.
@@ -220,10 +224,10 @@ implemented, with live execution gated by Cloudflare Worker script permissions,
 OpenAI provider auth, and optional Authenticated Gateway auth; queue-backed
 embedding indexing is implemented; runtime retention cleanup execution is
 implemented with dry-run-first apply behavior, safe URI resolution, missing-file
-reporting, and cleanup reports. Generic runtime output contracts, task-type
-profile-selected skill handler dispatch, research/task-execution/general runtime
-fixtures, and an extended live generic E2E gate are implemented. Scheduled
-cleanup automation and broader telemetry remain pending.
+reporting, cleanup reports, and scheduled dry-run automation. Generic runtime
+output contracts, task-type profile-selected skill handler dispatch,
+research/task-execution/general runtime fixtures, and an extended live generic
+E2E gate are implemented. Broader telemetry remains pending.
 
 ## Phase 8: Production Release Readiness
 
@@ -244,7 +248,10 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    evidence gate complete. Handler version upgrade and rollback policy
    complete.)
 5. Add controlled write-capable execution only behind explicit safety gates.
-6. Add scheduled runtime retention cleanup automation.
+   (Initial `filesystem-write` path complete with approval, policy, audit,
+   rollback, and dry-run defaults.)
+6. Add scheduled runtime retention cleanup automation. (Initial scheduled
+   dry-run workflow and manual confirmed-delete dispatch complete.)
 7. Add production telemetry and alerting.
 8. Complete security hardening and threat model closure. (Initial repository
    security, supply-chain, review, and data-governance gates complete.)
@@ -255,7 +262,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 Status: started. The gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
-implemented. The first production skill handler runtime slice is implemented.
-Provisioning, telemetry, full security closure, broader production handler
-coverage beyond the current manifest-covered fixture set, and the final
-certification run against live production infrastructure remain pending.
+implemented. The first production skill handler runtime slice, controlled write
+path, and scheduled retention cleanup automation are implemented. Provisioning,
+telemetry, full security closure, broader production handler coverage beyond
+the current manifest-covered fixture set, and the final certification run
+against live production infrastructure remain pending.

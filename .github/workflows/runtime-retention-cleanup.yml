@@ -1,0 +1,282 @@
+name: Runtime Retention Cleanup
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Runtime environment artifact root to clean
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      cleanup_mode:
+        description: Run as dry-run or confirmed deletion
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - confirmed-delete
+        default: dry-run
+      strict_missing:
+        description: Treat missing expired artifacts as cleanup errors
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-retention-cleanup-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  runtime-retention-cleanup:
+    name: Runtime retention cleanup on Hetzner
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: >-
+      github.event_name == 'schedule'
+      || github.event_name == 'workflow_dispatch'
+
+    env:
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
+      CLEANUP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.cleanup_mode || 'dry-run' }}
+      STRICT_MISSING: ${{ github.event_name == 'workflow_dispatch' && inputs.strict_missing || false }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check required secrets and mode
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required secret: ${name}"
+              missing=1
+            fi
+          done
+
+          case "${TARGET_ENVIRONMENT}" in
+            dev|staging|prod) ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              missing=1
+              ;;
+          esac
+
+          case "${CLEANUP_MODE}" in
+            dry-run|confirmed-delete) ;;
+            *)
+              echo "::error::Unsupported cleanup_mode: ${CLEANUP_MODE}"
+              missing=1
+              ;;
+          esac
+
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] \
+            && [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then
+            echo "::error::Scheduled retention cleanup must run in dry-run mode."
+            missing=1
+          fi
+
+          exit "${missing}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 600 "${HOME}/.ssh/hetzner_key"
+
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" # pragma: allowlist secret
+            exit 1
+          fi
+
+          ssh-keyscan -H "${HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Package repository snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --output scas-runtime-retention-cleanup.tar.gz HEAD
+
+      - name: Upload snapshot to Hetzner
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            scas-runtime-retention-cleanup.tar.gz \
+            "${HETZNER_USER}@${HETZNER_HOST}:/tmp/scas-runtime-retention-cleanup-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Run runtime retention cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${HETZNER_USER}@${HETZNER_HOST}" \
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' CLEANUP_MODE='${CLEANUP_MODE}' STRICT_MISSING='${STRICT_MISSING}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' GITHUB_EVENT_NAME='${GITHUB_EVENT_NAME}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo "$@"
+            fi
+          }
+
+          as_postgres() {
+            sudo -u postgres "$@"
+          }
+
+          case "${TARGET_ENVIRONMENT}" in
+            dev) artifact_root="/opt/scas/runtime/dev" ;;
+            staging) artifact_root="/opt/scas/runtime/staging" ;;
+            prod) artifact_root="/opt/scas/runtime/prod" ;;
+            *)
+              echo "Unsupported target environment: ${TARGET_ENVIRONMENT}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] \
+            && [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then
+            echo "Scheduled retention cleanup must run in dry-run mode." >&2
+            exit 1
+          fi
+
+          archive="/tmp/scas-runtime-retention-cleanup-${GITHUB_RUN_ID}.tar.gz"
+          workdir="/tmp/scas-runtime-retention-cleanup-${GITHUB_RUN_ID}"
+          evidence_dir="${workdir}/retention-cleanup-evidence"
+          report_path="${evidence_dir}/runtime-retention-cleanup-report.json"
+          status_path="${evidence_dir}/exit-status.txt"
+
+          rm -rf "${workdir}"
+          install -d -m 755 "${workdir}"
+          tar -xzf "${archive}" -C "${workdir}"
+          chmod -R a+rX "${workdir}"
+
+          sudo_if_needed install -d -o postgres -g postgres -m 750 "${artifact_root}"
+          install -d -m 755 "${evidence_dir}"
+
+          if ! python3 -m venv "${workdir}/.venv"; then
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "python3 venv support is missing and apt-get is unavailable." >&2
+              exit 1
+            fi
+
+            sudo_if_needed env DEBIAN_FRONTEND=noninteractive apt-get update
+            sudo_if_needed env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              python3-venv \
+              python3.12-venv
+            python3 -m venv "${workdir}/.venv"
+          fi
+
+          "${workdir}/.venv/bin/python" -m pip install --upgrade pip
+          "${workdir}/.venv/bin/python" -m pip install -e "${workdir}[runtime]"
+          chmod -R a+rX "${workdir}/.venv"
+
+          cleanup_args=(
+            retention
+            apply
+            --storage-mode
+            postgres
+            --database-url
+            "postgresql:///scas_runtime?host=/var/run/postgresql"
+            --artifact-root
+            "${artifact_root}"
+          )
+
+          if [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then
+            cleanup_args+=(--confirm)
+          fi
+
+          if [ "${STRICT_MISSING}" = "true" ]; then
+            cleanup_args+=(--strict-missing)
+          fi
+
+          set +e
+          as_postgres "${workdir}/.venv/bin/scas-runtime" "${cleanup_args[@]}" \
+            | tee "${report_path}"
+          cleanup_status="${PIPESTATUS[0]}"
+          set -e
+
+          printf '%s\n' "${cleanup_status}" > "${status_path}"
+          if [ ! -s "${report_path}" ]; then
+            printf '{"error":"retention cleanup produced no report"}\n' > "${report_path}"
+          fi
+
+          rm -f "${archive}"
+          REMOTE
+
+      - name: Download retention cleanup evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p retention-cleanup-evidence
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${HETZNER_USER}@${HETZNER_HOST}:/tmp/scas-runtime-retention-cleanup-${GITHUB_RUN_ID}/retention-cleanup-evidence/*" \
+            retention-cleanup-evidence/
+
+      - name: Validate retention cleanup result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          evidence_dir = pathlib.Path("retention-cleanup-evidence")
+          status = int((evidence_dir / "exit-status.txt").read_text(encoding="utf-8"))
+          report = json.loads(
+              (evidence_dir / "runtime-retention-cleanup-report.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          print(f"Retention cleanup exit status: {status}")
+          print(f"Retention cleanup dry_run: {report.get('dry_run')}")
+          print(f"Retention cleanup report_uri: {report.get('report_uri')}")
+          if status != 0:
+              print("::error::Runtime retention cleanup reported errors.", file=sys.stderr)
+              sys.exit(status)
+          PY
+
+      - name: Upload retention cleanup evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-retention-cleanup-evidence
+          path: retention-cleanup-evidence/
+          if-no-files-found: error
