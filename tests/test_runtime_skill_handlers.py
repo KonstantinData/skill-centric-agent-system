@@ -58,6 +58,22 @@ def test_builtin_skill_handler_registry_resolves_profile_selected_version() -> N
     assert [action["tool"] for action in plan.actions] == ["git-read", "filesystem-read"]
 
 
+def test_builtin_skill_handler_registry_exposes_coverage_descriptors() -> None:
+    handlers = BUILTIN_SKILL_HANDLER_REGISTRY.handlers()
+
+    assert [handler.handler_id for handler in handlers] == [
+        "general-task-summary@0.1.0",
+        "git-diff-analysis@0.1.0",
+        "research-context-synthesis@0.1.0",
+        "task-execution-planning@0.1.0",
+    ]
+    assert all(
+        descriptor["runtime_path"] == "src/skill_centric_agent_system/runtime/skill_handlers.py"
+        for descriptor in (handler.descriptor() for handler in handlers)
+    )
+    assert all(handler.test_coverage for handler in handlers)
+
+
 def test_profile_enforcer_denies_skill_not_selected_by_profile() -> None:
     profile = load_json(PROFILE_EXAMPLE_PATH)
     enforcer = RuntimeProfileEnforcer(profile)

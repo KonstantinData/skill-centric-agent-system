@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:skill-handler-coverage:0.1.0",
+  "title": "SCAS Skill Handler Coverage Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "coverage_status",
+    "generated_by",
+    "handler_registry",
+    "module_glob",
+    "summary",
+    "skills"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "coverage_status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "generated_by": {
+      "const": "scripts/runtime/skill_handler_coverage.py"
+    },
+    "handler_registry": {
+      "const": "skill_centric_agent_system.runtime.skill_handlers.BUILTIN_SKILL_HANDLER_REGISTRY"
+    },
+    "module_glob": {
+      "const": "examples/modules/*.json"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_count",
+        "production_required_skill_count",
+        "covered_skill_count",
+        "missing_handler_count"
+      ],
+      "properties": {
+        "skill_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "production_required_skill_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "covered_skill_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_handler_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skillCoverage"
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "moduleName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._/-]+$"
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "skillCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_name",
+        "skill_version",
+        "module_path",
+        "production_required",
+        "coverage_status",
+        "handler_id",
+        "runtime_path",
+        "strategy",
+        "output_contract",
+        "module_tests",
+        "runtime_tests",
+        "required_tools"
+      ],
+      "properties": {
+        "skill_name": {
+          "$ref": "#/$defs/moduleName"
+        },
+        "skill_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "module_path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "production_required": {
+          "type": "boolean"
+        },
+        "coverage_status": {
+          "type": "string",
+          "enum": [
+            "covered",
+            "missing_handler",
+            "not_required"
+          ]
+        },
+        "handler_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z][a-z0-9-]*@[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "runtime_path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/repositoryPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strategy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output_contract": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "module_tests": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "runtime_tests": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "required_tools": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  }
+}

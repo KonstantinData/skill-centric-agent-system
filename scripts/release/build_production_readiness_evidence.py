@@ -35,7 +35,14 @@ REPOSITORY_GATE_RESULTS = (
         "security governance scripts; Actions-BOM; release SBOM",
     ),
     ("Contract and documentation consistency", "tracked JSON parse; committed docs gate"),
-    ("Executable skill runtime", "python -m pytest tests/test_runtime_skill_handlers.py"),
+    (
+        "Executable skill runtime",
+        (
+            "python -m pytest tests/test_runtime_skill_handlers.py "
+            "tests/test_skill_handler_coverage.py; "
+            "python scripts/runtime/skill_handler_coverage.py --check"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 

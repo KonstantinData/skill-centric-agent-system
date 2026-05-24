@@ -63,7 +63,11 @@ The Python runtime now resolves profile-selected skills to exact
 `git-diff-analysis`, `research-context-synthesis`, `task-execution-planning`,
 and `general-task-summary`. Unknown selected skills and handler version
 mismatches fail closed before tool execution, and each run still emits a
-task-class-specific `runtime_output` validated by the active profile.
+task-class-specific `runtime_output` validated by the active profile. A
+committed skill handler coverage manifest now maps every production-required
+skill module fixture to its executable handler, runtime path, module tests,
+and runtime tests; CI fails if the manifest is stale or a required handler is
+missing.
 
 The repository is currently `not-production-ready` for a full production
 launch. It has an initial productive runtime core, but production-ready status
@@ -119,6 +123,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `schemas/knowledge-quality-policy.schema.json`: JSON Schema for generic knowledge/data-quality policy metadata.
+- `schemas/skill-handler-coverage.schema.json`: JSON Schema for the production skill handler coverage manifest.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
@@ -138,6 +143,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
 - `examples/runtime-outputs/`: representative validated runtime output payloads.
+- `examples/runtime/`: deterministic runtime governance manifests such as skill handler coverage.
 - `examples/infrastructure/`: environment separation manifest for dev, staging, and prod.
 - `examples/governance/`: representative knowledge/data-quality policy fixtures.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
@@ -162,6 +168,12 @@ Run linting:
 
 ```powershell
 python -m ruff check .
+```
+
+Validate the production skill handler coverage manifest:
+
+```powershell
+python scripts\runtime\skill_handler_coverage.py --check
 ```
 
 Run security and governance checks:
@@ -261,9 +273,9 @@ npm run worker:check
 
 ## GitHub Actions
 
-`.github/workflows/ci.yml` runs contract tests, linting, JSON syntax checks,
-Worker type checks, and Worker Vitest tests on pushes to `main` and pull
-requests.
+`.github/workflows/ci.yml` runs contract tests, linting, skill handler coverage
+manifest validation, JSON syntax checks, Worker type checks, and Worker Vitest
+tests on pushes to `main` and pull requests.
 
 `.github/workflows/security-governance.yml` runs repository governance,
 secret-scanning, dependency-audit, workflow-hardening, Actions-BOM, and
@@ -403,5 +415,5 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 ## Next Steps
 
 1. Provision and validate staging/prod resources from the environment manifest.
-2. Expand production skill handler coverage beyond the first built-in handler set.
+2. Expand production skill handler coverage beyond the current manifest-covered fixture set.
 3. Add scheduled runtime retention cleanup automation and production telemetry.

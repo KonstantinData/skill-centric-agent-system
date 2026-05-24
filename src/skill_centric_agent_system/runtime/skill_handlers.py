@@ -10,6 +10,7 @@ from skill_centric_agent_system.runtime.enforcement import (
 )
 
 PlanBuilder = Callable[[Mapping[str, Any]], tuple[dict[str, Any], ...]]
+SKILL_HANDLER_RUNTIME_PATH = "src/skill_centric_agent_system/runtime/skill_handlers.py"
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,8 @@ class SkillHandler:
     strategy: str
     output_contract: str
     build_actions: PlanBuilder
+    runtime_path: str = SKILL_HANDLER_RUNTIME_PATH
+    test_coverage: tuple[str, ...] = ()
 
     @property
     def handler_id(self) -> str:
@@ -58,6 +61,15 @@ class SkillHandler:
             output_contract=self.output_contract,
             actions=self.build_actions(profile),
         )
+
+    def descriptor(self) -> dict[str, object]:
+        return {
+            "handler_id": self.handler_id,
+            "runtime_path": self.runtime_path,
+            "strategy": self.strategy,
+            "output_contract": self.output_contract,
+            "test_coverage": list(self.test_coverage),
+        }
 
 
 class SkillHandlerRegistrationError(ValueError):
@@ -81,6 +93,17 @@ class SkillHandlerRegistry:
 
         self._by_name_version = by_name_version
         self._known_versions = known_versions
+
+    def handlers(self) -> tuple[SkillHandler, ...]:
+        return tuple(
+            sorted(
+                self._by_name_version.values(),
+                key=lambda handler: (handler.skill_name, handler.skill_version),
+            )
+        )
+
+    def handler_for(self, skill_name: str, skill_version: str) -> SkillHandler | None:
+        return self._by_name_version.get((skill_name, skill_version))
 
     def build_plan(
         self,
@@ -134,6 +157,12 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 strategy="code-review-readonly",
                 output_contract="review-findings-contract",
                 build_actions=_git_diff_analysis_actions,
+                test_coverage=(
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_builtin_skill_handler_registry_resolves_profile_selected_version",
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_runtime_loop_records_executed_skill_handler_binding",
+                ),
             ),
             SkillHandler(
                 skill_name="research-context-synthesis",
@@ -141,6 +170,10 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 strategy="research-context-synthesis",
                 output_contract="research-output-contract",
                 build_actions=_no_tool_actions,
+                test_coverage=(
+                    "tests/test_runtime_tool_gateway_and_loop.py::"
+                    "test_minimal_runtime_loop_dispatches_task_type_strategies",
+                ),
             ),
             SkillHandler(
                 skill_name="task-execution-planning",
@@ -148,6 +181,10 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 strategy="conservative-task-execution",
                 output_contract="task-execution-output-contract",
                 build_actions=_task_execution_planning_actions,
+                test_coverage=(
+                    "tests/test_runtime_tool_gateway_and_loop.py::"
+                    "test_minimal_runtime_loop_dispatches_task_type_strategies",
+                ),
             ),
             SkillHandler(
                 skill_name="general-task-summary",
@@ -155,6 +192,10 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 strategy="general-task-summary",
                 output_contract="general-output-contract",
                 build_actions=_no_tool_actions,
+                test_coverage=(
+                    "tests/test_runtime_tool_gateway_and_loop.py::"
+                    "test_minimal_runtime_loop_dispatches_task_type_strategies",
+                ),
             ),
         )
     )
