@@ -190,6 +190,9 @@ The current repository has implemented the first control-plane slice:
 - runtime retention cleanup execution with dry-run-first apply behavior,
 - scheduled runtime retention cleanup automation with dry-run-only scheduled
   runs and manual confirmed-delete dispatch,
+- aggregate production telemetry policy and alert evaluation for retrieval,
+  validation, cleanup, AI Gateway, queue processing, runtime failures, and
+  policy denials,
 - an extended live runtime gate that can seed the dev Control Plane and run the
   generic task suite against Cloudflare and Hetzner.
 
@@ -198,7 +201,6 @@ The following architecture components are still pending implementation:
 - staging and production environment separation,
 - broader production skill handler coverage beyond the current manifest-covered
   fixture set,
-- broader operational telemetry around retrieval, validation, and cleanup,
 - production security hardening and threat model closure,
 - human-review flow for ambiguous production tasks,
 - richer task planning beyond the conservative first-slice strategies.
@@ -215,8 +217,8 @@ validation scenarios live in `docs/runtime-preflight.md`.
 
 Production-ready status is a separate release decision. It requires the
 evidence gate in `docs/production-readiness.md`, including environment
-separation, release evidence, broader production handler coverage, operational
-telemetry, security closure, and certification against the target environment.
+separation, release evidence, broader production handler coverage, security
+closure, and certification against the target environment.
 Until that gate passes, the repository must be described as
 `not-production-ready` for a full production launch.
 

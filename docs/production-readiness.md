@@ -105,6 +105,10 @@ The production readiness backlog is ordered by dependency and release risk:
    non-secret cleanup evidence, and prevents scheduled destructive cleanup.
 7. `P5.07 Production Telemetry and Alerting`
    Add production telemetry for Control Plane and Runtime Plane failure modes.
+   Complete: aggregate telemetry policy and snapshot schemas, fixtures, CLI
+   evaluator, runbook-backed alert metadata, and release-evidence gate coverage
+   are implemented. Alert evidence records aggregate metadata only; raw runtime
+   traces remain on Hetzner.
 8. `P5.08 Security Hardening and Threat Model Closure`
    Complete security review, threat model updates, token scope checks, and
    finding remediation.
@@ -176,6 +180,8 @@ The evidence artifact uses contract version `0.3.0` and includes:
   `filesystem-write` slice,
 - scheduled runtime retention cleanup as a passed repository gate once the
   workflow and workflow tests are present,
+- production telemetry and alerting as a passed repository gate once the
+  aggregate policy, snapshot, evaluator, and tests are present,
 - validated external run metadata and live handler-binding summaries in
   `external_evidence`,
 - `open_release_gaps` for required production gates that are not yet complete,
@@ -186,5 +192,5 @@ This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
 production certification remain `not-production-ready` while required follow-up
-gates such as production telemetry, threat-model closure, human-review quality
-gates, and broader production handler coverage are still open.
+gates such as threat-model closure, human-review quality gates, and broader
+production handler coverage are still open.

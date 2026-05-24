@@ -1,0 +1,141 @@
+{
+  "policy_id": "production-telemetry-alerts",
+  "version": "0.1.0",
+  "environment": "prod",
+  "notification_channels": [
+    {
+      "id": "github-actions-summary",
+      "kind": "github-actions-summary",
+      "target": "workflow-step-summary",
+      "secret_free": true
+    },
+    {
+      "id": "operator-runbook",
+      "kind": "operator-runbook",
+      "target": "docs/operations-runbook.md#telemetry-alerts",
+      "secret_free": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "runtime-failure-rate-critical",
+      "plane": "hetzner-runtime-plane",
+      "signal": "runtime.failure_rate",
+      "description": "Runtime failures exceeded the production threshold.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 0.05,
+      "unit": "ratio",
+      "window": "PT15M",
+      "source": "runtime.runtime_runs aggregate status counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "runtime-policy-denial-rate-warning",
+      "plane": "hetzner-runtime-plane",
+      "signal": "runtime.policy_denial_rate",
+      "description": "Policy denials increased and may indicate miscomposition or abuse.",
+      "severity": "warning",
+      "operator": ">=",
+      "threshold": 0.1,
+      "unit": "ratio",
+      "window": "PT15M",
+      "source": "runtime.runtime_events stop_reason aggregate counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "validation-failure-rate-critical",
+      "plane": "hetzner-runtime-plane",
+      "signal": "runtime.validation_failure_rate",
+      "description": "Runtime validator failures exceeded the production threshold.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 0.02,
+      "unit": "ratio",
+      "window": "PT15M",
+      "source": "runtime.validation_results aggregate status counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "retrieval-error-rate-critical",
+      "plane": "cloudflare-control-plane",
+      "signal": "control.retrieval_error_rate",
+      "description": "Control Plane retrieval failures exceeded the production threshold.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 0.02,
+      "unit": "ratio",
+      "window": "PT15M",
+      "source": "Cloudflare Worker route aggregate status counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "ai-gateway-error-rate-critical",
+      "plane": "cloudflare-control-plane",
+      "signal": "control.ai_gateway_error_rate",
+      "description": "AI Gateway route failures exceeded the production threshold.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 0.02,
+      "unit": "ratio",
+      "window": "PT15M",
+      "source": "Cloudflare Worker AI Gateway route aggregate status counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "embedding-queue-failure-count-critical",
+      "plane": "cloudflare-control-plane",
+      "signal": "control.embedding_queue_failure_count",
+      "description": "Embedding queue failures or dead-letter events were observed.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 1,
+      "unit": "count",
+      "window": "PT15M",
+      "source": "Cloudflare Queue consumer and ingestion_jobs aggregate counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "retention-cleanup-error-count-critical",
+      "plane": "hetzner-runtime-plane",
+      "signal": "runtime.retention_cleanup_error_count",
+      "description": "Runtime retention cleanup reported unsafe or failed artifact operations.",
+      "severity": "critical",
+      "operator": ">=",
+      "threshold": 1,
+      "unit": "count",
+      "window": "P1D",
+      "source": "runtime-retention-cleanup-evidence aggregate report counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "critical",
+      "raw_data_policy": "aggregate_metadata_only"
+    },
+    {
+      "id": "retention-cleanup-missing-count-warning",
+      "plane": "hetzner-runtime-plane",
+      "signal": "runtime.retention_cleanup_missing_count",
+      "description": "Runtime retention cleanup reported missing expired artifacts.",
+      "severity": "warning",
+      "operator": ">=",
+      "threshold": 1,
+      "unit": "count",
+      "window": "P1D",
+      "source": "runtime-retention-cleanup-evidence aggregate missing counts",
+      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "missing_data_severity": "warning",
+      "raw_data_policy": "aggregate_metadata_only"
+    }
+  ]
+}

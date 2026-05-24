@@ -80,6 +80,62 @@ writing `production-readiness-evidence.json`. The run URLs must be canonical,
 same-repository URLs, the runs must have completed successfully, and their
 `headSha` must match the release commit being evaluated.
 
+## Telemetry Alerts
+
+Production telemetry uses aggregate signals only. Raw runtime traces, tool
+outputs, provider payloads, and artifact contents stay on the Hetzner Runtime
+Plane and must not be copied into alert payloads, GitHub summaries, Notion
+notes, or release evidence.
+
+The alert policy and clean snapshot fixture live in:
+
+```text
+examples/operations/production-telemetry-policy.json
+examples/operations/production-telemetry-snapshot.json
+```
+
+The schema contracts are:
+
+```text
+schemas/production-telemetry-policy.schema.json
+schemas/production-telemetry-snapshot.schema.json
+```
+
+Evaluate a telemetry snapshot with:
+
+```bash
+python scripts/operations/evaluate_telemetry_alerts.py \
+  --policy examples/operations/production-telemetry-policy.json \
+  --snapshot examples/operations/production-telemetry-snapshot.json \
+  --fail-on-critical
+```
+
+The initial policy covers:
+
+- Runtime failure rate.
+- Runtime policy denial rate.
+- Runtime validation failure rate.
+- Control Plane retrieval error rate.
+- AI Gateway error rate.
+- Embedding queue failure count.
+- Retention cleanup error count.
+- Retention cleanup missing-artifact count.
+
+Alert response:
+
+- `critical`: stop certification or rollout, inspect the referenced runbook
+  area, and keep the release `not-production-ready` until the cause is fixed
+  or explicitly waived.
+- `warning`: keep the release non-certified unless the owner accepts the
+  operational risk and records the waiver in release evidence.
+- missing required telemetry fails closed according to each rule's
+  `missing_data_severity`.
+
+Alert evidence may include rule IDs, signal names, aggregate numeric values,
+time windows, source names, workflow URLs, and runbook links. It must not
+include secrets, raw trace payloads, raw tool outputs, private keys, provider
+credentials, or customer content.
+
 ## Migration Flow
 
 Cloudflare Control Plane:
