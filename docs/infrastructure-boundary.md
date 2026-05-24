@@ -384,6 +384,9 @@ Implemented:
 - The first production skill handler runtime slice resolves selected skills to
   exact `name@version` executable handlers and fails closed on unknown or
   mismatched handler bindings.
+- A committed skill handler coverage manifest maps each production-required
+  skill fixture to its handler ID, runtime path, module tests, and runtime
+  tests; CI fails if the manifest is stale or a required handler is missing.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -395,8 +398,8 @@ Not yet implemented:
 - Production release certification run against staging and production live
   infrastructure. The evidence workflow can verify external live run metadata,
   but the final certification gate remains pending.
-- Broader production skill handler coverage beyond the first built-in handler
-  set.
+- Broader production skill handler coverage beyond the current manifest-covered
+  fixture set.
 - Controlled write-capable execution path, if production scope includes writes.
 - Scheduled runtime retention cleanup automation.
 - Broader telemetry for retrieval, validation, and cleanup operations.
@@ -444,10 +447,13 @@ Completed:
     external run metadata validation.
 35. Production skill handler runtime first slice with version-pinned built-in
     handlers.
+36. Skill handler coverage manifest and CI gate for current production-required
+    skill fixtures.
 
 Next:
 
 1. Provision and validate staging/prod resources from the environment manifest.
-2. Expand production skill handler coverage beyond the first built-in handler set.
+2. Expand production skill handler coverage beyond the current manifest-covered
+   fixture set.
 3. Add scheduled retention cleanup automation and production telemetry.
 4. Complete production security closure and final certification.

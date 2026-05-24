@@ -172,6 +172,9 @@ The current repository has implemented the first control-plane slice:
   version-pinned executable skill handlers for `git-diff-analysis`,
   `research-context-synthesis`, `task-execution-planning`, and
   `general-task-summary`,
+- a committed skill handler coverage manifest and CI gate that map
+  production-required skill fixtures to exact handler IDs, runtime paths, and
+  tests,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
   R2 objects and D1 metadata,
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
@@ -192,8 +195,8 @@ The following architecture components are still pending implementation:
 
 - staging and production environment separation,
 - production release evidence workflow,
-- broader production skill handler coverage beyond the first built-in handler
-  set,
+- broader production skill handler coverage beyond the current manifest-covered
+  fixture set,
 - controlled write-capable execution path when production scope includes writes,
 - scheduled retention cleanup automation,
 - broader operational telemetry around retrieval, validation, and cleanup,

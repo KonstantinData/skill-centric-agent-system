@@ -56,6 +56,9 @@ jobs:
       - name: Run linting
         run: python -m ruff check .
 
+      - name: Validate skill handler coverage manifest
+        run: python scripts/runtime/skill_handler_coverage.py --check
+
       - name: Validate JSON files
         run: |
           python3 - <<'PY'

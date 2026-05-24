@@ -104,7 +104,7 @@ Hard enforcement covers:
 - `limits.max_data_reads`,
 - `limits.max_memory_ops`,
 - `limits.max_recompositions`,
-- module version pins for every selected module.
+- module version pins for every selected module,
 - exact executable handler binding for every selected skill that has a runtime
   handler.
 
@@ -134,6 +134,23 @@ Unknown selected skills and mismatched handler versions are policy denials and
 fail closed before tool execution. The Planner records the resolved
 `skill_handlers` binding in its checkpoint so release evidence can prove which
 metadata-backed code path was used.
+
+The repository also maintains a deterministic coverage manifest:
+
+```text
+examples/runtime/skill-handler-coverage.json
+```
+
+It is generated and checked by:
+
+```text
+python scripts/runtime/skill_handler_coverage.py --check
+```
+
+The manifest maps each production-required skill module fixture to the exact
+handler ID, runtime implementation path, strategy, output contract, module
+tests, and runtime tests. CI fails if a production-required skill lacks a
+matching executable handler or if the committed manifest is stale.
 
 Task class still shapes output validation and task-specific result formatting,
 but it is no longer the authority that grants executable behavior. Runtime
