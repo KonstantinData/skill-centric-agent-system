@@ -8,6 +8,8 @@ explicitly in a committed architecture decision.
 
 - Start repository work with Notion tracking in the SCAS Issues & Open
   Questions database.
+- Every SCAS Issues & Open Questions topic must include a page-level
+  task-describing comment at creation time or as a retrospective backfill.
 - Keep durable architecture, security, data-governance, and release criteria in
   repository files, not only in chat or Notion.
 - Before commits or handoff, check whether README, docs, ADRs, schemas,
