@@ -80,6 +80,41 @@ writing `production-readiness-evidence.json`. The run URLs must be canonical,
 same-repository URLs, the runs must have completed successfully, and their
 `headSha` must match the release commit being evaluated.
 
+## Security Closure
+
+The current production threat model is:
+
+```text
+docs/threat-model.md
+```
+
+The machine-readable security closure and token-scope review is:
+
+```text
+policies/security/production-security-closure.json
+```
+
+Validate security closure with:
+
+```bash
+python scripts/security/validate_security_closure.py
+```
+
+The validator fails closed when:
+
+- the threat model is missing or not marked current,
+- required security gates lack evidence,
+- required token scope reviews are missing,
+- open critical or high remediation remains,
+- accepted findings lack owner, expiry, or compensating control,
+- waiver policy permits committed secrets, unaudited production claims, or
+  unbounded data movement, or
+- secret-like values appear in the closure policy.
+
+Token rotation and ownership must be rechecked before production
+certification, after any suspected exposure, and when a workflow or runtime
+boundary starts using a new secret.
+
 ## Telemetry Alerts
 
 Production telemetry uses aggregate signals only. Raw runtime traces, tool

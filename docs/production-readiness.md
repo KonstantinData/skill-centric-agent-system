@@ -116,6 +116,12 @@ The production readiness backlog is ordered by dependency and release risk:
    `.env` guard, CODEOWNERS, main-protection desired-state validation,
    dependency policy, workflow hardening, Actions-BOM, release SBOM, data
    governance, and quality-policy tests.
+   Complete: the production threat model is versioned in
+   `docs/threat-model.md`; token-scope review, secret rotation expectations,
+   finding closure, data-plane boundary evidence, and waiver blockers are
+   captured in `policies/security/production-security-closure.json`; and
+   `scripts/security/validate_security_closure.py` is run by the
+   security-governance workflow.
 9. `P5.09 Analyzer, Composer, and Human Review Quality Gate`
    Expand evaluation coverage and make ambiguous production tasks enter a
    human-review path instead of overgranting.
@@ -182,6 +188,8 @@ The evidence artifact uses contract version `0.3.0` and includes:
   workflow and workflow tests are present,
 - production telemetry and alerting as a passed repository gate once the
   aggregate policy, snapshot, evaluator, and tests are present,
+- security hardening and threat-model closure as a passed repository gate once
+  the threat model, token-scope review, validator, and tests are present,
 - validated external run metadata and live handler-binding summaries in
   `external_evidence`,
 - `open_release_gaps` for required production gates that are not yet complete,
@@ -192,5 +200,5 @@ This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
 production certification remain `not-production-ready` while required follow-up
-gates such as threat-model closure, human-review quality gates, and broader
-production handler coverage are still open.
+gates such as human-review quality gates and broader production handler
+coverage are still open.

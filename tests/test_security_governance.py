@@ -23,11 +23,18 @@ import validate_dependency_policy  # noqa: E402
 import validate_ruleset_config  # noqa: E402
 import validate_sbom  # noqa: E402
 import validate_secret_scan  # noqa: E402
+import validate_security_closure  # noqa: E402
 
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 RULESET_PATH = REPO_ROOT / ".github" / "rulesets" / "main-protection.json"
 QUALITY_SCHEMA_PATH = REPO_ROOT / "schemas" / "knowledge-quality-policy.schema.json"
 QUALITY_EXAMPLE_PATH = REPO_ROOT / "examples" / "governance" / "knowledge-quality-policy.json"
+SECURITY_CLOSURE_SCHEMA_PATH = (
+    REPO_ROOT / "schemas" / "production-security-closure.schema.json"
+)
+SECURITY_CLOSURE_POLICY_PATH = (
+    REPO_ROOT / "policies" / "security" / "production-security-closure.json"
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -49,6 +56,9 @@ def test_required_security_governance_files_exist() -> None:
         ".github/workflows/codeql.yml",
         "docs/data-governance.md",
         "docs/review-gates.md",
+        "docs/threat-model.md",
+        "schemas/production-security-closure.schema.json",
+        "policies/security/production-security-closure.json",
         "policies/dependencies/direct-dependency-owners.json",
         "policies/dependencies/dependency-risk-exceptions.json",
         "policies/dependencies/dependency-license-policy.json",
@@ -72,6 +82,9 @@ def test_security_docs_define_secret_and_review_controls() -> None:
     assert "CODEOWNERS review" in review_gates
     assert "secret" in data_governance
     assert "raw runtime traces" in data_governance
+    assert "Threat Model Closure" in (REPO_ROOT / "docs" / "threat-model.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_no_dotenv_guard_classifies_forbidden_and_allowed_names() -> None:
@@ -101,7 +114,10 @@ def test_secret_scan_validators_reject_findings_and_accept_clean_reports(tmp_pat
                 "results": {
                     ".github/workflows/runtime-retention-cleanup.yml": [
                         {"type": "Private Key", "line_number": 1}
-                    ]
+                    ],
+                    "policies/security/production-security-closure.json": [
+                        {"type": "Secret Keyword", "line_number": 59}
+                    ],
                 }
             }
         ),
@@ -226,6 +242,15 @@ def test_knowledge_quality_policy_schema_and_example() -> None:
         Draft202012Validator(schema).validate(invalid)
 
 
+def test_security_closure_policy_schema_and_validator() -> None:
+    schema = load_json(SECURITY_CLOSURE_SCHEMA_PATH)
+    policy = load_json(SECURITY_CLOSURE_POLICY_PATH)
+
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(policy)
+    assert validate_security_closure.validate_security_closure(REPO_ROOT) == []
+
+
 def test_no_workflows_use_floating_action_tags() -> None:
     for workflow_path in WORKFLOW_DIR.glob("*.yml"):
         workflow = workflow_path.read_text(encoding="utf-8")
@@ -252,6 +277,7 @@ def test_security_scripts_are_in_optional_pre_commit_hooks() -> None:
     assert "check_no_dotenv_files.py" in pre_commit
     assert "check_workflow_hardening.py" in pre_commit
     assert "validate_dependency_policy.py" in pre_commit
+    assert "validate_security_closure.py" in pre_commit
 
 
 def test_security_governance_workflow_runs_expected_gates() -> None:
@@ -262,6 +288,7 @@ def test_security_governance_workflow_runs_expected_gates() -> None:
     assert "pip-audit" in workflow
     assert "npm audit --audit-level=high" in workflow
     assert "validate_ruleset_config.py" in workflow
+    assert "validate_security_closure.py" in workflow
     assert "generate_actions_bom.py" in workflow
     assert "generate_sbom.py" in workflow
 

@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:production-security-closure:0.1.0",
+  "title": "SCAS Production Security Closure",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "closure_id",
+    "status",
+    "owner",
+    "threat_model",
+    "required_gates",
+    "token_scope_reviews",
+    "finding_closure",
+    "data_plane_boundaries",
+    "waiver_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "closure_id": {
+      "const": "p5-08-security-hardening-threat-model-closure"
+    },
+    "status": {
+      "const": "closed"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "threat_model": {
+      "type": "object",
+      "required": [
+        "document",
+        "status",
+        "reviewed_at",
+        "next_review_trigger",
+        "covered_boundaries"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "const": "docs/threat-model.md"
+        },
+        "status": {
+          "const": "current"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "next_review_trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "covered_boundaries": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "required_gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "status": {
+            "enum": ["closed", "accepted"]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "token_scope_reviews": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "secret_name",
+          "environment_scope",
+          "minimum_scope",
+          "runtime_exposure",
+          "rotation",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "secret_name": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "environment_scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minimum_scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runtime_exposure": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rotation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "const": "reviewed"
+          }
+        }
+      }
+    },
+    "finding_closure": {
+      "type": "object",
+      "required": [
+        "security_scan_status",
+        "accepted_findings",
+        "remediation_required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "security_scan_status": {
+          "const": "no-open-critical-or-high-findings"
+        },
+        "accepted_findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "risk",
+              "owner",
+              "expires",
+              "compensating_control"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "risk": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expires": {
+                "type": "string",
+                "format": "date"
+              },
+              "compensating_control": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "remediation_required": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "data_plane_boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["boundary", "status", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "boundary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": ["documented", "tested"]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "waiver_policy": {
+      "type": "object",
+      "required": [
+        "allows_committed_secrets",
+        "allows_unaudited_production_claims",
+        "allows_unbounded_data_movement"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "allows_committed_secrets": {
+          "const": false
+        },
+        "allows_unaudited_production_claims": {
+          "const": false
+        },
+        "allows_unbounded_data_movement": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

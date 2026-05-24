@@ -1,0 +1,131 @@
+{
+  "contract_version": "0.1.0",
+  "closure_id": "p5-08-security-hardening-threat-model-closure",
+  "status": "closed",
+  "owner": "@KonstantinData",
+  "threat_model": {
+    "document": "docs/threat-model.md",
+    "status": "current",
+    "reviewed_at": "2026-05-24",
+    "next_review_trigger": "Review before production certification, when Control Plane or Runtime Plane trust boundaries change, when new write tools are added, or after any credential exposure.",
+    "covered_boundaries": [
+      "user-or-automation-to-control-api",
+      "cloudflare-control-plane-to-hetzner-runtime-plane",
+      "runtime-to-selected-tools",
+      "runtime-to-memory-promotion",
+      "github-actions-to-infrastructure",
+      "release-evidence-to-repository-artifacts"
+    ]
+  },
+  "required_gates": [
+    {
+      "id": "secret-scanning",
+      "status": "closed",
+      "evidence": ".github/workflows/security-governance.yml; scripts/security/validate_secret_scan.py"
+    },
+    {
+      "id": "tracked-dotenv-guard",
+      "status": "closed",
+      "evidence": "scripts/security/check_no_dotenv_files.py"
+    },
+    {
+      "id": "dependency-and-supply-chain",
+      "status": "closed",
+      "evidence": "scripts/security/validate_dependency_policy.py; Dependency Review; CodeQL; Actions-BOM; release SBOM"
+    },
+    {
+      "id": "workflow-hardening",
+      "status": "closed",
+      "evidence": "scripts/security/check_workflow_hardening.py; scripts/security/validate_actions_bom.py"
+    },
+    {
+      "id": "review-governance",
+      "status": "closed",
+      "evidence": ".github/CODEOWNERS; .github/rulesets/main-protection.json; docs/review-gates.md"
+    },
+    {
+      "id": "data-boundary-governance",
+      "status": "closed",
+      "evidence": "docs/data-governance.md; docs/infrastructure-boundary.md; tests/test_security_governance.py"
+    },
+    {
+      "id": "release-evidence-minimization",
+      "status": "closed",
+      "evidence": "scripts/release/build_production_readiness_evidence.py; docs/production-readiness.md"
+    }
+  ],
+  "token_scope_reviews": [
+    {
+      "secret_name": "CLOUDFLARE_API_TOKEN",
+      "environment_scope": "Use environment-specific GitHub secrets or repository environments for dev, staging, and prod.",
+      "minimum_scope": "Allow only the Cloudflare account and resources required by the selected deploy or smoke workflow; Worker script write permission is required only for deploy jobs.",
+      "runtime_exposure": "GitHub Actions runner environment only; never written to logs, artifacts, examples, or release evidence.",
+      "rotation": "Rotate in Cloudflare and update the matching GitHub Actions secret before production certification or immediately after suspected exposure.",
+      "status": "reviewed"
+    },
+    {
+      "secret_name": "CONTROL_API_TOKEN",
+      "environment_scope": "Use target-environment-specific Worker secrets and GitHub Actions secrets.",
+      "minimum_scope": "Prefer endpoint-scoped tokens for runtime clients; use the all-scope automation token only for trusted workflows that need all protected endpoints.",
+      "runtime_exposure": "Worker secret and trusted GitHub Actions automation only; runtime clients use SCAS_CONTROL_API_TOKEN from environment variables.",
+      "rotation": "Rotate the Worker secret and GitHub Actions secret together, then rerun protected-route preflight checks.",
+      "status": "reviewed"
+    },
+    {
+      "secret_name": "OPENAI_API_KEY",
+      "environment_scope": "Use Worker secrets and GitHub Actions secrets only for workflows that deploy or smoke the AI Gateway route.",
+      "minimum_scope": "Provider key only; Cloudflare AI Gateway handles routing and policy.",
+      "runtime_exposure": "Worker secret and runner-local secrets file during deploy; the temporary file is deleted by the workflow.",
+      "rotation": "Rotate with the provider and update the Worker/GitHub secret before live certification or after exposure.",
+      "status": "reviewed"
+    },
+    {
+      "secret_name": "AI_GATEWAY_AUTH_TOKEN",
+      "environment_scope": "Optional Cloudflare Authenticated Gateway token scoped to the target AI Gateway configuration.",
+      "minimum_scope": "Gateway authentication only; not a replacement for the OpenAI provider key.",
+      "runtime_exposure": "Worker secret and GitHub Actions secret for fresh deploy/smoke workflows when Authenticated Gateway is enabled.",
+      "rotation": "Rotate independently from OPENAI_API_KEY and redeploy the Worker route before repeating live smoke evidence.",
+      "status": "reviewed"
+    },
+    {
+      "secret_name": "HETZNER_SSH_KEY",
+      "environment_scope": "Use environment-specific SSH credentials for dev, staging, and prod runtime hosts.",
+      "minimum_scope": "SSH access only to the target Runtime Plane host and the required deployment user.",
+      "runtime_exposure": "GitHub Actions runner temporary key file only; workflow validates private OpenSSH key format before use.",
+      "rotation": "Rotate host authorized keys and GitHub Actions secret before production certification or immediately after exposure.",
+      "status": "reviewed"
+    }
+  ],
+  "finding_closure": {
+    "security_scan_status": "no-open-critical-or-high-findings",
+    "accepted_findings": [],
+    "remediation_required": []
+  },
+  "data_plane_boundaries": [
+    {
+      "boundary": "Cloudflare Control Plane must not store raw Runtime Plane traces or tool outputs.",
+      "status": "tested",
+      "evidence": "docs/data-governance.md; examples/operations/production-telemetry-policy.json; tests/test_production_telemetry_alerting.py"
+    },
+    {
+      "boundary": "Runtime Plane artifacts remain on Hetzner and are referenced by URI in evidence.",
+      "status": "tested",
+      "evidence": "docs/runtime-contract.md; tests/test_runtime_redaction_retention.py"
+    },
+    {
+      "boundary": "Control API protected endpoints require bearer authorization.",
+      "status": "tested",
+      "evidence": "workers/control-api/test/index.test.ts; docs/operations-runbook.md"
+    },
+    {
+      "boundary": "Release evidence must not include secret values or raw runtime artifacts.",
+      "status": "tested",
+      "evidence": "scripts/release/build_production_readiness_evidence.py; tests/test_production_readiness_evidence.py"
+    }
+  ],
+  "waiver_policy": {
+    "allows_committed_secrets": false,
+    "allows_unaudited_production_claims": false,
+    "allows_unbounded_data_movement": false
+  }
+}

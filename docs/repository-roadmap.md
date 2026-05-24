@@ -56,7 +56,8 @@ implemented. Queue-backed Cloudflare embedding indexing, runtime retention
 cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
 output contracts, first-slice executable skill handlers, and scheduled
 retention cleanup automation are implemented. Production telemetry policy,
-aggregate snapshot contracts, and alert evaluation are implemented.
+aggregate snapshot contracts, alert evaluation, and production security
+closure are implemented.
 Broader runtime planning quality remains an explicit backlog theme and must not
 obscure the runtime entry gate. The repository now has a dedicated Production
 Readiness Gate in `docs/production-readiness.md`.
@@ -228,8 +229,8 @@ implemented with dry-run-first apply behavior, safe URI resolution, missing-file
 reporting, cleanup reports, and scheduled dry-run automation. Generic runtime
 output contracts, task-type profile-selected skill handler dispatch,
 research/task-execution/general runtime fixtures, and an extended live generic
-E2E gate are implemented. Aggregate production telemetry and alert evaluation
-are implemented.
+E2E gate are implemented. Aggregate production telemetry, alert evaluation, and
+production security closure are implemented.
 
 ## Phase 8: Production Release Readiness
 
@@ -257,7 +258,9 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
 7. Add production telemetry and alerting. (Aggregate policy, snapshot schema,
    evaluator, runbook metadata, and release-evidence gate complete.)
 8. Complete security hardening and threat model closure. (Initial repository
-   security, supply-chain, review, and data-governance gates complete.)
+   security, supply-chain, review, and data-governance gates complete.
+   Production threat model, token-scope review, finding closure policy, and
+   security closure validator complete.)
 9. Expand analyzer, composer, and human-review quality gates.
 10. Run the production readiness certification gate against the target
     environment.
@@ -266,7 +269,8 @@ Status: started. The gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
 implemented. The first production skill handler runtime slice, controlled write
-path, scheduled retention cleanup automation, and production telemetry alerting
-are implemented. Provisioning, full security closure, broader production
-handler coverage beyond the current manifest-covered fixture set, and the final
-certification run against live production infrastructure remain pending.
+path, scheduled retention cleanup automation, production telemetry alerting,
+and production security closure are implemented. Provisioning, broader
+production handler coverage beyond the current manifest-covered fixture set,
+human-review quality gates, and the final certification run against live
+production infrastructure remain pending.
