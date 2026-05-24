@@ -7,7 +7,7 @@
         "id": "run-storage-contract-fixture",
         "task_id": "task-storage-contract-fixture",
         "profile_id": "profile-storage-contract-fixture",
-        "profile_version": "0.2.0",
+        "profile_version": "0.3.0",
         "status": "succeeded",
         "started_at": "2026-05-21T20:00:00Z",
         "completed_at": "2026-05-21T20:02:00Z",

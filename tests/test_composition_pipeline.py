@@ -17,6 +17,9 @@ from skill_centric_agent_system.composition import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "code-review-task.json"
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
+HUMAN_REVIEW_PROFILE_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "profiles" / "human-review-required-profile.json"
+)
 COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
 )
@@ -115,9 +118,44 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     Draft202012Validator(profile_schema).validate(profile)
     assert profile == expected_profile
     assert selected_profile_modules(profile) == set(profile["module_versions"])
+    assert profile["profile_version"] == "0.3.0"
+    assert profile["human_review"]["required"] is False
     assert profile["skills"] == ["git-diff-analysis"]
     assert profile["tools"] == ["filesystem-read", "git-read", "test-runner"]
     assert profile["memory_scopes"] == []
+
+
+def test_profile_composer_emits_review_required_profile_for_ambiguous_task() -> None:
+    cases = json.loads(TASK_ANALYZER_EVALUATIONS_PATH.read_text(encoding="utf-8"))
+    task = next(
+        case["task"]
+        for case in cases
+        if case["name"] == "ambiguous research and execution task falls back to general"
+    )
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    profile_schema = load_json(RUNTIME_PROFILE_SCHEMA_PATH)
+    expected_profile = load_json(HUMAN_REVIEW_PROFILE_EXAMPLE_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    profile = RuntimeProfileComposer().compose(analyzed, context_response)
+
+    Draft202012Validator(profile_schema).validate(profile)
+    assert profile == expected_profile
+    assert selected_profile_modules(profile) == set(profile["module_versions"])
+    assert profile["human_review"]["required"] is True
+    assert profile["human_review"]["status"] == "required"
+    assert profile["human_review"]["ambiguous_task_types"] == ["research", "task-execution"]
+    assert profile["skills"] == []
+    assert profile["tools"] == []
+    assert profile["knowledge_scopes"] == []
+    assert profile["data_scopes"] == []
+    assert profile["memory_scopes"] == []
+    assert profile["validators"] == ["runtime-profile-schema"]
+    assert profile["limits"]["max_tool_calls"] == 0
+    assert profile["limits"]["max_data_reads"] == 0
+    assert profile["limits"]["max_memory_ops"] == 0
+    assert profile["limits"]["max_recompositions"] == 0
+    assert "git-diff-analysis" not in selected_profile_modules(profile)
 
 
 def test_profile_composer_fails_closed_when_control_plane_denies_context() -> None:

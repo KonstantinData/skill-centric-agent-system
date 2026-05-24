@@ -1,0 +1,92 @@
+{
+  "id": "profile-research-and-implement",
+  "profile_version": "0.3.0",
+  "profile_generation": 1,
+  "parent_profile_id": null,
+  "recomposition_reason": null,
+  "task_type": "general-task",
+  "objective": "Research runtime strategy options and implement the best one.",
+  "risk_level": "high",
+  "auth_context": {
+    "principal": {
+      "id": "user-local",
+      "type": "user"
+    },
+    "roles": [
+      "repository-maintainer"
+    ],
+    "authorization_policies": [
+      "submitter-can-request-general-task"
+    ]
+  },
+  "human_review": {
+    "required": true,
+    "status": "required",
+    "reason": "Task classification matched multiple specialized task types; specialized runtime composition requires human approval.",
+    "ambiguous_task_types": [
+      "research",
+      "task-execution"
+    ],
+    "classification_confidence": "low",
+    "classification_reasons": [
+      "Matched research task signals: research.",
+      "Matched task-execution task signals: implement.",
+      "Fell back to general-task because multiple specialized task types matched."
+    ],
+    "allowed_before_approval": [
+      "profile_validation",
+      "audit_recording",
+      "clarification_request"
+    ]
+  },
+  "instructions": [
+    "base-agent-rules"
+  ],
+  "skills": [],
+  "tools": [],
+  "knowledge_scopes": [],
+  "data_scopes": [],
+  "memory_scopes": [],
+  "policies": [
+    "no-destructive-commands",
+    "require-file-references"
+  ],
+  "validators": [
+    "runtime-profile-schema"
+  ],
+  "module_versions": {
+    "base-agent-rules": "0.1.0",
+    "no-destructive-commands": "0.1.0",
+    "require-file-references": "0.1.0",
+    "runtime-profile-schema": "0.1.0"
+  },
+  "limits": {
+    "max_tool_calls": 0,
+    "max_tokens": 60000,
+    "max_duration_seconds": 900,
+    "max_data_reads": 0,
+    "max_memory_ops": 0,
+    "max_recompositions": 0
+  },
+  "failure_policy": {
+    "on_composer_failure": "fail_closed",
+    "on_validator_failure": "fail_closed",
+    "on_policy_denial": "fail_closed",
+    "on_budget_exhausted": "return_error"
+  },
+  "observability": {
+    "trace_id": "trace-research-and-implement",
+    "log_level": "info",
+    "capture_events": [
+      "task_analyzed",
+      "candidates_discovered",
+      "candidates_scored",
+      "policies_evaluated",
+      "graph_validated",
+      "profile_emitted",
+      "profile_validated",
+      "runtime_completed"
+    ],
+    "redact_sensitive_data": true
+  }
+}

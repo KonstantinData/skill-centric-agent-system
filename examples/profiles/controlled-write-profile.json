@@ -1,6 +1,6 @@
 {
   "id": "profile-controlled-write-fixture",
-  "profile_version": "0.2.0",
+  "profile_version": "0.3.0",
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
@@ -19,6 +19,17 @@
     "authorization_policies": [
       "write-approval-required"
     ]
+  },
+  "human_review": {
+    "required": false,
+    "status": "not_required",
+    "reason": "Analyzer did not require human review.",
+    "ambiguous_task_types": [],
+    "classification_confidence": "high",
+    "classification_reasons": [
+      "Controlled write fixture is explicitly approved for task-execution validation."
+    ],
+    "allowed_before_approval": []
   },
   "instructions": [
     "repository-task-execution"

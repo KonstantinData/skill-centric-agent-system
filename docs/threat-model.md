@@ -54,7 +54,7 @@ events, checkpoints, and raw runtime artifacts.
 | ID | Scenario | Status | Closure Evidence |
 | --- | --- | --- | --- |
 | T1 | Runtime self-grants unselected tools, data scopes, skills, policies, or validators. | Closed | Profile enforcement tests, immutable recomposition contract, Tool Gateway tests. |
-| T2 | Ambiguous tasks receive specialized capabilities instead of review or fallback. | Partially closed | Analyzer ambiguity signaling exists; P5.09 remains open for human-review quality gates. |
+| T2 | Ambiguous tasks receive specialized capabilities instead of review or fallback. | Closed | Analyzer ambiguity signaling exists; the Composer emits review-required profiles with no selected skills, tools, knowledge scopes, data scopes, or memory scopes before approval. |
 | T3 | Raw runtime traces or tool outputs are copied into Cloudflare, Notion, logs, or release evidence. | Closed | Data governance, telemetry aggregate-only policy, evidence scripts, secret scanning. |
 | T4 | Control API protected routes can be used without authorization. | Closed | Worker auth tests and runtime preflight route checks. |
 | T5 | Broad automation tokens are used where endpoint-scoped tokens are sufficient. | Closed for current release gate | Token-scope review documented in `policies/security/production-security-closure.json`; endpoint-scoped token guidance remains required for production provisioning. |
@@ -94,10 +94,8 @@ automation path.
 
 ## Residual Risks
 
-The following risks are intentionally not closed by P5.08:
+The following risks are intentionally not closed by P5.08 and P5.09:
 
-- P5.09 must make ambiguous production tasks enter a human-review path instead
-  of overgranting.
 - Broader production skill handler coverage beyond the current manifest-covered
   fixtures remains a separate backlog item.
 - Staging and production resources still need live provisioning and validation

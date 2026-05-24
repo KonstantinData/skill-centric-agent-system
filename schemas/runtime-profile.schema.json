@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:runtime-profile:0.2.0",
+  "$id": "urn:scas:schema:runtime-profile:0.3.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",
@@ -15,6 +15,7 @@
     "objective",
     "risk_level",
     "auth_context",
+    "human_review",
     "instructions",
     "skills",
     "tools",
@@ -119,6 +120,63 @@
         },
         "authorization_policies": {
           "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "human_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "status",
+        "reason",
+        "ambiguous_task_types",
+        "classification_confidence",
+        "classification_reasons",
+        "allowed_before_approval"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "required",
+            "approved",
+            "rejected"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ambiguous_task_types": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "classification_confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "classification_reasons": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "allowed_before_approval": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "profile_validation",
+              "audit_recording",
+              "clarification_request"
+            ]
+          },
+          "uniqueItems": true
         }
       }
     },
