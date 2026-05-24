@@ -45,7 +45,11 @@ implemented. Queue-backed Cloudflare embedding indexing, runtime retention
 cleanup execution, Analyzer ambiguity signaling, machine-readable runtime
 output contracts, and first-slice generic runtime strategies are implemented.
 Broader runtime planning quality and production-scale telemetry remain explicit
-backlog themes and must not obscure the runtime entry gate.
+backlog themes and must not obscure the runtime entry gate. The repository now
+has a dedicated Production Readiness Gate in `docs/production-readiness.md`.
+That gate is the authority for any future `production-ready` claim and
+currently classifies the repository as `not-production-ready` for a full
+production launch while recognizing the initial productive runtime core.
 
 ## Phase 0: Runtime Preflight Gate
 
@@ -207,3 +211,30 @@ reporting, and cleanup reports. Generic runtime output contracts, task-type
 strategy dispatch, research/task-execution/general runtime fixtures, and an
 extended live generic E2E gate are implemented. Scheduled cleanup automation and
 broader telemetry remain pending.
+
+## Phase 8: Production Release Readiness
+
+This phase is required before the repository can be marked production-ready.
+The release gate, evidence rules, status vocabulary, and ordered backlog live in
+`docs/production-readiness.md`.
+
+1. Define the Production Release Readiness Gate. (Initial documentation and
+   test coverage complete.)
+2. Add staging and production environment separation. (Initial manifest,
+   documentation, and dev artifact root split complete; resource provisioning
+   remains pending.)
+3. Add a production release evidence workflow. (Initial evidence-only workflow
+   complete; target-environment live gate orchestration remains pending.)
+4. Add production skill handler runtime support.
+5. Add controlled write-capable execution only behind explicit safety gates.
+6. Add scheduled runtime retention cleanup automation.
+7. Add production telemetry and alerting.
+8. Complete security hardening and threat model closure.
+9. Expand analyzer, composer, and human-review quality gates.
+10. Run the production readiness certification gate against the target
+    environment.
+
+Status: started. The gate is defined, the first environment separation
+manifest exists, and the initial evidence-only workflow exists. Provisioning,
+target-environment live validation, skill handler runtime, telemetry, and
+security closure remain pending.

@@ -26,6 +26,54 @@ Rules:
 - Control API tokens must be scoped by endpoint where possible. Use
   `CONTROL_API_TOKEN` only for trusted automation that needs all protected
   endpoints.
+- The environment resource manifest lives in
+  `examples/infrastructure/environment-manifest.json`; update it before adding
+  staging or production workflows.
+
+## Production Release Gate
+
+The production release gate is defined in `docs/production-readiness.md`.
+Do not mark the repository or any deployment as production-ready until that
+gate passes for the target environment.
+
+Required release evidence includes:
+
+- repository integrity checks,
+- contract and documentation consistency,
+- staging and production environment separation,
+- Control Plane readiness,
+- Runtime Plane readiness,
+- live runtime gates,
+- executable skill runtime coverage,
+- write-capable execution coverage when writes are in scope,
+- operational telemetry,
+- security closure,
+- owner-approved release decision.
+
+The release evidence must record command or workflow references without
+including secret values or raw runtime artifacts.
+
+Run the evidence-only workflow while production resources are still being
+prepared:
+
+```bash
+gh workflow run production-readiness.yml \
+  -f target_environment=dev \
+  -f release_scope=initial-productive-core \
+  -f certification_mode=evidence-only
+```
+
+Run certification mode only after the matching live runtime and AI Gateway
+smoke workflow runs have passed:
+
+```bash
+gh workflow run production-readiness.yml \
+  -f target_environment=prod \
+  -f release_scope=production-runtime \
+  -f certification_mode=certify \
+  -f live_runtime_gates_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  -f ai_gateway_smoke_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
+```
 
 ## Migration Flow
 
@@ -150,7 +198,7 @@ gh workflow run live-runtime-gates.yml \
 
 That workflow executes the live dev E2E gate on the Hetzner host, connects to
 PostgreSQL over the local Unix socket, and stores artifacts below
-`/opt/scas/runtime/live-dev-gates/<github-run-id>`. With
+`/opt/scas/runtime/dev/live-gates/<github-run-id>`. With
 `live_task_suite=generic`, it runs `code-review`, `research`,
 `task-execution`, and `general-task` cases against the live Control Plane and
 Hetzner Runtime Plane.

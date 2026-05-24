@@ -184,8 +184,14 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
+- staging and production environment separation,
+- production release evidence workflow,
+- production skill handler runtime with metadata-to-code binding,
+- controlled write-capable execution path when production scope includes writes,
 - scheduled retention cleanup automation,
 - broader operational telemetry around retrieval, validation, and cleanup,
+- production security hardening and threat model closure,
+- human-review flow for ambiguous production tasks,
 - richer task planning beyond the conservative first-slice strategies.
 
 ## Productive Runtime Gate
@@ -195,6 +201,15 @@ executes against real Cloudflare and Hetzner infrastructure with reproducible
 run state, hard profile enforcement, bounded tool execution, structured failure
 semantics, and observable artifacts. The entry checklist and task-neutral
 validation scenarios live in `docs/runtime-preflight.md`.
+
+## Production Readiness Gate
+
+Production-ready status is a separate release decision. It requires the
+evidence gate in `docs/production-readiness.md`, including environment
+separation, release evidence, executable skill handlers, operational telemetry,
+security closure, and certification against the target environment. Until that
+gate passes, the repository must be described as `not-production-ready` for a
+full production launch.
 
 ## Operational Baseline
 

@@ -1,0 +1,190 @@
+name: Production Readiness Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Environment this evidence applies to
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      release_scope:
+        description: Release scope being evaluated
+        required: true
+        type: string
+        default: initial-productive-core
+      certification_mode:
+        description: Evidence-only records checks; certify requires external live evidence references
+        required: true
+        type: choice
+        options:
+          - evidence-only
+          - certify
+        default: evidence-only
+      live_runtime_gates_run_url:
+        description: URL for the matching live runtime gates run, required for certify mode
+        required: false
+        type: string
+        default: ""
+      ai_gateway_smoke_run_url:
+        description: URL for the matching AI Gateway live smoke run, required for certify mode
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Build production readiness evidence
+    runs-on: ubuntu-latest
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      RELEASE_SCOPE: ${{ inputs.release_scope }}
+      CERTIFICATION_MODE: ${{ inputs.certification_mode }}
+      LIVE_RUNTIME_GATES_RUN_URL: ${{ inputs.live_runtime_gates_run_url }}
+      AI_GATEWAY_SMOKE_RUN_URL: ${{ inputs.ai_gateway_smoke_run_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run Python repository gates
+        run: |
+          python -m pytest
+          python -m ruff check .
+
+      - name: Validate tracked JSON files
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          tracked_json = subprocess.check_output(
+              ["git", "ls-files", "*.json"],
+              text=True,
+          ).splitlines()
+          for path in tracked_json:
+              json.loads(Path(path).read_text(encoding="utf-8"))
+          PY
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Worker dependencies
+        run: npm ci
+
+      - name: Run Worker gates
+        run: |
+          npm run worker:types
+          git diff --exit-code workers/control-api/src/worker-configuration.d.ts
+          npm run worker:typecheck
+          npm run worker:test
+          npm run worker:check
+
+      - name: Validate certification inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${CERTIFICATION_MODE}" = "certify" ]; then
+            if [ -z "${LIVE_RUNTIME_GATES_RUN_URL}" ]; then
+              echo "::error::certify mode requires live_runtime_gates_run_url"
+              exit 1
+            fi
+            if [ -z "${AI_GATEWAY_SMOKE_RUN_URL}" ]; then
+              echo "::error::certify mode requires ai_gateway_smoke_run_url"
+              exit 1
+            fi
+          fi
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CERTIFICATION_MODE}" != "certify" ]; then
+            echo "::notice::prod evidence-only mode does not certify production-ready status."
+          fi
+
+      - name: Write evidence summary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          certification_mode = os.environ["CERTIFICATION_MODE"]
+          target_environment = os.environ["TARGET_ENVIRONMENT"]
+          if certification_mode != "certify":
+              status = "initial-productive-core" if target_environment == "dev" else "not-production-ready"
+          elif target_environment == "staging":
+              status = "staging-ready"
+          elif target_environment == "prod":
+              status = "production-ready"
+          else:
+              status = "initial-productive-core"
+
+          evidence = {
+              "contract_version": "0.1.0",
+              "generated_at": datetime.now(UTC).isoformat(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit": os.environ["GITHUB_SHA"],
+              "workflow_run": {
+                  "id": os.environ["GITHUB_RUN_ID"],
+                  "attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+                  "url": (
+                      f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+                      f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+                  ),
+              },
+              "target_environment": target_environment,
+              "release_scope": os.environ["RELEASE_SCOPE"],
+              "certification_mode": certification_mode,
+              "status": status,
+              "passed_gates": [
+                  "python-tests",
+                  "python-ruff",
+                  "tracked-json-parse",
+                  "worker-types",
+                  "worker-typecheck",
+                  "worker-tests",
+                  "worker-dry-run",
+              ],
+              "external_evidence": {
+                  "live_runtime_gates_run_url": os.environ["LIVE_RUNTIME_GATES_RUN_URL"],
+                  "ai_gateway_smoke_run_url": os.environ["AI_GATEWAY_SMOKE_RUN_URL"],
+              },
+              "secret_handling": "No secret values are written to this evidence artifact.",
+          }
+          Path("production-readiness-evidence.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload evidence summary
+        uses: actions/upload-artifact@v6
+        with:
+          name: production-readiness-evidence
+          path: production-readiness-evidence.json
+          if-no-files-found: error

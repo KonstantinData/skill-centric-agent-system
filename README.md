@@ -61,8 +61,19 @@ consume that Control Plane response and emit a version-pinned runtime profile.
 The Python runtime can execute deterministic first-slice strategies for
 `code-review`, `research`, `task-execution`, and `general-task`, and each
 strategy emits a task-class-specific `runtime_output` validated by the active
-profile. Production-scale deployment hardening and broader telemetry remain
-follow-up implementation work.
+profile.
+
+The repository is currently `not-production-ready` for a full production
+launch. It has an initial productive runtime core, but production-ready status
+requires the release evidence gate in `docs/production-readiness.md`, including
+staging/prod environment separation, executable skill handlers, operational
+telemetry, security closure, and a certification run against the target
+environment. The first environment separation manifest is now recorded in
+`examples/infrastructure/environment-manifest.json`, but staging/prod resources
+still need to be provisioned and validated before any production-ready claim.
+The manual Production Readiness Evidence workflow records repository and Worker
+gate results as a non-secret artifact and can require external live gate
+references for certification mode.
 
 ## Core Flow
 
@@ -80,7 +91,9 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/contracts.md`: durable contracts for modules and runtime profiles.
 - `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
 - `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
+- `docs/environment-separation.md`: staging and production environment separation rules and resource naming manifest.
 - `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
+- `docs/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
 - `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
 - `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
 - `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
@@ -92,6 +105,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/runtime-profile.schema.json`: JSON Schema for runtime agent profiles.
 - `schemas/runtime-api.schema.json`: JSON Schema for runtime API request and response examples.
 - `schemas/runtime-output.schema.json`: JSON Schema for task-class-specific runtime outputs.
+- `schemas/environment-manifest.schema.json`: JSON Schema for the environment separation manifest.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
@@ -113,6 +127,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/control-api/`: representative Control API request and response payloads.
 - `examples/runtime-api/`: representative Runtime API request and response payloads.
 - `examples/runtime-outputs/`: representative validated runtime output payloads.
+- `examples/infrastructure/`: environment separation manifest for dev, staging, and prod.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
@@ -313,7 +328,30 @@ gh workflow run live-runtime-gates.yml `
 
 The workflow uses GitHub Actions secrets, uploads the checked-out commit to the
 Hetzner host, runs the selected live gate scripts there, and writes runtime
-artifacts below `/opt/scas/runtime/live-dev-gates/<github-run-id>`.
+artifacts below `/opt/scas/runtime/dev/live-gates/<github-run-id>`.
+
+Production readiness evidence is manual in
+`.github/workflows/production-readiness.yml`. Run evidence-only mode while
+staging and production resources are still being prepared:
+
+```powershell
+gh workflow run production-readiness.yml `
+  -f target_environment=dev `
+  -f release_scope=initial-productive-core `
+  -f certification_mode=evidence-only
+```
+
+Certification mode requires references to matching live runtime and AI Gateway
+smoke workflow runs:
+
+```powershell
+gh workflow run production-readiness.yml `
+  -f target_environment=prod `
+  -f release_scope=production-runtime `
+  -f certification_mode=certify `
+  -f live_runtime_gates_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID `
+  -f ai_gateway_smoke_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
+```
 
 The current dev Worker is:
 
@@ -331,5 +369,6 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 ## Next Steps
 
-1. Expand operational telemetry around runtime cleanup, retrieval, and validation gates.
-2. Add scheduled retention cleanup automation after the manual cleanup path is stable.
+1. Provision and validate staging/prod resources from the environment manifest.
+2. Extend the Production Readiness Evidence workflow to orchestrate target-environment live gates.
+3. Implement `P5.04 Production Skill Handler Runtime`.

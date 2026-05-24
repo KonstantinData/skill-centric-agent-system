@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PRODUCTION_READINESS_PATH = REPO_ROOT / "docs" / "production-readiness.md"
+README_PATH = REPO_ROOT / "README.md"
+
+
+def test_production_readiness_gate_exists() -> None:
+    assert PRODUCTION_READINESS_PATH.exists()
+
+
+def test_production_readiness_gate_defines_required_release_evidence() -> None:
+    gate = PRODUCTION_READINESS_PATH.read_text(encoding="utf-8")
+
+    required_sections = (
+        "Purpose",
+        "Status Vocabulary",
+        "Release Gate",
+        "Evidence Rules",
+        "Prioritized Implementation Backlog",
+        "Certification Output",
+    )
+    for section in required_sections:
+        assert f"## {section}" in gate
+
+    required_gates = (
+        "Repository integrity",
+        "Environment separation",
+        "Control Plane readiness",
+        "Runtime Plane readiness",
+        "Live runtime gates",
+        "Executable skill runtime",
+        "Operational telemetry",
+        "Security closure",
+        "Release decision",
+    )
+    for required_gate in required_gates:
+        assert required_gate in gate
+
+
+def test_readme_links_production_readiness_gate() -> None:
+    readme = README_PATH.read_text(encoding="utf-8")
+
+    assert "docs/production-readiness.md" in readme
+    assert "not-production-ready" in readme

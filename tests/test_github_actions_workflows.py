@@ -7,6 +7,9 @@ CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 LIVE_RUNTIME_GATES_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "live-runtime-gates.yml"
 )
+PRODUCTION_READINESS_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "production-readiness.yml"
+)
 
 
 def load_ci_workflow() -> str:
@@ -15,6 +18,10 @@ def load_ci_workflow() -> str:
 
 def load_live_runtime_gates_workflow() -> str:
     return LIVE_RUNTIME_GATES_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_production_readiness_workflow() -> str:
+    return PRODUCTION_READINESS_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -106,7 +113,7 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "python3.12-venv" in workflow
     assert "scripts/runtime/live_dev_e2e.py" in workflow
     assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
-    assert "/opt/scas/runtime/live-dev-gates" in workflow
+    assert "/opt/scas/runtime/dev/live-gates" in workflow
 
 
 def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
@@ -116,3 +123,32 @@ def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
     assert "scripts/runtime/postgres_concurrency_smoke.py" in workflow
     assert "--events 20" in workflow
     assert "--profile-file examples/profiles/code-review-profile.json" in workflow
+
+
+def test_production_readiness_workflow_exists() -> None:
+    assert PRODUCTION_READINESS_WORKFLOW_PATH.exists()
+
+
+def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
+    workflow = load_production_readiness_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "certification_mode:" in workflow
+    assert "python -m pytest" in workflow
+    assert "python -m ruff check ." in workflow
+    assert "ls-files" in workflow
+    assert "npm run worker:typecheck" in workflow
+    assert "npm run worker:test" in workflow
+    assert "npm run worker:check" in workflow
+    assert "production-readiness-evidence.json" in workflow
+    assert "No secret values are written" in workflow
+    assert "not-production-ready" in workflow
+    assert "actions/upload-artifact" in workflow
+
+
+def test_production_readiness_certify_mode_requires_live_evidence() -> None:
+    workflow = load_production_readiness_workflow()
+
+    assert "certify mode requires live_runtime_gates_run_url" in workflow
+    assert "certify mode requires ai_gateway_smoke_run_url" in workflow

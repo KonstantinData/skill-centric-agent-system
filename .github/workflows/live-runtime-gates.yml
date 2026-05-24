@@ -174,7 +174,7 @@ jobs:
 
           archive="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}.tar.gz"
           workdir="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}"
-          artifact_root="/opt/scas/runtime/live-dev-gates/${GITHUB_RUN_ID}"
+          artifact_root="/opt/scas/runtime/dev/live-gates/${GITHUB_RUN_ID}"
 
           rm -rf "${workdir}"
           install -d -m 755 "${workdir}"
@@ -183,7 +183,8 @@ jobs:
 
           sudo_if_needed chgrp postgres /opt/scas/runtime
           sudo_if_needed chmod 750 /opt/scas/runtime
-          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/live-dev-gates
+          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/dev
+          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/dev/live-gates
           sudo_if_needed install -d -o postgres -g postgres -m 750 "${artifact_root}"
 
           if ! python3 -m venv "${workdir}/.venv"; then

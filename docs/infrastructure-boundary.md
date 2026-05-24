@@ -10,6 +10,9 @@ The system has two infrastructure planes:
 - Hetzner Runtime Plane for task-local execution results and artifacts.
 
 Runtime outputs can produce long-term memory, but only through a validated feedback loop.
+Environment-specific resource names and secret prefixes are defined in
+`docs/environment-separation.md` and
+`examples/infrastructure/environment-manifest.json`.
 
 ## Plane Ownership
 
@@ -383,8 +386,17 @@ Implemented:
 
 Not yet implemented:
 
+- Provisioned staging and production Cloudflare/Hetzner resources. The
+  environment separation manifest and documentation exist, but resources still
+  need to be created and validated.
+- Production release certification orchestration against staging and production
+  live gates. The initial evidence-only workflow exists.
+- Production skill handler runtime with version-pinned executable handlers.
+- Controlled write-capable execution path, if production scope includes writes.
 - Scheduled runtime retention cleanup automation.
 - Broader telemetry for retrieval, validation, and cleanup operations.
+- Production security hardening and threat model closure.
+- Human-review quality gate for ambiguous production tasks.
 
 ## Implementation Order
 
@@ -426,6 +438,7 @@ Completed:
 
 Next:
 
-1. Add scheduled retention cleanup automation.
-2. Expand operational telemetry around retrieval, validation, and cleanup.
-2. Expand operational telemetry and scheduled cleanup automation.
+1. Complete `P5.02 Staging and Production Environment Separation`.
+2. Complete `P5.03 Production Release Evidence Workflow`.
+3. Complete `P5.04 Production Skill Handler Runtime`.
+4. Add scheduled retention cleanup automation and production telemetry.

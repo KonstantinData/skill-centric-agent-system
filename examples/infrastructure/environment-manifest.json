@@ -1,0 +1,110 @@
+{
+  "contract_version": "0.1.0",
+  "environments": [
+    {
+      "name": "dev",
+      "release_role": "development",
+      "cloudflare": {
+        "worker_name": "scas-control-api-dev",
+        "control_d1_database": "scas-control-dev",
+        "knowledge_r2_bucket": "scas-knowledge-dev",
+        "memory_r2_bucket": "scas-memory-dev",
+        "knowledge_vectorize_index": "scas-knowledge-dev",
+        "memory_vectorize_index": "scas-memory-dev",
+        "config_kv_namespace": "scas-config-dev",
+        "ingest_queue": "scas-ingest-dev",
+        "ingest_dead_letter_queue": "scas-ingest-dev-dlq",
+        "ai_gateway_id": "scas-ai-gateway-dev-run"
+      },
+      "hetzner": {
+        "runtime_database": "scas_runtime",
+        "runtime_schema": "runtime",
+        "runtime_owner_role": "scas_runtime_app",
+        "artifact_root": "/opt/scas/runtime/dev"
+      },
+      "github_actions": {
+        "environment_name": "dev",
+        "secret_prefix": "SCAS_DEV",
+        "required_secrets": [
+          "SCAS_DEV_CLOUDFLARE_ACCOUNT_ID",
+          "SCAS_DEV_CLOUDFLARE_API_TOKEN",
+          "SCAS_DEV_HETZNER_HOST",
+          "SCAS_DEV_HETZNER_SSH_KEY",
+          "SCAS_DEV_HETZNER_USER",
+          "SCAS_DEV_OPENAI_API_KEY",
+          "SCAS_DEV_CONTROL_API_TOKEN"
+        ]
+      }
+    },
+    {
+      "name": "staging",
+      "release_role": "rehearsal",
+      "cloudflare": {
+        "worker_name": "scas-control-api-staging",
+        "control_d1_database": "scas-control-staging",
+        "knowledge_r2_bucket": "scas-knowledge-staging",
+        "memory_r2_bucket": "scas-memory-staging",
+        "knowledge_vectorize_index": "scas-knowledge-staging",
+        "memory_vectorize_index": "scas-memory-staging",
+        "config_kv_namespace": "scas-config-staging",
+        "ingest_queue": "scas-ingest-staging",
+        "ingest_dead_letter_queue": "scas-ingest-staging-dlq",
+        "ai_gateway_id": "scas-ai-gateway-staging-run"
+      },
+      "hetzner": {
+        "runtime_database": "scas_runtime_staging",
+        "runtime_schema": "runtime",
+        "runtime_owner_role": "scas_runtime_staging_app",
+        "artifact_root": "/opt/scas/runtime/staging"
+      },
+      "github_actions": {
+        "environment_name": "staging",
+        "secret_prefix": "SCAS_STAGING",
+        "required_secrets": [
+          "SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID",
+          "SCAS_STAGING_CLOUDFLARE_API_TOKEN",
+          "SCAS_STAGING_HETZNER_HOST",
+          "SCAS_STAGING_HETZNER_SSH_KEY",
+          "SCAS_STAGING_HETZNER_USER",
+          "SCAS_STAGING_OPENAI_API_KEY",
+          "SCAS_STAGING_CONTROL_API_TOKEN"
+        ]
+      }
+    },
+    {
+      "name": "prod",
+      "release_role": "production",
+      "cloudflare": {
+        "worker_name": "scas-control-api-prod",
+        "control_d1_database": "scas-control-prod",
+        "knowledge_r2_bucket": "scas-knowledge-prod",
+        "memory_r2_bucket": "scas-memory-prod",
+        "knowledge_vectorize_index": "scas-knowledge-prod",
+        "memory_vectorize_index": "scas-memory-prod",
+        "config_kv_namespace": "scas-config-prod",
+        "ingest_queue": "scas-ingest-prod",
+        "ingest_dead_letter_queue": "scas-ingest-prod-dlq",
+        "ai_gateway_id": "scas-ai-gateway-prod-run"
+      },
+      "hetzner": {
+        "runtime_database": "scas_runtime_prod",
+        "runtime_schema": "runtime",
+        "runtime_owner_role": "scas_runtime_prod_app",
+        "artifact_root": "/opt/scas/runtime/prod"
+      },
+      "github_actions": {
+        "environment_name": "prod",
+        "secret_prefix": "SCAS_PROD",
+        "required_secrets": [
+          "SCAS_PROD_CLOUDFLARE_ACCOUNT_ID",
+          "SCAS_PROD_CLOUDFLARE_API_TOKEN",
+          "SCAS_PROD_HETZNER_HOST",
+          "SCAS_PROD_HETZNER_SSH_KEY",
+          "SCAS_PROD_HETZNER_USER",
+          "SCAS_PROD_OPENAI_API_KEY",
+          "SCAS_PROD_CONTROL_API_TOKEN"
+        ]
+      }
+    }
+  ]
+}
