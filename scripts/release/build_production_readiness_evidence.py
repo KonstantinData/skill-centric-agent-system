@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-CONTRACT_VERSION = "0.2.0"
+CONTRACT_VERSION = "0.3.0"
 GITHUB_HOST = "github.com"
 
 TARGET_ENVIRONMENTS = {"dev", "staging", "prod"}
@@ -298,6 +298,11 @@ def gate_results(
                     "status": "passed",
                     "evidence": external_evidence["ai_gateway_smoke"],
                 },
+                {
+                    "gate": "Live handler binding evidence",
+                    "status": "passed",
+                    "evidence": external_evidence["live_handler_bindings"],
+                },
             ]
         )
     else:
@@ -306,6 +311,13 @@ def gate_results(
                 "gate": "Live runtime gates",
                 "status": "not_required",
                 "evidence": "evidence-only mode does not certify live runtime gates",
+            }
+        )
+        results.append(
+            {
+                "gate": "Live handler binding evidence",
+                "status": "not_required",
+                "evidence": "evidence-only mode does not certify live handler bindings",
             }
         )
 
@@ -330,6 +342,7 @@ def external_evidence(
     ai_gateway_smoke_run_url: str,
     live_runtime_gates_metadata: dict[str, object] | None,
     ai_gateway_smoke_metadata: dict[str, object] | None,
+    live_handler_binding_evidence: dict[str, object] | None,
 ) -> dict[str, object]:
     if certification_mode != "certify":
         return {
@@ -343,12 +356,18 @@ def external_evidence(
                 "run_url": "",
                 "validation_status": "not_required",
             },
+            "live_handler_bindings": {
+                "required": False,
+                "validation_status": "not_required",
+            },
         }
 
     if live_runtime_gates_metadata is None:
         raise EvidenceError("certify mode requires live runtime run metadata")
     if ai_gateway_smoke_metadata is None:
         raise EvidenceError("certify mode requires AI Gateway smoke run metadata")
+    if live_handler_binding_evidence is None:
+        raise EvidenceError("certify mode requires live handler binding evidence")
 
     return {
         "live_runtime_gates": {
@@ -371,6 +390,10 @@ def external_evidence(
                 expected_commit=commit,
             ),
         },
+        "live_handler_bindings": {
+            "required": True,
+            **validate_live_handler_binding_evidence(live_handler_binding_evidence),
+        },
     }
 
 
@@ -387,6 +410,7 @@ def build_evidence(
     ai_gateway_smoke_run_url: str = "",
     live_runtime_gates_metadata: dict[str, object] | None = None,
     ai_gateway_smoke_metadata: dict[str, object] | None = None,
+    live_handler_binding_evidence: dict[str, object] | None = None,
     generated_at: str | None = None,
 ) -> dict[str, object]:
     validate_certification_inputs(
@@ -407,6 +431,7 @@ def build_evidence(
         ai_gateway_smoke_run_url=ai_gateway_smoke_run_url,
         live_runtime_gates_metadata=live_runtime_gates_metadata,
         ai_gateway_smoke_metadata=ai_gateway_smoke_metadata,
+        live_handler_binding_evidence=live_handler_binding_evidence,
     )
     status = production_status(
         target_environment=target_environment,
@@ -451,6 +476,71 @@ def metadata_from_path(path: Path | None) -> dict[str, object] | None:
     return load_json_file(path)
 
 
+def validate_live_handler_binding_evidence(evidence: dict[str, object]) -> dict[str, object]:
+    if evidence.get("status") != "passed":
+        raise EvidenceError("live handler binding evidence status must be passed")
+    if evidence.get("handler_binding_status") != "passed":
+        raise EvidenceError("live handler binding evidence must pass handler_binding_status")
+
+    results = evidence.get("results")
+    if not isinstance(results, list) or not results:
+        raise EvidenceError("live handler binding evidence must include results")
+
+    case_summaries = []
+    for result in results:
+        if not isinstance(result, dict):
+            raise EvidenceError("live handler binding result must be an object")
+        if result.get("status") != "passed":
+            raise EvidenceError("live handler binding result status must be passed")
+        if result.get("handler_binding_status") != "passed":
+            raise EvidenceError("live handler binding result must pass binding status")
+
+        skill_handlers = result.get("skill_handlers")
+        if not isinstance(skill_handlers, list) or not skill_handlers:
+            raise EvidenceError("live handler binding result must include skill_handlers")
+        validated_handlers = [
+            _validate_skill_handler_binding(handler) for handler in skill_handlers
+        ]
+        case_summaries.append(
+            {
+                "case": str(result.get("case", "")),
+                "run_id": str(result.get("run_id", "")),
+                "profile_id": str(result.get("profile_id", "")),
+                "task_type": str(result.get("task_type", "")),
+                "planner_checkpoint_uri": str(result.get("planner_checkpoint_uri", "")),
+                "skill_handlers": validated_handlers,
+            }
+        )
+
+    return {
+        "validation_status": "passed",
+        "status": "passed",
+        "task_suite": str(evidence.get("task_suite", "")),
+        "case_count": int(evidence.get("case_count", len(case_summaries))),
+        "cases": case_summaries,
+    }
+
+
+def _validate_skill_handler_binding(handler: object) -> dict[str, str]:
+    if not isinstance(handler, dict):
+        raise EvidenceError("skill handler binding must be an object")
+
+    name = str(handler.get("name", ""))
+    version = str(handler.get("version", ""))
+    handler_id = str(handler.get("handler_id", ""))
+    if not name or not version or not handler_id:
+        raise EvidenceError("skill handler binding requires name, version, and handler_id")
+    if handler_id != f"{name}@{version}":
+        raise EvidenceError(
+            f"skill handler binding {handler_id!r} does not match {name}@{version}"
+        )
+    return {
+        "name": name,
+        "version": version,
+        "handler_id": handler_id,
+    }
+
+
 def env_value(name: str, default: str = "") -> str:
     return os.environ.get(name, default)
 
@@ -478,6 +568,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=Path("production-readiness-evidence.json"))
     parser.add_argument("--live-runtime-gates-metadata", type=Path)
     parser.add_argument("--ai-gateway-smoke-metadata", type=Path)
+    parser.add_argument("--live-handler-binding-evidence", type=Path)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--print-run-id")
     return parser
@@ -514,6 +605,9 @@ def main(argv: list[str] | None = None) -> int:
             ai_gateway_smoke_run_url=args.ai_gateway_smoke_run_url,
             live_runtime_gates_metadata=metadata_from_path(args.live_runtime_gates_metadata),
             ai_gateway_smoke_metadata=metadata_from_path(args.ai_gateway_smoke_metadata),
+            live_handler_binding_evidence=metadata_from_path(
+                args.live_handler_binding_evidence
+            ),
         )
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True), encoding="utf-8")
     except EvidenceError as exc:

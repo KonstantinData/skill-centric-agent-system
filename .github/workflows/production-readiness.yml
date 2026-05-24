@@ -150,6 +150,11 @@ jobs:
             --json databaseId,workflowName,status,conclusion,headSha,url,event,displayTitle,createdAt,updatedAt \
             > production-evidence/ai-gateway-smoke-run.json
 
+          gh run download "${live_runtime_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name live-runtime-handler-binding-evidence \
+            --dir production-evidence/live-handler-binding
+
       - name: Write evidence summary
         shell: bash
         run: |
@@ -162,6 +167,7 @@ jobs:
             args+=(
               --live-runtime-gates-metadata production-evidence/live-runtime-gates-run.json
               --ai-gateway-smoke-metadata production-evidence/ai-gateway-smoke-run.json
+              --live-handler-binding-evidence production-evidence/live-handler-binding/live-dev-e2e.json
             )
           fi
 
@@ -173,5 +179,7 @@ jobs:
           name: production-readiness-evidence
           path: |
             production-readiness-evidence.json
+            production-evidence/*.json
+            production-evidence/live-handler-binding/*.json
             security-evidence/*.json
           if-no-files-found: error

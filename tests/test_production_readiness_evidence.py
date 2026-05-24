@@ -51,6 +51,36 @@ def run_metadata(
     }
 
 
+def live_handler_binding_evidence() -> dict[str, object]:
+    return {
+        "status": "passed",
+        "handler_binding_status": "passed",
+        "task_suite": "generic",
+        "case_count": 1,
+        "results": [
+            {
+                "case": "code-review",
+                "status": "passed",
+                "run_id": "run-live-123-code-review",
+                "task_type": "code-review",
+                "profile_id": "profile-code-review",
+                "handler_binding_status": "passed",
+                "planner_checkpoint_uri": (
+                    "hetzner://runtime/traces/run-live-123-code-review/"
+                    "checkpoints/001-planner.json"
+                ),
+                "skill_handlers": [
+                    {
+                        "name": "git-diff-analysis",
+                        "version": "0.1.0",
+                        "handler_id": "git-diff-analysis@0.1.0",
+                    }
+                ],
+            }
+        ],
+    }
+
+
 def test_parse_actions_run_url_requires_same_repository() -> None:
     parsed = evidence.parse_actions_run_url(LIVE_RUN_URL, REPOSITORY)
 
@@ -77,7 +107,7 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
-    assert payload["contract_version"] == "0.2.0"
+    assert payload["contract_version"] == "0.3.0"
     assert payload["status"] == "initial-productive-core"
     assert payload["final_decision"] == "not-certified"
     assert payload["open_release_gaps"] == []
@@ -129,11 +159,19 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
             workflow_name="CI",
             url=AI_GATEWAY_RUN_URL,
         ),
+        live_handler_binding_evidence=live_handler_binding_evidence(),
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
     assert payload["external_evidence"]["live_runtime_gates"]["validation_status"] == "passed"
     assert payload["external_evidence"]["ai_gateway_smoke"]["validation_status"] == "passed"
+    assert payload["external_evidence"]["live_handler_bindings"]["validation_status"] == (
+        "passed"
+    )
+    assert any(
+        result["gate"] == "Live handler binding evidence"
+        for result in payload["gate_results"]
+    )
     assert payload["status"] == "not-production-ready"
     assert payload["final_decision"] == "not-certified"
     assert not any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
@@ -162,4 +200,42 @@ def test_certify_mode_rejects_wrong_external_workflow() -> None:
                 workflow_name="CI",
                 url=AI_GATEWAY_RUN_URL,
             ),
+            live_handler_binding_evidence=live_handler_binding_evidence(),
         )
+
+
+def test_certify_mode_requires_live_handler_binding_evidence() -> None:
+    with pytest.raises(evidence.EvidenceError, match="live handler binding evidence"):
+        evidence.build_evidence(
+            repository=REPOSITORY,
+            commit=COMMIT,
+            workflow_run_id="111",
+            workflow_run_attempt="1",
+            target_environment="prod",
+            release_scope="production-runtime",
+            certification_mode="certify",
+            live_runtime_gates_run_url=LIVE_RUN_URL,
+            ai_gateway_smoke_run_url=AI_GATEWAY_RUN_URL,
+            live_runtime_gates_metadata=run_metadata(
+                run_id=123456789,
+                workflow_name="Live Runtime Gates",
+                url=LIVE_RUN_URL,
+            ),
+            ai_gateway_smoke_metadata=run_metadata(
+                run_id=987654321,
+                workflow_name="CI",
+                url=AI_GATEWAY_RUN_URL,
+            ),
+        )
+
+
+def test_live_handler_binding_evidence_rejects_mismatched_handler_id() -> None:
+    invalid_evidence = live_handler_binding_evidence()
+    result = invalid_evidence["results"][0]
+    assert isinstance(result, dict)
+    handlers = result["skill_handlers"]
+    assert isinstance(handlers, list)
+    handlers[0]["handler_id"] = "wrong-handler@0.1.0"
+
+    with pytest.raises(evidence.EvidenceError, match="does not match"):
+        evidence.validate_live_handler_binding_evidence(invalid_evidence)

@@ -115,6 +115,8 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "scripts/runtime/live_dev_e2e.py" in workflow
     assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
     assert "/opt/scas/runtime/dev/live-gates" in workflow
+    assert "live-runtime-handler-binding-evidence" in workflow
+    assert "live-runtime-evidence/live-dev-e2e.json" in workflow
 
 
 def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
@@ -146,6 +148,8 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "scripts/release/build_production_readiness_evidence.py" in workflow
     assert "production-readiness-evidence.json" in workflow
     assert "actions/upload-artifact" in workflow
+    assert "gh run download" in workflow
+    assert "live-runtime-handler-binding-evidence" in workflow
 
 
 def test_production_readiness_certify_mode_requires_live_evidence() -> None:

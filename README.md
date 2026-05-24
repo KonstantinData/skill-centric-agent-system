@@ -372,6 +372,9 @@ gh workflow run live-runtime-gates.yml `
 The workflow uses GitHub Actions secrets, uploads the checked-out commit to the
 Hetzner host, runs the selected live gate scripts there, and writes runtime
 artifacts below `/opt/scas/runtime/dev/live-gates/<github-run-id>`.
+When `run_live_dev_e2e=true`, the workflow also uploads a non-secret
+`live-runtime-handler-binding-evidence` artifact containing the resolved
+`skill_handlers` from the planner checkpoint for each live case.
 
 Production readiness evidence is manual in
 `.github/workflows/production-readiness.yml`. Run evidence-only mode while

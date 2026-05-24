@@ -33,6 +33,7 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
         "Control Plane readiness",
         "Runtime Plane readiness",
         "Live runtime gates",
+        "Live handler binding evidence",
         "Executable skill runtime",
         "Operational telemetry",
         "Security closure",

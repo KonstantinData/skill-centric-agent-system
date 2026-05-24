@@ -43,6 +43,7 @@ is satisfied for the target environment.
 | Control Plane readiness | Cloudflare Worker, D1, R2, Vectorize, Queues, KV, AI Gateway, bearer auth, endpoint-scoped tokens, migrations, seed state, and rollback path are verified. |
 | Runtime Plane readiness | Hetzner PostgreSQL, runtime roles, migrations, artifact root, Flight Recorder writes, retention planning, backup, restore, and disable paths are verified. |
 | Live runtime gates | Generic E2E, retrieval and Vectorize smoke, AI Gateway live smoke, Postgres concurrency smoke, and retention dry-run/apply evidence pass for the target environment. |
+| Live handler binding evidence | The referenced Live Runtime Gates run uploads `live-runtime-handler-binding-evidence`; certification validates passed live E2E cases and sanitized `skill_handlers` where every `handler_id` equals `name@version`. |
 | Executable skill runtime | Profile-selected skills resolve to version-pinned executable handlers; unknown or mismatched handlers fail closed; `python scripts/runtime/skill_handler_coverage.py --check` proves every production-required skill fixture maps to a handler, runtime path, and tests. |
 | Write-capable execution scope | If production scope includes writes, every write adapter has explicit authorization, approval, policy, audit, validation, and rollback coverage. If production scope is read-only, that limitation is stated in the release evidence. |
 | Operational telemetry | Retrieval, validation, cleanup, AI Gateway, queue processing, runtime failures, and policy denials have observable signals and runbook-backed diagnostics. |
@@ -148,12 +149,18 @@ unless each run:
   and `CI` for the AI Gateway smoke), and
 - uses a canonical `https://github.com/OWNER/REPO/actions/runs/RUN_ID` URL.
 
-The evidence artifact uses contract version `0.2.0` and includes:
+The workflow also downloads the `live-runtime-handler-binding-evidence`
+artifact from the referenced Live Runtime Gates run. Certification fails closed
+unless that artifact contains passed live E2E results with sanitized
+`skill_handlers` where every `handler_id` equals `name@version`.
+
+The evidence artifact uses contract version `0.3.0` and includes:
 
 - release commit, target environment, release scope, workflow run ID, and
   generated timestamp,
 - `gate_results` with `passed`, `pending`, or `not_required` statuses,
-- validated external run metadata in `external_evidence`,
+- validated external run metadata and live handler-binding summaries in
+  `external_evidence`,
 - `open_release_gaps` for required production gates that are not yet complete,
 - `status` and `final_decision`, and
 - a sensitive-data handling statement.
