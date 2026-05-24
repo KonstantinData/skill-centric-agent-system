@@ -201,6 +201,11 @@ Confirmed apply deletes only expired artifact files that resolve under the
 configured artifact root. It never deletes runtime metadata rows in the first
 cleanup slice.
 
+The same CLI path is scheduled through
+`.github/workflows/runtime-retention-cleanup.yml`. Scheduled runs are dry-run
+only and upload non-secret cleanup evidence. Manual workflow dispatch can run a
+confirmed delete after the dry-run report is reviewed.
+
 ## Storage Modes
 
 Supported storage modes:

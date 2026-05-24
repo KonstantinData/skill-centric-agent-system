@@ -393,6 +393,9 @@ Implemented:
 - Handler upgrades, deprecations, and rollback are governed by a repository
   policy that preserves immutable profile version pins and fail-closed rollback
   behavior.
+- Scheduled runtime retention cleanup runs on the Hetzner Runtime Plane through
+  a dry-run-first GitHub Actions workflow and uploads non-secret cleanup
+  evidence.
 - GitHub Actions runs contract tests, linting, JSON validation, Worker tests,
   Worker type checks, and Worker dry-run deploys.
 
@@ -406,8 +409,6 @@ Not yet implemented:
   but the final certification gate remains pending.
 - Broader production skill handler coverage beyond the current manifest-covered
   fixture set.
-- Controlled write-capable execution path, if production scope includes writes.
-- Scheduled runtime retention cleanup automation.
 - Broader telemetry for retrieval, validation, and cleanup operations.
 - Production security hardening and threat model closure.
 - Human-review quality gate for ambiguous production tasks.
@@ -457,11 +458,13 @@ Completed:
     skill fixtures.
 37. Live handler-binding evidence artifact and production-readiness validation.
 38. Skill handler version upgrade and rollback policy.
+39. Controlled write-capable execution path.
+40. Scheduled runtime retention cleanup automation.
 
 Next:
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered
    fixture set.
-3. Add scheduled retention cleanup automation and production telemetry.
+3. Add production telemetry.
 4. Complete production security closure and final certification.

@@ -397,6 +397,35 @@ Cleanup rules:
 - Cleanup reports carry their own retention policy through
   `cleanup_report_artifact_days`, defaulting to 180 days.
 
+Scheduled retention cleanup:
+
+```bash
+gh workflow run runtime-retention-cleanup.yml \
+  -f target_environment=dev \
+  -f cleanup_mode=dry-run \
+  -f strict_missing=false
+```
+
+The scheduled workflow runs daily from `main` in dry-run mode against the dev
+Hetzner artifact root. It packages the repository commit, executes
+`scas-runtime retention apply` on the Hetzner host as the PostgreSQL runtime
+user, persists the cleanup report under the configured artifact root, downloads
+the non-secret report plus exit status, and uploads
+`runtime-retention-cleanup-evidence`.
+
+Manual confirmed deletion is allowed only through `workflow_dispatch` after the
+dry-run report is reviewed:
+
+```bash
+gh workflow run runtime-retention-cleanup.yml \
+  -f target_environment=prod \
+  -f cleanup_mode=confirmed-delete \
+  -f strict_missing=true
+```
+
+Scheduled runs must never set `cleanup_mode=confirmed-delete`; the workflow
+fails closed if a non-manual event attempts destructive cleanup.
+
 ## Diagnostics
 
 Composition failures:

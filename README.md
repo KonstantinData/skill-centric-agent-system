@@ -39,9 +39,12 @@ runtime path, and the operations runbook defines migrations, smoke tests,
 diagnostics, and disable paths. Runtime artifact writes now honor the profile's
 `observability.redact_sensitive_data` flag and expose a retention planner,
 safe URI resolver, cleanup executor, cleanup report, and dry-run-first CLI for
-runtime artifact cleanup jobs. The Cloudflare Control API also exposes initial
-knowledge and validated-memory ingestion endpoints that write R2 objects, D1
-metadata, ingestion jobs, and audit events. It now also exposes a
+runtime artifact cleanup jobs. Scheduled runtime retention cleanup now runs
+through a dry-run-first GitHub Actions workflow against the Hetzner Runtime
+Plane and uploads non-secret cleanup evidence for review. The Cloudflare
+Control API also exposes initial knowledge and validated-memory ingestion
+endpoints that write R2 objects, D1 metadata, ingestion jobs, and audit events.
+It now also exposes a
 D1-gated `POST /retrieval/context` endpoint with Vectorize bindings and
 post-validation, plus a fail-closed AI Gateway route for OpenAI chat
 completions. Ingestion now queues deterministic `embedding_update` jobs through
@@ -388,6 +391,14 @@ When `run_live_dev_e2e=true`, the workflow also uploads a non-secret
 `live-runtime-handler-binding-evidence` artifact containing the resolved
 `skill_handlers` from the planner checkpoint for each live case.
 
+Runtime retention cleanup is scheduled in
+`.github/workflows/runtime-retention-cleanup.yml`. The scheduled run is
+dry-run only against the dev Hetzner artifact root. Manual dispatch can target
+`dev`, `staging`, or `prod`; destructive deletion requires choosing
+`cleanup_mode=confirmed-delete` and remains disabled for scheduled runs. Each
+run uploads `runtime-retention-cleanup-evidence` with the cleanup report and
+exit status.
+
 Production readiness evidence is manual in
 `.github/workflows/production-readiness.yml`. Run evidence-only mode while
 staging and production resources are still being prepared:
@@ -431,4 +442,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered fixture set.
-3. Add scheduled runtime retention cleanup automation and production telemetry.
+3. Add production telemetry, threat-model closure, and human-review quality gates.

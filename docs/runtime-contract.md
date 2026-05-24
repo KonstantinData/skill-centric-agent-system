@@ -425,6 +425,10 @@ Retention cleanup must obey these rules:
 - Cleanup reports are retained under their own `cleanup_report_artifact_days`
   policy so the cleanup mechanism does not create unbounded report artifacts.
 
+Scheduled cleanup automation must use the same CLI and executor path. Scheduled
+runs are dry-run only, persist a cleanup report, and upload non-secret evidence.
+Confirmed deletion must require manual workflow dispatch after report review.
+
 ## Runtime Result
 
 The runtime result must contain:
