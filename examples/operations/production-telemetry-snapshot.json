@@ -1,0 +1,55 @@
+{
+  "contract_version": "0.1.0",
+  "generated_at": "2026-05-24T18:30:00Z",
+  "environment": "prod",
+  "signals": {
+    "control.ai_gateway_error_rate": {
+      "value": 0.0,
+      "unit": "ratio",
+      "source": "Cloudflare Worker AI Gateway route aggregate status counts",
+      "window": "PT15M"
+    },
+    "control.embedding_queue_failure_count": {
+      "value": 0,
+      "unit": "count",
+      "source": "Cloudflare Queue consumer and ingestion_jobs aggregate counts",
+      "window": "PT15M"
+    },
+    "control.retrieval_error_rate": {
+      "value": 0.0,
+      "unit": "ratio",
+      "source": "Cloudflare Worker route aggregate status counts",
+      "window": "PT15M"
+    },
+    "runtime.failure_rate": {
+      "value": 0.0,
+      "unit": "ratio",
+      "source": "runtime.runtime_runs aggregate status counts",
+      "window": "PT15M"
+    },
+    "runtime.policy_denial_rate": {
+      "value": 0.02,
+      "unit": "ratio",
+      "source": "runtime.runtime_events stop_reason aggregate counts",
+      "window": "PT15M"
+    },
+    "runtime.retention_cleanup_error_count": {
+      "value": 0,
+      "unit": "count",
+      "source": "runtime-retention-cleanup-evidence aggregate report counts",
+      "window": "P1D"
+    },
+    "runtime.retention_cleanup_missing_count": {
+      "value": 0,
+      "unit": "count",
+      "source": "runtime-retention-cleanup-evidence aggregate missing counts",
+      "window": "P1D"
+    },
+    "runtime.validation_failure_rate": {
+      "value": 0.0,
+      "unit": "ratio",
+      "source": "runtime.validation_results aggregate status counts",
+      "window": "PT15M"
+    }
+  }
+}

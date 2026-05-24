@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:production-telemetry-snapshot:0.1.0",
+  "title": "SCAS Production Telemetry Snapshot",
+  "type": "object",
+  "required": ["contract_version", "generated_at", "environment", "signals"],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "environment": {
+      "enum": ["dev", "staging", "prod"]
+    },
+    "signals": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9._-]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["value", "unit", "source", "window"],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "enum": ["count", "ratio", "seconds"]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "window": {
+            "type": "string",
+            "pattern": "^PT[0-9]+[MHS]$|^P[0-9]+D$"
+          }
+        }
+      }
+    }
+  }
+}

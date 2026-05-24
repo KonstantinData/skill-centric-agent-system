@@ -80,15 +80,17 @@ The repository is currently `not-production-ready` for a full production
 launch. It has an initial productive runtime core, but production-ready status
 requires the release evidence gate in `docs/production-readiness.md`, including
 staging/prod environment separation, broader production handler coverage,
-operational telemetry, security closure, and a certification run against the
-target environment. The first environment separation manifest is now recorded in
-`examples/infrastructure/environment-manifest.json`, but staging/prod resources
-still need to be provisioned and validated before any production-ready claim.
-The manual Production Readiness Evidence workflow records repository and Worker
-gate results as a non-secret artifact. Certification mode verifies external
-live runtime and AI Gateway smoke run metadata against the same repository,
-same release commit, expected workflow names, and successful conclusions before
-writing release evidence.
+security closure, and a certification run against the target environment. The
+first environment separation manifest is now recorded in
+`examples/infrastructure/environment-manifest.json`, and production telemetry
+policy fixtures now define aggregate Control Plane and Runtime Plane alert
+signals without moving raw runtime traces out of Hetzner. Staging/prod
+resources still need to be provisioned and validated before any
+production-ready claim. The manual Production Readiness Evidence workflow
+records repository and Worker gate results as a non-secret artifact.
+Certification mode verifies external live runtime and AI Gateway smoke run
+metadata against the same repository, same release commit, expected workflow
+names, and successful conclusions before writing release evidence.
 
 ## Core Flow
 
@@ -137,6 +139,8 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/knowledge-quality-policy.schema.json`: JSON Schema for generic knowledge/data-quality policy metadata.
 - `schemas/skill-handler-coverage.schema.json`: JSON Schema for the production skill handler coverage manifest.
 - `schemas/skill-handler-version-policy.schema.json`: JSON Schema for executable skill handler version policy.
+- `schemas/production-telemetry-policy.schema.json`: JSON Schema for production alerting policy.
+- `schemas/production-telemetry-snapshot.schema.json`: JSON Schema for aggregate telemetry snapshots.
 - `migrations/cloudflare/d1/`: Cloudflare D1 SQL migrations for control-plane metadata.
 - `migrations/hetzner/postgres/`: PostgreSQL migrations for Hetzner runtime-plane storage.
 - `policies/`: repository dependency, license, risk-exception, and CI supply-chain policies.
@@ -150,6 +154,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `scripts/hetzner/`: Hetzner bootstrap and maintenance scripts.
 - `scripts/repo/`: repository lifecycle utilities such as post-merge branch cleanup and Notion issue-comment audit validation.
 - `scripts/runtime/`: live runtime gate scripts.
+- `scripts/operations/`: operations evidence and telemetry evaluation scripts.
 - `scripts/security/`: secret, workflow, ruleset, dependency, Actions-BOM, and SBOM governance scripts.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
@@ -161,6 +166,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `examples/runtime/`: deterministic runtime governance manifests and action-plan examples.
 - `examples/infrastructure/`: environment separation manifest for dev, staging, and prod.
 - `examples/governance/`: representative knowledge/data-quality policy fixtures.
+- `examples/operations/`: production telemetry policy and aggregate snapshot fixtures.
 - `examples/evaluations/`: analyzer, scoring, and controlled-learning evaluation fixtures.
 - `examples/runtime-plane/`: representative Hetzner runtime-plane storage records.
 - `tests/`: executable contract tests for schemas, examples, and cross-field invariants.
@@ -442,4 +448,4 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered fixture set.
-3. Add production telemetry, threat-model closure, and human-review quality gates.
+3. Complete threat-model closure, human-review quality gates, and the final certification run.

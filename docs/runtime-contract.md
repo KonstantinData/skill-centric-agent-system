@@ -396,6 +396,13 @@ Run-local event indexes must be allocated atomically by the runtime storage
 adapter. The runtime must not derive `event_index` by counting currently visible
 events in a way that can race under parallel writers.
 
+Production alerting consumes aggregate telemetry snapshots, not raw runtime
+traces. The alert evaluator may process signal names, numeric values, windows,
+sources, and runbook links for retrieval, validation, cleanup, AI Gateway,
+queue processing, runtime failures, and policy denials. It must not copy raw
+tool outputs, provider payloads, checkpoint bodies, or customer content out of
+the Hetzner Runtime Plane.
+
 ## Retention Cleanup
 
 Runtime retention cleanup applies only to artifact files, not runtime metadata

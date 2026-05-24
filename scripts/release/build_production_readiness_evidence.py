@@ -59,15 +59,20 @@ REPOSITORY_GATE_RESULTS = (
             "tests/test_github_actions_workflows.py"
         ),
     ),
+    (
+        "Production telemetry and alerting",
+        (
+            "python scripts/operations/evaluate_telemetry_alerts.py "
+            "--policy examples/operations/production-telemetry-policy.json "
+            "--snapshot examples/operations/production-telemetry-snapshot.json "
+            "--fail-on-critical; "
+            "python -m pytest tests/test_production_telemetry_alerting.py"
+        ),
+    ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
 STAGING_PROD_OPEN_GAPS = (
-    {
-        "id": "P5.07",
-        "gate": "Operational telemetry",
-        "reason": "Production telemetry and alerting are not complete.",
-    },
     {
         "id": "P5.08",
         "gate": "Security closure",
