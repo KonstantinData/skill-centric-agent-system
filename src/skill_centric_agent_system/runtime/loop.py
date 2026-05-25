@@ -15,6 +15,10 @@ from skill_centric_agent_system.runtime.enforcement import (
     RuntimeProfileEnforcer,
 )
 from skill_centric_agent_system.runtime.entrypoint import RuntimeEntryPoint, RuntimeStartResult
+from skill_centric_agent_system.runtime.error_taxonomy import (
+    classify_runtime_failure,
+    classify_runtime_success,
+)
 from skill_centric_agent_system.runtime.models import (
     RecompositionRequest,
     iso_timestamp,
@@ -131,6 +135,20 @@ class MinimalRuntimeLoop:
                 stop_reason=stop_reason,
                 recomposition_request=recomposition_request,
             ) from error
+
+        success_classification = classify_runtime_success(
+            plan=plan,
+            execution=execution,
+            enforcer_counters={
+                "tool_calls": enforcer.tool_calls,
+                "tokens_used": enforcer.tokens_used,
+            },
+            profile_limits=profile.get("limits", {}),
+        )
+        response = {
+            **response,
+            "error_classification": success_classification.as_dict(),
+        }
 
         self.recorder.record_event(
             run_id=run_id,
@@ -259,6 +277,16 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
     ) -> str:
         stop_reason = str(getattr(error, "stop_reason", "tool_error"))
+        error_code = getattr(error, "code", None)
+        classification = classify_runtime_failure(
+            error=error,
+            stop_reason=stop_reason,
+            error_code=str(error_code) if isinstance(error_code, str) else None,
+            enforcer_counters={
+                "tool_calls": enforcer.tool_calls,
+                "tokens_used": enforcer.tokens_used,
+            },
+        )
         self.recorder.record_event(
             run_id=run_id,
             event_type="runtime_failed",
@@ -266,6 +294,7 @@ class MinimalRuntimeLoop:
             result={
                 "error": str(error),
                 "error_type": type(error).__name__,
+                "error_classification": classification.as_dict(),
             },
             stop_reason=stop_reason,  # type: ignore[arg-type]
             redact_sensitive_data=redact_sensitive_data,

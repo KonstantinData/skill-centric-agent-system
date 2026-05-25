@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:error-classification:0.1.0",
+  "title": "Runtime Error Classification Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error_class",
+    "error_confidence",
+    "classification_source",
+    "error_evidence",
+    "runtime_playbook"
+  ],
+  "properties": {
+    "error_class": {
+      "type": "string",
+      "enum": [
+        "F1_INEFFICIENCY_PATH",
+        "F2_INTERFACE_CONTRACT_BREAKDOWN",
+        "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION",
+        "NONE"
+      ]
+    },
+    "error_confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "classification_source": {
+      "type": "string",
+      "enum": [
+        "rule_based_runtime_v1"
+      ]
+    },
+    "error_evidence": {
+      "type": "object"
+    },
+    "runtime_playbook": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
