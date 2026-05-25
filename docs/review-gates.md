@@ -22,6 +22,11 @@ or production evidence:
 - production security closure validation,
 - production-readiness evidence for release claims.
 
+Error-taxonomy gate policy is also mandatory when runtime/eval behavior changes:
+
+- `python scripts/operations/evaluate_error_classification_gates.py --policy ... --snapshot ... --fail-on-failed`
+- Releases with `R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION` above threshold fail closed.
+
 ## High-Impact Paths
 
 High-impact paths are listed in `.github/CODEOWNERS` and include workflows,

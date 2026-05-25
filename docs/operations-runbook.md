@@ -584,3 +584,21 @@ Recovery steps:
 3. Run the relevant smoke test.
 4. Restore or reseed only the affected environment.
 5. Re-run the live dev E2E gate before resuming productive runtime work.
+## Error Classification Gates
+
+Evaluate F1/F2/R8 class thresholds before release gating:
+
+```powershell
+python scripts/operations/evaluate_error_classification_gates.py `
+  --policy examples/operations/error-classification-gate-policy.json `
+  --snapshot examples/operations/error-classification-gate-snapshot.json `
+  --fail-on-failed
+```
+
+Generate trend reports by task type, module version, and environment:
+
+```powershell
+python scripts/operations/error_classification_report.py `
+  --snapshot examples/operations/error-classification-report-snapshot.json `
+  --output security-evidence/error-classification-report.json
+```

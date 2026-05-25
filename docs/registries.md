@@ -13,6 +13,8 @@ The first implementation is local and deterministic:
 - discovery uses structured fields, not keyword-only matching,
 - scoring applies explicit `selection.base_score` and
   `selection.score_modifiers`,
+- scoring can apply taxonomy feedback penalties from recent F1/F2/R8 outcomes
+  through `TaskSignals.error_feedback`,
 - policy filtering fails closed when required policies are missing,
 - graph validation checks transitive module references before profile assembly.
 
