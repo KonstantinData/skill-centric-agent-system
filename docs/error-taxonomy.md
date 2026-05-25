@@ -41,6 +41,14 @@ Every classified runtime outcome records:
    thresholds.
 4. `NONE` otherwise.
 
+Optional second stage:
+
+- Enable `SCAS_ENABLE_LLM_ERROR_JUDGE=true` or CLI flag
+  `--enable-llm-error-judge`.
+- The LLM judge is only consulted for low-confidence rule-based outcomes.
+- If no judge is configured, or the judge output is invalid, runtime falls back
+  deterministically to the original rule-based classification.
+
 ## Runtime Playbooks
 
 The taxonomy includes a standard runtime playbook field:

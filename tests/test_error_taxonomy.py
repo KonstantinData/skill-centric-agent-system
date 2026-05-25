@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from skill_centric_agent_system.runtime.error_taxonomy import (
+    apply_optional_llm_judge,
     classify_runtime_failure,
     classify_runtime_success,
 )
@@ -37,3 +38,71 @@ def test_runtime_success_classifies_inefficient_paths_as_f1() -> None:
     )
     assert classification.error_class == "F1_INEFFICIENCY_PATH"
     assert classification.runtime_playbook.startswith("optimize_")
+
+
+class _StaticJudge:
+    def __init__(self, payload: dict[str, str]) -> None:
+        self.payload = payload
+
+    def classify(self, payload: object) -> dict[str, str]:
+        assert payload is not None
+        return self.payload
+
+
+def test_optional_llm_judge_reclassifies_low_confidence_when_enabled() -> None:
+    base = classify_runtime_failure(
+        error=RuntimeError("unexpected runtime error"),
+        stop_reason="runtime_error",
+        error_code="runtime_error",
+        enforcer_counters={"tool_calls": 0, "tokens_used": 0},
+    )
+    assert base.error_confidence == "low"
+    judged = apply_optional_llm_judge(
+        base,
+        enabled=True,
+        judge=_StaticJudge(
+            {
+                "error_class": "F2_INTERFACE_CONTRACT_BREAKDOWN",
+                "error_confidence": "medium",
+                "runtime_playbook": "normalize_interface_retry_once_then_fail_closed",
+            }
+        ),
+        context={"run_id": "run-1"},
+    )
+    assert judged.classification_source == "llm_judge_v1"
+    assert judged.error_class == "F2_INTERFACE_CONTRACT_BREAKDOWN"
+
+
+def test_optional_llm_judge_falls_back_when_disabled_or_invalid() -> None:
+    base = classify_runtime_failure(
+        error=RuntimeError("unexpected runtime error"),
+        stop_reason="runtime_error",
+        error_code="runtime_error",
+        enforcer_counters={"tool_calls": 0, "tokens_used": 0},
+    )
+    disabled = apply_optional_llm_judge(
+        base,
+        enabled=False,
+        judge=_StaticJudge(
+            {
+                "error_class": "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION",
+                "error_confidence": "high",
+                "runtime_playbook": "fail_closed",
+            }
+        ),
+        context={"run_id": "run-1"},
+    )
+    assert disabled == base
+    invalid = apply_optional_llm_judge(
+        base,
+        enabled=True,
+        judge=_StaticJudge(
+            {
+                "error_class": "INVALID",
+                "error_confidence": "high",
+                "runtime_playbook": "fail_closed",
+            }
+        ),
+        context={"run_id": "run-1"},
+    )
+    assert invalid == base

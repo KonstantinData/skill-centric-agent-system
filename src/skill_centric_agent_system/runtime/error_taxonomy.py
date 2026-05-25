@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 ErrorClass = Literal[
     "F1_INEFFICIENCY_PATH",
@@ -11,7 +11,8 @@ ErrorClass = Literal[
     "NONE",
 ]
 
-ClassificationSource = Literal["rule_based_runtime_v1"]
+ClassificationSource = Literal["rule_based_runtime_v1", "llm_judge_v1"]
+LLM_CLASSIFICATION_SOURCE = "llm_judge_v1"
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,10 @@ class ErrorClassification:
             "error_evidence": self.error_evidence,
             "runtime_playbook": self.runtime_playbook,
         }
+
+
+class ErrorClassificationJudge(Protocol):
+    def classify(self, payload: Mapping[str, Any]) -> Mapping[str, Any] | None: ...
 
 
 def classify_runtime_failure(
@@ -140,4 +145,58 @@ def classify_runtime_success(
             "tokens_used": tokens_used,
         },
         runtime_playbook="no_action_required",
+    )
+
+
+def apply_optional_llm_judge(
+    base: ErrorClassification,
+    *,
+    enabled: bool,
+    judge: ErrorClassificationJudge | None,
+    context: Mapping[str, Any],
+) -> ErrorClassification:
+    if not enabled:
+        return base
+    if base.error_confidence != "low":
+        return base
+    if judge is None:
+        return base
+
+    raw = judge.classify(
+        {
+            "base_classification": base.as_dict(),
+            "context": dict(context),
+        }
+    )
+    if not isinstance(raw, Mapping):
+        return base
+
+    error_class = raw.get("error_class")
+    error_confidence = raw.get("error_confidence")
+    runtime_playbook = raw.get("runtime_playbook")
+    if (
+        not isinstance(error_class, str)
+        or error_class
+        not in {
+            "F1_INEFFICIENCY_PATH",
+            "F2_INTERFACE_CONTRACT_BREAKDOWN",
+            "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION",
+            "NONE",
+        }
+        or error_confidence not in {"low", "medium", "high"}
+        or not isinstance(runtime_playbook, str)
+    ):
+        return base
+
+    evidence = raw.get("error_evidence")
+    if not isinstance(evidence, Mapping):
+        evidence = {}
+    merged_evidence = {**base.error_evidence, "llm_judge_evidence": dict(evidence)}
+
+    return ErrorClassification(
+        error_class=error_class,  # type: ignore[arg-type]
+        error_confidence=error_confidence,  # type: ignore[arg-type]
+        classification_source=LLM_CLASSIFICATION_SOURCE,  # type: ignore[arg-type]
+        error_evidence=merged_evidence,
+        runtime_playbook=runtime_playbook,
     )

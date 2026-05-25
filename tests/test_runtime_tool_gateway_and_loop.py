@@ -777,6 +777,47 @@ def test_minimal_runtime_loop_classifies_policy_denial_as_r8(
     )
 
 
+def test_minimal_runtime_loop_uses_llm_judge_when_enabled_for_low_confidence_failure(
+    tmp_path: Path,
+) -> None:
+    class StaticJudge:
+        def classify(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+            assert payload["base_classification"]["error_confidence"] == "low"
+            return {
+                "error_class": "F2_INTERFACE_CONTRACT_BREAKDOWN",
+                "error_confidence": "medium",
+                "runtime_playbook": "normalize_interface_retry_once_then_fail_closed",
+                "error_evidence": {"judge": "static"},
+            }
+
+    store = InMemoryRuntimeStore()
+    artifacts = JsonArtifactStore(tmp_path)
+    entrypoint = RuntimeEntryPoint(store=store, artifacts=artifacts)
+    start_result = entrypoint.start(
+        load_json(TASK_EXAMPLE_PATH),
+        composition_context_response=load_json(COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+    start_result.profile["failure_policy"]["on_policy_denial"] = "return_error"
+    start_result.profile["failure_policy"]["on_validator_failure"] = "return_error"
+    start_result.profile["failure_policy"]["on_budget_exhausted"] = "return_error"
+    start_result.profile["limits"]["max_duration_seconds"] = 0
+    loop = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=REPO_ROOT,
+        enable_llm_error_judge=True,
+        llm_error_judge=StaticJudge(),
+    )
+
+    with pytest.raises(RuntimeLoopError):
+        loop.run(start_result)
+
+    failed_event = store.runtime_events[-1]
+    failed_result = load_artifact(tmp_path, str(failed_event["result_uri"]))
+    assert failed_result["error_classification"]["classification_source"] == "llm_judge_v1"
+    assert failed_result["error_classification"]["error_class"] == "F2_INTERFACE_CONTRACT_BREAKDOWN"
+
+
 def test_postgres_runtime_store_uses_uri_tool_and_validation_payloads() -> None:
     class FakeConnection:
         def __init__(self) -> None:
