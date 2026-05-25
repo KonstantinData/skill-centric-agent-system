@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "run_id": "run-a",
+      "task_type": "code-review",
+      "module_version": "git-diff-analysis@0.1.0",
+      "environment": "dev",
+      "error_class": "F1_INEFFICIENCY_PATH"
+    },
+    {
+      "run_id": "run-b",
+      "task_type": "research",
+      "module_version": "research-context-synthesis@0.1.0",
+      "environment": "dev",
+      "error_class": "NONE"
+    },
+    {
+      "run_id": "run-c",
+      "task_type": "task-execution",
+      "module_version": "task-execution-planning@0.1.0",
+      "environment": "staging",
+      "error_class": "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION"
+    }
+  ]
+}
