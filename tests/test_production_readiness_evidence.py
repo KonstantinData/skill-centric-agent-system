@@ -200,7 +200,7 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
     assert not any(gap["id"] == "P5.07" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.08" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.09" for gap in payload["open_release_gaps"])
-    assert any(gap["id"] == "P5.11" for gap in payload["open_release_gaps"])
+    assert not any(gap["id"] == "P5.11" for gap in payload["open_release_gaps"])
 
 
 def test_write_release_scope_uses_controlled_write_gate_without_open_p5_05_gap() -> None:

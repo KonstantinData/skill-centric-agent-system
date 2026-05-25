@@ -47,6 +47,8 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert module_names == {
         "architecture-docs",
         "coding-guidelines",
+        "dependency-audit",
+        "document-synthesis",
         "filesystem-read",
         "filesystem-list",
         "general-output-contract",
@@ -66,8 +68,8 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     }
     assert len(seed.module_versions) == len(seed.modules)
     assert len(seed.module_selection_metadata) == len(seed.modules)
-    assert len(seed.module_dependencies) == 25
-    assert len(seed.policy_bindings) == 6
+    assert len(seed.module_dependencies) == 38
+    assert len(seed.policy_bindings) == 8
     assert len(seed.scope_bindings) == 4
 
 
@@ -118,11 +120,11 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
             """
         ).fetchone()[0]
 
-    assert module_count == 18
-    assert version_count == 18
-    assert metadata_count == 18
-    assert dependency_count == 25
-    assert policy_binding_count == 6
+    assert module_count == 20
+    assert version_count == 20
+    assert metadata_count == 20
+    assert dependency_count == 38
+    assert policy_binding_count == 8
     assert scope_binding_count == 4
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

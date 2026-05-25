@@ -87,13 +87,12 @@ REPOSITORY_GATE_RESULTS = (
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
-STAGING_PROD_OPEN_GAPS = (
+STAGING_PROD_OPEN_GAPS: tuple[dict[str, str], ...] = (
     {
-        "id": "P5.11",
-        "gate": "Broader production skill handler coverage",
+        "id": "P5.02",
+        "gate": "Staging and production environment separation",
         "reason": (
-            "Production handler coverage beyond the current manifest-covered fixture "
-            "set is not complete."
+            "Live staging/prod resource provisioning and validation remain pending."
         ),
     },
 )

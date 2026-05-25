@@ -132,8 +132,9 @@ The production readiness backlog is ordered by dependency and release risk:
    into a review-required profile with no selected skills, tools, knowledge
    scopes, data scopes, or memory scopes.
 10. `P5.11 Expand Production Skill Handler Coverage`
-    Expand production-required skill fixtures and executable handler coverage
-    beyond the current manifest-covered first slice.
+    Complete: production-required skill fixtures and executable handlers now
+    include `document-synthesis` and `dependency-audit` in addition to the
+    initial first-slice handlers, with manifest and runtime test coverage.
 11. `P5.10 Production Readiness Certification Run`
     Run the complete gate against the target environment and record the release
     decision.
@@ -211,5 +212,5 @@ The evidence artifact uses contract version `0.3.0` and includes:
 This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
-production certification remain `not-production-ready` while required follow-up
-gates such as broader production handler coverage are still open.
+production certification remain `not-production-ready` while unresolved
+environment provisioning and final live certification steps are still open.

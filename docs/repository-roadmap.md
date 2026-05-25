@@ -267,8 +267,10 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    security closure validator complete.)
 9. Expand analyzer, composer, and human-review quality gates. (Initial
    review-required profile contract and Composer restriction complete.)
-10. Expand production skill handler coverage beyond the current
-    manifest-covered fixture set.
+10. Expand production skill handler coverage beyond the initial
+    manifest-covered fixture set. (Complete: `document-synthesis` and
+    `dependency-audit` are now production-required fixtures with executable
+    handlers, manifest coverage, and runtime tests.)
 11. Run the production readiness certification gate against the target
     environment.
 
@@ -277,7 +279,5 @@ manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
 implemented. The first production skill handler runtime slice, controlled write
 path, scheduled retention cleanup automation, production telemetry alerting,
-and production security closure are implemented. Provisioning, broader
-production handler coverage beyond the current manifest-covered fixture set,
-and the final certification run against live production infrastructure remain
-pending.
+and production security closure are implemented. Provisioning and the final
+certification run against live production infrastructure remain pending.

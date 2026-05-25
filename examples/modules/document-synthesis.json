@@ -1,0 +1,88 @@
+{
+  "name": "document-synthesis",
+  "version": "0.1.0",
+  "kind": "skill",
+  "description": "Synthesize durable technical documentation updates from profile-authorized context.",
+  "capability_class": "analysis",
+  "domain_tags": [
+    "documentation",
+    "repository"
+  ],
+  "task_signals": {
+    "task_types": [
+      "research",
+      "general-task"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "documentation",
+      "software-engineering",
+      "repository"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "summarize docs",
+      "document",
+      "synthesize"
+    ],
+    "negative_phrases": [
+      "deploy",
+      "delete",
+      "destroy"
+    ]
+  },
+  "triggers": [
+    "summarize docs",
+    "document",
+    "synthesize"
+  ],
+  "inputs": [
+    "retrieval-context"
+  ],
+  "outputs": [
+    "documentation-summary"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "validators": [
+    "general-output-contract"
+  ],
+  "selection": {
+    "base_score": 0.66,
+    "score_modifiers": [
+      {
+        "signal": "domain:documentation",
+        "weight": 0.16,
+        "reason": "Documentation-focused tasks need synthesis from approved context."
+      },
+      {
+        "signal": "phrase:synthesize",
+        "weight": 0.08,
+        "reason": "Explicit synthesis language increases module relevance."
+      },
+      {
+        "signal": "phrase:deploy",
+        "weight": -0.3,
+        "reason": "Deployment requests must not route through documentation synthesis."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": [
+    "document-synthesis-positive",
+    "document-synthesis-denies-deploy"
+  ]
+}
