@@ -1,6 +1,6 @@
 ---
 name: scas-synthesis-briefing
-description: Run the Strategic Synthesis Department responsibility set from the current SCAS runtime profile. Use when Codex needs to integrate admitted domain packages into Liquisto opportunity assessment, negotiation relevance, executive summary, deal-critical risks, and first-meeting next steps.
+description: Run the Strategic Synthesis Department responsibility set from the current SCAS runtime profile. Use when Codex needs to integrate admitted domain packages into opportunity assessment, negotiation relevance, executive summary, deal-critical risks, and first-meeting next steps.
 ---
 
 # SCAS Synthesis Briefing
@@ -28,7 +28,7 @@ Use this skill after domain packages are complete and admitted for downstream sy
 
 ## Current Tasks
 
-- `liquisto_opportunity_assessment`: decide whether an excess-inventory path is commercially plausible and why.
+- `opportunity_assessment`: decide whether an excess-inventory path is commercially plausible and why.
 - `negotiation_relevance`: summarize urgency, pricing power, buyer demand, inventory pressure, and the strongest next meeting angle.
 
 ## Quality Bar

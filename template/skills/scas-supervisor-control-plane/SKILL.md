@@ -1,6 +1,6 @@
 ---
 name: scas-supervisor-control-plane
-description: Compose and execute the Supervisor control-plane workflow from the current SCAS runtime profile. Use when Codex needs to normalize Liquisto intake, build a SupervisorBrief, route department assignments, admit department packages, or route run-based follow-up questions without performing domain research.
+description: Compose and execute the Supervisor control-plane workflow from the current SCAS runtime profile. Use when Codex needs to normalize target-company intake, build a SupervisorBrief, route department assignments, admit department packages, or route run-based follow-up questions without performing domain research.
 ---
 
 # SCAS Supervisor Control Plane

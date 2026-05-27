@@ -1,6 +1,6 @@
 ---
 name: scas-contact-department
-description: Run the Contact Department responsibility set from the current SCAS runtime profile. Use when Codex needs target-company stakeholder mapping, buyer-firm contact discovery, contact qualification, seniority assessment, or outreach angles for a Liquisto briefing.
+description: Run the Contact Department responsibility set from the current SCAS runtime profile. Use when Codex needs target-company stakeholder mapping, buyer-firm contact discovery, contact qualification, seniority assessment, or outreach angles for a target-company briefing.
 ---
 
 # SCAS Contact Department
@@ -11,7 +11,7 @@ Use this skill for Contact Department work.
 
 - `target_company_contacts`: identify decision-makers and likely meeting stakeholders at the target company.
 - `contact_discovery`: identify publicly visible decision-makers at prioritized buyer firms.
-- `contact_qualification`: qualify contacts by seniority, function, buying-center role, verification quality, Liquisto relevance, and outreach angle.
+- `contact_qualification`: qualify contacts by seniority, function, buying-center role, verification quality, target-case relevance, and outreach angle.
 
 ## Evidence Priorities
 

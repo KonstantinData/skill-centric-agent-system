@@ -1,6 +1,6 @@
 ---
 name: scas-market-department
-description: Run the Market Department responsibility set from the current SCAS runtime profile. Use when Codex needs market situation analysis for Liquisto, including demand trend, supply pressure, overcapacity, slowdown, and inventory-relevant market signals.
+description: Run the Market Department responsibility set from the current SCAS runtime profile. Use when Codex needs market situation analysis for the target case, including demand trend, supply pressure, overcapacity, slowdown, and inventory-relevant market signals.
 ---
 
 # SCAS Market Department

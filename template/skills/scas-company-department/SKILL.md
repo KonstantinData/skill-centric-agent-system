@@ -1,6 +1,6 @@
 ---
 name: scas-company-department
-description: Run the Company Department responsibility set from the current SCAS runtime profile. Use when Codex needs company fundamentals, economic and commercial situation, financial deep dive, product and asset scope, or transaction and event intelligence for a Liquisto pre-meeting briefing.
+description: Run the Company Department responsibility set from the current SCAS runtime profile. Use when Codex needs company fundamentals, economic and commercial situation, financial deep dive, product and asset scope, or transaction and event intelligence for a target-company pre-meeting briefing.
 ---
 
 # SCAS Company Department

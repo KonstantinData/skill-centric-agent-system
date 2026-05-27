@@ -1,6 +1,6 @@
 ---
 name: scas-report-package
-description: Build the ReportWriter final package from the current SCAS runtime profile. Use when Codex needs bilingual DE/EN Liquisto briefing drafts, report validation, report section recommendations, visual-focus mapping, open gaps, data request sheet, or outreach playbook packaging.
+description: Build the ReportWriter final package from the current SCAS runtime profile. Use when Codex needs bilingual DE/EN target-company briefing drafts, report validation, report section recommendations, visual-focus mapping, open gaps, data request sheet, or outreach playbook packaging.
 ---
 
 # SCAS Report Package

@@ -1,6 +1,6 @@
 ---
 name: scas-buyer-department
-description: Run the Buyer Department responsibility set from the current SCAS runtime profile. Use when Codex needs peer-company mapping, downstream buyer discovery, monetization paths, redeployment paths, aftermarket routes, or secondary-market logic for Liquisto.
+description: Run the Buyer Department responsibility set from the current SCAS runtime profile. Use when Codex needs peer-company mapping, downstream buyer discovery, monetization paths, redeployment paths, aftermarket routes, or secondary-market logic for the target operating context.
 ---
 
 # SCAS Buyer Department
