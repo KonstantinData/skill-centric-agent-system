@@ -130,6 +130,7 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert 'HETZNER_SSH_KEY="$(resolve_env_secret' in workflow
     assert "SCAS_OPENAI_API_KEY_B64" in workflow
     assert "export OPENAI_API_KEY" in workflow
+    assert "HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
     assert "control_api_url is required for ${TARGET_ENVIRONMENT}" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow

@@ -179,12 +179,14 @@ jobs:
           {
             printf 'CONTROL_API_TOKEN=%s\n' "${CONTROL_API_TOKEN}"
             printf 'HETZNER_HOST=%s\n' "${HETZNER_HOST}"
-            printf 'HETZNER_SSH_KEY=%s\n' "${HETZNER_SSH_KEY}"
             printf 'HETZNER_USER=%s\n' "${HETZNER_USER}"
             printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
             printf 'CLOUDFLARE_ACCOUNT_ID=%s\n' "${CLOUDFLARE_ACCOUNT_ID}"
             printf 'CLOUDFLARE_API_TOKEN=%s\n' "${CLOUDFLARE_API_TOKEN}"
             printf 'SCAS_CONTROL_API_URL=%s\n' "${SCAS_CONTROL_API_URL}"
+            echo 'HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${HETZNER_SSH_KEY}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
           } >> "${GITHUB_ENV}"
 
           missing=0
