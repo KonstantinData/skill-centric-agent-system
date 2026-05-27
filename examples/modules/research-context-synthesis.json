@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Synthesize profile-authorized knowledge and memory context into a bounded research output.",
+  "runtime_role": "runtime",
   "capability_class": "retrieval",
   "domain_tags": [
     "research",

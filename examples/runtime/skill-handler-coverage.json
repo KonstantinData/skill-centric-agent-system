@@ -21,6 +21,7 @@
         "filesystem-read"
       ],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_skill_handlers.py::test_dependency_audit_skill_handler_builds_expected_actions"
       ],
@@ -41,6 +42,7 @@
       "production_required": true,
       "required_tools": [],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_skill_handlers.py::test_document_synthesis_skill_handler_builds_no_tool_actions"
       ],
@@ -61,6 +63,7 @@
       "production_required": true,
       "required_tools": [],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
       ],
@@ -84,6 +87,7 @@
         "filesystem-read"
       ],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_skill_handlers.py::test_builtin_skill_handler_registry_resolves_profile_selected_version",
         "tests/test_runtime_skill_handlers.py::test_runtime_loop_records_executed_skill_handler_binding"
@@ -105,6 +109,7 @@
       "production_required": true,
       "required_tools": [],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
       ],
@@ -129,6 +134,7 @@
         "git-read"
       ],
       "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+      "runtime_role": "runtime",
       "runtime_tests": [
         "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
       ],

@@ -90,6 +90,11 @@ def test_profile_enforcer_denies_skill_not_selected_by_profile() -> None:
 def test_skill_handler_registry_fails_closed_for_unknown_selected_skill() -> None:
     profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
     profile["skills"] = ["unregistered-production-skill"]
+    profile["skill_execution_roles"] = {
+        "runtime_skills": ["unregistered-production-skill"],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
     profile["module_versions"]["unregistered-production-skill"] = "0.1.0"
 
     with pytest.raises(ProfileEnforcementError) as exc_info:
@@ -187,6 +192,11 @@ def test_runtime_loop_fails_closed_before_executor_for_unknown_skill_handler(
 def test_document_synthesis_skill_handler_builds_no_tool_actions() -> None:
     profile = load_json(PROFILE_EXAMPLE_PATH)
     profile["skills"] = ["document-synthesis"]
+    profile["skill_execution_roles"] = {
+        "runtime_skills": ["document-synthesis"],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
     profile["module_versions"]["document-synthesis"] = "0.1.0"
     profile["validators"] = ["general-output-contract"]
     profile["module_versions"]["general-output-contract"] = "0.1.0"
@@ -211,6 +221,11 @@ def test_document_synthesis_skill_handler_builds_no_tool_actions() -> None:
 def test_dependency_audit_skill_handler_builds_expected_actions() -> None:
     profile = load_json(PROFILE_EXAMPLE_PATH)
     profile["skills"] = ["dependency-audit"]
+    profile["skill_execution_roles"] = {
+        "runtime_skills": ["dependency-audit"],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
     profile["module_versions"]["dependency-audit"] = "0.1.0"
     profile["validators"] = ["task-execution-output-contract"]
     profile["module_versions"]["task-execution-output-contract"] = "0.1.0"
@@ -235,3 +250,48 @@ def test_dependency_audit_skill_handler_builds_expected_actions() -> None:
             "handler_id": "dependency-audit@0.1.0",
         },
     )
+
+
+def test_skill_handler_registry_skips_non_runtime_skills() -> None:
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["skills"] = ["git-diff-analysis", "architecture-governance-hardening"]
+    profile["module_versions"]["architecture-governance-hardening"] = "0.1.0"
+    profile["skill_execution_roles"] = {
+        "runtime_skills": ["git-diff-analysis"],
+        "non_runtime_skills": ["architecture-governance-hardening"],
+        "shared_skills": [],
+    }
+
+    plan = BUILTIN_SKILL_HANDLER_REGISTRY.build_plan(
+        profile,
+        enforcer=RuntimeProfileEnforcer(profile),
+    )
+
+    assert plan.skill_handlers == (
+        {
+            "name": "git-diff-analysis",
+            "version": "0.1.0",
+            "handler_id": "git-diff-analysis@0.1.0",
+        },
+    )
+    assert [action["tool"] for action in plan.actions] == ["git-read", "filesystem-read"]
+
+
+def test_skill_handler_registry_fails_closed_for_missing_skill_execution_role() -> None:
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["skills"] = ["git-diff-analysis", "architecture-governance-hardening"]
+    profile["module_versions"]["architecture-governance-hardening"] = "0.1.0"
+    profile["skill_execution_roles"] = {
+        "runtime_skills": ["git-diff-analysis"],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
+
+    with pytest.raises(ProfileEnforcementError) as exc_info:
+        BUILTIN_SKILL_HANDLER_REGISTRY.build_plan(
+            profile,
+            enforcer=RuntimeProfileEnforcer(profile),
+        )
+
+    assert exc_info.value.stop_reason == "policy_denied"
+    assert exc_info.value.code == "skill_execution_roles_missing"

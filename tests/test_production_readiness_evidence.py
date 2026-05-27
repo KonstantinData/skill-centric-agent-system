@@ -110,7 +110,7 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
-    assert payload["contract_version"] == "0.3.0"
+    assert payload["contract_version"] == "0.4.0"
     assert payload["status"] == "initial-productive-core"
     assert payload["final_decision"] == "not-certified"
     assert payload["open_release_gaps"] == []

@@ -1,6 +1,6 @@
 {
   "id": "profile-code-review-latest-commit",
-  "profile_version": "0.3.0",
+  "profile_version": "0.4.0",
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
@@ -37,6 +37,13 @@
   "skills": [
     "git-diff-analysis"
   ],
+  "skill_execution_roles": {
+    "runtime_skills": [
+      "git-diff-analysis"
+    ],
+    "non_runtime_skills": [],
+    "shared_skills": []
+  },
   "tools": [
     "filesystem-read",
     "git-read",

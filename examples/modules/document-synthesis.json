@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Synthesize durable technical documentation updates from profile-authorized context.",
+  "runtime_role": "runtime",
   "capability_class": "analysis",
   "domain_tags": [
     "documentation",

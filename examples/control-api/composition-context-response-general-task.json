@@ -7,6 +7,7 @@
       "id": "mod-general-task-summary",
       "name": "general-task-summary",
       "kind": "skill",
+      "runtime_role": "runtime",
       "version": "0.1.0",
       "score": 0.84,
       "reason": "General tasks should receive a bounded generic summary strategy."
@@ -41,6 +42,7 @@
         "id": "mod-general-task-summary",
         "name": "general-task-summary",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       "effect": "allow",
@@ -63,6 +65,7 @@
         "id": "mod-general-task-summary",
         "name": "general-task-summary",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       {

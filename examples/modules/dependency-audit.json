@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Audit repository dependency manifests for license, risk, and change-impact signals.",
+  "runtime_role": "runtime",
   "capability_class": "analysis",
   "domain_tags": [
     "security",

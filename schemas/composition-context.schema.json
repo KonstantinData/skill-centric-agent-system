@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:composition-context:0.1.0",
+  "$id": "urn:scas:schema:composition-context:0.2.0",
   "title": "Composition Context Endpoint Contract",
   "description": "Request and response contract for POST /composition/context on the Cloudflare Control API.",
   "type": "object",
@@ -55,6 +55,14 @@
         "validator"
       ]
     },
+    "skillRuntimeRole": {
+      "type": "string",
+      "enum": [
+        "runtime",
+        "non-runtime",
+        "shared"
+      ]
+    },
     "moduleReference": {
       "type": "object",
       "additionalProperties": false,
@@ -85,8 +93,30 @@
         },
         "reason": {
           "type": "string"
+        },
+        "runtime_role": {
+          "$ref": "#/$defs/skillRuntimeRole"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "skill"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "runtime_role"
+            ]
+          }
+        }
+      ]
     },
     "moduleIdentity": {
       "type": "object",
@@ -109,8 +139,30 @@
         },
         "version": {
           "$ref": "#/$defs/semver"
+        },
+        "runtime_role": {
+          "$ref": "#/$defs/skillRuntimeRole"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "skill"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "runtime_role"
+            ]
+          }
+        }
+      ]
     },
     "policyDecision": {
       "type": "object",

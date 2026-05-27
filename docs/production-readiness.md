@@ -130,7 +130,7 @@ The production readiness backlog is ordered by dependency and release risk:
 9. `P5.09 Analyzer, Composer, and Human Review Quality Gate`
    Expand evaluation coverage and make ambiguous production tasks enter a
    human-review path instead of overgranting.
-   Complete: Runtime profile contract `0.3.0` includes a machine-readable
+   Complete: Runtime profile contract `0.4.0` includes a machine-readable
    `human_review` block, and the Composer now turns ambiguous analyzer output
    into a review-required profile with no selected skills, tools, knowledge
    scopes, data scopes, or memory scopes.
@@ -190,7 +190,7 @@ artifact from the referenced Live Runtime Gates run. Certification fails closed
 unless that artifact contains passed live E2E results with sanitized
 `skill_handlers` where every `handler_id` equals `name@version`.
 
-The evidence artifact uses contract version `0.3.0` and includes:
+The evidence artifact uses contract version `0.4.0` and includes:
 
 - release commit, target environment, release scope, workflow run ID, and
   generated timestamp,

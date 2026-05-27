@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Produce a bounded generic runtime summary when no specialized task strategy is selected.",
+  "runtime_role": "runtime",
   "capability_class": "planning",
   "domain_tags": [
     "general-task"

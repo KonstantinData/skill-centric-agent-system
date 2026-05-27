@@ -7,6 +7,7 @@
       "id": "mod-task-execution-planning",
       "name": "task-execution-planning",
       "kind": "skill",
+      "runtime_role": "runtime",
       "version": "0.1.0",
       "score": 0.96,
       "reason": "Task execution requests need bounded planning and read-only repository inspection."
@@ -67,6 +68,7 @@
         "id": "mod-task-execution-planning",
         "name": "task-execution-planning",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       "effect": "allow",
@@ -131,6 +133,7 @@
         "id": "mod-task-execution-planning",
         "name": "task-execution-planning",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       {

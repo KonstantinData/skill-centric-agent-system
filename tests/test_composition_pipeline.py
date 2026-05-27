@@ -118,9 +118,14 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     Draft202012Validator(profile_schema).validate(profile)
     assert profile == expected_profile
     assert selected_profile_modules(profile) == set(profile["module_versions"])
-    assert profile["profile_version"] == "0.3.0"
+    assert profile["profile_version"] == "0.4.0"
     assert profile["human_review"]["required"] is False
     assert profile["skills"] == ["git-diff-analysis"]
+    assert profile["skill_execution_roles"] == {
+        "runtime_skills": ["git-diff-analysis"],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
     assert profile["tools"] == ["filesystem-read", "git-read", "test-runner"]
     assert profile["memory_scopes"] == []
 
@@ -146,6 +151,11 @@ def test_profile_composer_emits_review_required_profile_for_ambiguous_task() -> 
     assert profile["human_review"]["status"] == "required"
     assert profile["human_review"]["ambiguous_task_types"] == ["research", "task-execution"]
     assert profile["skills"] == []
+    assert profile["skill_execution_roles"] == {
+        "runtime_skills": [],
+        "non_runtime_skills": [],
+        "shared_skills": [],
+    }
     assert profile["tools"] == []
     assert profile["knowledge_scopes"] == []
     assert profile["data_scopes"] == []
