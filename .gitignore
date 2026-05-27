@@ -57,7 +57,9 @@ security-evidence/
 .gitleaks.report.json
 coverage/
 node_modules/
-template/
+template/*
+!template/skills/
+!template/skills/**
 
 # Translations
 *.mo
