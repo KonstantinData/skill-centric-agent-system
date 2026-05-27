@@ -45,6 +45,11 @@ on:
           - generic
           - single
         default: generic
+      live_task_file:
+        description: Runtime E2E task file used when live_task_suite is single
+        required: false
+        type: string
+        default: examples/tasks/general-task.json
 
 permissions:
   contents: read
@@ -100,6 +105,7 @@ jobs:
       RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE: ${{ inputs.run_live_retrieval_vectorize_smoke }}
       SEED_CONTROL_PLANE_DEV: ${{ inputs.seed_control_plane_dev }}
       LIVE_TASK_SUITE: ${{ inputs.live_task_suite }}
+      LIVE_TASK_FILE: ${{ inputs.live_task_file }}
 
     steps:
       - name: Check out repository
@@ -285,7 +291,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_OPENAI_API_KEY_B64='${openai_key_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_OPENAI_API_KEY_B64='${openai_key_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' LIVE_TASK_FILE='${LIVE_TASK_FILE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -364,6 +370,7 @@ jobs:
               "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
                 --environment "${TARGET_ENVIRONMENT}" \
                 --task-suite "${LIVE_TASK_SUITE}" \
+                --task-file "${LIVE_TASK_FILE}" \
               | tee live-runtime-evidence/live-dev-e2e.json
           fi
 

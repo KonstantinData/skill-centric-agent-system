@@ -108,6 +108,7 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
     assert "control_api_url:" in workflow
     assert "run_live_dev_e2e:" in workflow
     assert "run_postgres_concurrency_smoke:" in workflow
+    assert "live_task_file:" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
     assert "inputs.run_postgres_concurrency_smoke == true" in workflow
@@ -137,6 +138,7 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "python3.12-venv" in workflow
     assert "scripts/runtime/live_dev_e2e.py" in workflow
     assert "--environment \"${TARGET_ENVIRONMENT}\"" in workflow
+    assert "--task-file \"${LIVE_TASK_FILE}\"" in workflow
     assert "postgresql:///${runtime_database}?host=/var/run/postgresql" in workflow
     assert "/opt/scas/runtime/${TARGET_ENVIRONMENT}/live-gates" in workflow
     assert "live-runtime-handler-binding-evidence" in workflow
