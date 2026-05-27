@@ -93,6 +93,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     artifacts = JsonArtifactStore(args.artifact_root)
     run_suffix = os.getenv("GITHUB_RUN_ID") or uuid4().hex[:12]
+    configured_artifact_root_uri = (
+        "hetzner://runtime/" + Path(args.artifact_root).as_posix().lstrip("/")
+    )
 
     with open_runtime_store_session(
         mode="postgres",
@@ -146,7 +149,10 @@ def main(argv: list[str] | None = None) -> int:
                     ),
                     "event_count": len(events),
                     "checkpoint_count": len(checkpoints),
-                    "artifact_root_uri": run_record["artifact_root_uri"] if run_record else None,
+                    "artifact_root_uri": configured_artifact_root_uri,
+                    "runtime_record_artifact_root_uri": (
+                        run_record["artifact_root_uri"] if run_record else None
+                    ),
                     "runtime_output_task_type": loop_result.response["runtime_output"][
                         "task_type"
                     ],
