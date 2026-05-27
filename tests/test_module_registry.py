@@ -220,6 +220,29 @@ def test_registry_scores_positive_and_negative_structured_evidence() -> None:
     assert "phrase:deploy" in negative_score.negative_signals
 
 
+def test_registry_applies_error_feedback_penalty_to_matching_capability_class() -> None:
+    registry = registry_with_scoring_modules()
+    module = registry.resolve("git-diff-analysis", "0.1.0")
+    baseline = registry.score(module, code_review_signals())
+    penalized = registry.score(
+        module,
+        TaskSignals(
+            task_type="code-review",
+            risk_level="medium",
+            domains=frozenset({"software-engineering", "git"}),
+            available_inputs=frozenset({"repository", "diff"}),
+            capability_hints=frozenset({"analysis"}),
+            phrases=frozenset({"review"}),
+            error_feedback=frozenset({"F1_INEFFICIENCY_PATH"}),
+        ),
+    )
+    assert penalized.score < baseline.score
+    assert any(
+        signal.startswith("error_feedback:F1_INEFFICIENCY_PATH")
+        for signal in penalized.negative_signals
+    )
+
+
 def test_registry_scoring_matches_evaluation_cases() -> None:
     registry = registry_with_scoring_modules()
     cases = json.loads(SCORING_EVALUATIONS_PATH.read_text(encoding="utf-8"))

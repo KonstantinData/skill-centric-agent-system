@@ -11,6 +11,7 @@ from skill_centric_agent_system.runtime.entrypoint import (
     RuntimeEntryPointError,
     RuntimeStartResult,
 )
+from skill_centric_agent_system.runtime.error_taxonomy import ErrorClassification
 from skill_centric_agent_system.runtime.loop import (
     MinimalRuntimeLoop,
     RuntimeLoopError,
@@ -91,6 +92,7 @@ __all__ = [
     "RuntimeRetentionError",
     "RuntimeRetentionExecutor",
     "RuntimeProfileEnforcer",
+    "ErrorClassification",
     "RuntimeSkillPlan",
     "ResolvedArtifactUri",
     "RuntimeContextManager",

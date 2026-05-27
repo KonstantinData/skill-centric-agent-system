@@ -3,6 +3,13 @@
   "kind": "runtime_error_response",
   "error": {
     "code": "runtime_run_not_found",
-    "message": "Runtime run was not found."
+    "message": "Runtime run was not found.",
+    "error_class": "NONE",
+    "error_confidence": "low",
+    "classification_source": "rule_based_runtime_v1",
+    "error_evidence": {
+      "stop_reason": "runtime_error",
+      "lookup_key": "run_id"
+    }
   }
 }

@@ -1,0 +1,8 @@
+{
+  "name": "error-classification-gates",
+  "thresholds": {
+    "r8_rate_max": 0.02,
+    "f2_unresolved_max": 0,
+    "f1_efficiency_budget_max": 0.25
+  }
+}

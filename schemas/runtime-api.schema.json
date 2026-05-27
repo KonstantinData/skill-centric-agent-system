@@ -311,7 +311,11 @@
           "additionalProperties": false,
           "required": [
             "code",
-            "message"
+            "message",
+            "error_class",
+            "error_confidence",
+            "classification_source",
+            "error_evidence"
           ],
           "properties": {
             "code": {
@@ -321,6 +325,30 @@
             "message": {
               "type": "string",
               "minLength": 1
+            },
+            "error_class": {
+              "type": "string",
+              "enum": [
+                "F1_INEFFICIENCY_PATH",
+                "F2_INTERFACE_CONTRACT_BREAKDOWN",
+                "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION",
+                "NONE"
+              ]
+            },
+            "error_confidence": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "classification_source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "error_evidence": {
+              "type": "object"
             }
           }
         }

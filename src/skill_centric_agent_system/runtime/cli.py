@@ -62,6 +62,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Run the first context/planner/executor/validator loop after start.",
     )
     parser.add_argument(
+        "--enable-llm-error-judge",
+        action="store_true",
+        default=_env_bool("SCAS_ENABLE_LLM_ERROR_JUDGE"),
+        help=(
+            "Enable optional second-stage LLM error classification for low-confidence "
+            "rule-based outcomes. Defaults to SCAS_ENABLE_LLM_ERROR_JUDGE."
+        ),
+    )
+    parser.add_argument(
         "--environment",
         default="dev",
         choices=("dev", "staging", "prod"),
@@ -112,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
                 artifacts=artifacts,
                 repository_root=args.repository_root,
                 control_plane_client=control_plane_client,
+                enable_llm_error_judge=args.enable_llm_error_judge,
             ).run(result)
 
         run_record = storage.store.get_runtime_run(result.run_id)
@@ -244,6 +254,11 @@ def _load_json(path: Path) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError(f"{path} must contain a JSON object.")
     return parsed
+
+
+def _env_bool(name: str) -> bool:
+    value = os.getenv(name, "").strip().casefold()
+    return value in {"1", "true", "yes", "on"}
 
 
 if __name__ == "__main__":

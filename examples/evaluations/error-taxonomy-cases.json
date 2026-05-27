@@ -1,0 +1,35 @@
+[
+  {
+    "name": "F1 inefficient path despite successful completion",
+    "input": {
+      "status": "succeeded",
+      "task_type": "code-review",
+      "action_count": 2,
+      "tool_calls": 8,
+      "tool_result_count": 7,
+      "tokens_used": 52000,
+      "max_tokens": 60000
+    },
+    "expected_error_class": "F1_INEFFICIENCY_PATH"
+  },
+  {
+    "name": "F2 contract validation breakdown",
+    "input": {
+      "status": "failed",
+      "stop_reason": "validator_failed",
+      "error_code": "runtime_output_contract_failed",
+      "message": "Output contract validation failed."
+    },
+    "expected_error_class": "F2_INTERFACE_CONTRACT_BREAKDOWN"
+  },
+  {
+    "name": "R8 policy denial",
+    "input": {
+      "status": "failed",
+      "stop_reason": "policy_denied",
+      "error_code": "tool_not_in_runtime_profile",
+      "message": "Tool is not allowed by runtime profile."
+    },
+    "expected_error_class": "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION"
+  }
+]

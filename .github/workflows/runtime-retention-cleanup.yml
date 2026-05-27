@@ -45,6 +45,15 @@ jobs:
       || github.event_name == 'workflow_dispatch'
 
     env:
+      SCAS_DEV_HETZNER_HOST: ${{ secrets.SCAS_DEV_HETZNER_HOST }}
+      SCAS_DEV_HETZNER_SSH_KEY: ${{ secrets.SCAS_DEV_HETZNER_SSH_KEY }}
+      SCAS_DEV_HETZNER_USER: ${{ secrets.SCAS_DEV_HETZNER_USER }}
+      SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -61,11 +70,58 @@ jobs:
         run: |
           set -euo pipefail
 
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_DEV_HETZNER_HOST:-${HETZNER_HOST:-}}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_DEV_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}" ;;
+                  HETZNER_USER) value="${SCAS_DEV_HETZNER_USER:-${HETZNER_USER:-}}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_STAGING_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_PROD_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
+          }
+
+          HETZNER_HOST="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_HOST)"
+          HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
+          HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
+
+          {
+            printf 'HETZNER_HOST=%s\n' "${HETZNER_HOST}"
+            printf 'HETZNER_SSH_KEY=%s\n' "${HETZNER_SSH_KEY}"
+            printf 'HETZNER_USER=%s\n' "${HETZNER_USER}"
+          } >> "${GITHUB_ENV}"
+
           missing=0
           for name in HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
           do
             if [ -z "${!name:-}" ]; then
-              echo "::error::Missing required secret: ${name}"
+              echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: ${name}"
               missing=1
             fi
           done
@@ -163,6 +219,10 @@ jobs:
               exit 1
               ;;
           esac
+          runtime_database="scas_runtime"
+          if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then
+            runtime_database="scas_runtime_${TARGET_ENVIRONMENT}"
+          fi
 
           if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] \
             && [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then
@@ -207,7 +267,7 @@ jobs:
             --storage-mode
             postgres
             --database-url
-            "postgresql:///scas_runtime?host=/var/run/postgresql"
+            "postgresql:///${runtime_database}?host=/var/run/postgresql"
             --artifact-root
             "${artifact_root}"
           )

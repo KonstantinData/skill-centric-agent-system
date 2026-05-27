@@ -59,6 +59,13 @@ jobs:
       - name: Validate skill handler coverage manifest
         run: python scripts/runtime/skill_handler_coverage.py --check
 
+      - name: Evaluate error classification gates
+        run: |
+          python scripts/operations/evaluate_error_classification_gates.py \
+            --policy examples/operations/error-classification-gate-policy.json \
+            --snapshot examples/operations/error-classification-gate-snapshot.json \
+            --fail-on-failed
+
       - name: Validate JSON files
         run: |
           python3 - <<'PY'

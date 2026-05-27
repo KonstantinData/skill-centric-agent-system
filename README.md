@@ -128,6 +128,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/notion-issue-tracking.md`: Notion Issues & Open Questions comment and audit standard.
 - `docs/post-merge-lifecycle.md`: post-merge cleanup and Notion completion runbook.
 - `docs/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
+- `docs/error-taxonomy.md`: runtime error taxonomy, class playbooks, and CI gate metrics for F1/F2/R8.
 - `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
@@ -142,6 +143,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `schemas/environment-manifest.schema.json`: JSON Schema for the environment separation manifest.
 - `schemas/composition-context.schema.json`: JSON Schema for `POST /composition/context`.
 - `schemas/retrieval-context.schema.json`: JSON Schema for `POST /retrieval/context`.
+- `schemas/error-classification.schema.json`: JSON Schema for runtime error taxonomy classification payloads.
 - `schemas/cloudflare-control-plane.schema.json`: JSON Schema for Cloudflare control-plane storage records.
 - `schemas/hetzner-runtime-plane.schema.json`: JSON Schema for Hetzner runtime-plane storage records.
 - `schemas/knowledge-quality-policy.schema.json`: JSON Schema for generic knowledge/data-quality policy metadata.
@@ -218,6 +220,10 @@ python scripts\security\generate_actions_bom.py --output security-evidence\actio
 python scripts\security\validate_actions_bom.py security-evidence\actions-bom.json
 python scripts\security\generate_sbom.py --output security-evidence\release-sbom.json
 python scripts\security\validate_sbom.py security-evidence\release-sbom.json
+python scripts\operations\evaluate_error_classification_gates.py `
+  --policy examples\operations\error-classification-gate-policy.json `
+  --snapshot examples\operations\error-classification-gate-snapshot.json `
+  --fail-on-failed
 ```
 
 Start a local fixture-backed runtime run:

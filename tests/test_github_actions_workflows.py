@@ -104,8 +104,11 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
     workflow = load_live_runtime_gates_workflow()
 
     assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "control_api_url:" in workflow
     assert "run_live_dev_e2e:" in workflow
     assert "run_postgres_concurrency_smoke:" in workflow
+    assert "live_task_file:" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
     assert "inputs.run_postgres_concurrency_smoke == true" in workflow
@@ -114,14 +117,30 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
 def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     workflow = load_live_runtime_gates_workflow()
 
-    assert "secrets.CONTROL_API_TOKEN" in workflow
-    assert "secrets.HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_DEV_OPENAI_API_KEY" in workflow
+    assert "secrets.SCAS_STAGING_OPENAI_API_KEY" in workflow
+    assert "secrets.SCAS_PROD_OPENAI_API_KEY" in workflow
+    assert "secrets.SCAS_DEV_CONTROL_API_TOKEN" in workflow
+    assert "secrets.SCAS_STAGING_CONTROL_API_TOKEN" in workflow
+    assert "secrets.SCAS_PROD_CONTROL_API_TOKEN" in workflow
+    assert "secrets.SCAS_DEV_HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_STAGING_HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_PROD_HETZNER_SSH_KEY" in workflow
+    assert 'OPENAI_API_KEY="$(resolve_env_secret' in workflow
+    assert 'CONTROL_API_TOKEN="$(resolve_env_secret' in workflow
+    assert 'HETZNER_SSH_KEY="$(resolve_env_secret' in workflow
+    assert "SCAS_OPENAI_API_KEY_B64" in workflow
+    assert "export OPENAI_API_KEY" in workflow
+    assert "HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
+    assert "control_api_url is required for ${TARGET_ENVIRONMENT}" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow
     assert "python3.12-venv" in workflow
     assert "scripts/runtime/live_dev_e2e.py" in workflow
-    assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
-    assert "/opt/scas/runtime/dev/live-gates" in workflow
+    assert "--environment \"${TARGET_ENVIRONMENT}\"" in workflow
+    assert "--task-file \"${LIVE_TASK_FILE}\"" in workflow
+    assert "postgresql:///${runtime_database}?host=/var/run/postgresql" in workflow
+    assert "/opt/scas/runtime/${TARGET_ENVIRONMENT}/live-gates" in workflow
     assert "live-runtime-handler-binding-evidence" in workflow
     assert "live-runtime-evidence/live-dev-e2e.json" in workflow
 
@@ -199,11 +218,13 @@ def test_runtime_retention_cleanup_workflow_defaults_to_dry_run() -> None:
 def test_runtime_retention_cleanup_workflow_runs_on_hetzner_and_uploads_evidence() -> None:
     workflow = load_runtime_retention_cleanup_workflow()
 
-    assert "secrets.HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_DEV_HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_STAGING_HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_PROD_HETZNER_SSH_KEY" in workflow
     assert "ssh-keygen -y -f" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "python3.12-venv" in workflow
-    assert "postgresql:///scas_runtime?host=/var/run/postgresql" in workflow
+    assert "postgresql:///${runtime_database}?host=/var/run/postgresql" in workflow
     assert "scas-runtime\" \"${cleanup_args[@]}\"" in workflow
     assert "/opt/scas/runtime/dev" in workflow
     assert "/opt/scas/runtime/staging" in workflow

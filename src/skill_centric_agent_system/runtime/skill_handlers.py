@@ -190,6 +190,28 @@ def builtin_skill_handler_registry() -> SkillHandlerRegistry:
                 ),
             ),
             SkillHandler(
+                skill_name="dependency-audit",
+                skill_version="0.1.0",
+                strategy="dependency-audit-readonly",
+                output_contract="task-execution-output-contract",
+                build_actions=_dependency_audit_actions,
+                test_coverage=(
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_dependency_audit_skill_handler_builds_expected_actions",
+                ),
+            ),
+            SkillHandler(
+                skill_name="document-synthesis",
+                skill_version="0.1.0",
+                strategy="document-synthesis",
+                output_contract="general-output-contract",
+                build_actions=_document_synthesis_actions,
+                test_coverage=(
+                    "tests/test_runtime_skill_handlers.py::"
+                    "test_document_synthesis_skill_handler_builds_no_tool_actions",
+                ),
+            ),
+            SkillHandler(
                 skill_name="general-task-summary",
                 skill_version="0.1.0",
                 strategy="general-task-summary",
@@ -265,6 +287,18 @@ def _task_execution_planning_actions(profile: Mapping[str, Any]) -> tuple[dict[s
 
 def _no_tool_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
     return ()
+
+
+def _document_synthesis_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return ()
+
+
+def _dependency_audit_actions(profile: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    return (
+        {"tool": "filesystem-list", "payload": {"path": ".", "max_entries": 120}},
+        {"tool": "filesystem-read", "payload": {"path": "package.json", "max_bytes": 6000}},
+        {"tool": "filesystem-read", "payload": {"path": "pyproject.toml", "max_bytes": 6000}},
+    )
 
 
 BUILTIN_SKILL_HANDLER_REGISTRY = builtin_skill_handler_registry()

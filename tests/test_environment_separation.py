@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ MANIFEST_PATH = REPO_ROOT / "examples" / "infrastructure" / "environment-manifes
 SCHEMA_PATH = REPO_ROOT / "schemas" / "environment-manifest.schema.json"
 DOC_PATH = REPO_ROOT / "docs" / "environment-separation.md"
 README_PATH = REPO_ROOT / "README.md"
+WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -83,3 +85,39 @@ def test_environment_docs_are_linked_from_readme() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
     assert "docs/environment-separation.md" in readme
+
+
+def test_wrangler_environments_match_manifest_resources() -> None:
+    manifest = load_json(MANIFEST_PATH)
+    wrangler = tomllib.loads(WRANGLER_CONFIG_PATH.read_text(encoding="utf-8"))
+
+    for environment in manifest["environments"]:
+        env_name = environment["name"]
+        config = wrangler if env_name == "dev" else wrangler["env"][env_name]
+
+        cloudflare = environment["cloudflare"]
+        vars_section = config["vars"]
+        d1 = config["d1_databases"][0]
+        r2_by_binding = {entry["binding"]: entry for entry in config["r2_buckets"]}
+        queues = config["queues"]
+        queue_consumer = queues["consumers"][0]
+        vectorize_by_binding = {entry["binding"]: entry for entry in config["vectorize"]}
+
+        assert config["name"] == cloudflare["worker_name"]
+        assert vars_section["ENVIRONMENT"] == env_name
+        assert vars_section["AI_GATEWAY_ID"] == cloudflare["ai_gateway_id"]
+        assert d1["database_name"] == cloudflare["control_d1_database"]
+        assert (
+            r2_by_binding["SCAS_KNOWLEDGE_BUCKET"]["bucket_name"]
+            == cloudflare["knowledge_r2_bucket"]
+        )
+        assert r2_by_binding["SCAS_MEMORY_BUCKET"]["bucket_name"] == cloudflare["memory_r2_bucket"]
+        assert queues["producers"][0]["queue"] == cloudflare["ingest_queue"]
+        assert queue_consumer["queue"] == cloudflare["ingest_queue"]
+        assert queue_consumer["dead_letter_queue"] == cloudflare["ingest_dead_letter_queue"]
+        assert vectorize_by_binding["SCAS_KNOWLEDGE_INDEX"]["index_name"] == cloudflare[
+            "knowledge_vectorize_index"
+        ]
+        assert vectorize_by_binding["SCAS_MEMORY_INDEX"]["index_name"] == cloudflare[
+            "memory_vectorize_index"
+        ]

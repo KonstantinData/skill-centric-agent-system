@@ -15,6 +15,12 @@ from skill_centric_agent_system.runtime.enforcement import (
     RuntimeProfileEnforcer,
 )
 from skill_centric_agent_system.runtime.entrypoint import RuntimeEntryPoint, RuntimeStartResult
+from skill_centric_agent_system.runtime.error_taxonomy import (
+    ErrorClassificationJudge,
+    apply_optional_llm_judge,
+    classify_runtime_failure,
+    classify_runtime_success,
+)
 from skill_centric_agent_system.runtime.models import (
     RecompositionRequest,
     iso_timestamp,
@@ -83,12 +89,16 @@ class MinimalRuntimeLoop:
         repository_root: str | Path,
         control_plane_client: RetrievalContextClient | None = None,
         skill_handlers: SkillHandlerRegistry | None = None,
+        enable_llm_error_judge: bool = False,
+        llm_error_judge: ErrorClassificationJudge | None = None,
     ) -> None:
         self.store = store
         self.artifacts = artifacts
         self.repository_root = Path(repository_root)
         self.control_plane_client = control_plane_client
         self.skill_handlers = skill_handlers or BUILTIN_SKILL_HANDLER_REGISTRY
+        self.enable_llm_error_judge = enable_llm_error_judge
+        self.llm_error_judge = llm_error_judge
         self.recorder = FlightRecorder(store, artifacts)
 
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
@@ -131,6 +141,30 @@ class MinimalRuntimeLoop:
                 stop_reason=stop_reason,
                 recomposition_request=recomposition_request,
             ) from error
+
+        success_classification = classify_runtime_success(
+            plan=plan,
+            execution=execution,
+            enforcer_counters={
+                "tool_calls": enforcer.tool_calls,
+                "tokens_used": enforcer.tokens_used,
+            },
+            profile_limits=profile.get("limits", {}),
+        )
+        success_classification = apply_optional_llm_judge(
+            success_classification,
+            enabled=self.enable_llm_error_judge,
+            judge=self.llm_error_judge,
+            context={
+                "run_id": run_id,
+                "task_type": profile.get("task_type"),
+                "status": "succeeded",
+            },
+        )
+        response = {
+            **response,
+            "error_classification": success_classification.as_dict(),
+        }
 
         self.recorder.record_event(
             run_id=run_id,
@@ -259,6 +293,27 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
     ) -> str:
         stop_reason = str(getattr(error, "stop_reason", "tool_error"))
+        error_code = getattr(error, "code", None)
+        classification = classify_runtime_failure(
+            error=error,
+            stop_reason=stop_reason,
+            error_code=str(error_code) if isinstance(error_code, str) else None,
+            enforcer_counters={
+                "tool_calls": enforcer.tool_calls,
+                "tokens_used": enforcer.tokens_used,
+            },
+        )
+        classification = apply_optional_llm_judge(
+            classification,
+            enabled=self.enable_llm_error_judge,
+            judge=self.llm_error_judge,
+            context={
+                "run_id": run_id,
+                "status": "failed",
+                "stop_reason": stop_reason,
+                "error_type": type(error).__name__,
+            },
+        )
         self.recorder.record_event(
             run_id=run_id,
             event_type="runtime_failed",
@@ -266,6 +321,7 @@ class MinimalRuntimeLoop:
             result={
                 "error": str(error),
                 "error_type": type(error).__name__,
+                "error_classification": classification.as_dict(),
             },
             stop_reason=stop_reason,  # type: ignore[arg-type]
             redact_sensitive_data=redact_sensitive_data,

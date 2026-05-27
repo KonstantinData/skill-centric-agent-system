@@ -62,6 +62,8 @@ def test_builtin_skill_handler_registry_exposes_coverage_descriptors() -> None:
     handlers = BUILTIN_SKILL_HANDLER_REGISTRY.handlers()
 
     assert [handler.handler_id for handler in handlers] == [
+        "dependency-audit@0.1.0",
+        "document-synthesis@0.1.0",
         "general-task-summary@0.1.0",
         "git-diff-analysis@0.1.0",
         "research-context-synthesis@0.1.0",
@@ -180,3 +182,56 @@ def test_runtime_loop_fails_closed_before_executor_for_unknown_skill_handler(
     assert store.runtime_runs[start_result.run_id]["status"] == "failed"
     assert store.runtime_runs[start_result.run_id]["stop_reason"] == "policy_denied"
     assert store.tool_invocations == []
+
+
+def test_document_synthesis_skill_handler_builds_no_tool_actions() -> None:
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    profile["skills"] = ["document-synthesis"]
+    profile["module_versions"]["document-synthesis"] = "0.1.0"
+    profile["validators"] = ["general-output-contract"]
+    profile["module_versions"]["general-output-contract"] = "0.1.0"
+
+    plan = BUILTIN_SKILL_HANDLER_REGISTRY.build_plan(
+        profile,
+        enforcer=RuntimeProfileEnforcer(profile),
+    )
+
+    assert plan.strategy == "document-synthesis"
+    assert plan.output_contract == "general-output-contract"
+    assert plan.actions == ()
+    assert plan.skill_handlers == (
+        {
+            "name": "document-synthesis",
+            "version": "0.1.0",
+            "handler_id": "document-synthesis@0.1.0",
+        },
+    )
+
+
+def test_dependency_audit_skill_handler_builds_expected_actions() -> None:
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    profile["skills"] = ["dependency-audit"]
+    profile["module_versions"]["dependency-audit"] = "0.1.0"
+    profile["validators"] = ["task-execution-output-contract"]
+    profile["module_versions"]["task-execution-output-contract"] = "0.1.0"
+    profile["tools"] = ["filesystem-list", "filesystem-read"]
+
+    plan = BUILTIN_SKILL_HANDLER_REGISTRY.build_plan(
+        profile,
+        enforcer=RuntimeProfileEnforcer(profile),
+    )
+
+    assert plan.strategy == "dependency-audit-readonly"
+    assert plan.output_contract == "task-execution-output-contract"
+    assert [action["tool"] for action in plan.actions] == [
+        "filesystem-list",
+        "filesystem-read",
+        "filesystem-read",
+    ]
+    assert plan.skill_handlers == (
+        {
+            "name": "dependency-audit",
+            "version": "0.1.0",
+            "handler_id": "dependency-audit@0.1.0",
+        },
+    )

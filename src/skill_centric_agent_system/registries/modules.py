@@ -132,6 +132,7 @@ class TaskSignals:
     capability_hints: frozenset[str] = frozenset()
     phrases: frozenset[str] = frozenset()
     constraints: frozenset[str] = frozenset()
+    error_feedback: frozenset[str] = frozenset()
 
     def normalized_text_signals(self) -> frozenset[str]:
         return frozenset(_normalize_texts((*self.phrases, *self.constraints)))
@@ -238,6 +239,12 @@ class InMemoryModuleRegistry:
 
         for phrase in module.negative_phrases & task_signals.normalized_text_signals():
             negative_signals.add(f"phrase:{phrase}")
+
+        feedback_penalty, feedback_reason = _error_feedback_penalty(module, task_signals)
+        if feedback_penalty > 0:
+            score -= feedback_penalty
+            negative_signals.add(feedback_reason)
+            explanation.append(f"feedback_penalty:{feedback_reason}")
 
         clamped_score = max(0.0, min(1.0, score))
         return ScoreResult(
@@ -450,3 +457,29 @@ def _signal_matches(
     if prefix == "constraint":
         return normalized_value in _normalize_texts(task_signals.constraints)
     return False
+
+
+def _error_feedback_penalty(module: ModuleMetadata, task_signals: TaskSignals) -> tuple[float, str]:
+    penalties = {
+        "F1_INEFFICIENCY_PATH": {
+            "analysis": 0.12,
+            "execution": 0.12,
+            "retrieval": 0.06,
+        },
+        "F2_INTERFACE_CONTRACT_BREAKDOWN": {
+            "validation": 0.16,
+            "execution": 0.1,
+        },
+        "R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION": {
+            "policy": 0.2,
+            "instruction": 0.2,
+        },
+    }
+    max_penalty = 0.0
+    reason = ""
+    for feedback in task_signals.error_feedback:
+        penalty = penalties.get(feedback, {}).get(module.capability_class, 0.0)
+        if penalty > max_penalty:
+            max_penalty = penalty
+            reason = f"error_feedback:{feedback}:{module.capability_class}"
+    return max_penalty, reason

@@ -48,6 +48,7 @@ is satisfied for the target environment.
 | Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
 | Write-capable execution scope | If production scope includes writes, every write adapter has explicit authorization, approval, policy, audit, validation, and rollback coverage. If production scope is read-only, that limitation is stated in the release evidence. |
 | Operational telemetry | Retrieval, validation, cleanup, AI Gateway, queue processing, runtime failures, and policy denials have observable signals and runbook-backed diagnostics. |
+| Error taxonomy gates | F1/F2/R8 classification contracts, evaluation fixtures, thresholds, and CI enforcement are current and green. |
 | Security closure | Threat model is current, security scan findings are closed or explicitly accepted, token scopes are verified, secret rotation is documented, and data-plane boundaries are tested. |
 | Human-review quality | Ambiguous analyzer output produces review-required profiles with explicit ambiguity evidence and no selected specialized capabilities before approval. |
 | Release decision | The release evidence records commit, target environment, gate results, unresolved risks, waivers, owner, timestamp, and final decision. |
@@ -72,8 +73,11 @@ The production readiness backlog is ordered by dependency and release risk:
    Define this gate, add repository documentation, and make the gate testable.
 2. `P5.02 Staging and Production Environment Separation`
    Add explicit Cloudflare and Hetzner staging/prod configuration and validation.
-   Initial resource manifest and documentation are present; provisioning and
-   live validation remain pending.
+   Complete: environment-scoped Cloudflare/Hetzner resources are provisioned for
+   `staging` and `prod`, workflows resolve environment-prefixed secrets
+   (`SCAS_*`), runtime DB/artifact roots are isolated by environment, and live
+   staging/prod validation gates are codified in workflows, scripts, tests, and
+   runbooks.
 3. `P5.03 Production Release Evidence Workflow`
    Run required checks and live gates through a release workflow that writes a
    non-secret evidence summary.
@@ -131,8 +135,9 @@ The production readiness backlog is ordered by dependency and release risk:
    into a review-required profile with no selected skills, tools, knowledge
    scopes, data scopes, or memory scopes.
 10. `P5.11 Expand Production Skill Handler Coverage`
-    Expand production-required skill fixtures and executable handler coverage
-    beyond the current manifest-covered first slice.
+    Complete: production-required skill fixtures and executable handlers now
+    include `document-synthesis` and `dependency-audit` in addition to the
+    initial first-slice handlers, with manifest and runtime test coverage.
 11. `P5.10 Production Readiness Certification Run`
     Run the complete gate against the target environment and record the release
     decision.
@@ -210,5 +215,5 @@ The evidence artifact uses contract version `0.3.0` and includes:
 This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
-production certification remain `not-production-ready` while required follow-up
-gates such as broader production handler coverage are still open.
+production certification remain `not-production-ready` while unresolved
+environment provisioning and final live certification steps are still open.

@@ -102,6 +102,11 @@ invocation must be checked against profile permissions and remaining limits.
 
 `Validator` checks profile integrity before execution, then output contracts, policy compliance, unauthorized access, and task completion before final response or action.
 
+`Error Classification` maps runtime outcomes to explicit taxonomy classes
+(`F1_INEFFICIENCY_PATH`, `F2_INTERFACE_CONTRACT_BREAKDOWN`,
+`R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION`, `NONE`) with deterministic evidence
+and runtime playbooks for gates and trend analysis.
+
 ## Composition Pipeline
 
 The Composer is a deterministic pipeline around model-assisted analysis, not a free-form prompt:
@@ -195,6 +200,8 @@ The current repository has implemented the first control-plane slice:
 - aggregate production telemetry policy and alert evaluation for retrieval,
   validation, cleanup, AI Gateway, queue processing, runtime failures, and
   policy denials,
+- explicit runtime error taxonomy classification and CI gate fixtures for
+  F1/F2/R8 regression control,
 - production threat model closure with token-scope review, data-boundary
   evidence, and security closure validation,
 - analyzer/composer human-review quality gates that convert ambiguous tasks

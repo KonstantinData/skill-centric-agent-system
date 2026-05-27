@@ -12,7 +12,7 @@ head_sampling_rate = 1
 [vars]
 ENVIRONMENT = "dev"
 AI_GATEWAY_ACCOUNT_ID = "unset"
-AI_GATEWAY_ID = "default"
+AI_GATEWAY_ID = "scas-ai-gateway-dev-run"
 
 [[d1_databases]]
 binding = "SCAS_CONTROL_DB"
@@ -50,3 +50,95 @@ index_name = "scas-knowledge-dev"
 [[vectorize]]
 binding = "SCAS_MEMORY_INDEX"
 index_name = "scas-memory-dev"
+
+[env.staging]
+name = "scas-control-api-staging"
+workers_dev = true
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+AI_GATEWAY_ACCOUNT_ID = "unset"
+AI_GATEWAY_ID = "scas-ai-gateway-staging-run"
+
+[[env.staging.d1_databases]]
+binding = "SCAS_CONTROL_DB"
+database_name = "scas-control-staging"
+database_id = "f863862c-922c-4890-b5c7-c53dc68ad0e5"
+migrations_dir = "../../migrations/cloudflare/d1"
+
+[[env.staging.r2_buckets]]
+binding = "SCAS_KNOWLEDGE_BUCKET"
+bucket_name = "scas-knowledge-staging"
+
+[[env.staging.r2_buckets]]
+binding = "SCAS_MEMORY_BUCKET"
+bucket_name = "scas-memory-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "SCAS_CONFIG"
+id = "50282de3d6484670a32144a54f6c497b"
+
+[[env.staging.queues.producers]]
+queue = "scas-ingest-staging"
+binding = "SCAS_INGEST_QUEUE"
+
+[[env.staging.queues.consumers]]
+queue = "scas-ingest-staging"
+max_batch_size = 5
+max_batch_timeout = 10
+max_retries = 3
+dead_letter_queue = "scas-ingest-staging-dlq"
+
+[[env.staging.vectorize]]
+binding = "SCAS_KNOWLEDGE_INDEX"
+index_name = "scas-knowledge-staging"
+
+[[env.staging.vectorize]]
+binding = "SCAS_MEMORY_INDEX"
+index_name = "scas-memory-staging"
+
+[env.prod]
+name = "scas-control-api-prod"
+workers_dev = true
+
+[env.prod.vars]
+ENVIRONMENT = "prod"
+AI_GATEWAY_ACCOUNT_ID = "unset"
+AI_GATEWAY_ID = "scas-ai-gateway-prod-run"
+
+[[env.prod.d1_databases]]
+binding = "SCAS_CONTROL_DB"
+database_name = "scas-control-prod"
+database_id = "e0ebfae2-3eb8-41d4-b177-e44c0ad85403"
+migrations_dir = "../../migrations/cloudflare/d1"
+
+[[env.prod.r2_buckets]]
+binding = "SCAS_KNOWLEDGE_BUCKET"
+bucket_name = "scas-knowledge-prod"
+
+[[env.prod.r2_buckets]]
+binding = "SCAS_MEMORY_BUCKET"
+bucket_name = "scas-memory-prod"
+
+[[env.prod.kv_namespaces]]
+binding = "SCAS_CONFIG"
+id = "f6cac1a13ea54396a508c1f045989edd"
+
+[[env.prod.queues.producers]]
+queue = "scas-ingest-prod"
+binding = "SCAS_INGEST_QUEUE"
+
+[[env.prod.queues.consumers]]
+queue = "scas-ingest-prod"
+max_batch_size = 5
+max_batch_timeout = 10
+max_retries = 3
+dead_letter_queue = "scas-ingest-prod-dlq"
+
+[[env.prod.vectorize]]
+binding = "SCAS_KNOWLEDGE_INDEX"
+index_name = "scas-knowledge-prod"
+
+[[env.prod.vectorize]]
+binding = "SCAS_MEMORY_INDEX"
+index_name = "scas-memory-prod"
