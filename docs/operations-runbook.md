@@ -24,8 +24,9 @@ Rules:
 - Secrets must be injected through GitHub Actions, Worker secrets, or host
   environment variables. Secrets must not be committed.
 - Control API tokens must be scoped by endpoint where possible. Use
-  `CONTROL_API_TOKEN` only for trusted automation that needs all protected
-  endpoints.
+  environment-specific tokens (`SCAS_DEV_CONTROL_API_TOKEN`,
+  `SCAS_STAGING_CONTROL_API_TOKEN`, `SCAS_PROD_CONTROL_API_TOKEN`) for trusted
+  automation that needs all protected endpoints.
 - The environment resource manifest lives in
   `examples/infrastructure/environment-manifest.json`; update it before adding
   staging or production workflows.
@@ -216,17 +217,16 @@ GitHub and local secret presence:
 gh secret list --repo KonstantinData/skill-centric-agent-system
 ```
 
-Required GitHub secrets for the live gates are:
+Required GitHub secrets for the live gates are environment-prefixed:
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ZONE_ID`
-- `HETZNER_HOST`
-- `HETZNER_SSH_KEY`
-- `HETZNER_USER`
-- `OPENAI_API_KEY`
+- `SCAS_DEV_CLOUDFLARE_ACCOUNT_ID`, `SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID`, `SCAS_PROD_CLOUDFLARE_ACCOUNT_ID`
+- `SCAS_DEV_CLOUDFLARE_API_TOKEN`, `SCAS_STAGING_CLOUDFLARE_API_TOKEN`, `SCAS_PROD_CLOUDFLARE_API_TOKEN`
+- `SCAS_DEV_HETZNER_HOST`, `SCAS_STAGING_HETZNER_HOST`, `SCAS_PROD_HETZNER_HOST`
+- `SCAS_DEV_HETZNER_SSH_KEY`, `SCAS_STAGING_HETZNER_SSH_KEY`, `SCAS_PROD_HETZNER_SSH_KEY`
+- `SCAS_DEV_HETZNER_USER`, `SCAS_STAGING_HETZNER_USER`, `SCAS_PROD_HETZNER_USER`
+- `SCAS_DEV_OPENAI_API_KEY`, `SCAS_STAGING_OPENAI_API_KEY`, `SCAS_PROD_OPENAI_API_KEY`
+- `SCAS_DEV_CONTROL_API_TOKEN`, `SCAS_STAGING_CONTROL_API_TOKEN`, `SCAS_PROD_CONTROL_API_TOKEN`
 - `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
-- `CONTROL_API_TOKEN`
 
 `CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and must allow
 Worker script writes. The manual Control API rollout deploys Worker code and
@@ -285,12 +285,16 @@ the manual live runtime workflow instead of copying the token to a local shell:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=true \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=true \
   -f live_task_suite=generic
 ```
+
+For `staging` and `prod`, set `target_environment` accordingly and provide
+`-f control_api_url=https://<worker-url>`.
 
 That workflow executes the live dev E2E gate on the Hetzner host, connects to
 PostgreSQL over the local Unix socket, and stores artifacts below
@@ -303,6 +307,7 @@ Use the same workflow for the live Postgres concurrency smoke:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=false \
   -f run_postgres_concurrency_smoke=true \
   -f run_live_retrieval_vectorize_smoke=false
@@ -312,6 +317,7 @@ Use the same workflow for the live retrieval and Vectorize smoke:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=false \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=true \
@@ -401,6 +407,7 @@ Live dev E2E gate:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=true \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=false \
@@ -415,6 +422,7 @@ Live retrieval and Vectorize smoke:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=false \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=true \
@@ -428,6 +436,7 @@ Postgres concurrency smoke:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=false \
   -f run_postgres_concurrency_smoke=true
 

@@ -2204,13 +2204,14 @@ async function handleRetrievalContext(request: Request, env: Env): Promise<Respo
   const boundedMemoryRecords = memoryRecords.slice(0, body.top_k);
   const knowledgeVectorIds = new Set(boundedKnowledgeChunks.map((chunk) => chunk.vector_id));
   const memoryVectorIds = new Set(boundedMemoryRecords.map((memory) => memory.vector_id));
+  const environment = env.ENVIRONMENT || "dev";
   const vectorize = {
     status:
       body.query_embedding === undefined
         ? "d1_prefilter_ready"
         : "vectorize_query_post_validated",
-    knowledge_index: "scas-knowledge-dev",
-    memory_index: "scas-memory-dev",
+    knowledge_index: `scas-knowledge-${environment}`,
+    memory_index: `scas-memory-${environment}`,
     bindings: {
       knowledge: Boolean(env.SCAS_KNOWLEDGE_INDEX),
       memory: Boolean(env.SCAS_MEMORY_INDEX),

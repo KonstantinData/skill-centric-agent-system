@@ -51,8 +51,9 @@ def run_metadata(
     }
 
 
-def live_handler_binding_evidence() -> dict[str, object]:
+def live_handler_binding_evidence(environment: str = "prod") -> dict[str, object]:
     return {
+        "environment": environment,
         "status": "passed",
         "handler_binding_status": "passed",
         "task_suite": "generic",
@@ -60,6 +61,7 @@ def live_handler_binding_evidence() -> dict[str, object]:
         "results": [
             {
                 "case": "code-review",
+                "environment": environment,
                 "status": "passed",
                 "run_id": "run-live-123-code-review",
                 "task_type": "code-review",
@@ -69,6 +71,7 @@ def live_handler_binding_evidence() -> dict[str, object]:
                     "hetzner://runtime/traces/run-live-123-code-review/"
                     "checkpoints/001-planner.json"
                 ),
+                "artifact_root_uri": f"hetzner://runtime/opt/scas/runtime/{environment}/live-gates/123",
                 "skill_handlers": [
                     {
                         "name": "git-diff-analysis",
@@ -179,7 +182,7 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
             workflow_name="CI",
             url=AI_GATEWAY_RUN_URL,
         ),
-        live_handler_binding_evidence=live_handler_binding_evidence(),
+        live_handler_binding_evidence=live_handler_binding_evidence("prod"),
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
@@ -192,8 +195,9 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
         result["gate"] == "Live handler binding evidence"
         for result in payload["gate_results"]
     )
-    assert payload["status"] == "not-production-ready"
-    assert payload["final_decision"] == "not-certified"
+    assert payload["status"] == "production-ready"
+    assert payload["final_decision"] == "certified"
+    assert not any(gap["id"] == "P5.02" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.05" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.06" for gap in payload["open_release_gaps"])
@@ -274,7 +278,7 @@ def test_certify_mode_requires_live_handler_binding_evidence() -> None:
 
 
 def test_live_handler_binding_evidence_rejects_mismatched_handler_id() -> None:
-    invalid_evidence = live_handler_binding_evidence()
+    invalid_evidence = live_handler_binding_evidence("prod")
     result = invalid_evidence["results"][0]
     assert isinstance(result, dict)
     handlers = result["skill_handlers"]
@@ -283,3 +287,20 @@ def test_live_handler_binding_evidence_rejects_mismatched_handler_id() -> None:
 
     with pytest.raises(evidence.EvidenceError, match="does not match"):
         evidence.validate_live_handler_binding_evidence(invalid_evidence)
+
+
+def test_staging_evidence_only_keeps_p5_02_open() -> None:
+    payload = evidence.build_evidence(
+        repository=REPOSITORY,
+        commit=COMMIT,
+        workflow_run_id="111",
+        workflow_run_attempt="1",
+        target_environment="staging",
+        release_scope="production-runtime",
+        certification_mode="evidence-only",
+        generated_at="2026-05-24T13:00:00+00:00",
+    )
+
+    assert payload["status"] == "not-production-ready"
+    assert payload["final_decision"] == "not-certified"
+    assert any(gap["id"] == "P5.02" for gap in payload["open_release_gaps"])

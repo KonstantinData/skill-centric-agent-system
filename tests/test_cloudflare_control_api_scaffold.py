@@ -14,6 +14,9 @@ CONTROL_API_DOC_PATH = REPO_ROOT / "docs" / "cloudflare" / "control-api.md"
 BOOTSTRAP_SCRIPT_PATH = (
     REPO_ROOT / "scripts" / "cloudflare" / "bootstrap_control_api_dev.sh"
 )
+BOOTSTRAP_ENV_SCRIPT_PATH = (
+    REPO_ROOT / "scripts" / "cloudflare" / "bootstrap_control_api_environment.sh"
+)
 AI_GATEWAY_LIVE_SMOKE_SCRIPT_PATH = (
     REPO_ROOT / "scripts" / "cloudflare" / "ai_gateway_live_smoke.py"
 )
@@ -59,7 +62,7 @@ def test_wrangler_config_defines_control_api_bindings() -> None:
     assert config["vars"] == {
         "ENVIRONMENT": "dev",
         "AI_GATEWAY_ACCOUNT_ID": "unset",
-        "AI_GATEWAY_ID": "default",
+        "AI_GATEWAY_ID": "scas-ai-gateway-dev-run",
     }
 
     d1_bindings = {binding["binding"]: binding for binding in config["d1_databases"]}
@@ -111,6 +114,7 @@ def test_worker_vitest_scaffold_is_present() -> None:
 def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     docs = load_text(CONTROL_API_DOC_PATH)
     script = load_text(BOOTSTRAP_SCRIPT_PATH)
+    env_script = load_text(BOOTSTRAP_ENV_SCRIPT_PATH)
 
     assert "npx wrangler d1 create scas-control-dev" in docs
     assert "npx wrangler d1 migrations apply scas-control-dev --local" in docs
@@ -124,10 +128,12 @@ def test_control_api_docs_include_d1_bootstrap_and_deploy_sequence() -> None:
     assert "npx wrangler secret put AI_GATEWAY_AUTH_TOKEN" in docs
     assert "npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN" in docs
     assert "npm run worker:deploy:dev" in docs
-    assert "npx wrangler d1 create scas-control-dev" in script
-    assert "npx wrangler queues create scas-ingest-dev" in script
-    assert "npx wrangler vectorize create scas-knowledge-dev" in script
-    assert "npx wrangler vectorize create-metadata-index scas-knowledge-dev" in script
+    assert "bootstrap_control_api_environment.sh\" dev --seed" in script
+    assert 'Usage: $0 <dev|staging|prod> [--seed]' in env_script
+    assert "npx wrangler d1 create \"${CONTROL_DB}\"" in env_script
+    assert "npx wrangler queues create \"${INGEST_QUEUE}\"" in env_script
+    assert "npx wrangler vectorize create \"${KNOWLEDGE_INDEX}\"" in env_script
+    assert "python \"$REPO_ROOT/scripts/cloudflare/generate_control_plane_seed.py\"" in env_script
 
 
 def test_ci_runs_worker_checks_and_has_manual_dev_deploy_gate() -> None:

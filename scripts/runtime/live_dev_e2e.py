@@ -17,6 +17,7 @@ from skill_centric_agent_system.runtime import (
 )
 
 DEFAULT_CONTROL_API_URL = "https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
+TARGET_ENVIRONMENTS = ("dev", "staging", "prod")
 GENERIC_TASK_SUITE = (
     ("code-review", "examples/tasks/code-review-task.json"),
     ("research", "examples/tasks/research-task.json"),
@@ -68,6 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         default=os.getenv("SCAS_REPOSITORY_ROOT", "."),
         help="Repository root used by profile-scoped tools.",
     )
+    parser.add_argument(
+        "--environment",
+        choices=TARGET_ENVIRONMENTS,
+        default=os.getenv("TARGET_ENVIRONMENT", "dev"),
+        help="Runtime environment label for run metadata and policy routing.",
+    )
     args = parser.parse_args(argv)
 
     if not args.database_url:
@@ -98,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
                 store=storage.store,
                 artifacts=artifacts,
                 control_plane_client=control_plane_client,
-                environment="dev",
+                environment=args.environment,
             )
             start_result = runtime.start(task, run_id=f"run-live-{run_suffix}-{label}")
             loop_result = MinimalRuntimeLoop(
@@ -123,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
             results.append(
                 {
                     "case": label,
+                    "environment": args.environment,
                     "status": case_status,
                     "run_id": start_result.run_id,
                     "task_type": start_result.profile["task_type"],
@@ -148,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         json.dumps(
             {
+                "environment": args.environment,
                 "status": (
                     "passed"
                     if all(result["status"] == "passed" for result in results)

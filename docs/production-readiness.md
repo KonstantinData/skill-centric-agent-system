@@ -73,8 +73,11 @@ The production readiness backlog is ordered by dependency and release risk:
    Define this gate, add repository documentation, and make the gate testable.
 2. `P5.02 Staging and Production Environment Separation`
    Add explicit Cloudflare and Hetzner staging/prod configuration and validation.
-   Initial resource manifest and documentation are present; provisioning and
-   live validation remain pending.
+   Complete: environment-scoped Cloudflare/Hetzner resources are provisioned for
+   `staging` and `prod`, workflows resolve environment-prefixed secrets
+   (`SCAS_*`), runtime DB/artifact roots are isolated by environment, and live
+   staging/prod validation gates are codified in workflows, scripts, tests, and
+   runbooks.
 3. `P5.03 Production Release Evidence Workflow`
    Run required checks and live gates through a release workflow that writes a
    non-secret evidence summary.

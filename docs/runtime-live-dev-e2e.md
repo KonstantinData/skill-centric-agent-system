@@ -1,4 +1,4 @@
-# Runtime Live Dev E2E Gate
+# Runtime Live E2E Gate
 
 ## Purpose
 
@@ -31,8 +31,9 @@ Set these variables on the machine that runs the gate:
 export SCAS_CONTROL_API_URL="https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
 export SCAS_CONTROL_API_TOKEN="..."
 export SCAS_RUNTIME_DATABASE_URL="postgresql://..."
-export SCAS_RUNTIME_ARTIFACT_ROOT="/opt/scas/runtime"
+export SCAS_RUNTIME_ARTIFACT_ROOT="/opt/scas/runtime/dev"
 export SCAS_REPOSITORY_ROOT="/path/to/skill-centric-agent-system"
+export TARGET_ENVIRONMENT="dev"
 ```
 
 `SCAS_CONTROL_API_TOKEN` must authorize both composition and retrieval, either
@@ -47,6 +48,7 @@ Preferred manual GitHub Actions gate:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
+  -f target_environment=dev \
   -f run_live_dev_e2e=true \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=false \
@@ -54,11 +56,13 @@ gh workflow run live-runtime-gates.yml \
   -f live_task_suite=generic
 ```
 
-The workflow uses GitHub `CONTROL_API_TOKEN` and Hetzner SSH secrets, uploads
-the checked-out commit to the Hetzner host, installs the runtime dependencies
-there, connects to PostgreSQL over the local Unix socket as the `postgres`
-system user, and writes gate artifacts under
-`/opt/scas/runtime/dev/live-gates/<github-run-id>`.
+For `staging` and `prod`, set `target_environment` accordingly and pass
+`control_api_url` explicitly.
+The workflow resolves environment-specific secrets (`SCAS_DEV_*`,
+`SCAS_STAGING_*`, `SCAS_PROD_*`), uploads the checked-out commit to the
+Hetzner host, installs the runtime dependencies there, connects to PostgreSQL
+over the local Unix socket as the `postgres` system user, and writes gate
+artifacts under `/opt/scas/runtime/<target_environment>/live-gates/<github-run-id>`.
 If the dev host does not yet have Python venv support, the workflow installs
 `python3-venv` and `python3.12-venv` before creating the gate environment.
 With `seed_control_plane_dev=true`, the workflow applies D1 migrations and
@@ -71,6 +75,7 @@ Local or direct host command:
 
 ```bash
 python scripts/runtime/live_dev_e2e.py \
+  --environment dev \
   --task-suite generic
 ```
 

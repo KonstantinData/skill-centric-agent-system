@@ -3,6 +3,20 @@ name: Live Runtime Gates
 on:
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: Target environment for live gates
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      control_api_url:
+        description: Optional Control API base URL override for the target environment
+        required: false
+        type: string
+        default: ""
       run_live_dev_e2e:
         description: Run the live dev E2E gate on the Hetzner runtime host
         required: true
@@ -19,7 +33,7 @@ on:
         type: boolean
         default: false
       seed_control_plane_dev:
-        description: Apply migrations and seed the dev Control Plane before live gates
+        description: Apply migrations and seed the target Control Plane before live gates
         required: true
         type: boolean
         default: true
@@ -51,13 +65,36 @@ jobs:
         || inputs.run_live_retrieval_vectorize_smoke == true)
 
     env:
-      CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      CONTROL_API_URL_OVERRIDE: ${{ inputs.control_api_url }}
+      SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}
+      SCAS_DEV_HETZNER_HOST: ${{ secrets.SCAS_DEV_HETZNER_HOST }}
+      SCAS_DEV_HETZNER_SSH_KEY: ${{ secrets.SCAS_DEV_HETZNER_SSH_KEY }}
+      SCAS_DEV_HETZNER_USER: ${{ secrets.SCAS_DEV_HETZNER_USER }}
+      SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}
+      SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}
+      SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_STAGING_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}
+      SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}
+      SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
+      SCAS_PROD_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_PROD_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_PROD_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_API_TOKEN }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_OPENAI_API_KEY: ${{ secrets.SCAS_PROD_OPENAI_API_KEY }}
+      SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
-      SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
       RUN_LIVE_DEV_E2E: ${{ inputs.run_live_dev_e2e }}
       RUN_POSTGRES_CONCURRENCY_SMOKE: ${{ inputs.run_postgres_concurrency_smoke }}
       RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE: ${{ inputs.run_live_retrieval_vectorize_smoke }}
@@ -73,11 +110,88 @@ jobs:
         run: |
           set -euo pipefail
 
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_DEV_CLOUDFLARE_ACCOUNT_ID:-${CLOUDFLARE_ACCOUNT_ID:-}}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_DEV_CLOUDFLARE_API_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}" ;;
+                  HETZNER_HOST) value="${SCAS_DEV_HETZNER_HOST:-${HETZNER_HOST:-}}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_DEV_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}" ;;
+                  HETZNER_USER) value="${SCAS_DEV_HETZNER_USER:-${HETZNER_USER:-}}" ;;
+                  OPENAI_API_KEY) value="${SCAS_DEV_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}" ;;
+                  CONTROL_API_TOKEN) value="${SCAS_DEV_CONTROL_API_TOKEN:-${CONTROL_API_TOKEN:-}}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_STAGING_CLOUDFLARE_API_TOKEN:-}" ;;
+                  HETZNER_HOST) value="${SCAS_STAGING_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
+                  OPENAI_API_KEY) value="${SCAS_STAGING_OPENAI_API_KEY:-}" ;;
+                  CONTROL_API_TOKEN) value="${SCAS_STAGING_CONTROL_API_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_PROD_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_PROD_CLOUDFLARE_API_TOKEN:-}" ;;
+                  HETZNER_HOST) value="${SCAS_PROD_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
+                  OPENAI_API_KEY) value="${SCAS_PROD_OPENAI_API_KEY:-}" ;;
+                  CONTROL_API_TOKEN) value="${SCAS_PROD_CONTROL_API_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
+          }
+
+          CONTROL_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CONTROL_API_TOKEN)"
+          HETZNER_HOST="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_HOST)"
+          HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
+          HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
+          OPENAI_API_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY)"
+          CLOUDFLARE_ACCOUNT_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID)"
+          CLOUDFLARE_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN)"
+
+          if [ -n "${CONTROL_API_URL_OVERRIDE}" ]; then
+            SCAS_CONTROL_API_URL="${CONTROL_API_URL_OVERRIDE}"
+          elif [ "${TARGET_ENVIRONMENT}" = "dev" ]; then
+            SCAS_CONTROL_API_URL="https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
+          else
+            echo "::error::control_api_url is required for ${TARGET_ENVIRONMENT} unless a canonical environment URL is configured."
+            exit 1
+          fi
+
+          {
+            printf 'CONTROL_API_TOKEN=%s\n' "${CONTROL_API_TOKEN}"
+            printf 'HETZNER_HOST=%s\n' "${HETZNER_HOST}"
+            printf 'HETZNER_SSH_KEY=%s\n' "${HETZNER_SSH_KEY}"
+            printf 'HETZNER_USER=%s\n' "${HETZNER_USER}"
+            printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
+            printf 'CLOUDFLARE_ACCOUNT_ID=%s\n' "${CLOUDFLARE_ACCOUNT_ID}"
+            printf 'CLOUDFLARE_API_TOKEN=%s\n' "${CLOUDFLARE_API_TOKEN}"
+            printf 'SCAS_CONTROL_API_URL=%s\n' "${SCAS_CONTROL_API_URL}"
+          } >> "${GITHUB_ENV}"
+
           missing=0
-          for name in CONTROL_API_TOKEN HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
+          for name in CONTROL_API_TOKEN HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER OPENAI_API_KEY
           do
             if [ -z "${!name:-}" ]; then
-              echo "::error::Missing required secret: ${name}"
+              echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: ${name}"
               missing=1
             fi
           done
@@ -86,7 +200,7 @@ jobs:
             for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
             do
               if [ -z "${!name:-}" ]; then
-                echo "::error::Missing required secret for Control Plane seeding: ${name}"
+                echo "::error::Missing required secret for ${TARGET_ENVIRONMENT} Control Plane seeding: ${name}"
                 missing=1
               fi
             done
@@ -107,10 +221,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          case "${TARGET_ENVIRONMENT}" in
+            dev|staging|prod) ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              exit 1
+              ;;
+          esac
+          control_db="scas-control-${TARGET_ENVIRONMENT}"
+
           npm ci
-          npx wrangler d1 migrations apply scas-control-dev --remote --config workers/control-api/wrangler.toml
-          python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
-          npx wrangler d1 execute scas-control-dev --remote --file examples/control-plane/dev-seed.sql --config workers/control-api/wrangler.toml --yes
+          npx wrangler d1 migrations apply "${control_db}" --remote --config workers/control-api/wrangler.toml
+          python scripts/cloudflare/generate_control_plane_seed.py --output "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql"
+          npx wrangler d1 execute "${control_db}" --remote --file "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql" --config workers/control-api/wrangler.toml --yes
 
       - name: Configure SSH
         shell: bash
@@ -153,13 +276,14 @@ jobs:
           set -euo pipefail
 
           token_b64="$(printf '%s' "${CONTROL_API_TOKEN}" | base64 -w0)"
+          openai_key_b64="$(printf '%s' "${OPENAI_API_KEY}" | base64 -w0)"
 
           ssh \
             -i "${HOME}/.ssh/hetzner_key" \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_OPENAI_API_KEY_B64='${openai_key_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -172,14 +296,26 @@ jobs:
 
           as_postgres_with_runtime_env() {
             sudo \
-              --preserve-env=SCAS_CONTROL_API_URL,SCAS_CONTROL_API_TOKEN,SCAS_RUNTIME_DATABASE_URL,SCAS_RUNTIME_ARTIFACT_ROOT,SCAS_REPOSITORY_ROOT \
+              --preserve-env=SCAS_CONTROL_API_URL,SCAS_CONTROL_API_TOKEN,OPENAI_API_KEY,SCAS_RUNTIME_DATABASE_URL,SCAS_RUNTIME_ARTIFACT_ROOT,SCAS_REPOSITORY_ROOT \
               -u postgres \
               "$@"
           }
 
+          case "${TARGET_ENVIRONMENT}" in
+            dev|staging|prod) ;;
+            *)
+              echo "Unsupported target environment: ${TARGET_ENVIRONMENT}" >&2
+              exit 1
+              ;;
+          esac
+
           archive="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}.tar.gz"
           workdir="/tmp/scas-live-runtime-gate-${GITHUB_RUN_ID}"
-          artifact_root="/opt/scas/runtime/dev/live-gates/${GITHUB_RUN_ID}"
+          artifact_root="/opt/scas/runtime/${TARGET_ENVIRONMENT}/live-gates/${GITHUB_RUN_ID}"
+          runtime_database="scas_runtime"
+          if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then
+            runtime_database="scas_runtime_${TARGET_ENVIRONMENT}"
+          fi
 
           rm -rf "${workdir}"
           install -d -m 755 "${workdir}"
@@ -188,8 +324,8 @@ jobs:
 
           sudo_if_needed chgrp postgres /opt/scas/runtime
           sudo_if_needed chmod 750 /opt/scas/runtime
-          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/dev
-          sudo_if_needed install -d -o postgres -g postgres -m 750 /opt/scas/runtime/dev/live-gates
+          sudo_if_needed install -d -o postgres -g postgres -m 750 "/opt/scas/runtime/${TARGET_ENVIRONMENT}"
+          sudo_if_needed install -d -o postgres -g postgres -m 750 "/opt/scas/runtime/${TARGET_ENVIRONMENT}/live-gates"
           sudo_if_needed install -d -o postgres -g postgres -m 750 "${artifact_root}"
 
           if ! python3 -m venv "${workdir}/.venv"; then
@@ -210,18 +346,21 @@ jobs:
           chmod -R a+rX "${workdir}/.venv"
 
           control_token="$(printf '%s' "${SCAS_CONTROL_API_TOKEN_B64}" | base64 -d)"
+          openai_key="$(printf '%s' "${SCAS_OPENAI_API_KEY_B64}" | base64 -d)"
 
           cd "${workdir}"
           install -d -m 755 live-runtime-evidence
           export SCAS_CONTROL_API_URL
           export SCAS_CONTROL_API_TOKEN="${control_token}"
-          export SCAS_RUNTIME_DATABASE_URL="postgresql:///scas_runtime?host=/var/run/postgresql"
+          export OPENAI_API_KEY="${openai_key}"
+          export SCAS_RUNTIME_DATABASE_URL="postgresql:///${runtime_database}?host=/var/run/postgresql"
           export SCAS_RUNTIME_ARTIFACT_ROOT="${artifact_root}"
           export SCAS_REPOSITORY_ROOT="${workdir}"
 
           if [ "${RUN_LIVE_DEV_E2E}" = "true" ]; then
             as_postgres_with_runtime_env \
               "${workdir}/.venv/bin/python" scripts/runtime/live_dev_e2e.py \
+                --environment "${TARGET_ENVIRONMENT}" \
                 --task-suite "${LIVE_TASK_SUITE}" \
               | tee live-runtime-evidence/live-dev-e2e.json
           fi

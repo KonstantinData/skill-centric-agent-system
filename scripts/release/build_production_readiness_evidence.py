@@ -87,16 +87,6 @@ REPOSITORY_GATE_RESULTS = (
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
 
-STAGING_PROD_OPEN_GAPS: tuple[dict[str, str], ...] = (
-    {
-        "id": "P5.02",
-        "gate": "Staging and production environment separation",
-        "reason": (
-            "Live staging/prod resource provisioning and validation remain pending."
-        ),
-    },
-)
-
 
 class EvidenceError(ValueError):
     """Raised when release evidence cannot be generated safely."""
@@ -264,10 +254,97 @@ def validate_run_metadata(
     }
 
 
-def open_release_gaps(target_environment: str, release_scope: str) -> list[dict[str, str]]:
-    gaps = []
-    if target_environment in {"staging", "prod"}:
-        gaps.extend(dict(gap) for gap in STAGING_PROD_OPEN_GAPS)
+def validate_environment_separation_for_target(
+    *,
+    target_environment: str,
+    certification_mode: str,
+    live_handler_binding_evidence: dict[str, object] | None,
+) -> dict[str, str]:
+    if target_environment == "dev":
+        return {
+            "status": "passed",
+            "reason": "Development environment evidence uses dev-scoped resources.",
+        }
+
+    if certification_mode != "certify":
+        return {
+            "status": "pending",
+            "reason": (
+                "Staging/prod environment separation requires certify mode with live runtime "
+                "handler-binding evidence."
+            ),
+        }
+    if live_handler_binding_evidence is None:
+        return {
+            "status": "pending",
+            "reason": "Missing live handler-binding evidence for environment validation.",
+        }
+
+    evidence_environment = str(live_handler_binding_evidence.get("environment", ""))
+    if evidence_environment != target_environment:
+        return {
+            "status": "pending",
+            "reason": (
+                "Live handler-binding evidence environment does not match target environment."
+            ),
+        }
+
+    results = live_handler_binding_evidence.get("results")
+    if not isinstance(results, list) or not results:
+        return {
+            "status": "pending",
+            "reason": "Live handler-binding evidence does not include runtime case results.",
+        }
+
+    expected_artifact_fragment = f"/runtime/{target_environment}/"
+    for result in results:
+        if not isinstance(result, dict):
+            return {
+                "status": "pending",
+                "reason": "Live handler-binding evidence contains a malformed case result.",
+            }
+        result_environment = str(result.get("environment", ""))
+        if result_environment != target_environment:
+            return {
+                "status": "pending",
+                "reason": (
+                    "A runtime case result environment does not match the "
+                    "target environment."
+                ),
+            }
+        artifact_root_uri = str(result.get("artifact_root_uri", ""))
+        if expected_artifact_fragment not in artifact_root_uri:
+            return {
+                "status": "pending",
+                "reason": (
+                    "Runtime artifact root URI does not prove "
+                    "environment-isolated artifact storage."
+                ),
+            }
+
+    return {
+        "status": "passed",
+        "reason": (
+            "Live runtime evidence confirms environment-matched execution and "
+            "artifact-root isolation."
+        ),
+    }
+
+
+def open_release_gaps(
+    *,
+    target_environment: str,
+    environment_separation_validation: dict[str, str],
+) -> list[dict[str, str]]:
+    gaps: list[dict[str, str]] = []
+    if environment_separation_validation["status"] != "passed":
+        gaps.append(
+            {
+                "id": "P5.02",
+                "gate": "Staging and production environment separation",
+                "reason": environment_separation_validation["reason"],
+            }
+        )
 
     return gaps
 
@@ -294,6 +371,7 @@ def gate_results(
     certification_mode: str,
     external_evidence: dict[str, object],
     gaps: list[dict[str, str]],
+    environment_separation_validation: dict[str, str],
 ) -> list[dict[str, object]]:
     results: list[dict[str, object]] = [
         {
@@ -303,6 +381,13 @@ def gate_results(
         }
         for gate, evidence in REPOSITORY_GATE_RESULTS
     ]
+    results.append(
+        {
+            "gate": "Environment separation",
+            "status": environment_separation_validation["status"],
+            "evidence": environment_separation_validation["reason"],
+        }
+    )
 
     if certification_mode == "certify":
         results.extend(
@@ -441,7 +526,15 @@ def build_evidence(
         ai_gateway_smoke_run_url=ai_gateway_smoke_run_url,
     )
 
-    gaps = open_release_gaps(target_environment, release_scope)
+    environment_separation_validation = validate_environment_separation_for_target(
+        target_environment=target_environment,
+        certification_mode=certification_mode,
+        live_handler_binding_evidence=live_handler_binding_evidence,
+    )
+    gaps = open_release_gaps(
+        target_environment=target_environment,
+        environment_separation_validation=environment_separation_validation,
+    )
     external = external_evidence(
         repository=repository,
         commit=commit,
@@ -482,6 +575,7 @@ def build_evidence(
             certification_mode=certification_mode,
             external_evidence=external,
             gaps=gaps,
+            environment_separation_validation=environment_separation_validation,
         ),
         "external_evidence": external,
         "open_release_gaps": gaps,
@@ -523,10 +617,12 @@ def validate_live_handler_binding_evidence(evidence: dict[str, object]) -> dict[
         case_summaries.append(
             {
                 "case": str(result.get("case", "")),
+                "environment": str(result.get("environment", "")),
                 "run_id": str(result.get("run_id", "")),
                 "profile_id": str(result.get("profile_id", "")),
                 "task_type": str(result.get("task_type", "")),
                 "planner_checkpoint_uri": str(result.get("planner_checkpoint_uri", "")),
+                "artifact_root_uri": str(result.get("artifact_root_uri", "")),
                 "skill_handlers": validated_handlers,
             }
         )
@@ -534,6 +630,7 @@ def validate_live_handler_binding_evidence(evidence: dict[str, object]) -> dict[
     return {
         "validation_status": "passed",
         "status": "passed",
+        "environment": str(evidence.get("environment", "")),
         "task_suite": str(evidence.get("task_suite", "")),
         "case_count": int(evidence.get("case_count", len(case_summaries))),
         "cases": case_summaries,
