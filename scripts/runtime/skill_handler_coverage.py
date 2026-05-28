@@ -170,7 +170,8 @@ def _coverage_entry(
     module_path: Path,
     handler: SkillHandler | None,
 ) -> dict[str, Any]:
-    production_required = True
+    runtime_role = str(module.get("runtime_role", "runtime"))
+    production_required = runtime_role in {"runtime", "shared"}
     if handler is None:
         coverage_status = "missing_handler" if production_required else "not_required"
         descriptor: dict[str, Any] = {
@@ -193,6 +194,7 @@ def _coverage_entry(
         "module_tests": list(module["tests"]),
         "output_contract": descriptor["output_contract"],
         "production_required": production_required,
+        "runtime_role": runtime_role,
         "required_tools": list(module["required_tools"]),
         "runtime_path": descriptor["runtime_path"],
         "runtime_tests": descriptor["test_coverage"],

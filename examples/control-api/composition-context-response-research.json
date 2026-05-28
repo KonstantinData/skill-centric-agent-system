@@ -7,6 +7,7 @@
       "id": "mod-research-context-synthesis",
       "name": "research-context-synthesis",
       "kind": "skill",
+      "runtime_role": "runtime",
       "version": "0.1.0",
       "score": 0.93,
       "reason": "Research tasks require context synthesis rather than repository mutation."
@@ -50,6 +51,7 @@
         "id": "mod-research-context-synthesis",
         "name": "research-context-synthesis",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       "effect": "allow",
@@ -78,6 +80,7 @@
         "id": "mod-research-context-synthesis",
         "name": "research-context-synthesis",
         "kind": "skill",
+        "runtime_role": "runtime",
         "version": "0.1.0"
       },
       {

@@ -113,7 +113,7 @@ guidance text.
 
 Hard enforcement covers:
 
-- selected skills,
+- selected skills and their `skill_execution_roles`,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,
@@ -125,8 +125,8 @@ Hard enforcement covers:
 - `limits.max_memory_ops`,
 - `limits.max_recompositions`,
 - module version pins for every selected module,
-- exact executable handler binding for every selected skill that has a runtime
-  handler.
+- exact executable handler binding for every selected skill assigned to
+  `runtime` or `shared`.
 
 Denied access must emit a Flight Recorder event with a constrained stop reason.
 The runtime must fail closed when a limit is exceeded or an unselected scope is
@@ -146,6 +146,8 @@ accept free-form handler entrypoints from task input, prompt text, or runtime
 state. A selected skill may execute only when:
 
 - the skill appears in `profile.skills`,
+- the skill is assigned to `runtime` or `shared` in
+  `profile.skill_execution_roles`,
 - the skill has an exact version pin in `profile.module_versions`,
 - the runtime has a registered executable handler for that exact skill/version,
 - the handler emits actions that still pass Tool Gateway enforcement.

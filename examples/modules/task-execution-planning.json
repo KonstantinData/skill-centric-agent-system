@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Plan and summarize conservative repository task execution using read-only inspection tools.",
+  "runtime_role": "runtime",
   "capability_class": "planning",
   "domain_tags": [
     "task-execution",

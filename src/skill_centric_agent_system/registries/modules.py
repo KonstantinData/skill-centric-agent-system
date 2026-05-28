@@ -42,6 +42,7 @@ class ModuleMetadata:
     version: str
     kind: str
     description: str
+    runtime_role: str | None
     capability_class: str
     domain_tags: frozenset[str]
     task_types: frozenset[str]
@@ -74,6 +75,9 @@ class ModuleMetadata:
             version=module["version"],
             kind=module["kind"],
             description=module["description"],
+            runtime_role=(
+                str(module["runtime_role"]) if module.get("runtime_role") is not None else None
+            ),
             capability_class=module["capability_class"],
             domain_tags=frozenset(module["domain_tags"]),
             task_types=frozenset(task_signals["task_types"]),

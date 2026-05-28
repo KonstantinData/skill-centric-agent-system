@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "kind": "skill",
   "description": "Analyze git diffs for behavioral changes, regressions, and review-relevant risks.",
+  "runtime_role": "runtime",
   "capability_class": "analysis",
   "domain_tags": [
     "software-engineering",

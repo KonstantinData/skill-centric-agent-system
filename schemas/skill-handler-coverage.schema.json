@@ -97,6 +97,7 @@
         "skill_version",
         "module_path",
         "production_required",
+        "runtime_role",
         "coverage_status",
         "handler_id",
         "runtime_path",
@@ -119,6 +120,14 @@
         },
         "production_required": {
           "type": "boolean"
+        },
+        "runtime_role": {
+          "type": "string",
+          "enum": [
+            "runtime",
+            "non-runtime",
+            "shared"
+          ]
         },
         "coverage_status": {
           "type": "string",

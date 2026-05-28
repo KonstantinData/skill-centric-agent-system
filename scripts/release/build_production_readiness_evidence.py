@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-CONTRACT_VERSION = "0.3.0"
+CONTRACT_VERSION = "0.4.0"
 GITHUB_HOST = "github.com"
 
 TARGET_ENVIRONMENTS = {"dev", "staging", "prod"}

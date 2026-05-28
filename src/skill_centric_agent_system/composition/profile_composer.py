@@ -5,7 +5,7 @@ from typing import Any
 
 from skill_centric_agent_system.composition.task_analyzer import AnalyzedTask
 
-RUNTIME_PROFILE_VERSION = "0.3.0"
+RUNTIME_PROFILE_VERSION = "0.4.0"
 BASELINE_MODULE_VERSIONS = {
     "base-agent-rules": "0.1.0",
     "runtime-profile-schema": "0.1.0",
@@ -61,6 +61,7 @@ RECOMPOSITION_REASONS = frozenset(
         "validator_failure",
     )
 )
+SKILL_RUNTIME_ROLES = frozenset(("runtime", "non-runtime", "shared"))
 
 
 class CompositionError(ValueError):
@@ -118,6 +119,7 @@ class RuntimeProfileComposer:
             )
         )
         skills = _dedupe(_names(candidate_modules, "skill"))
+        skill_execution_roles = _skill_execution_roles(candidate_modules, skills)
         tools = _dedupe((*_names(candidate_modules, "tool"), *_names(graph_modules, "tool")))
         knowledge_scopes = _dedupe(
             _names(_references(context_response, "allowed_knowledge_scopes"))
@@ -158,6 +160,7 @@ class RuntimeProfileComposer:
             "human_review": _human_review_not_required(analyzed_task),
             "instructions": list(instructions),
             "skills": list(skills),
+            "skill_execution_roles": skill_execution_roles,
             "tools": list(tools),
             "knowledge_scopes": list(knowledge_scopes),
             "data_scopes": list(data_scopes),
@@ -250,6 +253,11 @@ def _human_review_profile(
         "human_review": _human_review_required(analyzed_task),
         "instructions": list(instructions),
         "skills": [],
+        "skill_execution_roles": {
+            "runtime_skills": [],
+            "non_runtime_skills": [],
+            "shared_skills": [],
+        },
         "tools": [],
         "knowledge_scopes": [],
         "data_scopes": [],
@@ -348,6 +356,45 @@ def _versions_by_name(references: Iterable[Mapping[str, Any]]) -> dict[str, str]
         if isinstance(name, str) and isinstance(version, str):
             versions[name] = version
     return versions
+
+
+def _skill_execution_roles(
+    candidate_modules: Iterable[Mapping[str, Any]],
+    selected_skills: Iterable[str],
+) -> dict[str, list[str]]:
+    role_by_skill_name: dict[str, str] = {}
+    for module in candidate_modules:
+        if module.get("kind") != "skill":
+            continue
+        name = module.get("name")
+        if not isinstance(name, str):
+            continue
+        raw_role = module.get("runtime_role", "runtime")
+        role = str(raw_role)
+        if role not in SKILL_RUNTIME_ROLES:
+            choices = ", ".join(sorted(SKILL_RUNTIME_ROLES))
+            raise CompositionError(
+                f"Invalid runtime_role for skill module {name}: {role}. Expected one of: {choices}."
+            )
+        role_by_skill_name[name] = role
+
+    runtime_skills: list[str] = []
+    non_runtime_skills: list[str] = []
+    shared_skills: list[str] = []
+    for skill_name in selected_skills:
+        role = role_by_skill_name.get(skill_name, "runtime")
+        if role == "runtime":
+            runtime_skills.append(skill_name)
+        elif role == "non-runtime":
+            non_runtime_skills.append(skill_name)
+        else:
+            shared_skills.append(skill_name)
+
+    return {
+        "runtime_skills": runtime_skills,
+        "non_runtime_skills": non_runtime_skills,
+        "shared_skills": shared_skills,
+    }
 
 
 def _version_for(

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:runtime-profile:0.3.0",
+  "$id": "urn:scas:schema:runtime-profile:0.4.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",
@@ -18,6 +18,7 @@
     "human_review",
     "instructions",
     "skills",
+    "skill_execution_roles",
     "tools",
     "knowledge_scopes",
     "data_scopes",
@@ -185,6 +186,26 @@
     },
     "skills": {
       "$ref": "#/$defs/stringArray"
+    },
+    "skill_execution_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_skills",
+        "non_runtime_skills",
+        "shared_skills"
+      ],
+      "properties": {
+        "runtime_skills": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "non_runtime_skills": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "shared_skills": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
     },
     "tools": {
       "$ref": "#/$defs/stringArray"

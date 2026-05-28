@@ -11,6 +11,7 @@ from skill_centric_agent_system.runtime.enforcement import (
 
 PlanBuilder = Callable[[Mapping[str, Any]], tuple[dict[str, Any], ...]]
 SkillHandlerLifecycle = Literal["active", "deprecated"]
+SkillExecutionRole = Literal["runtime", "non-runtime", "shared"]
 SKILL_HANDLER_RUNTIME_PATH = "src/skill_centric_agent_system/runtime/skill_handlers.py"
 
 
@@ -37,6 +38,16 @@ class RuntimeSkillPlan:
     output_contract: str
     actions: tuple[dict[str, Any], ...]
     skill_handlers: tuple[dict[str, str], ...]
+
+
+@dataclass(frozen=True)
+class RuntimeSkillSelection:
+    runtime_skills: tuple[str, ...]
+    non_runtime_skills: tuple[str, ...]
+    shared_skills: tuple[str, ...]
+
+    def executable_skills(self) -> tuple[str, ...]:
+        return (*self.runtime_skills, *self.shared_skills)
 
 
 @dataclass(frozen=True)
@@ -114,8 +125,9 @@ class SkillHandlerRegistry:
         *,
         enforcer: RuntimeProfileEnforcer,
     ) -> RuntimeSkillPlan:
-        selected_skill_names = _selected_skill_names(profile)
-        if not selected_skill_names:
+        skill_selection = _selected_skills_for_runtime(profile)
+        executable_skill_names = skill_selection.executable_skills()
+        if not executable_skill_names:
             return RuntimeSkillPlan(
                 strategy="profile-without-executable-skill",
                 output_contract=_output_contract_for_task_type(profile),
@@ -124,7 +136,7 @@ class SkillHandlerRegistry:
             )
 
         plans: list[SkillHandlerPlan] = []
-        for skill_name in selected_skill_names:
+        for skill_name in executable_skill_names:
             enforcer.require_skill(skill_name)
             skill_version = _required_version_pin(profile, skill_name)
             enforcer.require_module_version(skill_name, skill_version)
@@ -231,6 +243,89 @@ def _selected_skill_names(profile: Mapping[str, Any]) -> tuple[str, ...]:
     if not isinstance(skills, list):
         return ()
     return tuple(str(skill_name) for skill_name in skills)
+
+
+def _selected_skills_for_runtime(profile: Mapping[str, Any]) -> RuntimeSkillSelection:
+    selected_skills = _selected_skill_names(profile)
+    skill_execution_roles = profile.get("skill_execution_roles")
+    if not isinstance(skill_execution_roles, Mapping):
+        return RuntimeSkillSelection(
+            runtime_skills=selected_skills,
+            non_runtime_skills=(),
+            shared_skills=(),
+        )
+
+    runtime_skills = _role_skills(skill_execution_roles, "runtime_skills")
+    non_runtime_skills = _role_skills(skill_execution_roles, "non_runtime_skills")
+    shared_skills = _role_skills(skill_execution_roles, "shared_skills")
+    _validate_skill_execution_roles(
+        selected_skills,
+        runtime_skills=runtime_skills,
+        non_runtime_skills=non_runtime_skills,
+        shared_skills=shared_skills,
+    )
+    return RuntimeSkillSelection(
+        runtime_skills=runtime_skills,
+        non_runtime_skills=non_runtime_skills,
+        shared_skills=shared_skills,
+    )
+
+
+def _role_skills(
+    skill_execution_roles: Mapping[str, Any],
+    role_field: str,
+) -> tuple[str, ...]:
+    values = skill_execution_roles.get(role_field, [])
+    if not isinstance(values, list):
+        raise ProfileEnforcementError(
+            f"Invalid skill execution role list: {role_field}.",
+            stop_reason="policy_denied",
+            code="skill_execution_roles_invalid",
+        )
+    return tuple(str(value) for value in values)
+
+
+def _validate_skill_execution_roles(
+    selected_skills: tuple[str, ...],
+    *,
+    runtime_skills: tuple[str, ...],
+    non_runtime_skills: tuple[str, ...],
+    shared_skills: tuple[str, ...],
+) -> None:
+    role_assignments = (*runtime_skills, *non_runtime_skills, *shared_skills)
+    selected_set = set(selected_skills)
+    role_set = set(role_assignments)
+
+    unselected = sorted(role_set - selected_set)
+    if unselected:
+        raise ProfileEnforcementError(
+            "Skill execution roles include unselected skills: " + ", ".join(unselected) + ".",
+            stop_reason="policy_denied",
+            code="skill_execution_roles_unselected",
+        )
+
+    missing = sorted(selected_set - role_set)
+    if missing:
+        raise ProfileEnforcementError(
+            "Selected skills are missing role assignments: " + ", ".join(missing) + ".",
+            stop_reason="policy_denied",
+            code="skill_execution_roles_missing",
+        )
+
+    role_counts: dict[str, int] = {}
+    for skill_name in role_assignments:
+        role_counts[skill_name] = role_counts.get(skill_name, 0) + 1
+    duplicate_assignments = sorted(
+        skill_name for skill_name, count in role_counts.items() if count > 1
+    )
+    if duplicate_assignments:
+        raise ProfileEnforcementError(
+            "Skills cannot be assigned to multiple execution roles: "
+            + ", ".join(duplicate_assignments)
+            + ".",
+            stop_reason="policy_denied",
+            code="skill_execution_roles_overlap",
+        )
 
 
 def _required_version_pin(profile: Mapping[str, Any], module_name: str) -> str:
