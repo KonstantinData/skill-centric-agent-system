@@ -45,23 +45,27 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install development dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra dev --extra runtime
+
+      - name: Check lockfile drift
+        run: uv lock --check
 
       - name: Run contract tests
-        run: python -m pytest
+        run: uv run pytest
 
       - name: Run linting
-        run: python -m ruff check .
+        run: uv run ruff check .
 
       - name: Validate skill handler coverage manifest
-        run: python scripts/runtime/skill_handler_coverage.py --check
+        run: uv run python scripts/runtime/skill_handler_coverage.py --check
 
       - name: Evaluate error classification gates
         run: |
-          python scripts/operations/evaluate_error_classification_gates.py \
+          uv run python scripts/operations/evaluate_error_classification_gates.py \
             --policy examples/operations/error-classification-gate-policy.json \
             --snapshot examples/operations/error-classification-gate-snapshot.json \
             --fail-on-failed
