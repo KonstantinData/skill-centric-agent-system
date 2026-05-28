@@ -22,6 +22,7 @@ from skill_centric_agent_system.runtime.error_taxonomy import (
     classify_runtime_success,
 )
 from skill_centric_agent_system.runtime.models import (
+    RecompositionReason,
     RecompositionRequest,
     iso_timestamp,
     selected_modules,
@@ -638,7 +639,7 @@ def _failure_policy_field(error: Exception) -> str | None:
     return None
 
 
-def _recomposition_reason(error: Exception) -> str | None:
+def _recomposition_reason(error: Exception) -> RecompositionReason | None:
     stop_reason = str(getattr(error, "stop_reason", ""))
     if isinstance(error, RuntimeValidationError):
         return "validator_failure"

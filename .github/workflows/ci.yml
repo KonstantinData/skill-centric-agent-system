@@ -62,6 +62,9 @@ jobs:
       - name: Run linting
         run: uv run ruff check .
 
+      - name: Type-check runtime + composition
+        run: uv run mypy
+
       - name: Validate skill handler coverage manifest
         run: PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
 

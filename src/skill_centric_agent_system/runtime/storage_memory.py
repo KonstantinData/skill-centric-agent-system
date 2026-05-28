@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 
 class InMemoryRuntimeStore:
@@ -172,7 +172,7 @@ class InMemoryRuntimeStore:
     ) -> Mapping[str, Any] | None:
         for record in records:
             if record["run_id"] == run_id and record.get("idempotency_key") == idempotency_key:
-                return record
+                return cast(Mapping[str, Any], record)
         return None
 
     @staticmethod
@@ -184,6 +184,6 @@ class InMemoryRuntimeStore:
     ) -> Mapping[str, Any] | None:
         for record in records:
             if record["run_id"] == run_id and record[index_field] == index:
-                return record
+                return cast(Mapping[str, Any], record)
         return None
 

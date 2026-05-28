@@ -274,6 +274,8 @@ class RuntimeRetentionExecutor:
         return report
 
     def _write_report(self, report: RuntimeRetentionCleanupReport) -> str:
+        if self.report_artifacts is None:
+            raise RuntimeError("report_artifacts must be configured before writing reports")
         return self.report_artifacts.write_json(
             (
                 "retention-reports",
