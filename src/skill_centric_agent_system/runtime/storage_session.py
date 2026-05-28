@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from skill_centric_agent_system.runtime.storage_memory import InMemoryRuntimeStore
 from skill_centric_agent_system.runtime.storage_postgres import PostgresRuntimeStore
@@ -24,7 +24,12 @@ class RuntimeStoreSession:
     def __enter__(self) -> RuntimeStoreSession:
         return self
 
-    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        traceback: object,
+    ) -> Literal[False]:
         if self.connection is None:
             return False
 

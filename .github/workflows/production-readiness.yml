@@ -93,6 +93,7 @@ jobs:
         run: |
           uv run pytest
           uv run ruff check .
+          uv run mypy
           PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
 
       - name: Validate tracked JSON files

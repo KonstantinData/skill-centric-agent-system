@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 ErrorClass = Literal[
     "F1_INEFFICIENCY_PATH",
@@ -12,7 +12,7 @@ ErrorClass = Literal[
 ]
 
 ClassificationSource = Literal["rule_based_runtime_v1", "llm_judge_v1"]
-LLM_CLASSIFICATION_SOURCE = "llm_judge_v1"
+LLM_CLASSIFICATION_SOURCE: ClassificationSource = "llm_judge_v1"
 
 
 @dataclass(frozen=True)
@@ -194,9 +194,9 @@ def apply_optional_llm_judge(
     merged_evidence = {**base.error_evidence, "llm_judge_evidence": dict(evidence)}
 
     return ErrorClassification(
-        error_class=error_class,  # type: ignore[arg-type]
-        error_confidence=error_confidence,  # type: ignore[arg-type]
-        classification_source=LLM_CLASSIFICATION_SOURCE,  # type: ignore[arg-type]
+        error_class=cast(ErrorClass, error_class),
+        error_confidence=error_confidence,
+        classification_source=LLM_CLASSIFICATION_SOURCE,
         error_evidence=merged_evidence,
         runtime_playbook=runtime_playbook,
     )

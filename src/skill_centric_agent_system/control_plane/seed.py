@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 DEFAULT_CREATED_AT = "2026-05-22T00:00:00Z"
 DEFAULT_PRINCIPAL_KIND = "role"
@@ -251,7 +251,7 @@ def _repo_relative_path(path: Path) -> str:
 
 
 def _normalize_module(module: dict[str, Any]) -> dict[str, Any]:
-    normalized = json.loads(json.dumps(module))
+    normalized = cast(dict[str, Any], json.loads(json.dumps(module)))
     normalized["task_signals"]["task_types"] = [
         _normalize_task_type(task_type)
         for task_type in normalized["task_signals"]["task_types"]
