@@ -28,3 +28,20 @@ allow-dependencies-licenses:
   - pkg:pypi/psycopg
   - pkg:pypi/psycopg-binary
   - pkg:pypi/rpds-py
+  - pkg:pypi/gitdb
+  - pkg:pypi/pillow
+  - pkg:pypi/altair
+  - pkg:pypi/cachetools
+  - pkg:pypi/click
+  - pkg:pypi/httptools
+  - pkg:pypi/idna
+  - pkg:pypi/narwhals
+  - pkg:pypi/numpy
+  - pkg:pypi/pandas
+  - pkg:pypi/protobuf
+  - pkg:pypi/pyarrow
+  - pkg:pypi/python-multipart
+  - pkg:pypi/starlette
+  - pkg:pypi/streamlit
+  - pkg:pypi/uvicorn
+  - pkg:pypi/certifi

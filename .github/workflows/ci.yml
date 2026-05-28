@@ -63,7 +63,7 @@ jobs:
         run: uv run ruff check .
 
       - name: Validate skill handler coverage manifest
-        run: uv run python scripts/runtime/skill_handler_coverage.py --check
+        run: PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
 
       - name: Evaluate error classification gates
         run: |
