@@ -38,8 +38,10 @@ def test_ci_workflow_exists() -> None:
 def test_ci_workflow_runs_repository_validation() -> None:
     workflow = load_ci_workflow()
 
-    assert "python -m pytest" in workflow
-    assert "python -m ruff check ." in workflow
+    assert "uv sync --frozen --extra dev --extra runtime" in workflow
+    assert "uv lock --check" in workflow
+    assert "uv run pytest" in workflow
+    assert "uv run ruff check ." in workflow
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
     assert "rglob(\"*.json\")" in workflow
 
@@ -164,8 +166,10 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
     assert "certification_mode:" in workflow
-    assert "python -m pytest" in workflow
-    assert "python -m ruff check ." in workflow
+    assert "uv sync --frozen --extra dev --extra runtime" in workflow
+    assert "uv lock --check" in workflow
+    assert "uv run pytest" in workflow
+    assert "uv run ruff check ." in workflow
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
     assert "ls-files" in workflow
     assert "npm run worker:typecheck" in workflow
