@@ -27,6 +27,12 @@
     },
     {
       "ecosystem": "python",
+      "package": "mypy",
+      "owner": "@KonstantinData",
+      "usage": "Static type-checking gate for Python runtime and composition modules."
+    },
+    {
+      "ecosystem": "python",
       "package": "streamlit",
       "owner": "@KonstantinData",
       "usage": "Local executive business dashboard UI."
