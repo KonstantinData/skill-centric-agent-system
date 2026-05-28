@@ -69,6 +69,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.8.9"
 
       - name: Install locked Python dependencies
         run: uv sync --frozen --extra dev --extra runtime

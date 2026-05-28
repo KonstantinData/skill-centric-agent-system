@@ -24,3 +24,7 @@ allow-dependencies-licenses:
   - pkg:pypi/jsonschema
   - pkg:pypi/pytest
   - pkg:pypi/ruff
+  - pkg:pypi/typing-extensions
+  - pkg:pypi/psycopg
+  - pkg:pypi/psycopg-binary
+  - pkg:pypi/rpds-py
