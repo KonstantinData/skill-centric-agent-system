@@ -15,6 +15,9 @@ dev = [
 runtime = [
     "psycopg[binary]>=3.2",
 ]
+ui = [
+    "streamlit>=1.45",
+]
 
 [project.scripts]
 scas-runtime = "skill_centric_agent_system.runtime.cli:main"

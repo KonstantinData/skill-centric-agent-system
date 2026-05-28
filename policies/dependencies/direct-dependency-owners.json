@@ -26,6 +26,12 @@
       "usage": "Hetzner runtime PostgreSQL storage adapter."
     },
     {
+      "ecosystem": "python",
+      "package": "streamlit",
+      "owner": "@KonstantinData",
+      "usage": "Local executive business dashboard UI."
+    },
+    {
       "ecosystem": "npm",
       "package": "@cloudflare/vitest-pool-workers",
       "owner": "@KonstantinData",
