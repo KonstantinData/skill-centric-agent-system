@@ -13,7 +13,7 @@ from scripts.repo.post_merge_cleanup import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNBOOK_PATH = REPO_ROOT / "docs" / "post-merge-lifecycle.md"
+RUNBOOK_PATH = REPO_ROOT / "docs" / "runbooks" / "post-merge-lifecycle.md"
 SCRIPT_PATH = REPO_ROOT / "scripts" / "repo" / "post_merge_cleanup.py"
 
 

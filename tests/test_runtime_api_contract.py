@@ -36,7 +36,9 @@ def test_runtime_api_postgres_storage_requires_secret_reference() -> None:
 
 
 def test_runtime_api_contract_documents_required_commands() -> None:
-    contract = (REPO_ROOT / "docs" / "runtime-api.md").read_text(encoding="utf-8")
+    contract = (REPO_ROOT / "docs" / "reference" / "runtime-api.md").read_text(
+        encoding="utf-8"
+    )
     for command in (
         "start run",
         "get status",
@@ -48,6 +50,8 @@ def test_runtime_api_contract_documents_required_commands() -> None:
 
 
 def test_runtime_contract_keeps_recomposition_controlled() -> None:
-    contract = (REPO_ROOT / "docs" / "runtime-contract.md").read_text(encoding="utf-8")
+    contract = (REPO_ROOT / "docs" / "policies" / "runtime-contract.md").read_text(
+        encoding="utf-8"
+    )
     assert "must never mutate the active profile" in contract
     assert "must not self-grant tools" in contract

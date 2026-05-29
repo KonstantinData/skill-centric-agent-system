@@ -10,7 +10,7 @@ WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
 WORKER_SOURCE_PATH = REPO_ROOT / "workers" / "control-api" / "src" / "index.ts"
 WORKER_TEST_PATH = REPO_ROOT / "workers" / "control-api" / "test" / "index.test.ts"
 VITEST_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "vitest.config.ts"
-CONTROL_API_DOC_PATH = REPO_ROOT / "docs" / "cloudflare" / "control-api.md"
+CONTROL_API_DOC_PATH = REPO_ROOT / "docs" / "reference" / "cloudflare" / "control-api.md"
 BOOTSTRAP_SCRIPT_PATH = (
     REPO_ROOT / "scripts" / "cloudflare" / "bootstrap_control_api_dev.sh"
 )
