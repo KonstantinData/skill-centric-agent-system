@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OPERATIONS_RUNBOOK_PATH = REPO_ROOT / "docs" / "operations-runbook.md"
+OPERATIONS_RUNBOOK_PATH = REPO_ROOT / "docs" / "runbooks" / "operations-runbook.md"
 
 
 def test_operations_runbook_exists() -> None:

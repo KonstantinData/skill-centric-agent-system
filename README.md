@@ -83,7 +83,7 @@ missing.
 
 The repository is currently `not-production-ready` for a full production
 launch. It has an initial productive runtime core, but production-ready status
-requires the release evidence gate in `docs/production-readiness.md`, including
+requires the release evidence gate in `docs/policies/production-readiness.md`, including
 staging/prod environment separation, broader production handler coverage, and a
 certification run against the target environment. The first environment
 separation manifest is now recorded in
@@ -111,26 +111,27 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 
 ## Repository Map
 
-- `docs/architecture.md`: system architecture and component responsibilities.
-- `docs/contracts.md`: durable contracts for modules and runtime profiles.
-- `docs/module-contracts.md`: detailed field semantics for selectable module metadata.
-- `docs/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
-- `docs/environment-separation.md`: staging and production environment separation rules and resource naming manifest.
-- `docs/data-governance.md`: data classification, model privacy, audit minimization, and knowledge/data-quality rules.
-- `docs/review-gates.md`: review, waiver, and governance-gate rules for high-impact changes.
-- `docs/threat-model.md`: production threat model, token-scope closure, and residual security risks.
-- `docs/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
-- `docs/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
-- `docs/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
-- `docs/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
-- `docs/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
-- `docs/skill-handler-version-policy.md`: executable skill handler versioning, deprecation, and rollback policy.
-- `docs/notion-issue-tracking.md`: Notion Issues & Open Questions comment and audit standard.
-- `docs/post-merge-lifecycle.md`: post-merge cleanup and Notion completion runbook.
-- `docs/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
-- `docs/error-taxonomy.md`: runtime error taxonomy, class playbooks, and CI gate metrics for F1/F2/R8.
-- `docs/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
-- `docs/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
+- `docs/README.md`: documentation index and folder intent (`policies`, `runbooks`, `reference`, `adr`).
+- `docs/reference/architecture.md`: system architecture and component responsibilities.
+- `docs/policies/contracts.md`: durable contracts for modules and runtime profiles.
+- `docs/policies/module-contracts.md`: detailed field semantics for selectable module metadata.
+- `docs/policies/infrastructure-boundary.md`: Cloudflare Control Plane, Hetzner Runtime Plane, and memory feedback boundary.
+- `docs/policies/environment-separation.md`: staging and production environment separation rules and resource naming manifest.
+- `docs/policies/data-governance.md`: data classification, model privacy, audit minimization, and knowledge/data-quality rules.
+- `docs/policies/review-gates.md`: review, waiver, and governance-gate rules for high-impact changes.
+- `docs/policies/threat-model.md`: production threat model, token-scope closure, and residual security risks.
+- `docs/runbooks/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
+- `docs/policies/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
+- `docs/policies/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
+- `docs/reference/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
+- `docs/runbooks/runtime-live-dev-e2e.md`: manual live dev E2E gate for Cloudflare and Hetzner.
+- `docs/policies/skill-handler-version-policy.md`: executable skill handler versioning, deprecation, and rollback policy.
+- `docs/runbooks/notion-issue-tracking.md`: Notion Issues & Open Questions comment and audit standard.
+- `docs/runbooks/post-merge-lifecycle.md`: post-merge cleanup and Notion completion runbook.
+- `docs/runbooks/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
+- `docs/policies/error-taxonomy.md`: runtime error taxonomy, class playbooks, and CI gate metrics for F1/F2/R8.
+- `docs/reference/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
+- `docs/reference/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
 - `SECURITY.md`: security reporting, secret handling, remediation, and required security gates.
 - `AGENTS.md`: repository rules for autonomous agent work and SCAS-specific governance.
@@ -457,11 +458,12 @@ https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 - Use registries, scoring, policies, and validators for self-assembly.
 - Version durable decisions in `docs/adr/`.
 - Track repository tasks in Notion through `$notion-repo-work-tracker`.
-- Follow `AGENTS.md`, `SECURITY.md`, `docs/data-governance.md`, and
-  `docs/review-gates.md` for autonomous repository changes.
+- Follow `AGENTS.md`, `SECURITY.md`, `docs/policies/data-governance.md`, and
+  `docs/policies/review-gates.md` for autonomous repository changes.
 
 ## Next Steps
 
 1. Provision and validate staging/prod resources from the environment manifest.
 2. Expand production skill handler coverage beyond the current manifest-covered fixture set.
 3. Run the final certification after live infrastructure and handler coverage gates are complete.
+

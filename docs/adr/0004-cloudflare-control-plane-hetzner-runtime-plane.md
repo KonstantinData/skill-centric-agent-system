@@ -171,8 +171,9 @@ Tradeoffs:
 
 ## Follow-Up
 
-- Add `docs/infrastructure-boundary.md`.
+- Add `docs/policies/infrastructure-boundary.md`.
 - Define D1 metadata schema and R2 key conventions in a later contract task.
 - Define Hetzner runtime storage schema before implementing the runtime loop.
 - Add Wrangler configuration only after resource names and bindings are documented.
 - Add GitHub Actions only after local infrastructure validation commands exist.
+

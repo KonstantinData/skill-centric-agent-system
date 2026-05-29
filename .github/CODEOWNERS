@@ -7,8 +7,8 @@
 /src/skill_centric_agent_system/runtime/ @KonstantinData
 /src/skill_centric_agent_system/composition/ @KonstantinData
 /docs/adr/ @KonstantinData
-/docs/data-governance.md @KonstantinData
-/docs/review-gates.md @KonstantinData
-/docs/production-readiness.md @KonstantinData
+/docs/policies/data-governance.md @KonstantinData
+/docs/policies/review-gates.md @KonstantinData
+/docs/policies/production-readiness.md @KonstantinData
 /SECURITY.md @KonstantinData
 /AGENTS.md @KonstantinData

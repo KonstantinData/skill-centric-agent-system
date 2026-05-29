@@ -45,7 +45,7 @@ is satisfied for the target environment.
 | Live runtime gates | Generic E2E, retrieval and Vectorize smoke, AI Gateway live smoke, Postgres concurrency smoke, and retention dry-run/apply evidence pass for the target environment. |
 | Live handler binding evidence | The referenced Live Runtime Gates run uploads `live-runtime-handler-binding-evidence`; certification validates passed live E2E cases and sanitized `skill_handlers` where every `handler_id` equals `name@version`. |
 | Executable skill runtime | Profile-selected skills resolve to version-pinned executable handlers; unknown or mismatched handlers fail closed; `python scripts/runtime/skill_handler_coverage.py --check` proves every production-required skill fixture maps to a handler, runtime path, and tests. |
-| Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
+| Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/policies/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
 | Write-capable execution scope | If production scope includes writes, every write adapter has explicit authorization, approval, policy, audit, validation, and rollback coverage. If production scope is read-only, that limitation is stated in the release evidence. |
 | Operational telemetry | Retrieval, validation, cleanup, AI Gateway, queue processing, runtime failures, and policy denials have observable signals and runbook-backed diagnostics. |
 | Error taxonomy gates | F1/F2/R8 classification contracts, evaluation fixtures, thresholds, and CI enforcement are current and green. |
@@ -92,7 +92,7 @@ The production readiness backlog is ordered by dependency and release risk:
    Handler coverage is now machine-readable in
    `examples/runtime/skill-handler-coverage.json` and validated by CI.
    Handler version upgrade and rollback policy is now defined in
-   `docs/skill-handler-version-policy.md` and tested by
+   `docs/policies/skill-handler-version-policy.md` and tested by
    `tests/test_skill_handler_version_policy.py`.
 5. `P5.05 Controlled Write-Capable Execution Path`
    Add write adapters only behind authorization, approval, policy, audit,
@@ -122,7 +122,7 @@ The production readiness backlog is ordered by dependency and release risk:
    dependency policy, workflow hardening, Actions-BOM, release SBOM, data
    governance, and quality-policy tests.
    Complete: the production threat model is versioned in
-   `docs/threat-model.md`; token-scope review, secret rotation expectations,
+   `docs/policies/threat-model.md`; token-scope review, secret rotation expectations,
    finding closure, data-plane boundary evidence, and waiver blockers are
    captured in `policies/security/production-security-closure.json`; and
    `scripts/security/validate_security_closure.py` is run by the
@@ -217,3 +217,4 @@ live gate URLs must point to workflow runs whose logs also avoid secret output.
 The workflow alone does not bypass incomplete production gates: staging and
 production certification remain `not-production-ready` while unresolved
 environment provisioning and final live certification steps are still open.
+

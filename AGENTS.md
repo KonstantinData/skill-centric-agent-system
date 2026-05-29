@@ -56,8 +56,8 @@ High-impact paths require code-owner review and passing governance gates:
 - `src/skill_centric_agent_system/composition/`
 - `docs/adr/`
 - `docs/*governance*.md`
-- `docs/review-gates.md`
-- `docs/production-readiness.md`
+- `docs/policies/review-gates.md`
+- `docs/policies/production-readiness.md`
 
 Review gates should secure and guide autonomous agent work. They should not
 block low-risk documentation or fixture changes unless those changes affect
@@ -82,3 +82,4 @@ npm run worker:typecheck
 npm run worker:test
 npm run worker:check
 ```
+

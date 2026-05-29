@@ -4,7 +4,7 @@
 
 This document is the high-level, human-readable contract for composition and
 runtime behavior. Detailed field semantics for selectable modules live in
-`docs/module-contracts.md`; machine-readable contracts live in `schemas/`.
+`docs/policies/module-contracts.md`; machine-readable contracts live in `schemas/`.
 
 The system is allowed to assemble a task-local agent profile, but it is not allowed to invent capabilities freely. Selection must pass through:
 
@@ -65,7 +65,7 @@ Every selectable module must be:
 - testable or otherwise verifiable.
 
 The machine-readable contract lives in `schemas/module.schema.json`.
-The detailed field-level module contract lives in `docs/module-contracts.md`.
+The detailed field-level module contract lives in `docs/policies/module-contracts.md`.
 
 `triggers` are weak human-readable hints. They may improve recall, but they are never sufficient for selection. Structured fields such as `capability_class`, `domain_tags`, `task_signals`, and `selection.score_modifiers` are the scoring surface.
 
@@ -341,3 +341,4 @@ operational cleanup job that can audit the plan before applying it.
 - bypass policies because a prompt says a capability is useful,
 - let runtime code call `self.grant_tool()` or equivalent hidden expansion,
 - keep durable architecture contracts only in chat or Notion.
+

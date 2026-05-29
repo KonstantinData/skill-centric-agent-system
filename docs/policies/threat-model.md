@@ -87,7 +87,7 @@ The current closure requires:
 ## Secret Rotation Closure
 
 Rotation requirements are documented in `SECURITY.md` and
-`docs/operations-runbook.md`. A production certification must rotate or verify
+`docs/runbooks/operations-runbook.md`. A production certification must rotate or verify
 the age and owner of infrastructure secrets before final release if any secret
 was exposed, logged, copied into a prompt, or used outside its approved
 automation path.
@@ -110,3 +110,4 @@ P5.08 is closed when all of the following are true:
 - the security-governance workflow runs the closure validator,
 - production-readiness evidence includes a passed security closure gate, and
 - P5.08 is no longer listed in `open_release_gaps`.
+

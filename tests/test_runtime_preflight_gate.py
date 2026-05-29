@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PREFLIGHT_PATH = REPO_ROOT / "docs" / "runtime-preflight.md"
-ROADMAP_PATH = REPO_ROOT / "docs" / "repository-roadmap.md"
-ARCHITECTURE_PATH = REPO_ROOT / "docs" / "architecture.md"
-INFRASTRUCTURE_PATH = REPO_ROOT / "docs" / "infrastructure-boundary.md"
-OPERATIONS_RUNBOOK_PATH = REPO_ROOT / "docs" / "operations-runbook.md"
+PREFLIGHT_PATH = REPO_ROOT / "docs" / "runbooks" / "runtime-preflight.md"
+ROADMAP_PATH = REPO_ROOT / "docs" / "reference" / "repository-roadmap.md"
+ARCHITECTURE_PATH = REPO_ROOT / "docs" / "reference" / "architecture.md"
+INFRASTRUCTURE_PATH = REPO_ROOT / "docs" / "policies" / "infrastructure-boundary.md"
+OPERATIONS_RUNBOOK_PATH = REPO_ROOT / "docs" / "runbooks" / "operations-runbook.md"
 
 
 PHASE_0_ITEMS = [
@@ -51,8 +51,8 @@ def test_runtime_preflight_document_defines_phase_order() -> None:
 
 def test_roadmap_architecture_and_infrastructure_reference_preflight_gate() -> None:
     assert "Runtime Preflight Gate" in ROADMAP_PATH.read_text(encoding="utf-8")
-    assert "docs/runtime-preflight.md" in ARCHITECTURE_PATH.read_text(encoding="utf-8")
-    assert "docs/runtime-preflight.md" in INFRASTRUCTURE_PATH.read_text(encoding="utf-8")
+    assert "docs/runbooks/runtime-preflight.md" in ARCHITECTURE_PATH.read_text(encoding="utf-8")
+    assert "docs/runbooks/runtime-preflight.md" in INFRASTRUCTURE_PATH.read_text(encoding="utf-8")
 
 
 def test_task_type_values_use_kebab_case_in_json_contract_examples() -> None:
@@ -91,3 +91,4 @@ def test_live_preflight_docs_define_auth_and_secret_checks() -> None:
     assert "wrangler secret list --config workers/control-api/wrangler.toml" in runbook
     assert "CONTROL_API_TOKEN" in runbook
     assert "SCAS_RUNTIME_DATABASE_URL" in runbook
+

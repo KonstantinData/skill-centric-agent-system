@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 from scripts.repo.validate_notion_issue_comment_audit import validate_audit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DOC_PATH = REPO_ROOT / "docs" / "notion-issue-tracking.md"
+DOC_PATH = REPO_ROOT / "docs" / "runbooks" / "notion-issue-tracking.md"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "notion-issue-comment-audit.schema.json"
 EXAMPLE_PATH = REPO_ROOT / "examples" / "repo" / "notion-issue-comment-audit.json"
 
@@ -26,7 +26,7 @@ def test_notion_issue_tracking_standard_is_documented() -> None:
     assert "Every `SCAS - Issues & Open Questions` page" in doc
     assert "page-level comment" in doc
     assert "task-describing comment" in agents
-    assert "docs/notion-issue-tracking.md" in readme
+    assert "docs/runbooks/notion-issue-tracking.md" in readme
 
 
 def test_notion_issue_comment_audit_schema_and_example_are_valid() -> None:
@@ -69,3 +69,4 @@ def test_notion_issue_comment_audit_requires_follow_up_for_tracked_gap() -> None
     failures = validate_audit(tracked)
 
     assert any("tracked follow-up" in failure for failure in failures)
+

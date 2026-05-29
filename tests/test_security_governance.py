@@ -54,9 +54,9 @@ def test_required_security_governance_files_exist() -> None:
         ".github/workflows/security-governance.yml",
         ".github/workflows/dependency-review.yml",
         ".github/workflows/codeql.yml",
-        "docs/data-governance.md",
-        "docs/review-gates.md",
-        "docs/threat-model.md",
+        "docs/policies/data-governance.md",
+        "docs/policies/review-gates.md",
+        "docs/policies/threat-model.md",
         "schemas/production-security-closure.schema.json",
         "policies/security/production-security-closure.json",
         "policies/dependencies/direct-dependency-owners.json",
@@ -72,8 +72,10 @@ def test_required_security_governance_files_exist() -> None:
 def test_security_docs_define_secret_and_review_controls() -> None:
     security = (REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8")
     agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    review_gates = (REPO_ROOT / "docs" / "review-gates.md").read_text(encoding="utf-8")
-    data_governance = (REPO_ROOT / "docs" / "data-governance.md").read_text(
+    review_gates = (REPO_ROOT / "docs" / "policies" / "review-gates.md").read_text(
+        encoding="utf-8"
+    )
+    data_governance = (REPO_ROOT / "docs" / "policies" / "data-governance.md").read_text(
         encoding="utf-8"
     )
 
@@ -82,9 +84,9 @@ def test_security_docs_define_secret_and_review_controls() -> None:
     assert "CODEOWNERS review" in review_gates
     assert "secret" in data_governance
     assert "raw runtime traces" in data_governance
-    assert "Threat Model Closure" in (REPO_ROOT / "docs" / "threat-model.md").read_text(
-        encoding="utf-8"
-    )
+    assert "Threat Model Closure" in (
+        REPO_ROOT / "docs" / "policies" / "threat-model.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_no_dotenv_guard_classifies_forbidden_and_allowed_names() -> None:
@@ -265,7 +267,7 @@ def test_ruleset_has_matching_codeowners_for_high_impact_paths() -> None:
         "/schemas/",
         "/workers/control-api/",
         "/src/skill_centric_agent_system/runtime/",
-        "/docs/production-readiness.md",
+        "/docs/policies/production-readiness.md",
     ):
         assert path in codeowners
 
@@ -308,3 +310,4 @@ def test_generated_actions_bom_has_no_unpinned_references_after_copy(tmp_path: P
     shutil.copytree(WORKFLOW_DIR, copied)
     bom = generate_actions_bom.build_actions_bom(copied)
     assert all(entry["sha_pinned"] for entry in bom["actions"] if entry["kind"] == "external")
+

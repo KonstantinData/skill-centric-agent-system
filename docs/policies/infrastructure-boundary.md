@@ -11,7 +11,7 @@ The system has two infrastructure planes:
 
 Runtime outputs can produce long-term memory, but only through a validated feedback loop.
 Environment-specific resource names and secret prefixes are defined in
-`docs/environment-separation.md` and
+`docs/policies/environment-separation.md` and
 `examples/infrastructure/environment-manifest.json`.
 
 ## Plane Ownership
@@ -157,7 +157,7 @@ Runtime events follow the Flight Recorder pattern:
   the first cleanup slice.
 
 Productive runtime work may only begin after the Runtime Preflight Gate in
-`docs/runtime-preflight.md` confirms that the dev Worker, D1, R2, Vectorize,
+`docs/runbooks/runtime-preflight.md` confirms that the dev Worker, D1, R2, Vectorize,
 Hetzner PostgreSQL, artifact root, secrets, and CI are in a known state.
 
 ## Memory Feedback Loop
@@ -219,7 +219,7 @@ provide non-authoritative configuration such as `registry:version`, but
 policy-sensitive or stale cache paths must fall back to D1.
 
 The Control API Worker lives in `workers/control-api/`. Its bootstrap and
-deployment runbook lives in `docs/cloudflare/control-api.md`.
+deployment runbook lives in `docs/reference/cloudflare/control-api.md`.
 
 Runtime context retrieval uses a separate bounded endpoint:
 
@@ -474,3 +474,4 @@ Next:
    fixture set.
 3. Run the final certification after live infrastructure and handler coverage
    gates are complete.
+

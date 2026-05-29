@@ -26,7 +26,7 @@ REQUIRED_GATE_IDS = {
     "tracked-dotenv-guard",
     "workflow-hardening",
 }
-THREAT_MODEL_DOCUMENT = "docs/threat-model.md"
+THREAT_MODEL_DOCUMENT = "docs/policies/threat-model.md"
 SECRET_VALUE_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]+"),
@@ -215,3 +215,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

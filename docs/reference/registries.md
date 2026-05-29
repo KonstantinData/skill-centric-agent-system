@@ -55,7 +55,7 @@ The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.
 
 The detailed module metadata contract is documented in
-`docs/module-contracts.md`.
+`docs/policies/module-contracts.md`.
 
 ## Cloudflare Seed
 
@@ -77,3 +77,4 @@ policy, and validator dependencies needed by those modules.
 contract fixture for the broader Cloudflare record model, including knowledge
 and memory records. `examples/control-plane/dev-seed.sql` is the operational dev
 registry seed used by the current Worker smoke test.
+
