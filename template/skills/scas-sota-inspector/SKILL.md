@@ -20,7 +20,7 @@ Produce evidence-based gap analysis and prioritized optimization actions.
 ## Required Inputs
 
 - current repo state,
-- `docs/sota-2026-target-profile.md`,
+- `docs/policies/sota-2026-target-profile.md`,
 - relevant tests and CI signals.
 
 ## Output

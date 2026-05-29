@@ -4,7 +4,7 @@
   "status": "closed",
   "owner": "@KonstantinData",
   "threat_model": {
-    "document": "docs/threat-model.md",
+    "document": "docs/policies/threat-model.md",
     "status": "current",
     "reviewed_at": "2026-05-24",
     "next_review_trigger": "Review before production certification, when Control Plane or Runtime Plane trust boundaries change, when new write tools are added, or after any credential exposure.",
@@ -41,17 +41,17 @@
     {
       "id": "review-governance",
       "status": "closed",
-      "evidence": ".github/CODEOWNERS; .github/rulesets/main-protection.json; docs/review-gates.md"
+      "evidence": ".github/CODEOWNERS; .github/rulesets/main-protection.json; docs/policies/review-gates.md"
     },
     {
       "id": "data-boundary-governance",
       "status": "closed",
-      "evidence": "docs/data-governance.md; docs/infrastructure-boundary.md; tests/test_security_governance.py"
+      "evidence": "docs/policies/data-governance.md; docs/policies/infrastructure-boundary.md; tests/test_security_governance.py"
     },
     {
       "id": "release-evidence-minimization",
       "status": "closed",
-      "evidence": "scripts/release/build_production_readiness_evidence.py; docs/production-readiness.md"
+      "evidence": "scripts/release/build_production_readiness_evidence.py; docs/policies/production-readiness.md"
     }
   ],
   "token_scope_reviews": [
@@ -105,17 +105,17 @@
     {
       "boundary": "Cloudflare Control Plane must not store raw Runtime Plane traces or tool outputs.",
       "status": "tested",
-      "evidence": "docs/data-governance.md; examples/operations/production-telemetry-policy.json; tests/test_production_telemetry_alerting.py"
+      "evidence": "docs/policies/data-governance.md; examples/operations/production-telemetry-policy.json; tests/test_production_telemetry_alerting.py"
     },
     {
       "boundary": "Runtime Plane artifacts remain on Hetzner and are referenced by URI in evidence.",
       "status": "tested",
-      "evidence": "docs/runtime-contract.md; tests/test_runtime_redaction_retention.py"
+      "evidence": "docs/policies/runtime-contract.md; tests/test_runtime_redaction_retention.py"
     },
     {
       "boundary": "Control API protected endpoints require bearer authorization.",
       "status": "tested",
-      "evidence": "workers/control-api/test/index.test.ts; docs/operations-runbook.md"
+      "evidence": "workers/control-api/test/index.test.ts; docs/runbooks/operations-runbook.md"
     },
     {
       "boundary": "Release evidence must not include secret values or raw runtime artifacts.",
@@ -129,3 +129,4 @@
     "allows_unbounded_data_movement": false
   }
 }
+

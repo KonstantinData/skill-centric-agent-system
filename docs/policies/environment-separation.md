@@ -82,7 +82,7 @@ Environment separation is valid when:
 - runbooks include migration, smoke, disable, backup, and restore steps for the
   target environment.
 
-The production readiness gate in `docs/production-readiness.md` requires this
+The production readiness gate in `docs/policies/production-readiness.md` requires this
 validation before `staging-ready` or `production-ready` status can be claimed.
 
 ## Provisioning Checklist
@@ -103,3 +103,4 @@ For each new environment:
 Provisioning is complete only when all checks pass for that environment without
 using another environment's secrets, database, buckets, indexes, queues, or
 artifact root.
+

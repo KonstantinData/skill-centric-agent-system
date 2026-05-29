@@ -52,7 +52,7 @@ blocking decision belongs to CI and branch protection.
 ## Post-Merge Lifecycle
 
 Merged topic branches should be cleaned up with the repository-owned runbook in
-`docs/post-merge-lifecycle.md`. The supporting dry-run command is:
+`docs/runbooks/post-merge-lifecycle.md`. The supporting dry-run command is:
 
 ```powershell
 python scripts\repo\post_merge_cleanup.py --pr <number>
@@ -75,3 +75,4 @@ A waiver is allowed only when it records:
 
 Waivers cannot permit committed secrets, unauthorized production access,
 unbounded data movement, or unaudited production-ready claims.
+

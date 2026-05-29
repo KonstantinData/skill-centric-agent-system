@@ -223,12 +223,12 @@ The productive Runtime Phase is not a public launch. It begins when the runtime
 executes against real Cloudflare and Hetzner infrastructure with reproducible
 run state, hard profile enforcement, bounded tool execution, structured failure
 semantics, and observable artifacts. The entry checklist and task-neutral
-validation scenarios live in `docs/runtime-preflight.md`.
+validation scenarios live in `docs/runbooks/runtime-preflight.md`.
 
 ## Production Readiness Gate
 
 Production-ready status is a separate release decision. It requires the
-evidence gate in `docs/production-readiness.md`, including environment
+evidence gate in `docs/policies/production-readiness.md`, including environment
 separation, release evidence, broader production handler coverage,
 and certification against the target environment. Until that gate passes, the
 repository must be described as `not-production-ready` for a full production
@@ -248,3 +248,4 @@ Auth/authz, failure semantics, and observability are part of the architecture fr
   artifact URI rather than inline JSON.
 - Large string payloads inside runtime artifacts are chunked and referenced by
   a manifest instead of being stored as one large inline string.
+

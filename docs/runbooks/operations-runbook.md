@@ -33,7 +33,7 @@ Rules:
 
 ## Production Release Gate
 
-The production release gate is defined in `docs/production-readiness.md`.
+The production release gate is defined in `docs/policies/production-readiness.md`.
 Do not mark the repository or any deployment as production-ready until that
 gate passes for the target environment.
 
@@ -86,7 +86,7 @@ same-repository URLs, the runs must have completed successfully, and their
 The current production threat model is:
 
 ```text
-docs/threat-model.md
+docs/policies/threat-model.md
 ```
 
 The machine-readable security closure and token-scope review is:
@@ -611,3 +611,4 @@ python scripts/operations/error_classification_report.py `
   --snapshot examples/operations/error-classification-report-snapshot.json `
   --output security-evidence/error-classification-report.json
 ```
+

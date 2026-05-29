@@ -55,7 +55,7 @@ def test_telemetry_evaluator_emits_critical_alert_for_threshold_breach() -> None
     assert alert["rule_id"] == "runtime-failure-rate-critical"
     assert alert["severity"] == "critical"
     assert alert["value"] == 0.08
-    assert alert["runbook"] == "docs/operations-runbook.md#telemetry-alerts"
+    assert alert["runbook"] == "docs/runbooks/operations-runbook.md#telemetry-alerts"
 
 
 def test_telemetry_evaluator_fails_closed_on_missing_required_signal() -> None:
@@ -95,3 +95,4 @@ def test_telemetry_cli_writes_evidence_and_fails_on_alert(tmp_path: Path) -> Non
     result = load_json(output_path)
     assert result["status"] == "warning"
     assert result["alerts"][0]["rule_id"] == "retention-cleanup-missing-count-warning"
+

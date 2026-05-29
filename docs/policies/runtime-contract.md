@@ -176,7 +176,7 @@ production-required skill lacks a matching executable handler or if the
 committed manifest is stale.
 
 Handler upgrades and rollback must follow
-`docs/skill-handler-version-policy.md` and the machine-readable policy in
+`docs/policies/skill-handler-version-policy.md` and the machine-readable policy in
 `policies/runtime/skill-handler-version-policy.json`. Upgrades register new
 handler versions side by side with previous versions. Rollback composes a new
 runtime profile with the previous version pin instead of mutating the active
@@ -483,3 +483,4 @@ the active profile's selected skills:
 
 These handlers run inside the single runtime agent. They are not separate
 agents and must not expand the active profile.
+

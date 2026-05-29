@@ -54,7 +54,7 @@
         "id": "mv-architecture-docs-0-1-0",
         "module_id": "mod-architecture-docs",
         "version": "0.1.0",
-        "source_uri": "repo://docs/architecture.md",
+        "source_uri": "repo://docs/reference/architecture.md",
         "checksum": "sha256:example-architecture-docs",
         "selection_base_score": 0.5,
         "created_at": "2026-05-21T20:00:00Z"
@@ -363,7 +363,7 @@
         "id": "ij-architecture-doc-import",
         "job_type": "knowledge_import",
         "status": "succeeded",
-        "source_uri": "repo://docs/architecture.md",
+        "source_uri": "repo://docs/reference/architecture.md",
         "target_kind": "knowledge_document",
         "target_id": "kd-architecture-doc",
         "attempts": 1,
@@ -374,7 +374,7 @@
         "id": "ij-architecture-doc-embedding",
         "job_type": "embedding_update",
         "status": "succeeded",
-        "source_uri": "repo://docs/architecture.md",
+        "source_uri": "repo://docs/reference/architecture.md",
         "target_kind": "knowledge_document",
         "target_id": "kd-architecture-doc",
         "attempts": 1,
@@ -408,3 +408,4 @@
     ]
   }
 }
+

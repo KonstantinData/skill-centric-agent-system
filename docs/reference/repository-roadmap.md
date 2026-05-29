@@ -62,7 +62,7 @@ convert ambiguous tasks into review-required profiles without selected
 specialized capabilities.
 Broader runtime planning quality remains an explicit backlog theme and must not
 obscure the runtime entry gate. The repository now has a dedicated Production
-Readiness Gate in `docs/production-readiness.md`.
+Readiness Gate in `docs/policies/production-readiness.md`.
 That gate is the authority for any future `production-ready` claim and
 currently classifies the repository as `not-production-ready` for a full
 production launch while recognizing the initial productive runtime core.
@@ -74,8 +74,8 @@ knowledge/data-quality policy schema.
 
 ## Phase 0: Runtime Preflight Gate
 
-- Synchronize the Notion Feature Backlog, this roadmap, `docs/architecture.md`,
-  and `docs/infrastructure-boundary.md`.
+- Synchronize the Notion Feature Backlog, this roadmap, `docs/reference/architecture.md`,
+  and `docs/policies/infrastructure-boundary.md`.
 - Finalize naming rules for `task_type`, `capability_class`, module IDs, scope
   IDs, tool IDs, and scoring signal values.
 - Define what productive Runtime Phase means for this repository.
@@ -89,7 +89,7 @@ knowledge/data-quality policy schema.
 - Seed the first project memory scope and make memory ingestion fail closed when
   a request references an unknown memory scope.
 
-Status: complete. The durable gate is documented in `docs/runtime-preflight.md`.
+Status: complete. The durable gate is documented in `docs/runbooks/runtime-preflight.md`.
 
 ## Phase 1: Foundation
 
@@ -240,7 +240,7 @@ production security closure are implemented.
 
 This phase is required before the repository can be marked production-ready.
 The release gate, evidence rules, status vocabulary, and ordered backlog live in
-`docs/production-readiness.md`.
+`docs/policies/production-readiness.md`.
 
 1. Define the Production Release Readiness Gate. (Initial documentation and
    test coverage complete.)
@@ -281,3 +281,4 @@ implemented. The first production skill handler runtime slice, controlled write
 path, scheduled retention cleanup automation, production telemetry alerting,
 and production security closure are implemented. Provisioning and the final
 certification run against live production infrastructure remain pending.
+

@@ -42,7 +42,7 @@
       "additionalProperties": false,
       "properties": {
         "document": {
-          "const": "docs/threat-model.md"
+          "const": "docs/policies/threat-model.md"
         },
         "status": {
           "const": "current"
@@ -238,3 +238,4 @@
     }
   }
 }
+

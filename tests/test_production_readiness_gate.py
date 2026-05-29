@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PRODUCTION_READINESS_PATH = REPO_ROOT / "docs" / "production-readiness.md"
+PRODUCTION_READINESS_PATH = REPO_ROOT / "docs" / "policies" / "production-readiness.md"
 README_PATH = REPO_ROOT / "README.md"
 
 
@@ -47,5 +47,6 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
 def test_readme_links_production_readiness_gate() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
-    assert "docs/production-readiness.md" in readme
+    assert "docs/policies/production-readiness.md" in readme
     assert "not-production-ready" in readme
+

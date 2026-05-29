@@ -12,7 +12,7 @@
     {
       "id": "operator-runbook",
       "kind": "operator-runbook",
-      "target": "docs/operations-runbook.md#telemetry-alerts",
+      "target": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "secret_free": true
     }
   ],
@@ -28,7 +28,7 @@
       "unit": "ratio",
       "window": "PT15M",
       "source": "runtime.runtime_runs aggregate status counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -43,7 +43,7 @@
       "unit": "ratio",
       "window": "PT15M",
       "source": "runtime.runtime_events stop_reason aggregate counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -58,7 +58,7 @@
       "unit": "ratio",
       "window": "PT15M",
       "source": "runtime.validation_results aggregate status counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -73,7 +73,7 @@
       "unit": "ratio",
       "window": "PT15M",
       "source": "Cloudflare Worker route aggregate status counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -88,7 +88,7 @@
       "unit": "ratio",
       "window": "PT15M",
       "source": "Cloudflare Worker AI Gateway route aggregate status counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -103,7 +103,7 @@
       "unit": "count",
       "window": "PT15M",
       "source": "Cloudflare Queue consumer and ingestion_jobs aggregate counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -118,7 +118,7 @@
       "unit": "count",
       "window": "P1D",
       "source": "runtime-retention-cleanup-evidence aggregate report counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "critical",
       "raw_data_policy": "aggregate_metadata_only"
     },
@@ -133,9 +133,10 @@
       "unit": "count",
       "window": "P1D",
       "source": "runtime-retention-cleanup-evidence aggregate missing counts",
-      "runbook": "docs/operations-runbook.md#telemetry-alerts",
+      "runbook": "docs/runbooks/operations-runbook.md#telemetry-alerts",
       "missing_data_severity": "warning",
       "raw_data_policy": "aggregate_metadata_only"
     }
   ]
 }
+

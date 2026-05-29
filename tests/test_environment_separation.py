@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "examples" / "infrastructure" / "environment-manifest.json"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "environment-manifest.schema.json"
-DOC_PATH = REPO_ROOT / "docs" / "environment-separation.md"
+DOC_PATH = REPO_ROOT / "docs" / "policies" / "environment-separation.md"
 README_PATH = REPO_ROOT / "README.md"
 WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
 
@@ -84,7 +84,7 @@ def test_environment_docs_are_linked_from_readme() -> None:
     assert DOC_PATH.exists()
     readme = README_PATH.read_text(encoding="utf-8")
 
-    assert "docs/environment-separation.md" in readme
+    assert "docs/policies/environment-separation.md" in readme
 
 
 def test_wrangler_environments_match_manifest_resources() -> None:
@@ -121,3 +121,4 @@ def test_wrangler_environments_match_manifest_resources() -> None:
         assert vectorize_by_binding["SCAS_MEMORY_INDEX"]["index_name"] == cloudflare[
             "memory_vectorize_index"
         ]
+

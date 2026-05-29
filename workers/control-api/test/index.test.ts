@@ -257,7 +257,7 @@ async function seedControlPlane(): Promise<void> {
     ).bind(
       "mv-architecture-docs-0-1-0",
       "mod-architecture-docs",
-      "repo://docs/architecture.md",
+      "repo://docs/reference/architecture.md",
       "sha256:test-architecture-docs",
       0.5,
     ),
@@ -1438,3 +1438,4 @@ describe("control API worker", () => {
     expect(body.error.code).toBe("not_found");
   });
 });
+
