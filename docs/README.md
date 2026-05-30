@@ -7,6 +7,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/`: binding rules, contracts, governance criteria, and security boundaries.
 - `docs/runbooks/`: executable process guidance for operations, gates, and lifecycle tasks.
 - `docs/reference/`: technical orientation material and implementation-facing reference docs.
+- `docs/roadmap/`: execution sequencing and prioritized delivery queues.
 - `docs/adr/`: architecture decision records (durable decision history).
 
 ## Policies
@@ -39,3 +40,8 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/reference/registries.md`
 - `docs/reference/repository-roadmap.md`
 - `docs/reference/cloudflare/control-api.md`
+
+## Roadmap
+
+- `docs/roadmap/production-readiness-backlog.md`
+- `docs/roadmap/scas-execution-queue.md`
