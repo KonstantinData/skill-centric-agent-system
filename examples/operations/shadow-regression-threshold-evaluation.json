@@ -1,0 +1,69 @@
+{
+  "missing_explicit_threshold_change_types": [],
+  "selection_checks": {
+    "code-review": {
+      "precision_delta": -0.19999999999999996,
+      "precision_delta_min": -0.25,
+      "precision_passed": true,
+      "recall_delta": 0.25,
+      "recall_delta_min": -0.3,
+      "recall_passed": true,
+      "threshold_source": "by_change_type"
+    },
+    "data-update": {
+      "precision_delta": 0.0,
+      "precision_delta_min": -0.25,
+      "precision_passed": true,
+      "recall_delta": 0.0,
+      "recall_delta_min": -0.25,
+      "recall_passed": true,
+      "threshold_source": "by_change_type"
+    },
+    "policy-change": {
+      "precision_delta": 0.0,
+      "precision_delta_min": -0.25,
+      "precision_passed": true,
+      "recall_delta": -0.5,
+      "recall_delta_min": -0.6,
+      "recall_passed": true,
+      "threshold_source": "by_change_type"
+    },
+    "runtime-hotfix": {
+      "precision_delta": 0.5,
+      "precision_delta_min": -0.25,
+      "precision_passed": true,
+      "recall_delta": 0.0,
+      "recall_delta_min": -0.25,
+      "recall_passed": true,
+      "threshold_source": "by_change_type"
+    }
+  },
+  "status": "passed",
+  "summary": {
+    "missing_thresholds_passed": true,
+    "selection_passed": true,
+    "threshold_passed": true
+  },
+  "threshold_checks": {
+    "abstention_delta_max_abs": {
+      "actual": 0.16666666666666666,
+      "passed": true,
+      "threshold": 0.2
+    },
+    "decision_change_rate_max": {
+      "actual": 0.5,
+      "passed": true,
+      "threshold": 0.6
+    },
+    "mixed_profile_rate_delta_max_abs": {
+      "actual": 0.0,
+      "passed": true,
+      "threshold": 0.1
+    },
+    "safety_false_negative_delta_max": {
+      "actual": 0.5,
+      "passed": true,
+      "threshold": 0.6
+    }
+  }
+}

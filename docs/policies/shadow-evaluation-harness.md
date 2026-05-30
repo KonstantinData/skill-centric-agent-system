@@ -41,10 +41,15 @@ The harness reports:
   - recall (`baseline`, `candidate`, `delta`).
 
 These metrics are the input surface for threshold policy enforcement.
+Threshold policy is defined in
+`policies/runtime/shadow-regression-thresholds.json` and documented in
+`docs/policies/shadow-regression-thresholds.md`.
 
 ## Reference Implementation
 
 - `src/skill_centric_agent_system/operations/shadow_evaluation.py`
 - `scripts/operations/evaluate_shadow_profile_versions.py`
+- `scripts/operations/evaluate_shadow_regression_thresholds.py`
 - `examples/operations/shadow-eval-trace-snapshot.json`
+- `examples/operations/shadow-eval-report-snapshot.json`
 - `tests/test_shadow_evaluation_harness.py`

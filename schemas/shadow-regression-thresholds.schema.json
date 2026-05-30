@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:shadow-regression-thresholds:0.1.0",
+  "title": "SCAS Shadow Regression Threshold Policy",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "policy_id",
+    "owner",
+    "shadow_report_source",
+    "delta_thresholds",
+    "selection_drift_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "policy_id": {
+      "const": "fsg-08-shadow-regression-thresholds"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shadow_report_source": {
+      "const": "scripts/operations/evaluate_shadow_profile_versions.py"
+    },
+    "delta_thresholds": {
+      "type": "object",
+      "required": [
+        "abstention_delta_max_abs",
+        "mixed_profile_rate_delta_max_abs",
+        "safety_false_negative_delta_max",
+        "decision_change_rate_max"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "abstention_delta_max_abs": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "mixed_profile_rate_delta_max_abs": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "safety_false_negative_delta_max": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "decision_change_rate_max": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      }
+    },
+    "selection_drift_policy": {
+      "type": "object",
+      "required": [
+        "fail_closed_on_missing_change_type",
+        "default_thresholds",
+        "by_change_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fail_closed_on_missing_change_type": {
+          "type": "boolean"
+        },
+        "default_thresholds": {
+          "$ref": "#/$defs/selectionThreshold"
+        },
+        "by_change_type": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/selectionThreshold"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "selectionThreshold": {
+      "type": "object",
+      "required": [
+        "precision_delta_min",
+        "recall_delta_min"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "precision_delta_min": {
+          "type": "number",
+          "minimum": -1.0,
+          "maximum": 1.0
+        },
+        "recall_delta_min": {
+          "type": "number",
+          "minimum": -1.0,
+          "maximum": 1.0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "baseline_versions": {
+    "descriptor_version": "descriptor-2026-05-30.1",
+    "policy_version": "policy-2026-05-30.1"
+  },
+  "candidate_versions": {
+    "descriptor_version": "descriptor-2026-05-30.2",
+    "policy_version": "policy-2026-05-30.2"
+  },
+  "evaluation_error_count": 0,
+  "evaluation_errors": [],
+  "event_count": 6,
+  "metrics": {
+    "abstention_rate": {
+      "baseline": 0.16666666666666666,
+      "candidate": 0.3333333333333333,
+      "delta": 0.16666666666666666
+    },
+    "decision_change_rate": 0.5,
+    "mixed_profile_rate": {
+      "baseline": 0.16666666666666666,
+      "candidate": 0.16666666666666666,
+      "delta": 0.0
+    },
+    "safety_false_negative_rate": {
+      "baseline": 0.0,
+      "candidate": 0.5,
+      "delta": 0.5
+    },
+    "selection_drift_by_change_type": {
+      "code-review": {
+        "precision": {
+          "baseline": 1.0,
+          "candidate": 0.8,
+          "delta": -0.19999999999999996
+        },
+        "recall": {
+          "baseline": 0.75,
+          "candidate": 1.0,
+          "delta": 0.25
+        },
+        "trace_count": 4
+      },
+      "data-update": {
+        "precision": {
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0
+        },
+        "recall": {
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0
+        },
+        "trace_count": 0
+      },
+      "policy-change": {
+        "precision": {
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0
+        },
+        "recall": {
+          "baseline": 1.0,
+          "candidate": 0.5,
+          "delta": -0.5
+        },
+        "trace_count": 2
+      },
+      "runtime-hotfix": {
+        "precision": {
+          "baseline": 0.5,
+          "candidate": 1.0,
+          "delta": 0.5
+        },
+        "recall": {
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0
+        },
+        "trace_count": 1
+      }
+    }
+  },
+  "snapshot_contract_version": "0.1.0",
+  "status": "passed"
+}
