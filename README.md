@@ -121,6 +121,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/policies/review-gates.md`: review, waiver, and governance-gate rules for high-impact changes.
 - `docs/policies/threat-model.md`: production threat model, token-scope closure, and residual security risks.
 - `docs/policies/formal-safety-invariants.md`: authoritative profile-sealing invariant catalog with pass/fail semantics.
+- `docs/policies/formal-safety-change-type-matrix.md`: machine-readable invariant-to-change-type validator matrix.
 - `docs/runbooks/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
 - `docs/policies/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
 - `docs/policies/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.

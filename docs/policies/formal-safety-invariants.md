@@ -99,6 +99,7 @@ A completed safety slice must include:
 ## Related References
 
 - `docs/policies/contracts.md`
+- `docs/policies/formal-safety-change-type-matrix.md`
 - `docs/policies/runtime-contract.md`
 - `docs/policies/production-readiness.md`
 - `docs/roadmap/scas-execution-queue.md`

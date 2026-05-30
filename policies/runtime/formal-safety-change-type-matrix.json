@@ -1,0 +1,132 @@
+{
+  "contract_version": "0.1.0",
+  "matrix_id": "fsg-02-invariant-change-type-matrix",
+  "owner": "@KonstantinData",
+  "invariant_source": "docs/policies/formal-safety-invariants.md",
+  "change_types": [
+    {
+      "id": "contract-change",
+      "description": "Schema, contract, or composition-surface changes that can alter profile semantics.",
+      "mandatory_invariants": [
+        "fail_closed_on_unknowns",
+        "no_self_granting",
+        "mandatory_validators_per_change_type",
+        "immutable_profile_after_seal"
+      ],
+      "mandatory_runtime_validators": [
+        "runtime-profile-schema"
+      ],
+      "mandatory_repo_validators": [
+        "pytest-contract-schemas",
+        "pytest-composition-pipeline"
+      ],
+      "required_ci_checks": [
+        "Contract tests",
+        "analyze"
+      ],
+      "enforcement_mode": "blocking"
+    },
+    {
+      "id": "runtime-logic",
+      "description": "Runtime execution-path changes across context, planning, execution, validator orchestration, or failure policy.",
+      "mandatory_invariants": [
+        "fail_closed_on_unknowns",
+        "no_self_granting",
+        "mandatory_validators_per_change_type",
+        "scope_monotonicity",
+        "immutable_profile_after_seal"
+      ],
+      "mandatory_runtime_validators": [
+        "runtime-profile-schema",
+        "review-findings-contract",
+        "research-output-contract",
+        "task-execution-output-contract",
+        "general-output-contract"
+      ],
+      "mandatory_repo_validators": [
+        "pytest-runtime-loop",
+        "pytest-runtime-output-contracts"
+      ],
+      "required_ci_checks": [
+        "Contract tests",
+        "Cloudflare Worker",
+        "analyze"
+      ],
+      "enforcement_mode": "blocking"
+    },
+    {
+      "id": "governance-doc",
+      "description": "Governance and policy documentation updates that define or alter runtime and release decision criteria.",
+      "mandatory_invariants": [
+        "fail_closed_on_unknowns",
+        "mandatory_validators_per_change_type",
+        "immutable_profile_after_seal"
+      ],
+      "mandatory_runtime_validators": [
+        "runtime-profile-schema"
+      ],
+      "mandatory_repo_validators": [
+        "validate-ruleset-config"
+      ],
+      "required_ci_checks": [
+        "Repository governance gates",
+        "policy-as-code-gate"
+      ],
+      "enforcement_mode": "blocking"
+    },
+    {
+      "id": "security-gate",
+      "description": "Security or supply-chain control changes in workflows, policies, rulesets, or boundary enforcement.",
+      "mandatory_invariants": [
+        "fail_closed_on_unknowns",
+        "no_self_granting",
+        "mandatory_validators_per_change_type",
+        "scope_monotonicity"
+      ],
+      "mandatory_runtime_validators": [
+        "runtime-profile-schema",
+        "memory-candidate-contract"
+      ],
+      "mandatory_repo_validators": [
+        "validate-security-closure",
+        "validate-dependency-policy",
+        "check-workflow-hardening",
+        "validate-actions-bom"
+      ],
+      "required_ci_checks": [
+        "Repository governance gates",
+        "Secret scanning",
+        "Dependency audit",
+        "dependency-review"
+      ],
+      "enforcement_mode": "blocking"
+    },
+    {
+      "id": "scope-or-policy-change",
+      "description": "Changes to data, memory, knowledge, tooling, or write policy bindings that affect access boundaries.",
+      "mandatory_invariants": [
+        "fail_closed_on_unknowns",
+        "no_self_granting",
+        "mandatory_validators_per_change_type",
+        "scope_monotonicity",
+        "immutable_profile_after_seal"
+      ],
+      "mandatory_runtime_validators": [
+        "runtime-profile-schema",
+        "task-execution-output-contract",
+        "memory-candidate-contract"
+      ],
+      "mandatory_repo_validators": [
+        "pytest-composition-pipeline",
+        "pytest-runtime-loop",
+        "validate-ruleset-config"
+      ],
+      "required_ci_checks": [
+        "Contract tests",
+        "Repository governance gates",
+        "Cloudflare Worker"
+      ],
+      "enforcement_mode": "blocking"
+    }
+  ]
+}
