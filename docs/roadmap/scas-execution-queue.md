@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-01 Define Formal Invariant Catalog for Profile Sealing`
-2. `FSG-02 Map Invariants to Change-Type Matrix`
-3. `FSG-03 Implement Executable Invariant Assertion Library`
+1. `FSG-02 Map Invariants to Change-Type Matrix`
+2. `FSG-03 Implement Executable Invariant Assertion Library`
+3. `FSG-04 Build Positive/Negative Replay Fixture Corpus`
 
 ## Queue Order
 
