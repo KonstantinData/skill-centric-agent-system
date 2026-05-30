@@ -99,6 +99,7 @@ A completed safety slice must include:
 The invariant replay fixture corpus is versioned in:
 
 - `examples/evaluations/formal-safety-invariant-replay-cases.json`
+- `scripts/runtime/invariant_check.py` executes the corpus as a blocking check.
 
 ## Related References
 
