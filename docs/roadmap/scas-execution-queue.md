@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `P5.03 Production Release Evidence Workflow`
-2. `P6.02 Activate Main Branch Protection Ruleset`
-3. `P6.03 Notion Issue Comment Coverage Audit`
+1. `FSG-01 Define Formal Invariant Catalog for Profile Sealing`
+2. `FSG-02 Map Invariants to Change-Type Matrix`
+3. `FSG-03 Implement Executable Invariant Assertion Library`
 
 ## Queue Order
 

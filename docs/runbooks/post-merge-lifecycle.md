@@ -5,9 +5,9 @@
 This runbook standardizes the repository cleanup sequence after a topic branch
 has been merged to `main`.
 
-It is intentionally compatible with the current fast setup workflow where main
-branch protection is prepared but not yet enforced. It does not replace review,
-CI, or Notion lifecycle tracking.
+It is intentionally compatible with the current fast setup workflow and the
+active main-branch protection ruleset. It does not replace review, CI, or
+Notion lifecycle tracking.
 
 ## Required Order
 

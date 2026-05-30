@@ -67,10 +67,10 @@ That gate is the authority for any future `production-ready` claim and
 currently classifies the repository as `not-production-ready` for a full
 production launch while recognizing the initial productive runtime core.
 Repository security and governance gates now cover secret scanning, tracked
-`.env` protection, CODEOWNERS, main-protection desired-state validation,
-dependency policy, workflow hardening, pinned Actions, Actions-BOM, release
-SBOM generation, Data Governance documentation, and a generic
-knowledge/data-quality policy schema.
+`.env` protection, CODEOWNERS, active main-branch protection plus
+main-protection desired-state validation, dependency policy, workflow
+hardening, pinned Actions, Actions-BOM, release SBOM generation, Data
+Governance documentation, and a generic knowledge/data-quality policy schema.
 
 ## Phase 0: Runtime Preflight Gate
 
