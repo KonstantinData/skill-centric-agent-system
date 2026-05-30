@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-04 Build Positive/Negative Replay Fixture Corpus`
-2. `FSG-05 Add Invariant-Check Command`
-3. `FSG-06 Make Invariant-Check a Required CI Gate`
+1. `FSG-05 Add Invariant-Check Command`
+2. `FSG-06 Make Invariant-Check a Required CI Gate`
+3. `FSG-07 Implement Shadow-Evaluation Harness for Descriptor/Policy Versions`
 
 ## Queue Order
 

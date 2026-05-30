@@ -96,6 +96,10 @@ A completed safety slice must include:
 2. executable checks or tests that assert the invariant contract surface, and
 3. queue/issue tracking updates that point to the next execution start item.
 
+The invariant replay fixture corpus is versioned in:
+
+- `examples/evaluations/formal-safety-invariant-replay-cases.json`
+
 ## Related References
 
 - `docs/policies/contracts.md`
