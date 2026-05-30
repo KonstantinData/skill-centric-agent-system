@@ -6,6 +6,8 @@ This document tracks implementation sequencing and progress notes for
 production-readiness work.
 Normative release gates and evidence rules remain in
 `docs/policies/production-readiness.md`.
+The cross-phase execution order is tracked in
+`docs/roadmap/scas-execution-queue.md`.
 
 ## Prioritized Backlog
 

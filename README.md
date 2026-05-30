@@ -130,6 +130,8 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runbooks/post-merge-lifecycle.md`: post-merge cleanup and Notion completion runbook.
 - `docs/runbooks/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
 - `docs/policies/error-taxonomy.md`: runtime error taxonomy, class playbooks, and CI gate metrics for F1/F2/R8.
+- `docs/roadmap/scas-execution-queue.md`: operational execution order for open SCAS backlog/issues work.
+- `docs/roadmap/production-readiness-backlog.md`: prioritized production-readiness implementation backlog.
 - `docs/reference/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/reference/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.
 - `docs/adr/`: architecture decision records.
