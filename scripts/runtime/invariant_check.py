@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+# ruff: noqa: E402
 import argparse
 import json
 import sys
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 from skill_centric_agent_system.runtime.invariant_replay import (
     load_replay_cases,
@@ -11,7 +17,6 @@ from skill_centric_agent_system.runtime.invariant_replay import (
     validate_replay_corpus_shape,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES_PATH = (
     REPO_ROOT / "examples" / "evaluations" / "formal-safety-invariant-replay-cases.json"
 )
