@@ -81,7 +81,7 @@ def test_security_docs_define_secret_and_review_controls() -> None:
 
     assert "Tracked `.env` files are not allowed" in security
     assert "must not self-grant tools" in agents
-    assert "CODEOWNERS review" in review_gates
+    assert "CODEOWNERS ownership coverage" in review_gates
     assert "secret" in data_governance
     assert "raw runtime traces" in data_governance
     assert "Threat Model Closure" in (

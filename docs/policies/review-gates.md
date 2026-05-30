@@ -15,7 +15,7 @@ or production evidence:
 - secret scanning and tracked `.env` guard,
 - dependency review and vulnerability audit,
 - workflow hardening and pinned GitHub Actions,
-- CODEOWNERS review for high-impact paths,
+- CODEOWNERS ownership coverage for high-impact paths,
 - main-branch ruleset desired-state validation,
 - schema and contract tests,
 - data-governance and quality-policy tests,

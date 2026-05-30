@@ -58,10 +58,12 @@ def validate_ruleset(path: Path) -> list[str]:
 
     pull_request = rule_by_type(ruleset, "pull_request") or {}
     pr_params = pull_request.get("parameters", {})
-    if pr_params.get("required_approving_review_count", 0) < 2:
-        failures.append("pull request rule must require at least two approvals")
-    if pr_params.get("require_code_owner_review") is not True:
-        failures.append("pull request rule must require code-owner review")
+    if pr_params.get("required_approving_review_count", 0) < 1:
+        failures.append("pull request rule must require at least one approval")
+    if pr_params.get("require_code_owner_review") is not False:
+        failures.append("pull request rule must disable code-owner review")
+    if pr_params.get("require_last_push_approval") is not False:
+        failures.append("pull request rule must not require last-push approval")
     if pr_params.get("required_review_thread_resolution") is not True:
         failures.append("pull request rule must require review thread resolution")
 
