@@ -38,6 +38,7 @@ is satisfied for the target environment.
 | Control Plane readiness | Cloudflare Worker, D1, R2, Vectorize, Queues, KV, AI Gateway, bearer auth, endpoint-scoped tokens, migrations, seed state, and rollback path are verified. |
 | Runtime Plane readiness | Hetzner PostgreSQL, runtime roles, migrations, artifact root, Flight Recorder writes, retention planning, backup, restore, and disable paths are verified. |
 | Live runtime gates | Generic E2E, retrieval and Vectorize smoke, AI Gateway live smoke, Postgres concurrency smoke, and retention dry-run/apply evidence pass for the target environment. |
+| Pre-canary safety gate | Invariant replay and shadow regression thresholds pass together with explicit remediation output on failure. |
 | Live handler binding evidence | The referenced Live Runtime Gates run uploads `live-runtime-handler-binding-evidence`; certification validates passed live E2E cases and sanitized `skill_handlers` where every `handler_id` equals `name@version`. |
 | Executable skill runtime | Profile-selected skills resolve to version-pinned executable handlers; unknown or mismatched handlers fail closed; `python scripts/runtime/skill_handler_coverage.py --check` proves every production-required skill fixture maps to a handler, runtime path, and tests. |
 | Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/policies/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
@@ -96,6 +97,10 @@ smoke workflow runs.
 The workflow also persists `production-evidence/invariant-check.json` and
 fails closed unless the report exists, has `status = "passed"`, `mismatch_count
 = 0`, and a positive `total_cases`.
+It additionally records
+`production-evidence/shadow-regression-threshold-evaluation.json` and
+`production-evidence/pre-canary-safety-gate.json`; certification fails closed
+unless both reports pass.
 
 The workflow builds the evidence artifact through
 `scripts/release/build_production_readiness_evidence.py`. In `certify` mode it

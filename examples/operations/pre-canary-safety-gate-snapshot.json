@@ -1,0 +1,19 @@
+{
+  "failure_reasons": [],
+  "gates": {
+    "invariant_check": {
+      "mismatch_count": 0,
+      "passed": true,
+      "status": "passed"
+    },
+    "shadow_regression_thresholds": {
+      "missing_explicit_threshold_change_types": [],
+      "passed": true,
+      "selection_failures": [],
+      "status": "passed",
+      "threshold_failures": []
+    }
+  },
+  "required_remediation_paths": [],
+  "status": "passed"
+}

@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-09 Enforce Pre-Canary Gate: Invariants + Shadow Eval`
-2. `FSG-10 Add Automatic Rollback Rules for Safety Regressions`
-3. `FSG-11 Add Incident-Locked Regression Tests`
+1. `FSG-10 Add Automatic Rollback Rules for Safety Regressions`
+2. `FSG-11 Add Incident-Locked Regression Tests`
+3. `FSG-12 Publish ADR for Formal Safety Guarantees`
 
 ## Queue Order
 
