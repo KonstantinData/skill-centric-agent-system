@@ -28,6 +28,8 @@ It also defines selection-drift minima by change type:
   `scripts/operations/evaluate_shadow_profile_versions.py`
 - Threshold evaluator:
   `scripts/operations/evaluate_shadow_regression_thresholds.py`
+- Pre-canary gate aggregator:
+  `scripts/release/evaluate_pre_canary_gate.py`
 - Reference shadow report:
   `examples/operations/shadow-eval-report-snapshot.json`
 - Reference threshold evaluation output:

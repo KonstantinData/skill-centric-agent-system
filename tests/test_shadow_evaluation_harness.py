@@ -87,4 +87,4 @@ def test_shadow_evaluation_harness_is_wired_into_docs_and_queue() -> None:
 
     assert "shadow-evaluation-harness.md" in docs_index
     assert "shadow-evaluation-harness.md" in invariant_policy
-    assert "FSG-09 Enforce Pre-Canary Gate: Invariants + Shadow Eval" in queue
+    assert "FSG-10 Add Automatic Rollback Rules for Safety Regressions" in queue

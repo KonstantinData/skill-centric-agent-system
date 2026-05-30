@@ -1,0 +1,129 @@
+{
+  "cases_path": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system\\examples\\evaluations\\formal-safety-invariant-replay-cases.json",
+  "profiles_dir": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system\\examples\\profiles",
+  "total_cases": 15,
+  "mismatch_count": 0,
+  "status": "passed",
+  "results": [
+    {
+      "name": "fail_closed_on_unknowns positive baseline profile",
+      "invariant_id": "fail_closed_on_unknowns",
+      "case_type": "positive",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "fail_closed_on_unknowns near miss recomposed profile with exact pins",
+      "invariant_id": "fail_closed_on_unknowns",
+      "case_type": "near-miss",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "fail_closed_on_unknowns violation unselected version pin",
+      "invariant_id": "fail_closed_on_unknowns",
+      "case_type": "violation",
+      "expected_violation": true,
+      "actual_violation": true,
+      "passed": true
+    },
+    {
+      "name": "no_self_granting positive baseline profile",
+      "invariant_id": "no_self_granting",
+      "case_type": "positive",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "no_self_granting near miss selected non-runtime skill mapping",
+      "invariant_id": "no_self_granting",
+      "case_type": "near-miss",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "no_self_granting violation runtime role references unselected skill",
+      "invariant_id": "no_self_granting",
+      "case_type": "violation",
+      "expected_violation": true,
+      "actual_violation": true,
+      "passed": true
+    },
+    {
+      "name": "mandatory_validators_per_change_type positive code review validator present",
+      "invariant_id": "mandatory_validators_per_change_type",
+      "case_type": "positive",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "mandatory_validators_per_change_type near miss human-review profile minimal validators",
+      "invariant_id": "mandatory_validators_per_change_type",
+      "case_type": "near-miss",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "mandatory_validators_per_change_type violation missing task-type validator",
+      "invariant_id": "mandatory_validators_per_change_type",
+      "case_type": "violation",
+      "expected_violation": true,
+      "actual_violation": true,
+      "passed": true
+    },
+    {
+      "name": "scope_monotonicity positive identical scope sets",
+      "invariant_id": "scope_monotonicity",
+      "case_type": "positive",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "scope_monotonicity near miss narrowed scope set",
+      "invariant_id": "scope_monotonicity",
+      "case_type": "near-miss",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "scope_monotonicity violation widened tool scope",
+      "invariant_id": "scope_monotonicity",
+      "case_type": "violation",
+      "expected_violation": true,
+      "actual_violation": true,
+      "passed": true
+    },
+    {
+      "name": "immutable_profile_after_seal positive generation one baseline",
+      "invariant_id": "immutable_profile_after_seal",
+      "case_type": "positive",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "immutable_profile_after_seal near miss recomposed metadata complete",
+      "invariant_id": "immutable_profile_after_seal",
+      "case_type": "near-miss",
+      "expected_violation": false,
+      "actual_violation": false,
+      "passed": true
+    },
+    {
+      "name": "immutable_profile_after_seal violation generation one with recomposition reason",
+      "invariant_id": "immutable_profile_after_seal",
+      "case_type": "violation",
+      "expected_violation": true,
+      "actual_violation": true,
+      "passed": true
+    }
+  ]
+}

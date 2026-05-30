@@ -122,6 +122,24 @@ jobs:
               raise SystemExit("Invariant-check executed zero replay cases.")
           PY
 
+      - name: Evaluate shadow regression thresholds
+        run: |
+          set -euo pipefail
+          uv run python scripts/operations/evaluate_shadow_regression_thresholds.py \
+            --policy policies/runtime/shadow-regression-thresholds.json \
+            --report examples/operations/shadow-eval-report-snapshot.json \
+            --output production-evidence/shadow-regression-threshold-evaluation.json \
+            --fail-on-failed
+
+      - name: Run pre-canary safety gate
+        run: |
+          set -euo pipefail
+          uv run python scripts/release/evaluate_pre_canary_gate.py \
+            --invariant-report production-evidence/invariant-check.json \
+            --shadow-threshold-report production-evidence/shadow-regression-threshold-evaluation.json \
+            --output production-evidence/pre-canary-safety-gate.json \
+            --fail-on-failed
+
       - name: Validate tracked JSON files
         run: |
           python - <<'PY'
