@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scas.dev/schemas/production-skill-instruction-packs.schema.json",
+  "title": "Production Skill Instruction Packs",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "generated_by",
+    "instruction_packs",
+    "status",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "generated_by": {
+      "type": "string",
+      "const": "scripts/runtime/production_skill_instruction_packs.py"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "pack_count",
+        "production_required_skill_count",
+        "missing_handler_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pack_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "production_required_skill_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_handler_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "instruction_packs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "description",
+          "execution_instructions",
+          "handler",
+          "live_run_requirements",
+          "module_path",
+          "required_policies",
+          "required_tools",
+          "required_validators",
+          "runtime_role",
+          "skill_name",
+          "skill_version",
+          "test_evidence",
+          "triggers"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "execution_instructions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 3
+          },
+          "handler": {
+            "type": "object",
+            "required": [
+              "handler_id",
+              "lifecycle_status",
+              "output_contract",
+              "runtime_path",
+              "strategy",
+              "test_coverage"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "handler_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lifecycle_status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "deprecated"
+                ]
+              },
+              "output_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "runtime_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "strategy": {
+                "type": "string",
+                "minLength": 1
+              },
+              "test_coverage": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "live_run_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2
+          },
+          "module_path": {
+            "type": "string",
+            "pattern": "^examples/modules/.+\\.json$"
+          },
+          "required_policies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required_tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "optional_tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required_validators": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "runtime_role": {
+            "type": "string",
+            "enum": [
+              "runtime",
+              "shared"
+            ]
+          },
+          "skill_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "skill_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "test_evidence": {
+            "type": "object",
+            "required": [
+              "module_tests",
+              "runtime_tests"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "module_tests": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "runtime_tests": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "triggers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "missing_handlers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": ".+@.+"
+      }
+    }
+  }
+}

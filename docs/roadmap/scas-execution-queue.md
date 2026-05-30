@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `P5.03 Complete Production Readiness Evidence Workflow`
-2. `P5.04 Complete Security Hardening and Threat-Model Closure`
-3. `P5.11 Run the production readiness certification gate against the target environment`
+1. `Post-P5: Define and govern HOOKS usage model`
+2. `Post-P5: Recertification cadence and release policy`
+3. `Post-P5: Harden production change gates in CI/GitHub`
 
 ## Queue Order
 
@@ -33,6 +33,7 @@ Before starting each queue item:
 5. Phase 5 Production Readiness (`P5.*`)
 6. Phase 6 Governance (`P6.*`)
 7. Formal Safety Guarantees program (`FSG-01` to `FSG-12`)
+8. Post-P5 Production Hardening (`Post-P5:*`)
 
 ## Active Tracker Synchronization
 

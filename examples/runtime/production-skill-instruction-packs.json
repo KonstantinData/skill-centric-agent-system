@@ -1,0 +1,330 @@
+{
+  "contract_version": "0.1.0",
+  "generated_by": "scripts/runtime/production_skill_instruction_packs.py",
+  "instruction_packs": [
+    {
+      "description": "Audit repository dependency manifests for license, risk, and change-impact signals.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects dependency-audit@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [task-execution, code-review] and required inputs [repository] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for dependency-audit@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "dependency-audit@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "task-execution-output-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "dependency-audit-readonly",
+        "test_coverage": [
+          "tests/test_runtime_skill_handlers.py::test_dependency_audit_skill_handler_builds_expected_actions"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names dependency-audit as executed handler."
+      ],
+      "module_path": "examples/modules/dependency-audit.json",
+      "optional_tools": [
+        "git-read",
+        "test-runner"
+      ],
+      "required_policies": [
+        "no-destructive-commands"
+      ],
+      "required_tools": [
+        "filesystem-list",
+        "filesystem-read"
+      ],
+      "required_validators": [
+        "task-execution-output-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "dependency-audit",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "dependency-audit-positive",
+          "dependency-audit-denies-destructive"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_skill_handlers.py::test_dependency_audit_skill_handler_builds_expected_actions"
+        ]
+      },
+      "triggers": [
+        "dependency audit",
+        "dependency",
+        "license"
+      ]
+    },
+    {
+      "description": "Synthesize durable technical documentation updates from profile-authorized context.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects document-synthesis@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [research, general-task] and required inputs [] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for document-synthesis@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "document-synthesis@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "general-output-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "document-synthesis",
+        "test_coverage": [
+          "tests/test_runtime_skill_handlers.py::test_document_synthesis_skill_handler_builds_no_tool_actions"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names document-synthesis as executed handler."
+      ],
+      "module_path": "examples/modules/document-synthesis.json",
+      "optional_tools": [],
+      "required_policies": [
+        "no-destructive-commands"
+      ],
+      "required_tools": [],
+      "required_validators": [
+        "general-output-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "document-synthesis",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "document-synthesis-positive",
+          "document-synthesis-denies-deploy"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_skill_handlers.py::test_document_synthesis_skill_handler_builds_no_tool_actions"
+        ]
+      },
+      "triggers": [
+        "summarize docs",
+        "document",
+        "synthesize"
+      ]
+    },
+    {
+      "description": "Produce a bounded generic runtime summary when no specialized task strategy is selected.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects general-task-summary@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [general-task] and required inputs [] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for general-task-summary@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "general-task-summary@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "general-output-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "general-task-summary",
+        "test_coverage": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names general-task-summary as executed handler."
+      ],
+      "module_path": "examples/modules/general-task-summary.json",
+      "optional_tools": [],
+      "required_policies": [
+        "no-destructive-commands"
+      ],
+      "required_tools": [],
+      "required_validators": [
+        "general-output-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "general-task-summary",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "general-task-summary-positive",
+          "general-task-summary-denies-destructive"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "triggers": [
+        "prepare",
+        "outline",
+        "general"
+      ]
+    },
+    {
+      "description": "Analyze git diffs for behavioral changes, regressions, and review-relevant risks.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects git-diff-analysis@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [code-review] and required inputs [repository, diff] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for git-diff-analysis@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "git-diff-analysis@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "review-findings-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "code-review-readonly",
+        "test_coverage": [
+          "tests/test_runtime_skill_handlers.py::test_builtin_skill_handler_registry_resolves_profile_selected_version",
+          "tests/test_runtime_skill_handlers.py::test_runtime_loop_records_executed_skill_handler_binding"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names git-diff-analysis as executed handler."
+      ],
+      "module_path": "examples/modules/git-diff-analysis.json",
+      "optional_tools": [
+        "test-runner"
+      ],
+      "required_policies": [
+        "no-destructive-commands",
+        "require-file-references"
+      ],
+      "required_tools": [
+        "git-read",
+        "filesystem-read"
+      ],
+      "required_validators": [
+        "review-findings-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "git-diff-analysis",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "detects-risky-diff-fixture",
+          "requires-file-line-references"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_skill_handlers.py::test_builtin_skill_handler_registry_resolves_profile_selected_version",
+          "tests/test_runtime_skill_handlers.py::test_runtime_loop_records_executed_skill_handler_binding"
+        ]
+      },
+      "triggers": [
+        "review",
+        "diff",
+        "commit",
+        "pull request"
+      ]
+    },
+    {
+      "description": "Synthesize profile-authorized knowledge and memory context into a bounded research output.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects research-context-synthesis@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [research] and required inputs [] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for research-context-synthesis@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "research-context-synthesis@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "research-output-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "research-context-synthesis",
+        "test_coverage": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names research-context-synthesis as executed handler."
+      ],
+      "module_path": "examples/modules/research-context-synthesis.json",
+      "optional_tools": [],
+      "required_policies": [
+        "no-destructive-commands"
+      ],
+      "required_tools": [],
+      "required_validators": [
+        "research-output-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "research-context-synthesis",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "research-context-synthesis-positive",
+          "research-context-synthesis-denies-deploy"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "triggers": [
+        "research",
+        "investigate",
+        "compare",
+        "summarize"
+      ]
+    },
+    {
+      "description": "Plan and summarize conservative repository task execution using read-only inspection tools.",
+      "execution_instructions": [
+        "Compose a runtime profile that selects task-execution-planning@0.1.0 through the standard analyzer -> composer control path.",
+        "Ensure task type is one of [task-execution] and required inputs [repository] are present before runtime execution starts.",
+        "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for task-execution-planning@0.1.0.",
+        "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
+      ],
+      "handler": {
+        "handler_id": "task-execution-planning@0.1.0",
+        "lifecycle_status": "active",
+        "output_contract": "task-execution-output-contract",
+        "runtime_path": "src/skill_centric_agent_system/runtime/skill_handlers.py",
+        "strategy": "conservative-task-execution",
+        "test_coverage": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "live_run_requirements": [
+        "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
+        "Persist sanitized evidence metadata that references the live run URL and explicitly names task-execution-planning as executed handler."
+      ],
+      "module_path": "examples/modules/task-execution-planning.json",
+      "optional_tools": [
+        "test-runner"
+      ],
+      "required_policies": [
+        "no-destructive-commands"
+      ],
+      "required_tools": [
+        "filesystem-read",
+        "filesystem-list",
+        "git-read"
+      ],
+      "required_validators": [
+        "task-execution-output-contract"
+      ],
+      "runtime_role": "runtime",
+      "skill_name": "task-execution-planning",
+      "skill_version": "0.1.0",
+      "test_evidence": {
+        "module_tests": [
+          "task-execution-planning-positive",
+          "task-execution-planning-denies-destructive"
+        ],
+        "runtime_tests": [
+          "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
+        ]
+      },
+      "triggers": [
+        "implement",
+        "fix",
+        "update",
+        "refactor",
+        "migrate"
+      ]
+    }
+  ],
+  "status": "passed",
+  "summary": {
+    "missing_handler_count": 0,
+    "pack_count": 6,
+    "production_required_skill_count": 6
+  }
+}

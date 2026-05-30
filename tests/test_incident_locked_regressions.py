@@ -79,4 +79,4 @@ def test_incident_locked_regressions_are_wired_into_docs_and_queue() -> None:
 
     assert "incident-locked-regressions.md" in docs_index
     assert "incident-locked-regressions.md" in invariant_policy
-    assert "P5.03 Complete Production Readiness Evidence Workflow" in queue
+    assert "Post-P5: Define and govern HOOKS usage model" in queue

@@ -28,6 +28,8 @@ Normative data-plane boundaries remain in
   post-validation path are implemented.
 - Production skill handler runtime first slice and handler coverage manifest
   gates are implemented.
+- Production skill instruction packs are generated from runtime-required modules,
+  version-pinned handlers, and test evidence with CI fail-closed validation.
 - Production release evidence workflow exists with external run metadata
   validation.
 - Main branch protection ruleset is active on GitHub (`main-protection`).

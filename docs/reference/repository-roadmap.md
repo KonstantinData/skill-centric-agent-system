@@ -284,4 +284,6 @@ implemented. The first production skill handler runtime slice, controlled write
 path, scheduled retention cleanup automation, production telemetry alerting,
 and production security closure are implemented. Provisioning and the final
 certification run against live production infrastructure remain pending.
+Production skill instruction packs are now generated and validated as
+machine-readable release artifacts.
 

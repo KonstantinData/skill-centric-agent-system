@@ -95,6 +95,7 @@ jobs:
           uv run ruff check .
           uv run mypy
           PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
+          PYTHONPATH=src uv run python scripts/runtime/production_skill_instruction_packs.py --check
 
       - name: Run formal safety invariant gate
         run: |
