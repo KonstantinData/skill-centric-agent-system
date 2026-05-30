@@ -47,6 +47,8 @@ rules.
   `docs/policies/environment-separation.md`
 - Data-plane ownership and storage boundaries:
   `docs/policies/infrastructure-boundary.md`
+- Formal profile-sealing invariant catalog:
+  `docs/policies/formal-safety-invariants.md`
 - Production release gates and evidence requirements:
   `docs/policies/production-readiness.md`
 

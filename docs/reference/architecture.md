@@ -122,6 +122,9 @@ The Composer is a deterministic pipeline around model-assisted analysis, not a f
 
 The runtime receives only the validated profile. If execution needs a capability that is not present, it requests recomposition instead of expanding permissions locally.
 
+The authoritative invariant set for profile sealing and pre-canary controls is
+defined in `docs/policies/formal-safety-invariants.md`.
+
 ## Core Invariant
 
 Self-assembly is controlled. Capability selection must go through registries, scoring, policies, graph validation, and profile validation. Free-form prompt text may explain behavior, but it must not be the sole authority for granting capabilities.
