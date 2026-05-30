@@ -122,6 +122,13 @@ jobs:
               raise SystemExit("Invariant-check executed zero replay cases.")
           PY
 
+      - name: Run incident-locked regression gate
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src uv run python scripts/runtime/run_incident_locked_regressions.py \
+            --output-json production-evidence/incident-locked-regressions.json \
+            --fail-on-failed
+
       - name: Evaluate shadow regression thresholds
         run: |
           set -euo pipefail

@@ -27,6 +27,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/shadow-evaluation-harness.md`
 - `docs/policies/shadow-regression-thresholds.md`
 - `docs/policies/automatic-rollback-rules.md`
+- `docs/policies/incident-locked-regressions.md`
 - `docs/policies/error-taxonomy.md`
 - `docs/policies/sota-2026-target-profile.md`
 

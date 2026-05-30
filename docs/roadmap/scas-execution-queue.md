@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-11 Add Incident-Locked Regression Tests`
-2. `FSG-12 Publish ADR for Formal Safety Guarantees`
-3. `P5.03 Complete Production Readiness Evidence Workflow`
+1. `FSG-12 Publish ADR for Formal Safety Guarantees`
+2. `P5.03 Complete Production Readiness Evidence Workflow`
+3. `P5.04 Complete Security Hardening and Threat-Model Closure`
 
 ## Queue Order
 

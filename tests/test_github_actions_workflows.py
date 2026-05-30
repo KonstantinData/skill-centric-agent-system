@@ -46,6 +46,8 @@ def test_ci_workflow_runs_repository_validation() -> None:
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "ci-evidence/invariant-check.json" in workflow
+    assert "scripts/runtime/run_incident_locked_regressions.py" in workflow
+    assert "ci-evidence/incident-locked-regressions.json" in workflow
     assert "rglob(\"*.json\")" in workflow
 
 
@@ -177,6 +179,8 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "production-evidence/invariant-check.json" in workflow
+    assert "scripts/runtime/run_incident_locked_regressions.py" in workflow
+    assert "production-evidence/incident-locked-regressions.json" in workflow
     assert "scripts/operations/evaluate_shadow_regression_thresholds.py" in workflow
     assert "production-evidence/shadow-regression-threshold-evaluation.json" in workflow
     assert "scripts/release/evaluate_pre_canary_gate.py" in workflow
