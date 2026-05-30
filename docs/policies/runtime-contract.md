@@ -366,6 +366,8 @@ validator must produce a `validation_results` row with:
 Unknown validators fail closed. The runtime must not silently skip selected
 validators, and it must not substitute a task-specific hardcoded validator for
 the profile-selected validator set.
+Executable profile-sealing invariant checks are implemented in
+`src/skill_centric_agent_system/runtime/invariant_assertions.py`.
 
 The first runtime output validators are task-class aware:
 

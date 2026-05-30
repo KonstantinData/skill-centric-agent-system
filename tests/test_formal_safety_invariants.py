@@ -36,4 +36,4 @@ def test_formal_invariant_catalog_is_wired_into_core_docs() -> None:
 
     assert "formal-safety-invariants.md" in contracts
     assert "formal-safety-invariants.md" in architecture
-    assert "FSG-03 Implement Executable Invariant Assertion Library" in queue
+    assert "FSG-04 Build Positive/Negative Replay Fixture Corpus" in queue
