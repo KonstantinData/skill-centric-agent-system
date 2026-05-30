@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-07 Implement Shadow-Evaluation Harness for Descriptor/Policy Versions`
-2. `FSG-08 Define Shadow Regression SLOs and Acceptance Thresholds`
-3. `FSG-09 Enforce Pre-Canary Gate: Invariants + Shadow Eval`
+1. `FSG-08 Define Shadow Regression SLOs and Acceptance Thresholds`
+2. `FSG-09 Enforce Pre-Canary Gate: Invariants + Shadow Eval`
+3. `FSG-10 Add Automatic Rollback Rules for Safety Regressions`
 
 ## Queue Order
 

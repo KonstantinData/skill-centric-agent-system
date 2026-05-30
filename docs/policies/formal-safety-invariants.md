@@ -108,6 +108,7 @@ The invariant replay fixture corpus is versioned in:
 
 - `docs/policies/contracts.md`
 - `docs/policies/formal-safety-change-type-matrix.md`
+- `docs/policies/shadow-evaluation-harness.md`
 - `docs/policies/runtime-contract.md`
 - `docs/policies/production-readiness.md`
 - `docs/roadmap/scas-execution-queue.md`
