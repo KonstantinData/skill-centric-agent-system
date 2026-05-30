@@ -1,0 +1,156 @@
+{
+  "contract_version": "0.1.0",
+  "baseline_versions": {
+    "descriptor_version": "descriptor-2026-05-30.1",
+    "policy_version": "policy-2026-05-30.1"
+  },
+  "candidate_versions": {
+    "descriptor_version": "descriptor-2026-05-30.2",
+    "policy_version": "policy-2026-05-30.2"
+  },
+  "trace_events": [
+    {
+      "trace_id": "trace-001",
+      "change_type": "code-review",
+      "expected_safety_violation": false,
+      "expected_selection_ids": [
+        "module-a",
+        "module-b"
+      ],
+      "baseline": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-a",
+          "module-b"
+        ]
+      },
+      "candidate": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-a",
+          "module-b"
+        ]
+      }
+    },
+    {
+      "trace_id": "trace-002",
+      "change_type": "code-review",
+      "expected_safety_violation": false,
+      "expected_selection_ids": [
+        "module-a",
+        "module-b"
+      ],
+      "baseline": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-a"
+        ]
+      },
+      "candidate": {
+        "abstained": false,
+        "mixed_profile": true,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-a",
+          "module-b",
+          "module-c"
+        ]
+      }
+    },
+    {
+      "trace_id": "trace-003",
+      "change_type": "policy-change",
+      "expected_safety_violation": true,
+      "expected_selection_ids": [
+        "guardrail-validator"
+      ],
+      "baseline": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": true,
+        "selected_module_ids": [
+          "guardrail-validator"
+        ]
+      },
+      "candidate": {
+        "abstained": true,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": []
+      }
+    },
+    {
+      "trace_id": "trace-004",
+      "change_type": "policy-change",
+      "expected_safety_violation": true,
+      "expected_selection_ids": [
+        "guardrail-validator"
+      ],
+      "baseline": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": true,
+        "selected_module_ids": [
+          "guardrail-validator"
+        ]
+      },
+      "candidate": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": true,
+        "selected_module_ids": [
+          "guardrail-validator"
+        ]
+      }
+    },
+    {
+      "trace_id": "trace-005",
+      "change_type": "data-update",
+      "expected_safety_violation": false,
+      "expected_selection_ids": [],
+      "baseline": {
+        "abstained": true,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": []
+      },
+      "candidate": {
+        "abstained": true,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": []
+      }
+    },
+    {
+      "trace_id": "trace-006",
+      "change_type": "runtime-hotfix",
+      "expected_safety_violation": false,
+      "expected_selection_ids": [
+        "module-x"
+      ],
+      "baseline": {
+        "abstained": false,
+        "mixed_profile": true,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-x",
+          "module-y"
+        ]
+      },
+      "candidate": {
+        "abstained": false,
+        "mixed_profile": false,
+        "safety_violation_detected": false,
+        "selected_module_ids": [
+          "module-x"
+        ]
+      }
+    }
+  ]
+}

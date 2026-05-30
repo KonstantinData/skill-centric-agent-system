@@ -24,6 +24,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/threat-model.md`
 - `docs/policies/formal-safety-invariants.md`
 - `docs/policies/formal-safety-change-type-matrix.md`
+- `docs/policies/shadow-evaluation-harness.md`
 - `docs/policies/error-taxonomy.md`
 - `docs/policies/sota-2026-target-profile.md`
 
