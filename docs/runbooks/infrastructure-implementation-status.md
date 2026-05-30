@@ -30,6 +30,7 @@ Normative data-plane boundaries remain in
   gates are implemented.
 - Production release evidence workflow exists with external run metadata
   validation.
+- Main branch protection ruleset is active on GitHub (`main-protection`).
 
 ## Not Yet Implemented
 
