@@ -1,0 +1,14 @@
+{
+  "failure_reasons": [],
+  "required_remediation_paths": [],
+  "rollback_allowed": true,
+  "rollback_required": false,
+  "rollback_target": {
+    "descriptor_version": null,
+    "policy_version": null,
+    "signature_ref": null,
+    "signature_verified": null
+  },
+  "status": "passed",
+  "trigger_reasons": []
+}

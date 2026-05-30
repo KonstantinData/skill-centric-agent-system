@@ -181,6 +181,9 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "production-evidence/shadow-regression-threshold-evaluation.json" in workflow
     assert "scripts/release/evaluate_pre_canary_gate.py" in workflow
     assert "production-evidence/pre-canary-safety-gate.json" in workflow
+    assert "scripts/release/evaluate_automatic_rollback_rules.py" in workflow
+    assert "policies/runtime/automatic-rollback-rules.json" in workflow
+    assert "production-evidence/automatic-rollback-evaluation.json" in workflow
     assert "ls-files" in workflow
     assert "npm run worker:typecheck" in workflow
     assert "npm run worker:test" in workflow

@@ -1,0 +1,17 @@
+{
+  "contract_version": "0.1.0",
+  "policy_id": "fsg-10-automatic-rollback-rules",
+  "owner": "@KonstantinData",
+  "trigger_policy": {
+    "rollback_on_pre_canary_failed": true
+  },
+  "rollback_target_policy": {
+    "require_signed_last_known_good": true,
+    "required_metadata_fields": [
+      "descriptor_version",
+      "policy_version",
+      "signature_ref",
+      "signature_verified"
+    ]
+  }
+}
