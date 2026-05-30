@@ -1,6 +1,6 @@
 {
-  "cases_path": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system\\examples\\evaluations\\formal-safety-invariant-replay-cases.json",
-  "profiles_dir": "D:\\Git-GitHub\\Repositories\\00-Liquisto\\skill-centric-agent-system\\examples\\profiles",
+  "cases_path": "examples/evaluations/formal-safety-invariant-replay-cases.json",
+  "profiles_dir": "examples/profiles",
   "total_cases": 15,
   "mismatch_count": 0,
   "status": "passed",
