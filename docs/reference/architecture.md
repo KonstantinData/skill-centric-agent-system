@@ -124,6 +124,8 @@ The runtime receives only the validated profile. If execution needs a capability
 
 The authoritative invariant set for profile sealing and pre-canary controls is
 defined in `docs/policies/formal-safety-invariants.md`.
+The durable architecture decision for this safety package is
+`docs/adr/0006-formal-safety-guarantees-profile-sealing.md`.
 
 ## Core Invariant
 

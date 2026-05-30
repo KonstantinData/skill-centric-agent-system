@@ -106,6 +106,7 @@ The invariant replay fixture corpus is versioned in:
 
 ## Related References
 
+- `docs/adr/0006-formal-safety-guarantees-profile-sealing.md`
 - `docs/policies/contracts.md`
 - `docs/policies/formal-safety-change-type-matrix.md`
 - `docs/policies/shadow-evaluation-harness.md`

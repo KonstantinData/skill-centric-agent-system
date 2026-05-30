@@ -36,4 +36,4 @@ def test_formal_invariant_catalog_is_wired_into_core_docs() -> None:
 
     assert "formal-safety-invariants.md" in contracts
     assert "formal-safety-invariants.md" in architecture
-    assert "FSG-12 Publish ADR for Formal Safety Guarantees" in queue
+    assert "P5.03 Complete Production Readiness Evidence Workflow" in queue

@@ -50,6 +50,9 @@ runtime gate now emits sanitized handler-binding evidence from planner
 checkpoints, and the production-readiness certification flow downloads and
 validates that artifact before accepting a live runtime run. Handler version
 upgrade, deprecation, and rollback policy is now documented and tested.
+The formal safety guarantees package for profile sealing and pre-canary gates
+is now codified through executable invariant gates, shadow-threshold checks,
+automatic rollback rules, incident-locked regressions, and ADR-0006.
 
 The Runtime Preflight Gate is complete. The initial productive runtime core is
 implemented. Queue-backed Cloudflare embedding indexing, runtime retention
