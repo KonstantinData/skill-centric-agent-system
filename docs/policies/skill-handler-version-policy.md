@@ -73,6 +73,8 @@ preserve fail-closed behavior:
 Production certification must include:
 
 - static coverage from `examples/runtime/skill-handler-coverage.json`,
+- production instruction packs from
+  `examples/runtime/production-skill-instruction-packs.json`,
 - live handler binding evidence from the `live-runtime-handler-binding-evidence`
   artifact,
 - version policy tests from `tests/test_skill_handler_version_policy.py`, and

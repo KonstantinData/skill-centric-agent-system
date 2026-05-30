@@ -187,6 +187,9 @@ The current repository has implemented the first control-plane slice:
 - a committed skill handler coverage manifest and CI gate that map
   production-required skill fixtures to exact handler IDs, runtime paths, and
   tests,
+- a committed production skill instruction-pack artifact and CI gate that map
+  production-required skill fixtures to execution steps, live-run evidence
+  requirements, and module/runtime test evidence,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
   R2 objects and D1 metadata,
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and

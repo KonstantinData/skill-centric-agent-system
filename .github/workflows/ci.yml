@@ -101,6 +101,9 @@ jobs:
       - name: Validate skill handler coverage manifest
         run: PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
 
+      - name: Validate production skill instruction packs
+        run: PYTHONPATH=src uv run python scripts/runtime/production_skill_instruction_packs.py --check
+
       - name: Evaluate error classification gates
         run: |
           uv run python scripts/operations/evaluate_error_classification_gates.py \

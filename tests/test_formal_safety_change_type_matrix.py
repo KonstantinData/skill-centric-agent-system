@@ -41,4 +41,4 @@ def test_formal_safety_change_type_matrix_wired_in_docs() -> None:
 
     assert "formal-safety-change-type-matrix.md" in docs_index
     assert "formal-safety-change-type-matrix.md" in policy_doc
-    assert "P5.03 Complete Production Readiness Evidence Workflow" in queue
+    assert "Post-P5: Define and govern HOOKS usage model" in queue
