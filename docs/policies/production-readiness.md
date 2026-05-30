@@ -4,11 +4,9 @@
 
 This document defines the evidence gate required before the repository can be
 described as production-ready.
-
-The current system has an initial productive runtime core. That is not the same
-as a production-ready release. Production-ready status requires environment
-separation, repeatable release evidence, operational coverage, security closure,
-and executable runtime capabilities that match the claimed production scope.
+Production-ready status requires environment separation, repeatable release
+evidence, operational coverage, security closure, and executable runtime
+capabilities that match the claimed production scope.
 
 ## Status Vocabulary
 
@@ -24,9 +22,6 @@ release handoffs:
   owner-approved risk acceptance.
 - `not-production-ready`: one or more required release gates are missing,
   failing, or unevidenced.
-
-The repository is currently `not-production-ready` for a full production launch.
-It may be described as having an `initial-productive-core`.
 
 ## Release Gate
 
@@ -65,82 +60,8 @@ is satisfied for the target environment.
 - Dev evidence can support implementation confidence, but it cannot certify
   staging or production.
 
-## Prioritized Implementation Backlog
-
-The production readiness backlog is ordered by dependency and release risk:
-
-1. `P5.01 Production Release Readiness Gate`
-   Define this gate, add repository documentation, and make the gate testable.
-2. `P5.02 Staging and Production Environment Separation`
-   Add explicit Cloudflare and Hetzner staging/prod configuration and validation.
-   Complete: environment-scoped Cloudflare/Hetzner resources are provisioned for
-   `staging` and `prod`, workflows resolve environment-prefixed secrets
-   (`SCAS_*`), runtime DB/artifact roots are isolated by environment, and live
-   staging/prod validation gates are codified in workflows, scripts, tests, and
-   runbooks.
-3. `P5.03 Production Release Evidence Workflow`
-   Run required checks and live gates through a release workflow that writes a
-   non-secret evidence summary.
-   Complete: `.github/workflows/production-readiness.yml` writes a
-   machine-readable evidence artifact in `evidence-only` mode and verifies
-   same-repository, same-commit, successful external live gate runs in
-   `certify` mode.
-4. `P5.04 Production Skill Handler Runtime`
-   Initial code-backed handler registry complete. The runtime now resolves
-   profile-selected skills to exact `name@version` executable handlers and
-   fail-closes unknown or mismatched handlers before tool execution.
-   Handler coverage is now machine-readable in
-   `examples/runtime/skill-handler-coverage.json` and validated by CI.
-   Handler version upgrade and rollback policy is now defined in
-   `docs/policies/skill-handler-version-policy.md` and tested by
-   `tests/test_skill_handler_version_policy.py`.
-5. `P5.05 Controlled Write-Capable Execution Path`
-   Add write adapters only behind authorization, approval, policy, audit,
-   validation, and rollback gates.
-   Complete: the first controlled write path is `filesystem-write`, guarded by
-   profile-selected `repository-write` data scope, `write-approval-required`
-   policy, high-risk gating, structured approval payloads, rollback metadata,
-   dry-run-by-default behavior, and tests. Planners still emit read-only actions
-   until a later composition slice explicitly selects write profiles.
-6. `P5.06 Scheduled Runtime Retention Cleanup Automation`
-   Automate dry-run-first retention cleanup with reports and failure signals.
-   Complete: `.github/workflows/runtime-retention-cleanup.yml` runs scheduled
-   dry-run retention cleanup on the Hetzner Runtime Plane, supports manual
-   environment-targeted dry-run or confirmed-delete dispatch, uploads
-   non-secret cleanup evidence, and prevents scheduled destructive cleanup.
-7. `P5.07 Production Telemetry and Alerting`
-   Add production telemetry for Control Plane and Runtime Plane failure modes.
-   Complete: aggregate telemetry policy and snapshot schemas, fixtures, CLI
-   evaluator, runbook-backed alert metadata, and release-evidence gate coverage
-   are implemented. Alert evidence records aggregate metadata only; raw runtime
-   traces remain on Hetzner.
-8. `P5.08 Security Hardening and Threat Model Closure`
-   Complete security review, threat model updates, token scope checks, and
-   finding remediation.
-   Initial repository security and governance gates now cover secret scanning,
-   `.env` guard, CODEOWNERS, main-protection desired-state validation,
-   dependency policy, workflow hardening, Actions-BOM, release SBOM, data
-   governance, and quality-policy tests.
-   Complete: the production threat model is versioned in
-   `docs/policies/threat-model.md`; token-scope review, secret rotation expectations,
-   finding closure, data-plane boundary evidence, and waiver blockers are
-   captured in `policies/security/production-security-closure.json`; and
-   `scripts/security/validate_security_closure.py` is run by the
-   security-governance workflow.
-9. `P5.09 Analyzer, Composer, and Human Review Quality Gate`
-   Expand evaluation coverage and make ambiguous production tasks enter a
-   human-review path instead of overgranting.
-   Complete: Runtime profile contract `0.4.0` includes a machine-readable
-   `human_review` block, and the Composer now turns ambiguous analyzer output
-   into a review-required profile with no selected skills, tools, knowledge
-   scopes, data scopes, or memory scopes.
-10. `P5.11 Expand Production Skill Handler Coverage`
-    Complete: production-required skill fixtures and executable handlers now
-    include `document-synthesis` and `dependency-audit` in addition to the
-    initial first-slice handlers, with manifest and runtime test coverage.
-11. `P5.10 Production Readiness Certification Run`
-    Run the complete gate against the target environment and record the release
-    decision.
+Implementation sequencing and status tracking are intentionally kept outside
+this policy file in `docs/roadmap/production-readiness-backlog.md`.
 
 ## Certification Output
 
@@ -214,7 +135,6 @@ The evidence artifact uses contract version `0.4.0` and includes:
 
 This workflow does not write secret values to its evidence artifact. External
 live gate URLs must point to workflow runs whose logs also avoid secret output.
-The workflow alone does not bypass incomplete production gates: staging and
-production certification remain `not-production-ready` while unresolved
-environment provisioning and final live certification steps are still open.
+The workflow itself does not override release gates. Gate outcomes still depend
+on verified evidence for the target environment.
 

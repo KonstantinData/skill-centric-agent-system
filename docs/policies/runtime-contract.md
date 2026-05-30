@@ -8,6 +8,10 @@ role such as reviewer, researcher, or task executor. Those are validation
 scenarios produced by task intake, analyzer signals, composition context, and
 profile selection.
 
+This is the single normative source for runtime behavior.
+Other policy documents may reference this contract but must not duplicate or
+override runtime rules.
+
 ## Contract Surfaces
 
 The productive runtime path is:

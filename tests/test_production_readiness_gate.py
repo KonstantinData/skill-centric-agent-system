@@ -19,11 +19,13 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
         "Status Vocabulary",
         "Release Gate",
         "Evidence Rules",
-        "Prioritized Implementation Backlog",
         "Certification Output",
+        "Evidence Workflow",
     )
     for section in required_sections:
         assert f"## {section}" in gate
+
+    assert "docs/roadmap/production-readiness-backlog.md" in gate
 
     required_gates = (
         "Repository integrity",
