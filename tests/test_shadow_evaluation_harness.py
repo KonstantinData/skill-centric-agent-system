@@ -87,4 +87,4 @@ def test_shadow_evaluation_harness_is_wired_into_docs_and_queue() -> None:
 
     assert "shadow-evaluation-harness.md" in docs_index
     assert "shadow-evaluation-harness.md" in invariant_policy
-    assert "FSG-11 Add Incident-Locked Regression Tests" in queue
+    assert "FSG-12 Publish ADR for Formal Safety Guarantees" in queue

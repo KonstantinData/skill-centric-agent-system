@@ -111,6 +111,7 @@ The invariant replay fixture corpus is versioned in:
 - `docs/policies/shadow-evaluation-harness.md`
 - `docs/policies/shadow-regression-thresholds.md`
 - `docs/policies/automatic-rollback-rules.md`
+- `docs/policies/incident-locked-regressions.md`
 - `docs/policies/runtime-contract.md`
 - `docs/policies/production-readiness.md`
 - `docs/roadmap/scas-execution-queue.md`

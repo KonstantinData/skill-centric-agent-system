@@ -1,0 +1,60 @@
+[
+  {
+    "incident_id": "inc-2026-05-001-scope-widening",
+    "summary": "Runtime-logic change widened tool scope without recomposition.",
+    "change_type": "runtime-logic",
+    "invariant_id": "scope_monotonicity",
+    "case_type": "violation",
+    "expected_violation": true,
+    "mode": "profile-pair",
+    "parent_profile_fixture": "code-review-profile.json",
+    "parent_mutations": [],
+    "current_profile_fixture": "code-review-profile.json",
+    "current_mutations": [
+      {
+        "op": "set",
+        "path": "tools",
+        "value": [
+          "filesystem-read",
+          "git-read",
+          "test-runner",
+          "filesystem-write"
+        ]
+      }
+    ]
+  },
+  {
+    "incident_id": "inc-2026-05-002-unknown-capability-accepted",
+    "summary": "Security gate drift accepted an unselected module version.",
+    "change_type": "security-gate",
+    "invariant_id": "fail_closed_on_unknowns",
+    "case_type": "violation",
+    "expected_violation": true,
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "module_versions.unexpected-capability",
+        "value": "99.99.99"
+      }
+    ]
+  },
+  {
+    "incident_id": "inc-2026-05-003-missing-mandatory-validator",
+    "summary": "Governance-doc update removed task-type validator binding.",
+    "change_type": "governance-doc",
+    "invariant_id": "mandatory_validators_per_change_type",
+    "case_type": "violation",
+    "expected_violation": true,
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "validators.task_type_consistency",
+        "value": false
+      }
+    ]
+  }
+]
