@@ -1,0 +1,320 @@
+[
+  {
+    "name": "fail_closed_on_unknowns positive baseline profile",
+    "invariant_id": "fail_closed_on_unknowns",
+    "case_type": "positive",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "fail_closed_on_unknowns near miss recomposed profile with exact pins",
+    "invariant_id": "fail_closed_on_unknowns",
+    "case_type": "near-miss",
+    "source": {
+      "type": "counterfactual",
+      "reference": "recomposition-safe-path"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "profile_generation",
+        "value": 2
+      },
+      {
+        "op": "set",
+        "path": "id",
+        "value": "profile-code-review-latest-commit-g2"
+      },
+      {
+        "op": "set",
+        "path": "parent_profile_id",
+        "value": "profile-code-review-latest-commit"
+      },
+      {
+        "op": "set",
+        "path": "recomposition_reason",
+        "value": "missing_capability"
+      }
+    ],
+    "expected_violation": false
+  },
+  {
+    "name": "fail_closed_on_unknowns violation unselected version pin",
+    "invariant_id": "fail_closed_on_unknowns",
+    "case_type": "violation",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "module_versions.unexpected-capability",
+        "value": "0.1.0"
+      }
+    ],
+    "expected_violation": true
+  },
+  {
+    "name": "no_self_granting positive baseline profile",
+    "invariant_id": "no_self_granting",
+    "case_type": "positive",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "no_self_granting near miss selected non-runtime skill mapping",
+    "invariant_id": "no_self_granting",
+    "case_type": "near-miss",
+    "source": {
+      "type": "counterfactual",
+      "reference": "execution-role-tightening"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "skill_execution_roles.non_runtime_skills",
+        "value": [
+          "git-diff-analysis"
+        ]
+      }
+    ],
+    "expected_violation": false
+  },
+  {
+    "name": "no_self_granting violation runtime role references unselected skill",
+    "invariant_id": "no_self_granting",
+    "case_type": "violation",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "skill_execution_roles.runtime_skills",
+        "value": [
+          "git-diff-analysis",
+          "task-execution-planning"
+        ]
+      }
+    ],
+    "expected_violation": true
+  },
+  {
+    "name": "mandatory_validators_per_change_type positive code review validator present",
+    "invariant_id": "mandatory_validators_per_change_type",
+    "case_type": "positive",
+    "source": {
+      "type": "incident",
+      "reference": "T2"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "mandatory_validators_per_change_type near miss human-review profile minimal validators",
+    "invariant_id": "mandatory_validators_per_change_type",
+    "case_type": "near-miss",
+    "source": {
+      "type": "incident",
+      "reference": "T2"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "human-review-required-profile.json",
+    "mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "mandatory_validators_per_change_type violation missing task-type validator",
+    "invariant_id": "mandatory_validators_per_change_type",
+    "case_type": "violation",
+    "source": {
+      "type": "counterfactual",
+      "reference": "validator-strip"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "validators",
+        "value": [
+          "runtime-profile-schema"
+        ]
+      },
+      {
+        "op": "set",
+        "path": "module_versions",
+        "value": {
+          "base-agent-rules": "0.1.0",
+          "code-review-rules": "0.1.0",
+          "git-diff-analysis": "0.1.0",
+          "filesystem-read": "0.1.0",
+          "git-read": "0.1.0",
+          "test-runner": "0.1.0",
+          "architecture-docs": "0.1.0",
+          "coding-guidelines": "0.1.0",
+          "repository-readonly": "0.1.0",
+          "no-destructive-commands": "0.1.0",
+          "require-file-references": "0.1.0",
+          "runtime-profile-schema": "0.1.0"
+        }
+      }
+    ],
+    "expected_violation": true
+  },
+  {
+    "name": "scope_monotonicity positive identical scope sets",
+    "invariant_id": "scope_monotonicity",
+    "case_type": "positive",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "profile-pair",
+    "parent_profile_fixture": "code-review-profile.json",
+    "current_profile_fixture": "code-review-profile.json",
+    "parent_mutations": [],
+    "current_mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "scope_monotonicity near miss narrowed scope set",
+    "invariant_id": "scope_monotonicity",
+    "case_type": "near-miss",
+    "source": {
+      "type": "counterfactual",
+      "reference": "scope-narrowing-safe"
+    },
+    "mode": "profile-pair",
+    "parent_profile_fixture": "code-review-profile.json",
+    "current_profile_fixture": "code-review-profile.json",
+    "parent_mutations": [],
+    "current_mutations": [
+      {
+        "op": "set",
+        "path": "tools",
+        "value": [
+          "git-read",
+          "test-runner"
+        ]
+      }
+    ],
+    "expected_violation": false
+  },
+  {
+    "name": "scope_monotonicity violation widened tool scope",
+    "invariant_id": "scope_monotonicity",
+    "case_type": "violation",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "profile-pair",
+    "parent_profile_fixture": "code-review-profile.json",
+    "current_profile_fixture": "code-review-profile.json",
+    "parent_mutations": [],
+    "current_mutations": [
+      {
+        "op": "set",
+        "path": "tools",
+        "value": [
+          "filesystem-read",
+          "git-read",
+          "test-runner",
+          "filesystem-list"
+        ]
+      }
+    ],
+    "expected_violation": true
+  },
+  {
+    "name": "immutable_profile_after_seal positive generation one baseline",
+    "invariant_id": "immutable_profile_after_seal",
+    "case_type": "positive",
+    "source": {
+      "type": "incident",
+      "reference": "T1"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [],
+    "expected_violation": false
+  },
+  {
+    "name": "immutable_profile_after_seal near miss recomposed metadata complete",
+    "invariant_id": "immutable_profile_after_seal",
+    "case_type": "near-miss",
+    "source": {
+      "type": "counterfactual",
+      "reference": "controlled-recomposition"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "profile_generation",
+        "value": 2
+      },
+      {
+        "op": "set",
+        "path": "id",
+        "value": "profile-code-review-latest-commit-g2"
+      },
+      {
+        "op": "set",
+        "path": "parent_profile_id",
+        "value": "profile-code-review-latest-commit"
+      },
+      {
+        "op": "set",
+        "path": "recomposition_reason",
+        "value": "missing_capability"
+      }
+    ],
+    "expected_violation": false
+  },
+  {
+    "name": "immutable_profile_after_seal violation generation one with recomposition reason",
+    "invariant_id": "immutable_profile_after_seal",
+    "case_type": "violation",
+    "source": {
+      "type": "counterfactual",
+      "reference": "post-seal-mutation"
+    },
+    "mode": "single-profile",
+    "profile_fixture": "code-review-profile.json",
+    "mutations": [
+      {
+        "op": "set",
+        "path": "recomposition_reason",
+        "value": "missing_capability"
+      }
+    ],
+    "expected_violation": true
+  }
+]
