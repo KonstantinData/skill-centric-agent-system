@@ -41,4 +41,4 @@ def test_formal_safety_change_type_matrix_wired_in_docs() -> None:
 
     assert "formal-safety-change-type-matrix.md" in docs_index
     assert "formal-safety-change-type-matrix.md" in policy_doc
-    assert "FSG-03 Implement Executable Invariant Assertion Library" in queue
+    assert "FSG-04 Build Positive/Negative Replay Fixture Corpus" in queue
