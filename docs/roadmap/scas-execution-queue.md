@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-06 Make Invariant-Check a Required CI Gate`
-2. `FSG-07 Implement Shadow-Evaluation Harness for Descriptor/Policy Versions`
-3. `FSG-08 Define Shadow Regression SLOs and Acceptance Thresholds`
+1. `FSG-07 Implement Shadow-Evaluation Harness for Descriptor/Policy Versions`
+2. `FSG-08 Define Shadow Regression SLOs and Acceptance Thresholds`
+3. `FSG-09 Enforce Pre-Canary Gate: Invariants + Shadow Eval`
 
 ## Queue Order
 

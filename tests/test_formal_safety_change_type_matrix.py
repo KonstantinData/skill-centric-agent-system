@@ -41,4 +41,4 @@ def test_formal_safety_change_type_matrix_wired_in_docs() -> None:
 
     assert "formal-safety-change-type-matrix.md" in docs_index
     assert "formal-safety-change-type-matrix.md" in policy_doc
-    assert "FSG-06 Make Invariant-Check a Required CI Gate" in queue
+    assert "FSG-07 Implement Shadow-Evaluation Harness for Descriptor/Policy Versions" in queue

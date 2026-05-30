@@ -59,6 +59,32 @@ jobs:
       - name: Run contract tests
         run: uv run pytest
 
+      - name: Run formal safety invariant gate
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src uv run python scripts/runtime/invariant_check.py \
+            --print-json \
+            --output-json ci-evidence/invariant-check.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("ci-evidence/invariant-check.json")
+          if not report.exists():
+              raise SystemExit("Missing invariant-check evidence report.")
+
+          payload = json.loads(report.read_text(encoding="utf-8"))
+          if payload.get("status") != "passed":
+              raise SystemExit(f"Invariant-check status is not passed: {payload!r}")
+          if int(payload.get("mismatch_count", -1)) != 0:
+              raise SystemExit(
+                  "Invariant-check mismatch_count must be 0, "
+                  f"got {payload.get('mismatch_count')!r}"
+              )
+          if int(payload.get("total_cases", 0)) <= 0:
+              raise SystemExit("Invariant-check executed zero replay cases.")
+          PY
+
       - name: Run linting
         run: uv run ruff check .
 

@@ -44,6 +44,8 @@ def test_ci_workflow_runs_repository_validation() -> None:
     assert "uv run ruff check ." in workflow
     assert "uv run mypy" in workflow
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
+    assert "scripts/runtime/invariant_check.py" in workflow
+    assert "ci-evidence/invariant-check.json" in workflow
     assert "rglob(\"*.json\")" in workflow
 
 
@@ -173,6 +175,8 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "uv run ruff check ." in workflow
     assert "uv run mypy" in workflow
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow
+    assert "scripts/runtime/invariant_check.py" in workflow
+    assert "production-evidence/invariant-check.json" in workflow
     assert "ls-files" in workflow
     assert "npm run worker:typecheck" in workflow
     assert "npm run worker:test" in workflow

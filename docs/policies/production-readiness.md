@@ -30,7 +30,7 @@ is satisfied for the target environment.
 
 | Gate | Required Evidence |
 | --- | --- |
-| Repository integrity | `python -m pytest`, `python -m ruff check .`, security governance scripts, `npm run worker:typecheck`, `npm run worker:test`, and `npm run worker:check` pass on the release commit. |
+| Repository integrity | `python -m pytest`, `python -m ruff check .`, `python scripts/runtime/invariant_check.py`, security governance scripts, `npm run worker:typecheck`, `npm run worker:test`, and `npm run worker:check` pass on the release commit. |
 | Contract and documentation consistency | README, architecture, contracts, schemas, examples, runbooks, and ADRs are consistent with the release scope. |
 | Repository security and supply chain | Secret scanning, tracked `.env` guard, dependency policy, Dependency Review, CodeQL, workflow hardening, pinned Actions, Actions-BOM, SBOM generation, CODEOWNERS, active main-branch protection, and main-protection desired-state validation pass. |
 | Data governance and quality | Data classification, model privacy, audit minimization, and knowledge/data-quality policy fixtures are current and tested. |
@@ -93,6 +93,9 @@ artifacts. `evidence-only` mode supports implementation progress while staging
 and production infrastructure are still being prepared.
 `certify` mode requires references to matching live runtime and AI Gateway
 smoke workflow runs.
+The workflow also persists `production-evidence/invariant-check.json` and
+fails closed unless the report exists, has `status = "passed"`, `mismatch_count
+= 0`, and a positive `total_cases`.
 
 The workflow builds the evidence artifact through
 `scripts/release/build_production_readiness_evidence.py`. In `certify` mode it

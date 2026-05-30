@@ -30,6 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES_PATH)
     parser.add_argument("--profiles-dir", type=Path, default=DEFAULT_PROFILES_DIR)
     parser.add_argument("--print-json", action="store_true")
+    parser.add_argument(
+        "--output-json",
+        type=Path,
+        help="Optional path to persist the replay summary as JSON evidence.",
+    )
     return parser
 
 
@@ -64,6 +69,13 @@ def main(argv: list[str] | None = None) -> int:
             for result in results
         ],
     }
+
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(
+            f"{json.dumps(summary, indent=2)}\n",
+            encoding="utf-8",
+        )
 
     if args.print_json:
         print(json.dumps(summary, indent=2))
