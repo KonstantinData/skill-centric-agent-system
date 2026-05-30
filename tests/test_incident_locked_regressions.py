@@ -79,4 +79,4 @@ def test_incident_locked_regressions_are_wired_into_docs_and_queue() -> None:
 
     assert "incident-locked-regressions.md" in docs_index
     assert "incident-locked-regressions.md" in invariant_policy
-    assert "FSG-12 Publish ADR for Formal Safety Guarantees" in queue
+    assert "P5.03 Complete Production Readiness Evidence Workflow" in queue

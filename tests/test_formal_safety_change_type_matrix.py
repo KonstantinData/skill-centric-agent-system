@@ -41,4 +41,4 @@ def test_formal_safety_change_type_matrix_wired_in_docs() -> None:
 
     assert "formal-safety-change-type-matrix.md" in docs_index
     assert "formal-safety-change-type-matrix.md" in policy_doc
-    assert "FSG-12 Publish ADR for Formal Safety Guarantees" in queue
+    assert "P5.03 Complete Production Readiness Evidence Workflow" in queue

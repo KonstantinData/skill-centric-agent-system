@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-12 Publish ADR for Formal Safety Guarantees`
-2. `P5.03 Complete Production Readiness Evidence Workflow`
-3. `P5.04 Complete Security Hardening and Threat-Model Closure`
+1. `P5.03 Complete Production Readiness Evidence Workflow`
+2. `P5.04 Complete Security Hardening and Threat-Model Closure`
+3. `P5.11 Run the production readiness certification gate against the target environment`
 
 ## Queue Order
 
