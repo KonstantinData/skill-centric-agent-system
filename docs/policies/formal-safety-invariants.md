@@ -100,6 +100,9 @@ The invariant replay fixture corpus is versioned in:
 
 - `examples/evaluations/formal-safety-invariant-replay-cases.json`
 - `scripts/runtime/invariant_check.py` executes the corpus as a blocking check.
+- `.github/workflows/ci.yml` runs `invariant_check.py` in the required PR gate.
+- `.github/workflows/production-readiness.yml` records invariant-check evidence
+  before certification output is built.
 
 ## Related References
 

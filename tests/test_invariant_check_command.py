@@ -40,3 +40,15 @@ def test_invariant_check_command_fails_on_mismatched_expected_outcome(tmp_path: 
     result = run_command("--cases", str(bad_cases_path), "--profiles-dir", str(PROFILES_DIR))
     assert result.returncode == 1
     assert "mismatches" in result.stdout
+
+
+def test_invariant_check_command_writes_output_json(tmp_path: Path) -> None:
+    output_path = tmp_path / "ci-evidence" / "invariant-check.json"
+    result = run_command("--output-json", str(output_path))
+
+    assert result.returncode == 0, result.stderr
+    assert output_path.exists()
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["status"] == "passed"
+    assert payload["mismatch_count"] == 0
