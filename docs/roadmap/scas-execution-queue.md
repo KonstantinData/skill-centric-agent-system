@@ -20,9 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `FSG-02 Map Invariants to Change-Type Matrix`
-2. `FSG-03 Implement Executable Invariant Assertion Library`
-3. `FSG-04 Build Positive/Negative Replay Fixture Corpus`
+1. `FSG-03 Implement Executable Invariant Assertion Library`
+2. `FSG-04 Build Positive/Negative Replay Fixture Corpus`
+3. `FSG-05 Add Invariant-Check Command`
 
 ## Queue Order
 

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:formal-safety-change-type-matrix:0.1.0",
+  "title": "SCAS Formal Safety Change-Type Matrix",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "matrix_id",
+    "owner",
+    "invariant_source",
+    "change_types"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "matrix_id": {
+      "const": "fsg-02-invariant-change-type-matrix"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "invariant_source": {
+      "const": "docs/policies/formal-safety-invariants.md"
+    },
+    "change_types": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "mandatory_invariants",
+          "mandatory_runtime_validators",
+          "mandatory_repo_validators",
+          "required_ci_checks",
+          "enforcement_mode"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "contract-change",
+              "runtime-logic",
+              "governance-doc",
+              "security-gate",
+              "scope-or-policy-change"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mandatory_invariants": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/invariantId"
+            }
+          },
+          "mandatory_runtime_validators": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/runtimeValidatorId"
+            }
+          },
+          "mandatory_repo_validators": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/repoValidatorId"
+            }
+          },
+          "required_ci_checks": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/ciCheck"
+            }
+          },
+          "enforcement_mode": {
+            "enum": ["blocking"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "invariantId": {
+      "enum": [
+        "fail_closed_on_unknowns",
+        "no_self_granting",
+        "mandatory_validators_per_change_type",
+        "scope_monotonicity",
+        "immutable_profile_after_seal"
+      ]
+    },
+    "runtimeValidatorId": {
+      "enum": [
+        "runtime-profile-schema",
+        "review-findings-contract",
+        "research-output-contract",
+        "task-execution-output-contract",
+        "general-output-contract",
+        "memory-candidate-contract"
+      ]
+    },
+    "repoValidatorId": {
+      "enum": [
+        "pytest-contract-schemas",
+        "pytest-composition-pipeline",
+        "pytest-runtime-loop",
+        "pytest-runtime-output-contracts",
+        "validate-ruleset-config",
+        "validate-security-closure",
+        "validate-dependency-policy",
+        "check-workflow-hardening",
+        "validate-actions-bom"
+      ]
+    },
+    "ciCheck": {
+      "enum": [
+        "Contract tests",
+        "Cloudflare Worker",
+        "Repository governance gates",
+        "Secret scanning",
+        "Dependency audit",
+        "policy-as-code-gate",
+        "dependency-review",
+        "analyze"
+      ]
+    }
+  }
+}

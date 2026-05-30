@@ -49,6 +49,8 @@ rules.
   `docs/policies/infrastructure-boundary.md`
 - Formal profile-sealing invariant catalog:
   `docs/policies/formal-safety-invariants.md`
+- Machine-readable invariant-to-change-type validator mapping:
+  `docs/policies/formal-safety-change-type-matrix.md`
 - Production release gates and evidence requirements:
   `docs/policies/production-readiness.md`
 
