@@ -36,4 +36,4 @@ def test_formal_invariant_catalog_is_wired_into_core_docs() -> None:
 
     assert "formal-safety-invariants.md" in contracts
     assert "formal-safety-invariants.md" in architecture
-    assert "FSG-10 Add Automatic Rollback Rules for Safety Regressions" in queue
+    assert "FSG-11 Add Incident-Locked Regression Tests" in queue

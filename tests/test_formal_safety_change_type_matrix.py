@@ -41,4 +41,4 @@ def test_formal_safety_change_type_matrix_wired_in_docs() -> None:
 
     assert "formal-safety-change-type-matrix.md" in docs_index
     assert "formal-safety-change-type-matrix.md" in policy_doc
-    assert "FSG-10 Add Automatic Rollback Rules for Safety Regressions" in queue
+    assert "FSG-11 Add Incident-Locked Regression Tests" in queue

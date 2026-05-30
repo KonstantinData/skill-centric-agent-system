@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:automatic-rollback-rules:0.1.0",
+  "title": "SCAS Automatic Rollback Rules",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "policy_id",
+    "owner",
+    "trigger_policy",
+    "rollback_target_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "policy_id": {
+      "const": "fsg-10-automatic-rollback-rules"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger_policy": {
+      "type": "object",
+      "required": [
+        "rollback_on_pre_canary_failed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rollback_on_pre_canary_failed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rollback_target_policy": {
+      "type": "object",
+      "required": [
+        "require_signed_last_known_good",
+        "required_metadata_fields"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "require_signed_last_known_good": {
+          "type": "boolean"
+        },
+        "required_metadata_fields": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "descriptor_version",
+              "policy_version",
+              "signature_ref",
+              "signature_verified"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

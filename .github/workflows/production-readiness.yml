@@ -140,6 +140,16 @@ jobs:
             --output production-evidence/pre-canary-safety-gate.json \
             --fail-on-failed
 
+      - name: Evaluate automatic rollback rules
+        run: |
+          set -euo pipefail
+          uv run python scripts/release/evaluate_automatic_rollback_rules.py \
+            --policy policies/runtime/automatic-rollback-rules.json \
+            --pre-canary-report production-evidence/pre-canary-safety-gate.json \
+            --rollout-metadata examples/operations/rollout-metadata-snapshot.json \
+            --output production-evidence/automatic-rollback-evaluation.json \
+            --fail-on-failed
+
       - name: Validate tracked JSON files
         run: |
           python - <<'PY'
