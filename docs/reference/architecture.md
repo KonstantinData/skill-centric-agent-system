@@ -72,6 +72,13 @@ may use rules, classifiers, or LLM assistance, but its output must be explicit
 and testable. Ambiguous specialized matches fall back to `general-task` rather
 than silently choosing the wrong strategy.
 
+`Intent Transition Gate` evaluates multi-turn changes before capability
+authority can widen. It consumes typed transition evidence, evidence spans,
+previous/current task types, repository binding, write intent, and capability
+deltas. Unknown or unverifiable transition facts behave like not authorized for
+capability escalation. The durable policy is
+`docs/policies/intent-transition-gates.md`.
+
 `Agent Composer` consumes structured task signals and calls the Cloudflare
 Control API for D1-backed composition context. It scores candidate modules,
 applies policies, validates the dependency graph, pins module versions, and
@@ -120,13 +127,15 @@ and runtime playbooks for gates and trend analysis.
 The Composer is a deterministic pipeline around model-assisted analysis, not a free-form prompt:
 
 1. Read analyzer output and task constraints.
-2. Discover candidates from typed registries.
-3. Score candidates against structured signals.
-4. Remove denied candidates through policy and authz filters.
-5. Resolve dependencies and pinned versions.
-6. Validate the candidate graph.
-7. Emit a runtime profile.
-8. Validate the profile schema and cross-field invariants.
+2. Apply intent-transition evidence gates when a turn widens capability
+   authority.
+3. Discover candidates from typed registries.
+4. Score candidates against structured signals.
+5. Remove denied candidates through policy and authz filters.
+6. Resolve dependencies and pinned versions.
+7. Validate the candidate graph.
+8. Emit a runtime profile.
+9. Validate the profile schema and cross-field invariants.
 
 The runtime receives only the validated profile. If execution needs a capability that is not present, it requests recomposition instead of expanding permissions locally.
 

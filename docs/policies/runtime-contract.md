@@ -77,6 +77,10 @@ comparison, or safe remediation guidance without requesting repository writes
 route to `research`. This keeps Stack Overflow-like "how do I fix this error"
 queries on the retrieval/analysis path instead of treating advice-seeking text
 as executable change intent solely because it contains words such as `fix`.
+Multi-turn intent changes that widen capability authority must pass through the
+evidence-based transition rules in
+`docs/policies/intent-transition-gates.md`; the active profile must not inherit
+write authority from a prior research or read-only turn.
 
 ## Runtime Agent Profile
 
