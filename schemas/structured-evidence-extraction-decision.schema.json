@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:structured-evidence-extraction-decision:0.1.0",
+  "title": "SCAS Structured Evidence Extraction Decision",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "version",
+    "status",
+    "recommendation",
+    "official_sources",
+    "findings",
+    "local_schema_assessment",
+    "required_guardrails"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "const": "structured-evidence-extraction-decision"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "deferred",
+        "rejected"
+      ]
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "adopt_with_guardrails",
+        "defer_runtime_adoption",
+        "reject"
+      ]
+    },
+    "official_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^https://platform\\.openai\\.com/docs/"
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "format_error_reduction",
+        "semantic_completeness",
+        "latency",
+        "failure_modes",
+        "fallback_behavior",
+        "provider_boundary_risks"
+      ],
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "local_schema_assessment": {
+      "type": "object",
+      "required": [
+        "authoritative_schema",
+        "provider_subset_schema_required",
+        "unsupported_or_risky_keywords",
+        "authoritative_local_validation_required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "authoritative_schema": {
+          "type": "string",
+          "const": "schemas/transition-evidence.schema.json"
+        },
+        "provider_subset_schema_required": {
+          "const": true
+        },
+        "unsupported_or_risky_keywords": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "authoritative_local_validation_required": {
+          "const": true
+        }
+      }
+    },
+    "required_guardrails": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "deterministic_scanners_authoritative",
+          "local_schema_validation_authoritative",
+          "hash_and_offset_verification",
+          "scanner_coverage_required",
+          "fail_closed_on_provider_errors",
+          "no_provider_output_can_grant_authority"
+        ]
+      }
+    }
+  }
+}

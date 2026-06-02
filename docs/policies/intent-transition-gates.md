@@ -215,3 +215,9 @@ derives structured evidence from golden traces without composing profiles or
 granting capabilities. It reports false allow rate, unnecessary clarification
 rate, missed protected-path reference rate, evidence coverage rate,
 unknown-to-block conversion rate, and protected-path escalation rate.
+
+Structured Outputs for EvidenceSpan extraction are evaluated in
+`docs/adr/0008-structured-outputs-evidence-span-extraction.md` and
+`policies/runtime/structured-evidence-extraction-decision.json`. The current
+recommendation is to defer runtime adoption until a provider-subset extraction
+schema exists; provider output remains a proposal and cannot grant authority.
