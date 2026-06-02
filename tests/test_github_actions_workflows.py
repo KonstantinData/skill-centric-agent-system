@@ -54,6 +54,7 @@ def test_ci_workflow_runs_repository_validation() -> None:
     assert "scripts/runtime/production_skill_instruction_packs.py --check" in workflow
     assert "scripts/runtime/validate_hooks_usage_model.py --check" in workflow
     assert "scripts/release/validate_production_recertification_policy.py --check" in workflow
+    assert "scripts/runtime/scan_transition_signals.py --check" in workflow
     assert "scripts/runtime/validate_transition_evidence.py --check" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "ci-evidence/invariant-check.json" in workflow
@@ -191,6 +192,7 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "scripts/runtime/production_skill_instruction_packs.py --check" in workflow
     assert "scripts/runtime/validate_hooks_usage_model.py --check" in workflow
     assert "scripts/release/validate_production_recertification_policy.py --check" in workflow
+    assert "scripts/runtime/scan_transition_signals.py --check" in workflow
     assert "scripts/runtime/validate_transition_evidence.py --check" in workflow
     assert "scripts/security/validate_codeowners_coverage.py" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow

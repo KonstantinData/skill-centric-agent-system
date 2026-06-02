@@ -5,7 +5,12 @@
     "extractor": "scas-transition-evidence-fixture",
     "extractor_version": "0.1.0",
     "scanner_versions": {
+      "branch_reference": "0.1.0",
+      "commit_reference": "0.1.0",
+      "destructive_intent": "0.1.0",
       "path": "0.1.0",
+      "protected_path": "0.1.0",
+      "pull_request_reference": "0.1.0",
       "repository_reference": "0.1.0",
       "write_intent": "0.1.0"
     }
