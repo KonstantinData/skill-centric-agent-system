@@ -60,6 +60,10 @@ Critical fields must be backed by evidence spans or set to `unknown`.
 The machine-readable schema is
 `schemas/transition-evidence.schema.json`; the repository validator is
 `python scripts/runtime/validate_transition_evidence.py --check`.
+Deterministic critical-signal scanners are implemented in
+`scripts/runtime/scan_transition_signals.py` and must run before the evidence
+validator decides whether extracted evidence covers all critical scanner
+findings.
 
 ## Evidence Spans
 

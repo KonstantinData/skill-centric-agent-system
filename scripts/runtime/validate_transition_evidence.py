@@ -12,6 +12,11 @@ from jsonschema import Draft202012Validator
 
 CONTRACT_VERSION = "0.1.0"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.runtime.scan_transition_signals import scanner_coverage_violations  # noqa: E402
+
 DEFAULT_EVIDENCE = REPO_ROOT / "examples" / "evaluations" / "transition-evidence.json"
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "transition-evidence.schema.json"
 
@@ -117,6 +122,7 @@ def _evidence_violations(evidence: Mapping[str, Any]) -> list[str]:
     violations.extend(_span_violations(evidence, artifacts))
     violations.extend(_critical_field_violations(evidence))
     violations.extend(_capability_delta_violations(evidence))
+    violations.extend(scanner_coverage_violations(evidence))
     violations.extend(_audit_violations(evidence))
 
     return violations
