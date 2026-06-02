@@ -33,6 +33,7 @@ jobs:
         run: |
           python scripts/security/check_no_dotenv_files.py
           python scripts/security/validate_ruleset_config.py
+          python scripts/security/validate_codeowners_coverage.py
           python scripts/security/validate_dependency_policy.py
           python scripts/security/validate_security_closure.py
 
@@ -128,6 +129,8 @@ jobs:
           python scripts/security/validate_actions_bom.py security-evidence/actions-bom.json
           python scripts/security/generate_sbom.py --output security-evidence/release-sbom.json
           python scripts/security/validate_sbom.py security-evidence/release-sbom.json
+          python scripts/security/validate_codeowners_coverage.py \
+            --output-json security-evidence/codeowners-effective-ownership.json
 
       - name: Upload governance evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

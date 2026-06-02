@@ -35,6 +35,8 @@ Normative data-plane boundaries remain in
 - Production recertification cadence and release policy are versioned,
   validated, and included in release evidence.
 - Main branch protection ruleset is active on GitHub (`main-protection`).
+- GitHub governance drift detection is scheduled/manual and records structured
+  recovery evidence without mutating live rules.
 
 ## Not Yet Implemented
 

@@ -173,6 +173,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `scripts/runtime/`: live runtime gate scripts.
 - `scripts/operations/`: operations evidence and telemetry evaluation scripts.
 - `scripts/security/`: secret, workflow, ruleset, dependency, Actions-BOM, and SBOM governance scripts.
+- `docs/runbooks/github-governance-drift.md`: recovery path for scheduled/manual live GitHub governance drift findings.
 - `examples/modules/`: representative selectable module metadata.
 - `examples/tasks/`: representative task inputs.
 - `examples/profiles/`: representative composed profiles.

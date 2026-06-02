@@ -13,6 +13,9 @@ PRODUCTION_READINESS_WORKFLOW_PATH = (
 RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "runtime-retention-cleanup.yml"
 )
+GITHUB_GOVERNANCE_DRIFT_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "github-governance-drift.yml"
+)
 
 
 def load_ci_workflow() -> str:
@@ -29,6 +32,10 @@ def load_production_readiness_workflow() -> str:
 
 def load_runtime_retention_cleanup_workflow() -> str:
     return RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_github_governance_drift_workflow() -> str:
+    return GITHUB_GOVERNANCE_DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -183,6 +190,7 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "scripts/runtime/production_skill_instruction_packs.py --check" in workflow
     assert "scripts/runtime/validate_hooks_usage_model.py --check" in workflow
     assert "scripts/release/validate_production_recertification_policy.py --check" in workflow
+    assert "scripts/security/validate_codeowners_coverage.py" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "production-evidence/invariant-check.json" in workflow
     assert "scripts/runtime/run_incident_locked_regressions.py" in workflow
@@ -259,3 +267,25 @@ def test_runtime_retention_cleanup_workflow_runs_on_hetzner_and_uploads_evidence
     assert "runtime-retention-cleanup-report.json" in workflow
     assert "exit-status.txt" in workflow
     assert "runtime-retention-cleanup-evidence" in workflow
+
+
+def test_github_governance_drift_workflow_is_scheduled_and_manual() -> None:
+    workflow = load_github_governance_drift_workflow()
+
+    assert "schedule:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "permissions:" in workflow
+    assert "contents: read" in workflow
+    assert "concurrency:" in workflow
+    assert "timeout-minutes:" in workflow
+
+
+def test_github_governance_drift_workflow_fetches_live_ruleset_and_uploads_evidence() -> None:
+    workflow = load_github_governance_drift_workflow()
+
+    assert "SCAS_GOVERNANCE_DRIFT_TOKEN" in workflow
+    assert "validate_ruleset_config.py" in workflow
+    assert "--fetch-live" in workflow
+    assert "github-governance-drift.json" in workflow
+    assert "github-governance-drift-evidence" in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow

@@ -19,6 +19,7 @@ import check_workflow_hardening  # noqa: E402
 import generate_actions_bom  # noqa: E402
 import generate_sbom  # noqa: E402
 import validate_actions_bom  # noqa: E402
+import validate_codeowners_coverage  # noqa: E402
 import validate_dependency_policy  # noqa: E402
 import validate_ruleset_config  # noqa: E402
 import validate_sbom  # noqa: E402
@@ -135,6 +136,9 @@ def test_secret_scan_validators_reject_findings_and_accept_clean_reports(tmp_pat
 
 def test_main_ruleset_desired_state_is_valid(tmp_path: Path) -> None:
     assert validate_ruleset_config.validate_ruleset(RULESET_PATH) == []
+    desired = load_json(RULESET_PATH)
+    desired_contexts = validate_ruleset_config._required_status_check_contexts(desired)
+    assert "analyze" in desired_contexts
 
     broken = load_json(RULESET_PATH)
     status_rule = next(rule for rule in broken["rules"] if rule["type"] == "required_status_checks")
@@ -144,6 +148,77 @@ def test_main_ruleset_desired_state_is_valid(tmp_path: Path) -> None:
 
     failures = validate_ruleset_config.validate_ruleset(broken_path)
     assert any("missing status checks" in failure for failure in failures)
+
+
+def test_ruleset_drift_detects_weakened_live_approval_count() -> None:
+    desired = load_json(RULESET_PATH)
+    live = deepcopy(desired)
+    pull_request = next(rule for rule in live["rules"] if rule["type"] == "pull_request")
+    pull_request["parameters"]["required_approving_review_count"] = 0
+
+    findings = validate_ruleset_config.compare_rulesets(desired, live)
+
+    assert any(
+        finding.field == "rules.pull_request.required_approving_review_count"
+        and finding.severity == "critical"
+        and finding.remediation_class == "manual_github_fix"
+        for finding in findings
+    )
+
+
+def test_ruleset_drift_evidence_records_permission_setup_path() -> None:
+    desired = load_json(RULESET_PATH)
+
+    evidence = validate_ruleset_config.build_drift_evidence(
+        desired=desired,
+        live=None,
+        findings=[],
+        repository="KonstantinData/skill-centric-agent-system",
+        source="github-api",
+        error="HTTP 403 resource not accessible by integration",
+    )
+
+    assert evidence["status"] == "permission_missing"
+    finding = evidence["findings"][0]
+    assert finding["confidence"] == "permission_missing"
+    assert finding["remediation_class"] == "permission_setup"
+
+
+def test_codeowners_effective_coverage_protects_policy_directory() -> None:
+    failures = validate_codeowners_coverage.validate_effective_coverage(
+        codeowners_path=REPO_ROOT / ".github" / "CODEOWNERS"
+    )
+
+    assert failures == []
+    rules = validate_codeowners_coverage.parse_codeowners(
+        REPO_ROOT / ".github" / "CODEOWNERS"
+    )
+    effective = validate_codeowners_coverage.effective_rule_for_path(
+        "docs/policies/production-recertification-policy.md",
+        rules,
+    )
+    assert effective is not None
+    assert "@KonstantinData" in effective.owners
+
+
+def test_codeowners_effective_coverage_rejects_later_conflicting_rule(tmp_path: Path) -> None:
+    codeowners = tmp_path / "CODEOWNERS"
+    codeowners.write_text(
+        "\n".join(
+            (
+                "/docs/policies/ @KonstantinData",
+                "/docs/policies/production-recertification-policy.md @someone-else",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    failures = validate_codeowners_coverage.validate_effective_coverage(
+        codeowners_path=codeowners,
+        required_paths=("docs/policies/production-recertification-policy.md",),
+    )
+
+    assert any("do not include @KonstantinData" in failure for failure in failures)
 
 
 def test_dependency_policy_covers_current_direct_dependencies() -> None:
@@ -268,6 +343,7 @@ def test_ruleset_has_matching_codeowners_for_high_impact_paths() -> None:
         "/workers/control-api/",
         "/src/skill_centric_agent_system/runtime/",
         "/docs/policies/production-readiness.md",
+        "/docs/policies/",
     ):
         assert path in codeowners
 
@@ -290,6 +366,8 @@ def test_security_governance_workflow_runs_expected_gates() -> None:
     assert "pip-audit" in workflow
     assert "npm audit --audit-level=high" in workflow
     assert "validate_ruleset_config.py" in workflow
+    assert "validate_codeowners_coverage.py" in workflow
+    assert "codeowners-effective-ownership.json" in workflow
     assert "validate_security_closure.py" in workflow
     assert "generate_actions_bom.py" in workflow
     assert "generate_sbom.py" in workflow

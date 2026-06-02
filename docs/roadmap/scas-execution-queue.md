@@ -20,7 +20,8 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `Post-P5: Harden production change gates in CI/GitHub`
+No queued Post-P5 item remains in this document. Select the next backlog item
+from Notion after confirming current repository and production-readiness state.
 
 ## Queue Order
 
@@ -35,8 +36,9 @@ Before starting each queue item:
 
 ## Recently Completed
 
-1. `Post-P5: Recertification cadence and release policy`
-2. `Post-P5: Define and govern HOOKS usage model`
+1. `Post-P5: Harden production change gates in CI/GitHub`
+2. `Post-P5: Recertification cadence and release policy`
+3. `Post-P5: Define and govern HOOKS usage model`
 
 ## Active Tracker Synchronization
 

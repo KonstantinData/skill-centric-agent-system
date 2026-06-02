@@ -293,4 +293,8 @@ The production recertification cadence is now versioned and validated as a
 machine-readable release policy, and production-readiness evidence records the
 next review due date, recertification triggers, owner, waivers, and completed
 timestamp for each release claim.
+Production change gates now validate effective CODEOWNERS ownership for
+high-impact paths and separate deterministic PR desired-state checks from a
+scheduled/manual live GitHub governance drift workflow with structured
+remediation evidence.
 

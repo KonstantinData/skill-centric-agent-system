@@ -15,8 +15,9 @@ or production evidence:
 - secret scanning and tracked `.env` guard,
 - dependency review and vulnerability audit,
 - workflow hardening and pinned GitHub Actions,
-- CODEOWNERS ownership coverage for high-impact paths,
+- effective CODEOWNERS ownership coverage for high-impact paths,
 - main-branch ruleset desired-state validation,
+- scheduled/manual live GitHub governance drift detection,
 - schema and contract tests,
 - data-governance and quality-policy tests,
 - production security closure validation,
@@ -41,6 +42,7 @@ These controls guide agent work and should be easy to run locally:
 
 - `python scripts/security/check_no_dotenv_files.py`
 - `python scripts/security/validate_ruleset_config.py`
+- `python scripts/security/validate_codeowners_coverage.py`
 - `python scripts/security/validate_dependency_policy.py`
 - `python scripts/security/validate_security_closure.py`
 - `python scripts/security/check_workflow_hardening.py`
@@ -50,6 +52,29 @@ These controls guide agent work and should be easy to run locally:
 
 Optional pre-commit hooks may run these checks locally, but the authoritative
 blocking decision belongs to CI and branch protection.
+
+The live GitHub drift workflow is intentionally separated from normal PR CI. PR
+CI validates deterministic repository desired state. The scheduled/manual drift
+workflow compares live GitHub rulesets with the committed desired state and
+writes structured remediation evidence without mutating live repository
+settings.
+
+## Drift Recovery
+
+When `github-governance-drift` fails, use the evidence artifact to classify the
+recovery path:
+
+- `manual_github_fix` - live GitHub configuration is weaker than the committed
+  desired state and must be repaired by a maintainer or explicitly approved
+  repair workflow.
+- `repo_pr_fix` - live GitHub configuration is intentionally stronger or newer
+  and the desired-state file must be updated by PR.
+- `permission_setup` - the drift workflow cannot read live settings and needs a
+  read-only GitHub App or token with repository Administration read permission.
+- `escalate` - no safe automated remediation is available.
+
+Scheduled workflows must not mutate GitHub rulesets. Repairs require a manual
+operator decision and fresh drift evidence after the change.
 
 ## Post-Merge Lifecycle
 
