@@ -134,5 +134,80 @@
         "phrase:secret"
       ]
     }
+  },
+  {
+    "name": "stack overflow troubleshooting boosts research retrieval",
+    "module": "research-context-synthesis",
+    "task_signals": {
+      "task_type": "research",
+      "risk_level": "low",
+      "domains": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "available_inputs": [],
+      "capability_hints": [
+        "retrieval",
+        "analysis"
+      ],
+      "phrases": [
+        "stack overflow",
+        "error",
+        "how do i"
+      ],
+      "constraints": [
+        "least privilege",
+        "read-only research"
+      ]
+    },
+    "expected": {
+      "score": 1.0,
+      "matched_signals_include": [
+        "task_type:research",
+        "domain:knowledge-retrieval",
+        "domain:research",
+        "capability_class:retrieval",
+        "phrase:stack overflow",
+        "phrase:error",
+        "phrase:how do i"
+      ],
+      "negative_signals": []
+    }
+  },
+  {
+    "name": "stack overflow phrasing lowers execution planning score",
+    "module": "task-execution-planning",
+    "task_signals": {
+      "task_type": "research",
+      "risk_level": "low",
+      "domains": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "available_inputs": [],
+      "capability_hints": [
+        "retrieval",
+        "analysis"
+      ],
+      "phrases": [
+        "stack overflow",
+        "why does",
+        "error"
+      ],
+      "constraints": [
+        "least privilege",
+        "read-only research"
+      ]
+    },
+    "expected": {
+      "score": 0.42,
+      "matched_signals_include": [
+        "risk_level:low"
+      ],
+      "negative_signals": [
+        "phrase:stack overflow",
+        "phrase:why does"
+      ]
+    }
   }
 ]

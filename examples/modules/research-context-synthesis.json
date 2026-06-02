@@ -23,10 +23,16 @@
     ],
     "required_inputs": [],
     "phrases": [
-      "research",
-      "investigate",
       "compare",
-      "summarize"
+      "error",
+      "exception",
+      "how do i",
+      "investigate",
+      "research",
+      "stack overflow",
+      "summarize",
+      "what causes",
+      "why does"
     ],
     "negative_phrases": [
       "deploy",
@@ -35,10 +41,16 @@
     ]
   },
   "triggers": [
-    "research",
-    "investigate",
     "compare",
-    "summarize"
+    "error",
+    "exception",
+    "how do i",
+    "investigate",
+    "research",
+    "stack overflow",
+    "summarize",
+    "what causes",
+    "why does"
   ],
   "inputs": [
     "retrieval-context"
@@ -75,6 +87,21 @@
         "signal": "phrase:deploy",
         "weight": -0.3,
         "reason": "Deployment requests should not select a research-only module as an execution capability."
+      },
+      {
+        "signal": "phrase:stack overflow",
+        "weight": 0.04,
+        "reason": "Technical community troubleshooting questions should favor bounded research synthesis."
+      },
+      {
+        "signal": "phrase:error",
+        "weight": 0.03,
+        "reason": "Error explanation requests are research signals unless paired with an explicit write task."
+      },
+      {
+        "signal": "phrase:how do i",
+        "weight": 0.03,
+        "reason": "How-to troubleshooting phrasing is an information request, not automatic execution intent."
       }
     ],
     "requires_all_policies": true

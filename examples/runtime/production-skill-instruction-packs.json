@@ -257,10 +257,16 @@
         ]
       },
       "triggers": [
-        "research",
-        "investigate",
         "compare",
-        "summarize"
+        "error",
+        "exception",
+        "how do i",
+        "investigate",
+        "research",
+        "stack overflow",
+        "summarize",
+        "what causes",
+        "why does"
       ]
     },
     {

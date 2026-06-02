@@ -36,8 +36,13 @@
     ],
     "negative_phrases": [
       "delete production",
+      "destroy",
+      "explain",
+      "how do i",
       "reset production",
-      "destroy"
+      "stack overflow",
+      "what causes",
+      "why does"
     ]
   },
   "triggers": [
@@ -92,6 +97,21 @@
         "signal": "phrase:destroy",
         "weight": -0.4,
         "reason": "Destructive requests must not select the conservative execution module."
+      },
+      {
+        "signal": "phrase:how do i",
+        "weight": -0.16,
+        "reason": "How-to troubleshooting phrasing needs research unless explicit repository mutation remains after analysis."
+      },
+      {
+        "signal": "phrase:why does",
+        "weight": -0.16,
+        "reason": "Causal troubleshooting questions should not overgrant execution planning."
+      },
+      {
+        "signal": "phrase:stack overflow",
+        "weight": -0.12,
+        "reason": "Stack Overflow-like questions are usually explanatory research tasks, not repository execution."
       }
     ],
     "requires_all_policies": true
