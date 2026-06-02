@@ -1,0 +1,46 @@
+name: GitHub Governance Drift
+
+on:
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-governance-drift-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ruleset-drift:
+    name: GitHub governance drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      GH_TOKEN: ${{ secrets.SCAS_GOVERNANCE_DRIFT_TOKEN || github.token }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Compare live GitHub ruleset to desired state
+        run: |
+          python scripts/security/validate_ruleset_config.py \
+            --fetch-live \
+            --repository "${GITHUB_REPOSITORY}" \
+            --output-json security-evidence/github-governance-drift.json
+
+      - name: Upload drift evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: github-governance-drift-evidence
+          path: security-evidence/github-governance-drift.json
+          if-no-files-found: error

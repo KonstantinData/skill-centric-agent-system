@@ -23,6 +23,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/infrastructure-boundary.md`
 - `docs/policies/review-gates.md`
 - `docs/policies/production-readiness.md`
+- `docs/runbooks/github-governance-drift.md`
 - `docs/policies/threat-model.md`
 - `docs/policies/formal-safety-invariants.md`
 - `docs/policies/formal-safety-change-type-matrix.md`
