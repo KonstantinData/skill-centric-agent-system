@@ -46,7 +46,7 @@ jobs:
           python-version: "3.12.10"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           version: "0.8.9"
 
@@ -103,6 +103,9 @@ jobs:
 
       - name: Validate production skill instruction packs
         run: PYTHONPATH=src uv run python scripts/runtime/production_skill_instruction_packs.py --check
+
+      - name: Validate HOOKS usage model
+        run: PYTHONPATH=src uv run python scripts/runtime/validate_hooks_usage_model.py --check
 
       - name: Evaluate error classification gates
         run: |

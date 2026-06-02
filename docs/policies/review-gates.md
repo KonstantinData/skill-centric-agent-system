@@ -20,6 +20,7 @@ or production evidence:
 - schema and contract tests,
 - data-governance and quality-policy tests,
 - production security closure validation,
+- HOOKS usage model validation,
 - production-readiness evidence for release claims.
 
 Error-taxonomy gate policy is also mandatory when runtime/eval behavior changes:
@@ -45,6 +46,7 @@ These controls guide agent work and should be easy to run locally:
 - `python scripts/security/check_workflow_hardening.py`
 - `python scripts/security/generate_actions_bom.py`
 - `python scripts/security/validate_actions_bom.py`
+- `PYTHONPATH=src python scripts/runtime/validate_hooks_usage_model.py --check`
 
 Optional pre-commit hooks may run these checks locally, but the authoritative
 blocking decision belongs to CI and branch protection.

@@ -286,4 +286,7 @@ and production security closure are implemented. Provisioning and the final
 certification run against live production infrastructure remain pending.
 Production skill instruction packs are now generated and validated as
 machine-readable release artifacts.
+The HOOKS usage model is now versioned and validated as a machine-readable
+policy so composition and runtime hooks remain profile-bound and fail closed
+instead of granting capabilities or bypassing governance.
 

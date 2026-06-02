@@ -87,4 +87,4 @@ def test_shadow_evaluation_harness_is_wired_into_docs_and_queue() -> None:
 
     assert "shadow-evaluation-harness.md" in docs_index
     assert "shadow-evaluation-harness.md" in invariant_policy
-    assert "Post-P5: Define and govern HOOKS usage model" in queue
+    assert "Post-P5: Recertification cadence and release policy" in queue
