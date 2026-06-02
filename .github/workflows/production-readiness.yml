@@ -200,7 +200,7 @@ jobs:
           npm run worker:check
 
       - name: Validate certification inputs
-        run: python scripts/release/build_production_readiness_evidence.py --validate-only
+        run: uv run python scripts/release/build_production_readiness_evidence.py --validate-only
 
       - name: Collect external live evidence metadata
         if: ${{ inputs.certification_mode == 'certify' }}
@@ -210,11 +210,11 @@ jobs:
 
           mkdir -p production-evidence
           live_runtime_run_id="$(
-            python scripts/release/build_production_readiness_evidence.py \
+            uv run python scripts/release/build_production_readiness_evidence.py \
               --print-run-id "${LIVE_RUNTIME_GATES_RUN_URL}"
           )"
           ai_gateway_run_id="$(
-            python scripts/release/build_production_readiness_evidence.py \
+            uv run python scripts/release/build_production_readiness_evidence.py \
               --print-run-id "${AI_GATEWAY_SMOKE_RUN_URL}"
           )"
 
@@ -249,7 +249,7 @@ jobs:
             )
           fi
 
-          python scripts/release/build_production_readiness_evidence.py "${args[@]}"
+          uv run python scripts/release/build_production_readiness_evidence.py "${args[@]}"
 
       - name: Upload evidence summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -218,7 +218,7 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "npm run worker:typecheck" in workflow
     assert "npm run worker:test" in workflow
     assert "npm run worker:check" in workflow
-    assert "scripts/release/build_production_readiness_evidence.py" in workflow
+    assert "uv run python scripts/release/build_production_readiness_evidence.py" in workflow
     assert "production-readiness-evidence.json" in workflow
     assert "actions/upload-artifact" in workflow
     assert "gh run download" in workflow
