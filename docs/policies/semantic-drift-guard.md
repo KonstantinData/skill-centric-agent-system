@@ -74,6 +74,14 @@ environments, risk levels, workflows, authority deltas, and untested authority
 delta gaps. Reports are metadata-only and must not include raw runtime traces or
 secret values.
 
+The governance red-team suite in
+`examples/evaluations/semantic-drift-red-team-cases.json` attempts learned
+authority bypasses through staging-to-production generalization,
+low-risk-to-high-risk drift, memory scope expansion, budget increases,
+validator removal, policy exceptions, and failure-policy relaxation. The suite
+is wired into CI through `tests/test_semantic_drift_red_team.py`; every case must
+compile to a blocking gate.
+
 Allowed decisions are:
 
 - `allow_ranking_only`,
@@ -96,4 +104,5 @@ exceptions.
 - `policies/runtime/semantic-drift-guard.json`
 - `scripts/runtime/validate_semantic_drift_guard.py`
 - `src/skill_centric_agent_system/runtime/capability_gaps.py`
+- `examples/evaluations/semantic-drift-red-team-cases.json`
 - `docs/adr/0007-learned-context-authority-boundary.md`
