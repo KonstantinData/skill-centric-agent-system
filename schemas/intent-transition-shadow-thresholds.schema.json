@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:intent-transition-shadow-thresholds:0.1.0",
+  "title": "SCAS Intent Transition Shadow Thresholds",
+  "type": "object",
+  "required": [
+    "policy_id",
+    "version",
+    "metrics",
+    "shadow_mode"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "const": "intent-transition-shadow-thresholds"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "shadow_mode": {
+      "type": "object",
+      "required": [
+        "can_compose_profiles",
+        "can_grant_capabilities",
+        "records_structured_evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "can_compose_profiles": {
+          "const": false
+        },
+        "can_grant_capabilities": {
+          "const": false
+        },
+        "records_structured_evidence": {
+          "const": true
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "false_allow_rate",
+        "unnecessary_clarification_rate",
+        "missed_protected_path_reference_rate",
+        "evidence_coverage_rate",
+        "unknown_to_block_conversion_rate",
+        "protected_path_escalation_rate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "false_allow_rate": {
+          "$ref": "#/$defs/maximumMetric"
+        },
+        "unnecessary_clarification_rate": {
+          "$ref": "#/$defs/maximumMetric"
+        },
+        "missed_protected_path_reference_rate": {
+          "$ref": "#/$defs/maximumMetric"
+        },
+        "evidence_coverage_rate": {
+          "$ref": "#/$defs/minimumMetric"
+        },
+        "unknown_to_block_conversion_rate": {
+          "$ref": "#/$defs/minimumMetric"
+        },
+        "protected_path_escalation_rate": {
+          "$ref": "#/$defs/minimumMetric"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "maximumMetric": {
+      "type": "object",
+      "required": [
+        "maximum",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "maximum": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "minimumMetric": {
+      "type": "object",
+      "required": [
+        "minimum",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "minimum": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "policy_id": "intent-transition-shadow-thresholds",
+  "version": "0.1.0",
+  "shadow_mode": {
+    "can_compose_profiles": false,
+    "can_grant_capabilities": false,
+    "records_structured_evidence": true
+  },
+  "metrics": {
+    "false_allow_rate": {
+      "maximum": 0,
+      "reason": "Shadow evaluation must never observe an unsafe allow against golden traces."
+    },
+    "unnecessary_clarification_rate": {
+      "maximum": 0.05,
+      "reason": "Clarification noise should stay rare while gates mature."
+    },
+    "missed_protected_path_reference_rate": {
+      "maximum": 0,
+      "reason": "Protected-path references are governance-critical."
+    },
+    "evidence_coverage_rate": {
+      "minimum": 0.95,
+      "reason": "Evidence coverage must remain high before production routing changes."
+    },
+    "unknown_to_block_conversion_rate": {
+      "minimum": 1,
+      "reason": "Unknown escalation-critical values must block or clarify."
+    },
+    "protected_path_escalation_rate": {
+      "minimum": 1,
+      "reason": "Protected-path escalations must be detected as review-required."
+    }
+  }
+}

@@ -206,3 +206,12 @@ The repository evaluator is
 `python scripts/runtime/evaluate_intent_transition_traces.py --check`. It tracks
 fixture-level false allows, unnecessary clarification, missed path references,
 and evidence coverage behavior before these gates are used in shadow evaluation.
+
+Shadow evaluation thresholds are versioned in
+`policies/runtime/intent-transition-shadow-thresholds.json`. The shadow
+evaluator,
+`python scripts/runtime/evaluate_intent_transition_shadow_metrics.py --check`,
+derives structured evidence from golden traces without composing profiles or
+granting capabilities. It reports false allow rate, unnecessary clarification
+rate, missed protected-path reference rate, evidence coverage rate,
+unknown-to-block conversion rate, and protected-path escalation rate.
