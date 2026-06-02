@@ -164,6 +164,17 @@ def _classify_task(objective: str) -> TaskClassification:
                 "find information",
                 "look up",
                 "survey",
+                "diagnose",
+                "debug",
+                "troubleshoot",
+                "explain",
+                "what causes",
+                "why does",
+                "how do i",
+                "how should",
+                "stack overflow",
+                "error",
+                "exception",
             ),
         ),
         (
@@ -185,6 +196,11 @@ def _classify_task(objective: str) -> TaskClassification:
     matches: list[tuple[str, tuple[str, ...]]] = []
     for task_type, terms in categories:
         matched_terms = tuple(term for term in terms if _contains_task_term(text, term))
+        if task_type == "task-execution":
+            matched_terms = _filter_information_request_execution_terms(
+                text,
+                matched_terms,
+            )
         if matched_terms:
             matches.append((task_type, matched_terms))
 
@@ -226,6 +242,31 @@ def _contains_task_term(text: str, term: str) -> bool:
     if re.fullmatch(r"[a-z0-9]+", term):
         return re.search(rf"\b{re.escape(term)}\b", text) is not None
     return term in text
+
+
+def _filter_information_request_execution_terms(
+    text: str,
+    matched_terms: tuple[str, ...],
+) -> tuple[str, ...]:
+    if not _is_information_request(text):
+        return matched_terms
+    suppressed_terms = {"fix"}
+    return tuple(term for term in matched_terms if term not in suppressed_terms)
+
+
+def _is_information_request(text: str) -> bool:
+    return any(
+        signal in text
+        for signal in (
+            "how do i",
+            "how should",
+            "why does",
+            "why do",
+            "what causes",
+            "what is",
+            "explain",
+        )
+    )
 
 
 def _repository_context(task: Mapping[str, Any]) -> Mapping[str, Any] | None:

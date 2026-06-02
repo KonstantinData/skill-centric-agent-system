@@ -72,6 +72,11 @@ clarification instead of composing a broad profile.
 If several specialized task classes match, the Analyzer must fall back to
 `general-task` with low confidence and mark the task for review. The runtime
 must not dispatch to a specialized strategy from ambiguous analyzer output.
+Technical troubleshooting questions that ask for explanation, diagnosis,
+comparison, or safe remediation guidance without requesting repository writes
+route to `research`. This keeps Stack Overflow-like "how do I fix this error"
+queries on the retrieval/analysis path instead of treating advice-seeking text
+as executable change intent solely because it contains words such as `fix`.
 
 ## Runtime Agent Profile
 

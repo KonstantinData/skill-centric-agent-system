@@ -129,6 +129,62 @@
     }
   },
   {
+    "name": "stack overflow-like troubleshooting question routes to research",
+    "task": {
+      "id": "task-npm-eresolve-question",
+      "request": "Why does npm install fail with ERESOLVE, and what are safe remediation options?",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "research",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "capability_hints_include": [
+        "retrieval",
+        "analysis"
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
+    }
+  },
+  {
+    "name": "how-to fix question routes to research instead of execution",
+    "task": {
+      "id": "task-typescript-how-to-fix",
+      "request": "How do I fix TypeScript error TS2322 in a React component?",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "research",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "capability_hints_include": [
+        "retrieval",
+        "analysis"
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
+    }
+  },
+  {
     "name": "ambiguous research and execution task falls back to general",
     "task": {
       "id": "task-research-and-implement",
