@@ -57,6 +57,9 @@ must include:
 - `transition_reason`.
 
 Critical fields must be backed by evidence spans or set to `unknown`.
+The machine-readable schema is
+`schemas/transition-evidence.schema.json`; the repository validator is
+`python scripts/runtime/validate_transition_evidence.py --check`.
 
 ## Evidence Spans
 

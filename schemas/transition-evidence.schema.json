@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:transition-evidence:0.1.0",
+  "title": "SCAS Transition Evidence",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "evidence_id",
+    "source",
+    "previous_task",
+    "current_task",
+    "raw_artifacts",
+    "critical_fields",
+    "mentioned_paths",
+    "capability_delta",
+    "decision",
+    "audit"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^transition-evidence-[a-z0-9][a-z0-9-]*$"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "extractor",
+        "extractor_version",
+        "scanner_versions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "extractor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extractor_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scanner_versions": {
+          "$ref": "#/$defs/nonEmptyStringMap"
+        }
+      }
+    },
+    "previous_task": {
+      "$ref": "#/$defs/taskSnapshot"
+    },
+    "current_task": {
+      "$ref": "#/$defs/taskSnapshot"
+    },
+    "raw_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/rawArtifact"
+      }
+    },
+    "critical_fields": {
+      "type": "object",
+      "required": [
+        "repository_bound",
+        "explicit_write_intent",
+        "explicit_destructive_intent",
+        "protected_path_reference",
+        "scan_coverage",
+        "raw_artifact_hash_verified",
+        "previous_profile_authority_verified"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository_bound": {
+          "$ref": "#/$defs/criticalState"
+        },
+        "explicit_write_intent": {
+          "$ref": "#/$defs/criticalState"
+        },
+        "explicit_destructive_intent": {
+          "$ref": "#/$defs/criticalState"
+        },
+        "protected_path_reference": {
+          "$ref": "#/$defs/criticalState"
+        },
+        "scan_coverage": {
+          "$ref": "#/$defs/coverageState"
+        },
+        "raw_artifact_hash_verified": {
+          "$ref": "#/$defs/criticalState"
+        },
+        "previous_profile_authority_verified": {
+          "$ref": "#/$defs/criticalState"
+        }
+      }
+    },
+    "mentioned_paths": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mentionedPath"
+      },
+      "uniqueItems": true
+    },
+    "capability_delta": {
+      "type": "object",
+      "required": [
+        "from_capability_classes",
+        "to_capability_classes",
+        "escalates_authority",
+        "requires_recomposition",
+        "requires_human_review",
+        "required_gates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "to_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "escalates_authority": {
+          "type": "boolean"
+        },
+        "requires_recomposition": {
+          "type": "boolean"
+        },
+        "requires_human_review": {
+          "type": "boolean"
+        },
+        "required_gates": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "missing_evidence",
+        "unknown_fields"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "recomposition_required",
+            "clarification_required",
+            "human_review_required",
+            "denied"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "missing_evidence": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "unknown_fields": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "required": [
+        "records_structured_evidence",
+        "forbidden_content"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "records_structured_evidence": {
+          "const": true
+        },
+        "forbidden_content": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "taskSnapshot": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "task_type",
+        "profile_id",
+        "capability_classes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_type": {
+          "type": "string",
+          "enum": [
+            "code-review",
+            "research",
+            "task-execution",
+            "general-task",
+            "unknown"
+          ]
+        },
+        "profile_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        }
+      }
+    },
+    "rawArtifact": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "artifact_hash",
+        "hash_algorithm",
+        "text",
+        "scan_coverage"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "pattern": "^turn-[a-z0-9][a-z0-9-]*$"
+        },
+        "artifact_hash": {
+          "$ref": "#/$defs/sha256Hash"
+        },
+        "hash_algorithm": {
+          "type": "string",
+          "const": "sha256"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scan_coverage": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "criticalState": {
+      "type": "object",
+      "required": [
+        "value",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false",
+            "unknown"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceSpan"
+          }
+        }
+      }
+    },
+    "coverageState": {
+      "type": "object",
+      "required": [
+        "value",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "unknown"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceSpan"
+          }
+        }
+      }
+    },
+    "mentionedPath": {
+      "type": "object",
+      "required": [
+        "value",
+        "path_kind",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path_kind": {
+          "type": "string",
+          "enum": [
+            "repo_path",
+            "windows_path",
+            "posix_path",
+            "url_path",
+            "unknown"
+          ]
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceSpan"
+        }
+      }
+    },
+    "evidenceSpan": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "artifact_hash",
+        "span",
+        "offset_start",
+        "offset_end",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "pattern": "^turn-[a-z0-9][a-z0-9-]*$"
+        },
+        "artifact_hash": {
+          "$ref": "#/$defs/sha256Hash"
+        },
+        "span": {
+          "type": "string",
+          "minLength": 1
+        },
+        "offset_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offset_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "extractor",
+            "scanner:path",
+            "scanner:write_intent",
+            "scanner:destructive_intent",
+            "scanner:repository_reference",
+            "scanner:protected_path",
+            "system"
+          ]
+        }
+      }
+    },
+    "capabilityClassArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "research",
+          "read-only",
+          "repo-read",
+          "repo-write",
+          "protected-path-write",
+          "production-change",
+          "secrets-sensitive",
+          "unknown"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "nonEmptyStringMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "sha256Hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

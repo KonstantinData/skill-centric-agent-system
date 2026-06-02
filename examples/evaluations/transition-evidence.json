@@ -1,0 +1,154 @@
+{
+  "contract_version": "0.1.0",
+  "evidence_id": "transition-evidence-research-to-repo-write",
+  "source": {
+    "extractor": "scas-transition-evidence-fixture",
+    "extractor_version": "0.1.0",
+    "scanner_versions": {
+      "path": "0.1.0",
+      "repository_reference": "0.1.0",
+      "write_intent": "0.1.0"
+    }
+  },
+  "previous_task": {
+    "task_id": "task-ts2322-explanation",
+    "task_type": "research",
+    "profile_id": "profile-research-ts2322",
+    "capability_classes": [
+      "research",
+      "read-only"
+    ]
+  },
+  "current_task": {
+    "task_id": "task-apply-ts2322-fix",
+    "task_type": "task-execution",
+    "profile_id": null,
+    "capability_classes": [
+      "repo-write"
+    ]
+  },
+  "raw_artifacts": [
+    {
+      "artifact_id": "turn-apply-ts2322-fix",
+      "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+      "hash_algorithm": "sha256",
+      "text": "Apply the fix to src/foo.ts in this repo.",
+      "scan_coverage": "complete"
+    }
+  ],
+  "critical_fields": {
+    "repository_bound": {
+      "value": "true",
+      "evidence": [
+        {
+          "artifact_id": "turn-apply-ts2322-fix",
+          "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+          "span": "this repo",
+          "offset_start": 31,
+          "offset_end": 40,
+          "source": "scanner:repository_reference"
+        }
+      ]
+    },
+    "explicit_write_intent": {
+      "value": "true",
+      "evidence": [
+        {
+          "artifact_id": "turn-apply-ts2322-fix",
+          "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+          "span": "Apply the fix",
+          "offset_start": 0,
+          "offset_end": 13,
+          "source": "scanner:write_intent"
+        }
+      ]
+    },
+    "explicit_destructive_intent": {
+      "value": "false",
+      "evidence": []
+    },
+    "protected_path_reference": {
+      "value": "false",
+      "evidence": []
+    },
+    "scan_coverage": {
+      "value": "complete",
+      "evidence": []
+    },
+    "raw_artifact_hash_verified": {
+      "value": "true",
+      "evidence": [
+        {
+          "artifact_id": "turn-apply-ts2322-fix",
+          "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+          "span": "Apply the fix to src/foo.ts in this repo.",
+          "offset_start": 0,
+          "offset_end": 41,
+          "source": "system"
+        }
+      ]
+    },
+    "previous_profile_authority_verified": {
+      "value": "true",
+      "evidence": [
+        {
+          "artifact_id": "turn-apply-ts2322-fix",
+          "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+          "span": "Apply the fix to src/foo.ts in this repo.",
+          "offset_start": 0,
+          "offset_end": 41,
+          "source": "system"
+        }
+      ]
+    }
+  },
+  "mentioned_paths": [
+    {
+      "value": "src/foo.ts",
+      "path_kind": "repo_path",
+      "evidence": {
+        "artifact_id": "turn-apply-ts2322-fix",
+        "artifact_hash": "sha256:be50734e77ea982cfadb10503ac7853c366e20c747eb2d125c7cce0dc5b10b10",
+        "span": "src/foo.ts",
+        "offset_start": 17,
+        "offset_end": 27,
+        "source": "scanner:path"
+      }
+    }
+  ],
+  "capability_delta": {
+    "from_capability_classes": [
+      "research",
+      "read-only"
+    ],
+    "to_capability_classes": [
+      "repo-write"
+    ],
+    "escalates_authority": true,
+    "requires_recomposition": true,
+    "requires_human_review": false,
+    "required_gates": [
+      "explicit_write_intent",
+      "repository_binding",
+      "transition_evidence",
+      "recomposition"
+    ]
+  },
+  "decision": {
+    "status": "recomposition_required",
+    "reason": "Research-to-repo-write transition has explicit write intent and repository binding, so it must compose a new profile instead of mutating the research profile.",
+    "missing_evidence": [],
+    "unknown_fields": []
+  },
+  "audit": {
+    "records_structured_evidence": true,
+    "forbidden_content": [
+      "secret_values",
+      "private_keys",
+      "bearer_tokens",
+      "raw_runtime_traces",
+      "raw_tool_outputs",
+      "confidential_customer_data"
+    ]
+  }
+}
