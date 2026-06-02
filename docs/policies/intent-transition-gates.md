@@ -107,6 +107,10 @@ these values are unknown:
 ## Capability Delta Rules
 
 The gate evaluates capability deltas, not skill-to-skill pairs. At minimum:
+The machine-readable policy matrix is
+`policies/runtime/capability-delta-transition-policy.json`; the repository
+validator is
+`python scripts/runtime/validate_capability_delta_transition_policy.py --check`.
 
 - `research -> research` is allowed when no new write, repository, protected
   path, production, or destructive capability is requested.

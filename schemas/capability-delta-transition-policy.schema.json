@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:capability-delta-transition-policy:0.1.0",
+  "title": "SCAS Capability Delta Transition Policy",
+  "type": "object",
+  "required": [
+    "policy_id",
+    "version",
+    "capability_classes",
+    "module_capability_mappings",
+    "scope_mappings",
+    "transition_rules",
+    "exceptions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "const": "capability-delta-transition-policy"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "capability_classes": {
+      "$ref": "#/$defs/capabilityClassArray"
+    },
+    "module_capability_mappings": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/moduleCapabilityMapping"
+      }
+    },
+    "scope_mappings": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/scopeMapping"
+      }
+    },
+    "transition_rules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/transitionRule"
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/exception"
+      }
+    }
+  },
+  "$defs": {
+    "capabilityClass": {
+      "type": "string",
+      "enum": [
+        "research",
+        "read-only",
+        "repo-read",
+        "repo-write",
+        "protected-path-write",
+        "production-change",
+        "secrets-sensitive",
+        "unknown"
+      ]
+    },
+    "capabilityClassArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capabilityClass"
+      },
+      "uniqueItems": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "moduleCapabilityMapping": {
+      "type": "object",
+      "required": [
+        "transition_capability_classes",
+        "scope_set",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transition_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "scope_set": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "scopeMapping": {
+      "type": "object",
+      "required": [
+        "transition_capability_classes",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transition_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "transitionRule": {
+      "type": "object",
+      "required": [
+        "id",
+        "from_capability_classes",
+        "to_capability_classes",
+        "decision",
+        "required_evidence",
+        "required_gates",
+        "requires_recomposition",
+        "requires_human_review",
+        "unknown_handling"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "from_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "to_capability_classes": {
+          "$ref": "#/$defs/capabilityClassArray"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "require_recomposition",
+            "require_clarification",
+            "require_human_review",
+            "deny"
+          ]
+        },
+        "required_evidence": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "required_gates": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "requires_recomposition": {
+          "type": "boolean"
+        },
+        "requires_human_review": {
+          "type": "boolean"
+        },
+        "unknown_handling": {
+          "type": "string",
+          "enum": [
+            "allow_only_when_no_escalation",
+            "fail_closed",
+            "clarification_required",
+            "human_review_required"
+          ]
+        }
+      }
+    },
+    "exception": {
+      "type": "object",
+      "required": [
+        "id",
+        "reason",
+        "expires",
+        "approved_by"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires": {
+          "type": "string",
+          "format": "date"
+        },
+        "approved_by": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

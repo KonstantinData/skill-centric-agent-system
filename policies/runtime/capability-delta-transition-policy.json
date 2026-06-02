@@ -1,0 +1,252 @@
+{
+  "policy_id": "capability-delta-transition-policy",
+  "version": "0.1.0",
+  "capability_classes": [
+    "research",
+    "read-only",
+    "repo-read",
+    "repo-write",
+    "protected-path-write",
+    "production-change",
+    "secrets-sensitive",
+    "unknown"
+  ],
+  "module_capability_mappings": {
+    "analysis": {
+      "transition_capability_classes": [
+        "research",
+        "read-only",
+        "repo-read"
+      ],
+      "scope_set": [
+        "repository-readonly"
+      ],
+      "reason": "Analysis modules may read repository evidence but must not write."
+    },
+    "planning": {
+      "transition_capability_classes": [
+        "research",
+        "read-only",
+        "repo-read"
+      ],
+      "scope_set": [
+        "repository-readonly"
+      ],
+      "reason": "Planning modules can inspect repository state but do not grant execution authority."
+    },
+    "retrieval": {
+      "transition_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "scope_set": [
+        "knowledge-readonly"
+      ],
+      "reason": "Retrieval modules provide context without repository write authority."
+    },
+    "memory_access": {
+      "transition_capability_classes": [
+        "read-only"
+      ],
+      "scope_set": [
+        "memory-readonly"
+      ],
+      "reason": "Memory access is read-only unless a future policy explicitly grants memory writes."
+    }
+  },
+  "scope_mappings": {
+    "repository-readonly": {
+      "transition_capability_classes": [
+        "repo-read"
+      ],
+      "reason": "Repository-readonly data scope maps to repo-read transition authority."
+    },
+    "repository-write": {
+      "transition_capability_classes": [
+        "repo-write"
+      ],
+      "reason": "Repository-write data scope maps to repo-write transition authority and requires explicit evidence."
+    },
+    "protected-path-write": {
+      "transition_capability_classes": [
+        "protected-path-write"
+      ],
+      "reason": "Protected-path write scope requires governance review and protected-path evidence."
+    },
+    "production-change": {
+      "transition_capability_classes": [
+        "production-change"
+      ],
+      "reason": "Production change scope requires production-readiness gates."
+    },
+    "secrets-sensitive": {
+      "transition_capability_classes": [
+        "secrets-sensitive"
+      ],
+      "reason": "Secret-sensitive scope fails closed unless a dedicated policy allows it."
+    }
+  },
+  "transition_rules": [
+    {
+      "id": "research-to-research",
+      "from_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "to_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "decision": "allow",
+      "required_evidence": [
+        "scan_coverage",
+        "raw_artifact_hash_verified"
+      ],
+      "required_gates": [
+        "transition_evidence"
+      ],
+      "requires_recomposition": false,
+      "requires_human_review": false,
+      "unknown_handling": "allow_only_when_no_escalation"
+    },
+    {
+      "id": "research-to-repo-write",
+      "from_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "to_capability_classes": [
+        "repo-write"
+      ],
+      "decision": "require_recomposition",
+      "required_evidence": [
+        "repository_bound",
+        "explicit_write_intent",
+        "mentioned_paths",
+        "scan_coverage",
+        "raw_artifact_hash_verified",
+        "previous_profile_authority_verified"
+      ],
+      "required_gates": [
+        "transition_evidence",
+        "scanner_coverage",
+        "recomposition",
+        "runtime_profile_validation"
+      ],
+      "requires_recomposition": true,
+      "requires_human_review": false,
+      "unknown_handling": "clarification_required"
+    },
+    {
+      "id": "repo-read-to-repo-write",
+      "from_capability_classes": [
+        "repo-read"
+      ],
+      "to_capability_classes": [
+        "repo-write"
+      ],
+      "decision": "require_recomposition",
+      "required_evidence": [
+        "repository_bound",
+        "explicit_write_intent",
+        "mentioned_paths",
+        "scan_coverage",
+        "raw_artifact_hash_verified"
+      ],
+      "required_gates": [
+        "transition_evidence",
+        "scanner_coverage",
+        "recomposition",
+        "runtime_profile_validation"
+      ],
+      "requires_recomposition": true,
+      "requires_human_review": false,
+      "unknown_handling": "clarification_required"
+    },
+    {
+      "id": "repo-write-to-protected-path-write",
+      "from_capability_classes": [
+        "repo-write"
+      ],
+      "to_capability_classes": [
+        "protected-path-write"
+      ],
+      "decision": "require_human_review",
+      "required_evidence": [
+        "repository_bound",
+        "explicit_write_intent",
+        "protected_path_reference",
+        "mentioned_paths",
+        "scan_coverage",
+        "raw_artifact_hash_verified"
+      ],
+      "required_gates": [
+        "transition_evidence",
+        "scanner_coverage",
+        "codeowners",
+        "review_gates",
+        "recomposition",
+        "runtime_profile_validation"
+      ],
+      "requires_recomposition": true,
+      "requires_human_review": true,
+      "unknown_handling": "human_review_required"
+    },
+    {
+      "id": "protected-path-write-to-production-change",
+      "from_capability_classes": [
+        "protected-path-write"
+      ],
+      "to_capability_classes": [
+        "production-change"
+      ],
+      "decision": "require_human_review",
+      "required_evidence": [
+        "repository_bound",
+        "explicit_write_intent",
+        "protected_path_reference",
+        "scan_coverage",
+        "raw_artifact_hash_verified"
+      ],
+      "required_gates": [
+        "transition_evidence",
+        "scanner_coverage",
+        "production_readiness",
+        "required_status_checks",
+        "approval_gates",
+        "runtime_profile_validation"
+      ],
+      "requires_recomposition": true,
+      "requires_human_review": true,
+      "unknown_handling": "human_review_required"
+    },
+    {
+      "id": "any-to-secrets-sensitive",
+      "from_capability_classes": [
+        "research",
+        "read-only",
+        "repo-read",
+        "repo-write",
+        "protected-path-write",
+        "production-change",
+        "unknown"
+      ],
+      "to_capability_classes": [
+        "secrets-sensitive"
+      ],
+      "decision": "deny",
+      "required_evidence": [
+        "scan_coverage",
+        "raw_artifact_hash_verified"
+      ],
+      "required_gates": [
+        "transition_evidence",
+        "secret_sensitivity_policy"
+      ],
+      "requires_recomposition": false,
+      "requires_human_review": true,
+      "unknown_handling": "fail_closed"
+    }
+  ],
+  "exceptions": []
+}
