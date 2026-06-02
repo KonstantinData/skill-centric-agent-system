@@ -1,0 +1,164 @@
+{
+  "suite_id": "intent-transition-golden-traces",
+  "version": "0.1.0",
+  "cases": [
+    {
+      "case_id": "research-to-research-safe",
+      "previous_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "requested_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "raw_turn": "Can you explain why TypeScript reports TS2322 here?",
+      "expected_decision": "allowed",
+      "expected_signals": [],
+      "metamorphic_group": null
+    },
+    {
+      "case_id": "research-to-task-execution-apply-fix",
+      "previous_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "requested_capability_classes": [
+        "repo-write"
+      ],
+      "raw_turn": "Apply the fix to src/foo.ts in this repo.",
+      "expected_decision": "recomposition_required",
+      "expected_signals": [
+        {
+          "signal_kind": "write_intent",
+          "span": "Apply the fix"
+        },
+        {
+          "signal_kind": "path_reference",
+          "span": "src/foo.ts"
+        },
+        {
+          "signal_kind": "repository_reference",
+          "span": "this repo"
+        }
+      ],
+      "metamorphic_group": "apply-fix"
+    },
+    {
+      "case_id": "read-only-to-write-capable",
+      "previous_capability_classes": [
+        "repo-read"
+      ],
+      "requested_capability_classes": [
+        "repo-write"
+      ],
+      "raw_turn": "Update tests/test_foo.py in this repository.",
+      "expected_decision": "recomposition_required",
+      "expected_signals": [
+        {
+          "signal_kind": "write_intent",
+          "span": "Update"
+        },
+        {
+          "signal_kind": "path_reference",
+          "span": "tests/test_foo.py"
+        },
+        {
+          "signal_kind": "repository_reference",
+          "span": "this repository"
+        }
+      ],
+      "metamorphic_group": null
+    },
+    {
+      "case_id": "protected-path-change",
+      "previous_capability_classes": [
+        "repo-write"
+      ],
+      "requested_capability_classes": [
+        "protected-path-write"
+      ],
+      "raw_turn": "Change .github/workflows/ci.yml in this repo.",
+      "expected_decision": "human_review_required",
+      "expected_signals": [
+        {
+          "signal_kind": "write_intent",
+          "span": "Change"
+        },
+        {
+          "signal_kind": "protected_path_reference",
+          "span": ".github/workflows/ci.yml"
+        },
+        {
+          "signal_kind": "repository_reference",
+          "span": "this repo"
+        }
+      ],
+      "metamorphic_group": null
+    },
+    {
+      "case_id": "destructive-request",
+      "previous_capability_classes": [
+        "repo-read"
+      ],
+      "requested_capability_classes": [
+        "repo-write"
+      ],
+      "raw_turn": "Delete src/legacy.py from this repo.",
+      "expected_decision": "human_review_required",
+      "expected_signals": [
+        {
+          "signal_kind": "destructive_intent",
+          "span": "Delete"
+        },
+        {
+          "signal_kind": "path_reference",
+          "span": "src/legacy.py"
+        },
+        {
+          "signal_kind": "repository_reference",
+          "span": "this repo"
+        }
+      ],
+      "metamorphic_group": null
+    },
+    {
+      "case_id": "ambiguous-that-file",
+      "previous_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "requested_capability_classes": [
+        "repo-write"
+      ],
+      "raw_turn": "Apply that fix to that file.",
+      "expected_decision": "clarification_required",
+      "expected_signals": [
+        {
+          "signal_kind": "write_intent",
+          "span": "Apply"
+        }
+      ],
+      "metamorphic_group": "apply-fix"
+    },
+    {
+      "case_id": "ambiguous-safe-option",
+      "previous_capability_classes": [
+        "research",
+        "read-only"
+      ],
+      "requested_capability_classes": [
+        "repo-write"
+      ],
+      "raw_turn": "Apply the safe option.",
+      "expected_decision": "clarification_required",
+      "expected_signals": [
+        {
+          "signal_kind": "write_intent",
+          "span": "Apply"
+        }
+      ],
+      "metamorphic_group": "apply-fix"
+    }
+  ]
+}
