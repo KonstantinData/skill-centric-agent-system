@@ -61,6 +61,12 @@ path can pass learned authority priors into the memory candidate validator; when
 the compiler returns a blocking gate, the candidate remains non-promotable and
 the policy reason records the matched contrastive pair IDs.
 
+Capability-gap learning uses the same boundary. Runtime denials may emit
+non-executable `CapabilityGapCandidate` artifacts only when the denial comes
+from deterministic policy, scope, budget, tool, or validator predicates. Secret
+denials and unknown-tool denials are excluded from learning, and every candidate
+requires reviewed Brain promotion before it can affect future composition.
+
 Allowed decisions are:
 
 - `allow_ranking_only`,
@@ -79,6 +85,8 @@ exceptions.
 ## Contract Artifacts
 
 - `schemas/contrastive-pair.schema.json`
+- `schemas/capability-gap-candidate.schema.json`
 - `policies/runtime/semantic-drift-guard.json`
 - `scripts/runtime/validate_semantic_drift_guard.py`
+- `src/skill_centric_agent_system/runtime/capability_gaps.py`
 - `docs/adr/0007-learned-context-authority-boundary.md`
