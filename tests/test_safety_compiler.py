@@ -173,3 +173,36 @@ def test_memory_promotion_allows_ranking_only_prior() -> None:
     )
 
     assert result.approved
+
+
+def test_safety_compiler_decision_report_is_operator_safe() -> None:
+    compiler = SafetyCompiler.from_policy_file(POLICY_PATH)
+
+    report = compiler.compile_decision_report(staging_to_prod_budget_prior())
+
+    assert report["report_kind"] == "semantic_drift_guard_decision"
+    assert report["source_context"] == staging_to_prod_budget_prior()["source_context"]
+    assert report["target_context"] == staging_to_prod_budget_prior()["target_context"]
+    assert report["authority_delta"] == ["budget_increase"]
+    assert report["matched_contrastive_pair_ids"] == [
+        "staging-budget-gap-must-not-generalize-to-prod"
+    ]
+    assert report["final_gate"] == "needs_human_review"
+    assert report["safe_for_release_evidence"] is True
+    assert report["raw_runtime_trace_included"] is False
+
+
+def test_safety_compiler_coverage_report_lists_pair_coverage_and_gaps() -> None:
+    compiler = SafetyCompiler.from_policy_file(POLICY_PATH)
+
+    report = compiler.contrastive_pair_coverage_report()
+
+    assert report["report_kind"] == "semantic_drift_guard_coverage"
+    assert "staging-budget-gap-must-not-generalize-to-prod" in report["covered_pair_ids"]
+    assert "prod" in report["coverage"]["environments"]
+    assert "high" in report["coverage"]["risk_levels"]
+    assert "runtime-preflight-required" in report["coverage"]["workflow_ids"]
+    assert "budget_increase" in report["coverage"]["authority_delta"]
+    assert "validator_removal" in report["coverage_gaps"]["authority_delta"]
+    assert report["safe_for_release_evidence"] is True
+    assert report["raw_runtime_trace_included"] is False
