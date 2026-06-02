@@ -18,6 +18,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/intent-transition-gates.md`
 - `schemas/transition-evidence.schema.json`
 - `scripts/runtime/scan_transition_signals.py`
+- `policies/runtime/capability-delta-transition-policy.json`
 - `docs/policies/hooks-usage-model.md`
 - `docs/policies/skill-handler-version-policy.md`
 - `docs/policies/production-skill-instruction-packs.md`
