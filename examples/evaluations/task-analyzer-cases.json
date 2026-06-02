@@ -154,7 +154,11 @@
       "classification_confidence": "high",
       "ambiguous_task_types": [],
       "requires_human_review": false
-    }
+    },
+    "fixture_tags": [
+      "stackoverflow-like",
+      "positive-research"
+    ]
   },
   {
     "name": "how-to fix question routes to research instead of execution",
@@ -182,6 +186,116 @@
       "classification_confidence": "high",
       "ambiguous_task_types": [],
       "requires_human_review": false
+    },
+    "fixture_tags": [
+      "stackoverflow-like",
+      "positive-research"
+    ]
+  },
+  {
+    "name": "noisy stack overflow log routes to research",
+    "fixture_tags": [
+      "stackoverflow-like",
+      "noisy-research"
+    ],
+    "task": {
+      "id": "task-python-ssl-log-question",
+      "request": "Stack Overflow-style question: pip install fails with SSLError CERTIFICATE_VERIFY_FAILED behind a corporate proxy. Here is the log excerpt; explain likely causes and safe remediation options without running commands.",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "research",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "capability_hints_include": [
+        "retrieval",
+        "analysis"
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
+    }
+  },
+  {
+    "name": "database deadlock explanation routes to research",
+    "fixture_tags": [
+      "stackoverflow-like",
+      "positive-research"
+    ],
+    "task": {
+      "id": "task-postgres-deadlock-question",
+      "request": "What causes PostgreSQL deadlock detected errors during concurrent updates, and how should I diagnose the transaction pattern?",
+      "constraints": {
+        "write_access": false,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "research",
+      "risk_level": "low",
+      "required_inputs": [],
+      "available_inputs": [],
+      "domains_include": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "capability_hints_include": [
+        "retrieval",
+        "analysis"
+      ],
+      "classification_confidence": "high",
+      "ambiguous_task_types": [],
+      "requires_human_review": false
+    }
+  },
+  {
+    "name": "ambiguous troubleshooting plus repo update requires review",
+    "fixture_tags": [
+      "stackoverflow-like",
+      "mixed-intent",
+      "human-review"
+    ],
+    "task": {
+      "id": "task-webpack-error-and-update-config",
+      "request": "Why does webpack fail with Module not found, and update the repository config to fix it.",
+      "context": {
+        "repository": {
+          "path": ".",
+          "default_branch": "main"
+        }
+      },
+      "constraints": {
+        "write_access": true,
+        "destructive_actions": false
+      }
+    },
+    "expected": {
+      "task_type": "general-task",
+      "risk_level": "high",
+      "required_inputs": [
+        "repository"
+      ],
+      "available_inputs": [
+        "repository"
+      ],
+      "domains_include": [
+        "repository"
+      ],
+      "capability_hints_include": [],
+      "classification_confidence": "low",
+      "ambiguous_task_types": [
+        "research",
+        "task-execution"
+      ],
+      "requires_human_review": true
     }
   },
   {
@@ -219,6 +333,10 @@
         "task-execution"
       ],
       "requires_human_review": true
-    }
+    },
+    "fixture_tags": [
+      "mixed-intent",
+      "human-review"
+    ]
   }
 ]
