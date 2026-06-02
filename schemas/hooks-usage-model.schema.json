@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:hooks-usage-model:0.1.0",
+  "title": "SCAS HOOKS Usage Model",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "policy_id",
+    "owner",
+    "status",
+    "scope",
+    "mandatory_failure_modes",
+    "forbidden_capabilities",
+    "hook_points",
+    "ci_gate"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "post-p5-hooks-usage-model"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "applies_to",
+        "authority_chain",
+        "non_goals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "applies_to": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "authority_chain": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "non_goals": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "mandatory_failure_modes": {
+      "type": "object",
+      "required": [
+        "unknown_hook",
+        "schema_failure",
+        "policy_denial",
+        "missing_evidence",
+        "unregistered_hook_request"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unknown_hook": {
+          "const": "fail_closed"
+        },
+        "schema_failure": {
+          "const": "fail_closed"
+        },
+        "policy_denial": {
+          "const": "fail_closed"
+        },
+        "missing_evidence": {
+          "const": "fail_closed"
+        },
+        "unregistered_hook_request": {
+          "const": "fail_closed"
+        }
+      }
+    },
+    "forbidden_capabilities": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/forbiddenCapability"
+      }
+    },
+    "hook_points": {
+      "type": "array",
+      "minItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/hookPoint"
+      }
+    },
+    "ci_gate": {
+      "type": "object",
+      "required": [
+        "command",
+        "workflow_jobs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "const": "PYTHONPATH=src python scripts/runtime/validate_hooks_usage_model.py --check"
+        },
+        "workflow_jobs": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "forbiddenCapability": {
+      "type": "string",
+      "enum": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ]
+    },
+    "hookPoint": {
+      "type": "object",
+      "required": [
+        "id",
+        "phase",
+        "purpose",
+        "profile_bound",
+        "control_path",
+        "invocation_mode",
+        "allowed_effects",
+        "forbidden_effects",
+        "required_profile_bindings",
+        "required_evidence",
+        "on_violation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "composition-context-received",
+            "profile-before-seal",
+            "runtime-before-plan",
+            "runtime-before-tool",
+            "runtime-after-tool",
+            "runtime-before-final-validation",
+            "recomposition-requested",
+            "runtime-completed"
+          ]
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "composition",
+            "planning",
+            "execution",
+            "validation",
+            "recomposition",
+            "completion"
+          ]
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_bound": {
+          "const": true
+        },
+        "control_path": {
+          "type": "string",
+          "const": "registry_policy_validator_profile"
+        },
+        "invocation_mode": {
+          "type": "string",
+          "enum": [
+            "policy_gate",
+            "validation_gate",
+            "observability",
+            "recomposition_gate"
+          ]
+        },
+        "allowed_effects": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "observe",
+              "record_evidence",
+              "deny_execution",
+              "run_validator",
+              "request_recomposition",
+              "require_human_review"
+            ]
+          }
+        },
+        "forbidden_effects": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/forbiddenCapability"
+          }
+        },
+        "required_profile_bindings": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "required_evidence": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "on_violation": {
+          "const": "fail_closed"
+        }
+      }
+    }
+  }
+}

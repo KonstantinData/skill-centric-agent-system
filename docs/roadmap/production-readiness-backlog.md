@@ -41,6 +41,10 @@ The cross-phase execution order is tracked in
     Run full certification against target environment and record final decision.
 11. `P5.11 Expand Production Skill Handler Coverage`
     Expand production-required skill handler coverage beyond the first slices.
+12. `Post-P5: Define and govern HOOKS usage model`
+    Maintain versioned, executable lifecycle hook governance for composition
+    and runtime without allowing hooks to grant capabilities or mutate active
+    profiles.
 
 ## Notes
 

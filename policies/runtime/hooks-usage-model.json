@@ -1,0 +1,333 @@
+{
+  "ci_gate": {
+    "command": "PYTHONPATH=src python scripts/runtime/validate_hooks_usage_model.py --check",
+    "workflow_jobs": [
+      "ci-contract-tests",
+      "production-readiness-python-gates"
+    ]
+  },
+  "contract_version": "0.1.0",
+  "forbidden_capabilities": [
+    "grant_capability",
+    "mutate_active_profile",
+    "bypass_policy_filter",
+    "bypass_validator",
+    "access_unscoped_data",
+    "execute_unregistered_tool",
+    "write_secret_or_raw_trace",
+    "change_module_version_pin"
+  ],
+  "hook_points": [
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "composition-context-received",
+      "invocation_mode": "policy_gate",
+      "on_violation": "fail_closed",
+      "phase": "composition",
+      "profile_bound": true,
+      "purpose": "Validate Control Plane candidate context before scoring, filtering, and dependency resolution.",
+      "required_evidence": [
+        "candidate_module_count",
+        "policy_filter_result",
+        "scope_binding_summary"
+      ],
+      "required_profile_bindings": [
+        "task_signals",
+        "auth_context",
+        "policies"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution",
+        "run_validator"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "profile-before-seal",
+      "invocation_mode": "validation_gate",
+      "on_violation": "fail_closed",
+      "phase": "composition",
+      "profile_bound": true,
+      "purpose": "Run profile schema and cross-field invariant checks before a runtime profile becomes immutable.",
+      "required_evidence": [
+        "profile_schema_status",
+        "module_version_pin_status",
+        "graph_validation_status"
+      ],
+      "required_profile_bindings": [
+        "module_versions",
+        "failure_policy",
+        "validators"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "runtime-before-plan",
+      "invocation_mode": "policy_gate",
+      "on_violation": "fail_closed",
+      "phase": "planning",
+      "profile_bound": true,
+      "purpose": "Confirm runtime limits, selected skills, validators, and scopes before planner execution starts.",
+      "required_evidence": [
+        "runtime_profile_id",
+        "limit_snapshot",
+        "selected_skill_summary"
+      ],
+      "required_profile_bindings": [
+        "skills",
+        "limits",
+        "validators"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "runtime-before-tool",
+      "invocation_mode": "policy_gate",
+      "on_violation": "fail_closed",
+      "phase": "execution",
+      "profile_bound": true,
+      "purpose": "Gate each tool invocation against the active profile, Tool Gateway policy, and remaining budgets.",
+      "required_evidence": [
+        "tool_id",
+        "profile_allowlist_result",
+        "budget_status",
+        "risk_gate_status"
+      ],
+      "required_profile_bindings": [
+        "tools",
+        "limits",
+        "policies"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "runtime-after-tool",
+      "invocation_mode": "policy_gate",
+      "on_violation": "fail_closed",
+      "phase": "execution",
+      "profile_bound": true,
+      "purpose": "Validate tool result handling, redaction, artifact storage, and audit event persistence.",
+      "required_evidence": [
+        "tool_invocation_status",
+        "redaction_status",
+        "artifact_reference",
+        "audit_event_id"
+      ],
+      "required_profile_bindings": [
+        "tools",
+        "observability",
+        "policies"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "deny_execution",
+        "run_validator",
+        "require_human_review"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "runtime-before-final-validation",
+      "invocation_mode": "validation_gate",
+      "on_violation": "fail_closed",
+      "phase": "validation",
+      "profile_bound": true,
+      "purpose": "Run selected validators and human-review gates before final runtime output is accepted.",
+      "required_evidence": [
+        "validator_ids",
+        "validator_results",
+        "human_review_status"
+      ],
+      "required_profile_bindings": [
+        "validators",
+        "human_review",
+        "failure_policy"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence",
+        "request_recomposition",
+        "deny_execution"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "recomposition-requested",
+      "invocation_mode": "recomposition_gate",
+      "on_violation": "fail_closed",
+      "phase": "recomposition",
+      "profile_bound": true,
+      "purpose": "Permit recomposition only by stopping the current run and creating a new version-pinned profile through the composer.",
+      "required_evidence": [
+        "parent_profile_id",
+        "recomposition_reason",
+        "new_profile_generation"
+      ],
+      "required_profile_bindings": [
+        "profile_generation",
+        "parent_profile_id",
+        "failure_policy"
+      ]
+    },
+    {
+      "allowed_effects": [
+        "observe",
+        "record_evidence"
+      ],
+      "control_path": "registry_policy_validator_profile",
+      "forbidden_effects": [
+        "grant_capability",
+        "mutate_active_profile",
+        "bypass_policy_filter",
+        "bypass_validator",
+        "access_unscoped_data",
+        "execute_unregistered_tool",
+        "write_secret_or_raw_trace",
+        "change_module_version_pin"
+      ],
+      "id": "runtime-completed",
+      "invocation_mode": "observability",
+      "on_violation": "fail_closed",
+      "phase": "completion",
+      "profile_bound": true,
+      "purpose": "Persist sanitized completion evidence without changing runtime permissions or profile state.",
+      "required_evidence": [
+        "runtime_status",
+        "stop_reason",
+        "final_validator_status",
+        "sensitive_data_handling_status"
+      ],
+      "required_profile_bindings": [
+        "observability",
+        "failure_policy",
+        "validators"
+      ]
+    }
+  ],
+  "mandatory_failure_modes": {
+    "missing_evidence": "fail_closed",
+    "policy_denial": "fail_closed",
+    "schema_failure": "fail_closed",
+    "unknown_hook": "fail_closed",
+    "unregistered_hook_request": "fail_closed"
+  },
+  "owner": "Konstantin Milonas",
+  "policy_id": "post-p5-hooks-usage-model",
+  "scope": {
+    "applies_to": [
+      "agent-composer",
+      "runtime-profile-validator",
+      "single-agent-runtime",
+      "runtime-profile-enforcer",
+      "tool-gateway",
+      "runtime-validator"
+    ],
+    "authority_chain": [
+      "task-analysis",
+      "registry-discovery",
+      "scoring",
+      "policy-filtering",
+      "dependency-graph-validation",
+      "immutable-runtime-profile-validation"
+    ],
+    "non_goals": [
+      "local developer pre-commit hooks",
+      "unregistered runtime plugins",
+      "prompt-only capability grants"
+    ]
+  },
+  "status": "active"
+}

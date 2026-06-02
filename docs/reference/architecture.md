@@ -102,6 +102,14 @@ invocation must be checked against profile permissions and remaining limits.
 
 `Validator` checks profile integrity before execution, then output contracts, policy compliance, unauthorized access, and task completion before final response or action.
 
+`HOOKS` are governed lifecycle hook points across composition and runtime
+execution. They may observe, persist sanitized evidence, deny execution, run
+selected validators, request human review, or request controlled recomposition.
+They must not grant capabilities, mutate the active profile, bypass policy or
+validator gates, read unscoped data, execute unregistered tools, write secrets
+or raw traces, or change module version pins. The durable policy is
+`docs/policies/hooks-usage-model.md`.
+
 `Error Classification` maps runtime outcomes to explicit taxonomy classes
 (`F1_INEFFICIENCY_PATH`, `F2_INTERFACE_CONTRACT_BREAKDOWN`,
 `R8_POLICY_CONFLICT_CONTEXT_CONTAMINATION`, `NONE`) with deterministic evidence
@@ -190,6 +198,9 @@ The current repository has implemented the first control-plane slice:
 - a committed production skill instruction-pack artifact and CI gate that map
   production-required skill fixtures to execution steps, live-run evidence
   requirements, and module/runtime test evidence,
+- a committed HOOKS usage model and CI gate that constrain composition and
+  runtime hook points to profile-bound observation, evidence, deny,
+  validation, human-review, and recomposition effects,
 - Cloudflare Control API knowledge and memory ingestion endpoints that write
   R2 objects and D1 metadata,
 - `POST /retrieval/context` with D1 scope prefiltering, Vectorize bindings, and
