@@ -20,9 +20,8 @@ Before starting each queue item:
 
 ## Next Start Point
 
-1. `Post-P5: Define and govern HOOKS usage model`
-2. `Post-P5: Recertification cadence and release policy`
-3. `Post-P5: Harden production change gates in CI/GitHub`
+1. `Post-P5: Recertification cadence and release policy`
+2. `Post-P5: Harden production change gates in CI/GitHub`
 
 ## Queue Order
 
@@ -34,6 +33,10 @@ Before starting each queue item:
 6. Phase 6 Governance (`P6.*`)
 7. Formal Safety Guarantees program (`FSG-01` to `FSG-12`)
 8. Post-P5 Production Hardening (`Post-P5:*`)
+
+## Recently Completed
+
+1. `Post-P5: Define and govern HOOKS usage model`
 
 ## Active Tracker Synchronization
 

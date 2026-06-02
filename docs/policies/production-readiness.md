@@ -41,6 +41,7 @@ is satisfied for the target environment.
 | Pre-canary safety gate | Invariant replay and shadow regression thresholds pass together with explicit remediation output on failure. |
 | Automatic rollback rules | Failed pre-canary gate requires rollback to signed and verified last-known-good descriptor/policy versions. |
 | Incident-locked regressions | Incident-linked never-again fixtures pass and remain bound to mandatory invariants per change type. |
+| HOOKS usage model | Runtime and composition hook points are versioned in `policies/runtime/hooks-usage-model.json`; unknown or unregistered hooks fail closed; `python scripts/runtime/validate_hooks_usage_model.py --check` proves hooks cannot grant capabilities, mutate active profiles, bypass policies or validators, read unscoped data, execute unregistered tools, write secrets/raw traces, or change module version pins. |
 | Live handler binding evidence | The referenced Live Runtime Gates run uploads `live-runtime-handler-binding-evidence`; certification validates passed live E2E cases and sanitized `skill_handlers` where every `handler_id` equals `name@version`. |
 | Executable skill runtime | Profile-selected skills resolve to version-pinned executable handlers; unknown or mismatched handlers fail closed; `python scripts/runtime/skill_handler_coverage.py --check` proves every production-required skill fixture maps to a handler, runtime path, and tests; `python scripts/runtime/production_skill_instruction_packs.py --check` proves instruction packs remain aligned with modules, handlers, and test evidence. |
 | Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/policies/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
@@ -108,6 +109,10 @@ and fails closed when rollback is required but the target is not signed and
 verified.
 It additionally records `production-evidence/incident-locked-regressions.json`
 and fails closed on binding violations or replay mismatches.
+It also validates the HOOKS usage model and fails closed if configured hook
+points can grant capabilities, mutate active profiles, bypass policies or
+validators, access unscoped data, execute unregistered tools, write secrets or
+raw traces, or change module version pins.
 
 The workflow builds the evidence artifact through
 `scripts/release/build_production_readiness_evidence.py`. In `certify` mode it
