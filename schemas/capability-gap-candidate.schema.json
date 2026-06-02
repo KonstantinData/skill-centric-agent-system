@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:capability-gap-candidate:0.1.0",
+  "title": "SCAS Capability Gap Candidate",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "candidate_kind",
+    "id",
+    "source_run_id",
+    "source_profile_id",
+    "source_step_id",
+    "blocking_predicate",
+    "requested_capability",
+    "stop_reason",
+    "evidence_uris",
+    "learning_status",
+    "executable"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "candidate_kind": {
+      "const": "capability_gap_candidate"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^cgc-[a-z0-9-]+$"
+    },
+    "source_run_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "source_profile_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "source_step_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "blocking_predicate": {
+      "enum": [
+        "tool_not_in_runtime_profile",
+        "tool_risk_exceeds_profile",
+        "policy_not_in_runtime_profile",
+        "data_scope_not_in_runtime_profile",
+        "knowledge_scope_not_in_runtime_profile",
+        "memory_scope_not_in_runtime_profile",
+        "max_tool_calls_exceeded",
+        "max_tokens_exceeded",
+        "max_data_reads_exceeded",
+        "max_memory_ops_exceeded",
+        "max_recompositions_exceeded",
+        "validator_failed",
+        "selected_module_version_missing",
+        "module_version_mismatch"
+      ]
+    },
+    "requested_capability": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "tool",
+            "policy",
+            "data_scope",
+            "knowledge_scope",
+            "memory_scope",
+            "budget",
+            "validator",
+            "module_version"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "stop_reason": {
+      "enum": [
+        "policy_denied",
+        "max_tokens",
+        "max_tool_calls",
+        "max_data_reads",
+        "max_memory_ops",
+        "max_recompositions",
+        "validator_failed"
+      ]
+    },
+    "evidence_uris": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "learning_status": {
+      "const": "review_required"
+    },
+    "executable": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    }
+  }
+}

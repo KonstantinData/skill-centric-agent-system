@@ -1,6 +1,12 @@
 """Runtime entrypoint, storage, and Flight Recorder helpers."""
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore, redact_sensitive_data
+from skill_centric_agent_system.runtime.capability_gaps import (
+    CapabilityGapCandidateError,
+    CapabilityGapCaptureResult,
+    build_capability_gap_candidate,
+    capture_capability_gap_candidate,
+)
 from skill_centric_agent_system.runtime.context import RuntimeContextManager
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
@@ -78,6 +84,8 @@ from skill_centric_agent_system.runtime.validation import (
 __all__ = [
     "FlightRecorder",
     "CloudflareMemoryIngestionClient",
+    "CapabilityGapCandidateError",
+    "CapabilityGapCaptureResult",
     "InMemoryRuntimeStore",
     "JsonArtifactStore",
     "MemoryFeedbackError",
@@ -125,6 +133,8 @@ __all__ = [
     "ToolGateway",
     "ToolInvocationResult",
     "BUILTIN_SKILL_HANDLER_REGISTRY",
+    "build_capability_gap_candidate",
+    "capture_capability_gap_candidate",
     "profile_redacts_sensitive_data",
     "open_runtime_store_session",
     "redact_sensitive_data",

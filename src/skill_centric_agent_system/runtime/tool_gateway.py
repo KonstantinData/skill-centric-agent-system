@@ -7,6 +7,9 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any, Protocol
 
+from skill_centric_agent_system.runtime.capability_gaps import (
+    capability_gap_from_enforcement_error,
+)
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
     RuntimeProfileEnforcer,
@@ -196,13 +199,29 @@ class ToolGateway:
         payload: Mapping[str, Any],
         error: ProfileEnforcementError,
     ) -> None:
+        result: dict[str, Any] = {"effect": "deny", "reason": error.code}
+        evidence_uri = self.recorder.artifacts.uri_for(
+            ("events", self.run_id, f"{self.step_id}-{tool_name}-access-denied")
+        )
+        gap_result = capability_gap_from_enforcement_error(
+            artifacts=self.recorder.artifacts,
+            run_id=self.run_id,
+            profile=self.profile,
+            source_step_id=self.step_id,
+            requested_tool=tool_name,
+            error=error,
+            evidence_uris=(evidence_uri,),
+            known_tool_ids=self.adapters.keys(),
+        )
+        if gap_result.captured:
+            result["capability_gap_candidate_uri"] = gap_result.artifact_uri
         self.recorder.record_event(
             run_id=self.run_id,
             step_id=self.step_id,
             event_type="access_attempted",
             actor_role="policy_engine",
             planned_action={"tool_name": tool_name, "payload": dict(payload)},
-            result={"effect": "deny", "reason": error.code},
+            result=result,
             stop_reason=error.stop_reason,
             redact_sensitive_data=self.redact_sensitive_data,
         )
