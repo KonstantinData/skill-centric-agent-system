@@ -1,0 +1,216 @@
+{
+  "ci_gate": {
+    "command": "PYTHONPATH=src python scripts/release/validate_production_recertification_policy.py --check",
+    "workflow_jobs": [
+      "ci-contract-tests",
+      "production-readiness-python-gates"
+    ]
+  },
+  "contract_version": "0.1.0",
+  "environment_cadence": [
+    {
+      "environment": "dev",
+      "max_evidence_age_days": 30,
+      "next_review_anchor": "certification_completed_at",
+      "recertification_cadence": "monthly",
+      "release_claim": "initial-productive-core",
+      "required_certification_mode": "evidence-only"
+    },
+    {
+      "environment": "staging",
+      "max_evidence_age_days": 45,
+      "next_review_anchor": "certification_completed_at",
+      "recertification_cadence": "per-release",
+      "release_claim": "staging-ready",
+      "required_certification_mode": "certify"
+    },
+    {
+      "environment": "prod",
+      "max_evidence_age_days": 90,
+      "next_review_anchor": "certification_completed_at",
+      "recertification_cadence": "quarterly",
+      "release_claim": "production-ready",
+      "required_certification_mode": "certify"
+    }
+  ],
+  "mandatory_recertification_triggers": [
+    {
+      "description": "Release scope changes from the previously certified scope.",
+      "evidence_required": [
+        "new_release_scope",
+        "previous_release_scope",
+        "production_readiness_evidence_run"
+      ],
+      "id": "release_scope_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "release"
+    },
+    {
+      "description": "Target environment changes between dev, staging, or prod.",
+      "evidence_required": [
+        "target_environment",
+        "environment_manifest_reference",
+        "live_environment_gate_run"
+      ],
+      "id": "target_environment_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "environment"
+    },
+    {
+      "description": "Runtime Plane, Control Plane, runtime profile, composition, or tool gateway behavior changes.",
+      "evidence_required": [
+        "changed_runtime_or_control_plane_component",
+        "repository_gate_results",
+        "runtime_contract_evidence"
+      ],
+      "id": "runtime_or_control_plane_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "runtime"
+    },
+    {
+      "description": "Production-required skills, handlers, instruction packs, or handler version policy changes.",
+      "evidence_required": [
+        "skill_handler_coverage_report",
+        "production_instruction_pack_report",
+        "live_handler_binding_evidence"
+      ],
+      "id": "production_skill_or_handler_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "runtime"
+    },
+    {
+      "description": "Policy, schema, validator, HOOKS model, or release gate logic changes.",
+      "evidence_required": [
+        "changed_policy_or_schema",
+        "validator_output",
+        "production_readiness_evidence_run"
+      ],
+      "id": "policy_schema_or_gate_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "governance"
+    },
+    {
+      "description": "Security, privacy, data-governance, token-scope, or threat-model posture changes.",
+      "evidence_required": [
+        "security_closure_report",
+        "threat_model_reference",
+        "token_scope_review"
+      ],
+      "id": "security_or_data_governance_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "security"
+    },
+    {
+      "description": "Branch protection, required checks, workflow hardening, dependency policy, or supply-chain gates change.",
+      "evidence_required": [
+        "ruleset_validation_report",
+        "workflow_hardening_report",
+        "dependency_policy_report"
+      ],
+      "id": "branch_protection_or_ci_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "governance"
+    },
+    {
+      "description": "Cloudflare or Hetzner live infrastructure resources, secrets, queues, databases, buckets, indexes, or runtime artifact roots change.",
+      "evidence_required": [
+        "environment_manifest_reference",
+        "live_runtime_gate_run",
+        "infrastructure_smoke_evidence"
+      ],
+      "id": "live_infrastructure_change",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "infrastructure"
+    },
+    {
+      "description": "A production incident, failed release gate, failed pre-canary gate, rollback, or incident-locked regression occurs.",
+      "evidence_required": [
+        "incident_or_gate_failure_reference",
+        "remediation_evidence",
+        "never_again_fixture_reference"
+      ],
+      "id": "incident_or_gate_failure",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "evidence"
+    },
+    {
+      "description": "The maximum evidence age for the target environment is reached.",
+      "evidence_required": [
+        "previous_certification_completed_at",
+        "next_review_due_at",
+        "fresh_production_readiness_evidence_run"
+      ],
+      "id": "evidence_expired",
+      "required_action": "rerun_production_readiness_evidence",
+      "scope": "evidence"
+    }
+  ],
+  "owner": "SCAS release owner",
+  "policy_id": "post-p5-production-recertification-policy",
+  "release_decision_requirements": {
+    "forbidden_evidence_content": [
+      "secret_values",
+      "private_keys",
+      "bearer_tokens",
+      "raw_runtime_traces",
+      "raw_tool_outputs",
+      "confidential_customer_data"
+    ],
+    "required_fields": [
+      "release_commit",
+      "target_environment",
+      "release_scope",
+      "certification_mode",
+      "gate_results",
+      "external_evidence",
+      "open_release_gaps",
+      "waivers",
+      "owner",
+      "completed_at",
+      "next_review_due_at",
+      "recertification_triggers"
+    ],
+    "stale_evidence_outcome": "recertification-required",
+    "valid_final_decisions": [
+      "certified",
+      "not-certified",
+      "recertification-required"
+    ]
+  },
+  "scope": {
+    "applies_to": [
+      "production-readiness evidence generation",
+      "staging-ready and production-ready release claims",
+      "release handoff records",
+      "recertification scheduling and trigger decisions"
+    ],
+    "authority_chain": [
+      "docs/policies/production-readiness.md",
+      "policies/runtime/production-recertification-policy.json",
+      "scripts/release/build_production_readiness_evidence.py",
+      ".github/workflows/production-readiness.yml"
+    ],
+    "non_goals": [
+      "provisioning live infrastructure",
+      "storing secrets or raw runtime traces",
+      "bypassing required production readiness gates"
+    ]
+  },
+  "status": "active",
+  "waiver_policy": {
+    "allowed": true,
+    "forbidden_for": [
+      "secret_exposure",
+      "unverified_release_commit",
+      "missing_production_readiness_evidence"
+    ],
+    "max_duration_days": 14,
+    "required_fields": [
+      "gate",
+      "risk",
+      "owner",
+      "expiry_condition",
+      "compensating_control"
+    ]
+  }
+}

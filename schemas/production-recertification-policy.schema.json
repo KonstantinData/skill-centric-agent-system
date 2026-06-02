@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:production-recertification-policy:0.1.0",
+  "title": "SCAS Production Recertification Policy",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "policy_id",
+    "owner",
+    "status",
+    "scope",
+    "environment_cadence",
+    "mandatory_recertification_triggers",
+    "release_decision_requirements",
+    "waiver_policy",
+    "ci_gate"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "post-p5-production-recertification-policy"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "applies_to",
+        "authority_chain",
+        "non_goals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "applies_to": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "authority_chain": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "non_goals": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "environment_cadence": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/environmentCadence"
+      }
+    },
+    "mandatory_recertification_triggers": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/recertificationTrigger"
+      }
+    },
+    "release_decision_requirements": {
+      "type": "object",
+      "required": [
+        "required_fields",
+        "forbidden_evidence_content",
+        "valid_final_decisions",
+        "stale_evidence_outcome"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "required_fields": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "forbidden_evidence_content": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "valid_final_decisions": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "certified",
+              "not-certified",
+              "recertification-required"
+            ]
+          }
+        },
+        "stale_evidence_outcome": {
+          "type": "string",
+          "const": "recertification-required"
+        }
+      }
+    },
+    "waiver_policy": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "max_duration_days",
+        "required_fields",
+        "forbidden_for"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "const": true
+        },
+        "max_duration_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "required_fields": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "forbidden_for": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "ci_gate": {
+      "type": "object",
+      "required": [
+        "command",
+        "workflow_jobs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "const": "PYTHONPATH=src python scripts/release/validate_production_recertification_policy.py --check"
+        },
+        "workflow_jobs": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "environmentCadence": {
+      "type": "object",
+      "required": [
+        "environment",
+        "max_evidence_age_days",
+        "required_certification_mode",
+        "recertification_cadence",
+        "release_claim",
+        "next_review_anchor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "environment": {
+          "type": "string",
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ]
+        },
+        "max_evidence_age_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 180
+        },
+        "required_certification_mode": {
+          "type": "string",
+          "enum": [
+            "evidence-only",
+            "certify"
+          ]
+        },
+        "recertification_cadence": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "quarterly",
+            "per-release"
+          ]
+        },
+        "release_claim": {
+          "type": "string",
+          "enum": [
+            "initial-productive-core",
+            "staging-ready",
+            "production-ready"
+          ]
+        },
+        "next_review_anchor": {
+          "type": "string",
+          "const": "certification_completed_at"
+        }
+      }
+    },
+    "recertificationTrigger": {
+      "type": "object",
+      "required": [
+        "id",
+        "description",
+        "scope",
+        "required_action",
+        "evidence_required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "release_scope_change",
+            "target_environment_change",
+            "runtime_or_control_plane_change",
+            "production_skill_or_handler_change",
+            "policy_schema_or_gate_change",
+            "security_or_data_governance_change",
+            "branch_protection_or_ci_change",
+            "live_infrastructure_change",
+            "incident_or_gate_failure",
+            "evidence_expired"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "release",
+            "environment",
+            "runtime",
+            "security",
+            "governance",
+            "infrastructure",
+            "evidence"
+          ]
+        },
+        "required_action": {
+          "type": "string",
+          "const": "rerun_production_readiness_evidence"
+        },
+        "evidence_required": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  }
+}

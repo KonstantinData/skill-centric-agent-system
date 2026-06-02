@@ -36,6 +36,7 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
         "Runtime Plane readiness",
         "Live runtime gates",
         "Live handler binding evidence",
+        "Recertification cadence and release policy",
         "Executable skill runtime",
         "Skill handler version policy",
         "Operational telemetry",

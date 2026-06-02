@@ -5,12 +5,19 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-CONTRACT_VERSION = "0.4.0"
+CONTRACT_VERSION = "0.5.0"
 GITHUB_HOST = "github.com"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.release.validate_production_recertification_policy import (  # noqa: E402
+    recertification_summary,
+)
 
 TARGET_ENVIRONMENTS = {"dev", "staging", "prod"}
 CERTIFICATION_MODES = {"evidence-only", "certify"}
@@ -83,6 +90,10 @@ REPOSITORY_GATE_RESULTS = (
             "python -m pytest tests/test_composition_pipeline.py "
             "tests/test_contract_schemas.py -k human_review"
         ),
+    ),
+    (
+        "Recertification cadence and release policy",
+        "python scripts/release/validate_production_recertification_policy.py --check",
     ),
     ("Control Plane Worker gates", "npm worker type generation, typecheck, tests, check"),
 )
@@ -517,6 +528,7 @@ def build_evidence(
     live_handler_binding_evidence: dict[str, object] | None = None,
     generated_at: str | None = None,
 ) -> dict[str, object]:
+    generated_timestamp = generated_at or datetime.now(UTC).isoformat()
     validate_certification_inputs(
         repository=repository,
         target_environment=target_environment,
@@ -555,10 +567,14 @@ def build_evidence(
         if status in {"staging-ready", "production-ready"}
         else "not-certified"
     )
+    recertification = recertification_evidence(
+        target_environment=target_environment,
+        generated_at=generated_timestamp,
+    )
 
     return {
         "contract_version": CONTRACT_VERSION,
-        "generated_at": generated_at or datetime.now(UTC).isoformat(),
+        "generated_at": generated_timestamp,
         "repository": repository,
         "commit": commit,
         "workflow_run": {
@@ -579,7 +595,28 @@ def build_evidence(
         ),
         "external_evidence": external,
         "open_release_gaps": gaps,
+        "waivers": [],
+        "owner": "SCAS release owner",
+        "completed_at": generated_timestamp,
+        "next_review_due_at": recertification["next_review_due_at"],
+        "recertification_policy": recertification,
+        "recertification_triggers": recertification["mandatory_triggers"],
         "sensitive_data_handling": "Credential values are not written to this evidence artifact.",
+    }
+
+
+def recertification_evidence(
+    *,
+    target_environment: str,
+    generated_at: str,
+) -> dict[str, object]:
+    summary = recertification_summary(target_environment=target_environment)
+    completed_at = _parse_iso_datetime(generated_at)
+    due_at = completed_at + timedelta(days=int(summary["max_evidence_age_days"]))
+    return {
+        **summary,
+        "completed_at": completed_at.isoformat(),
+        "next_review_due_at": due_at.isoformat(),
     }
 
 
@@ -655,6 +692,14 @@ def _validate_skill_handler_binding(handler: object) -> dict[str, str]:
         "version": version,
         "handler_id": handler_id,
     }
+
+
+def _parse_iso_datetime(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def env_value(name: str, default: str = "") -> str:

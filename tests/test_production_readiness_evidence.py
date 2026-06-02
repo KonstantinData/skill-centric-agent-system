@@ -110,9 +110,13 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
-    assert payload["contract_version"] == "0.4.0"
+    assert payload["contract_version"] == "0.5.0"
     assert payload["status"] == "initial-productive-core"
     assert payload["final_decision"] == "not-certified"
+    assert payload["next_review_due_at"] == "2026-06-23T13:00:00+00:00"
+    assert payload["recertification_policy"]["required_certification_mode"] == (
+        "evidence-only"
+    )
     assert payload["open_release_gaps"] == []
     assert "Credential values are not written" in payload["sensitive_data_handling"]
     assert any(result["gate"] == "Repository integrity" for result in payload["gate_results"])
@@ -135,6 +139,10 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
     )
     assert any(
         result["gate"] == "Analyzer, composer, and human review quality"
+        for result in payload["gate_results"]
+    )
+    assert any(
+        result["gate"] == "Recertification cadence and release policy"
         for result in payload["gate_results"]
     )
 
@@ -197,6 +205,12 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
     )
     assert payload["status"] == "production-ready"
     assert payload["final_decision"] == "certified"
+    assert payload["next_review_due_at"] == "2026-08-22T13:00:00+00:00"
+    assert payload["recertification_policy"]["required_certification_mode"] == "certify"
+    assert any(
+        trigger["id"] == "evidence_expired"
+        for trigger in payload["recertification_triggers"]
+    )
     assert not any(gap["id"] == "P5.02" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.04" for gap in payload["open_release_gaps"])
     assert not any(gap["id"] == "P5.05" for gap in payload["open_release_gaps"])
