@@ -67,6 +67,13 @@ from deterministic policy, scope, budget, tool, or validator predicates. Secret
 denials and unknown-tool denials are excluded from learning, and every candidate
 requires reviewed Brain promotion before it can affect future composition.
 
+Operators can request safe evidence reports from the Safety Compiler. Decision
+reports include source context, target context, authority deltas, matching
+contrastive pair IDs, and the final gate. Coverage reports list covered
+environments, risk levels, workflows, authority deltas, and untested authority
+delta gaps. Reports are metadata-only and must not include raw runtime traces or
+secret values.
+
 Allowed decisions are:
 
 - `allow_ranking_only`,

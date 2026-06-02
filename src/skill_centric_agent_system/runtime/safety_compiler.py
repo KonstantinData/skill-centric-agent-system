@@ -132,6 +132,72 @@ class SafetyCompiler:
             ),
         )
 
+    def compile_decision_report(
+        self,
+        prior: Mapping[str, Any],
+        *,
+        reviewed_policy_artifacts: Iterable[str] = (),
+    ) -> dict[str, Any]:
+        decision = self.compile_learned_authority_prior(
+            prior,
+            reviewed_policy_artifacts=reviewed_policy_artifacts,
+        )
+        return {
+            "contract_version": "0.1.0",
+            "report_kind": "semantic_drift_guard_decision",
+            "guard_id": str(self.guard_policy["guard_id"]),
+            "authority_invariant": str(self.guard_policy["authority_invariant"]),
+            "source_context": dict(_mapping(prior.get("source_context"))),
+            "target_context": dict(_mapping(prior.get("target_context"))),
+            "authority_delta": list(decision.authority_delta),
+            "matched_contrastive_pair_ids": list(decision.matched_pair_ids),
+            "final_gate": decision.decision,
+            "automatic_promotion_allowed": decision.automatic_promotion_allowed,
+            "decision": decision.as_dict(),
+            "safe_for_release_evidence": True,
+            "raw_runtime_trace_included": False,
+        }
+
+    def contrastive_pair_coverage_report(self) -> dict[str, Any]:
+        coverage = {
+            "environments": set[str](),
+            "risk_levels": set[str](),
+            "workflow_ids": set[str](),
+            "authority_delta": set[str](),
+        }
+        pair_ids: list[str] = []
+        pairs = self.guard_policy.get("contrastive_pairs", [])
+        if isinstance(pairs, list):
+            for pair in pairs:
+                if not isinstance(pair, Mapping):
+                    continue
+                pair_ids.append(str(pair["pair_id"]))
+                forbidden = _mapping(pair.get("forbidden_generalization"))
+                _add_if_string(coverage["environments"], forbidden.get("environment"))
+                _add_if_string(coverage["risk_levels"], forbidden.get("risk_level"))
+                _add_if_string(coverage["workflow_ids"], forbidden.get("workflow_id"))
+                for delta in forbidden.get("authority_delta", []):
+                    _add_if_string(coverage["authority_delta"], delta)
+
+        uncovered_authority_delta = sorted(AUTHORITY_DELTAS - coverage["authority_delta"])
+        return {
+            "contract_version": "0.1.0",
+            "report_kind": "semantic_drift_guard_coverage",
+            "guard_id": str(self.guard_policy["guard_id"]),
+            "covered_pair_ids": sorted(pair_ids),
+            "coverage": {
+                "environments": sorted(coverage["environments"]),
+                "risk_levels": sorted(coverage["risk_levels"]),
+                "workflow_ids": sorted(coverage["workflow_ids"]),
+                "authority_delta": sorted(coverage["authority_delta"]),
+            },
+            "coverage_gaps": {
+                "authority_delta": uncovered_authority_delta,
+            },
+            "safe_for_release_evidence": True,
+            "raw_runtime_trace_included": False,
+        }
+
     def _matching_pairs(
         self,
         prior: Mapping[str, Any],
@@ -219,3 +285,8 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _context_contains(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
     return all(actual.get(key) == value for key, value in expected.items())
+
+
+def _add_if_string(target: set[str], value: Any) -> None:
+    if isinstance(value, str) and value:
+        target.add(value)
