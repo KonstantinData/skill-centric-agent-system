@@ -157,6 +157,10 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "export OPENAI_API_KEY" in workflow
     assert "HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
     assert "control_api_url is required for ${TARGET_ENVIRONMENT}" in workflow
+    assert "Validate Control Plane credentials" in workflow
+    assert "--data @examples/control-api/composition-context-request.json" in workflow
+    assert "SCAS_${TARGET_ENVIRONMENT^^}_CONTROL_API_TOKEN" in workflow
+    assert "npx wrangler whoami --config workers/control-api/wrangler.toml" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow
     assert "python3.12-venv" in workflow
