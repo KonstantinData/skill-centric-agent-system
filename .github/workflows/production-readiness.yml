@@ -102,6 +102,7 @@ jobs:
           uv run python scripts/runtime/scan_transition_signals.py --check
           uv run python scripts/runtime/validate_transition_evidence.py --check
           uv run python scripts/runtime/validate_capability_delta_transition_policy.py --check
+          uv run python scripts/runtime/evaluate_intent_transition_traces.py --check
 
       - name: Run formal safety invariant gate
         run: |

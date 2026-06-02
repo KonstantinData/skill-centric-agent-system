@@ -193,3 +193,16 @@ Every transition gate decision must emit structured evidence that records:
 This audit record is the feedback object for future transition-evaluation
 fixtures and shadow evaluation. It must avoid raw secrets, raw tool outputs, and
 unredacted confidential data.
+
+## Golden Trace Evaluation
+
+Golden transition traces are versioned in
+`examples/evaluations/intent-transition-golden-traces.json`. They cover safe
+research continuation, write escalation, protected-path changes, destructive
+requests, ambiguous references, and metamorphic variants such as `apply the
+fix`, `apply that fix`, and `apply the safe option`.
+
+The repository evaluator is
+`python scripts/runtime/evaluate_intent_transition_traces.py --check`. It tracks
+fixture-level false allows, unnecessary clarification, missed path references,
+and evidence coverage behavior before these gates are used in shadow evaluation.
