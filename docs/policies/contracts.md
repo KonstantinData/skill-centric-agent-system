@@ -19,6 +19,8 @@ Use these files as the authoritative contract documents:
   `docs/policies/module-contracts.md`
 - Machine-readable contracts and validation schemas:
   `schemas/`
+- Learned-context authority boundaries and semantic drift guards:
+  `docs/policies/semantic-drift-guard.md`
 
 `docs/policies/contracts.md` is intentionally high-level and must only define
 cross-document boundaries and invariants.
@@ -56,6 +58,8 @@ rules.
   `docs/policies/intent-transition-gates.md`
 - Machine-readable invariant-to-change-type validator mapping:
   `docs/policies/formal-safety-change-type-matrix.md`
+- Learned-context authority boundary and contrastive drift guard:
+  `docs/policies/semantic-drift-guard.md`
 - Production release gates and evidence requirements:
   `docs/policies/production-readiness.md`
 

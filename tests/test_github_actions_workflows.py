@@ -60,6 +60,7 @@ def test_ci_workflow_runs_repository_validation() -> None:
     assert "scripts/runtime/evaluate_intent_transition_traces.py --check" in workflow
     assert "scripts/runtime/evaluate_intent_transition_shadow_metrics.py --check" in workflow
     assert "scripts/runtime/validate_structured_evidence_extraction_decision.py --check" in workflow
+    assert "scripts/runtime/validate_semantic_drift_guard.py --check" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "ci-evidence/invariant-check.json" in workflow
     assert "scripts/runtime/run_incident_locked_regressions.py" in workflow
@@ -202,6 +203,7 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "scripts/runtime/evaluate_intent_transition_traces.py --check" in workflow
     assert "scripts/runtime/evaluate_intent_transition_shadow_metrics.py --check" in workflow
     assert "scripts/runtime/validate_structured_evidence_extraction_decision.py --check" in workflow
+    assert "scripts/runtime/validate_semantic_drift_guard.py --check" in workflow
     assert "scripts/security/validate_codeowners_coverage.py" in workflow
     assert "scripts/runtime/invariant_check.py" in workflow
     assert "production-evidence/invariant-check.json" in workflow
