@@ -97,6 +97,7 @@ jobs:
           PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
           PYTHONPATH=src uv run python scripts/runtime/production_skill_instruction_packs.py --check
           PYTHONPATH=src uv run python scripts/runtime/validate_hooks_usage_model.py --check
+          PYTHONPATH=src uv run python scripts/release/validate_production_recertification_policy.py --check
 
       - name: Run formal safety invariant gate
         run: |

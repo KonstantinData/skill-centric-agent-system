@@ -42,6 +42,7 @@ is satisfied for the target environment.
 | Automatic rollback rules | Failed pre-canary gate requires rollback to signed and verified last-known-good descriptor/policy versions. |
 | Incident-locked regressions | Incident-linked never-again fixtures pass and remain bound to mandatory invariants per change type. |
 | HOOKS usage model | Runtime and composition hook points are versioned in `policies/runtime/hooks-usage-model.json`; unknown or unregistered hooks fail closed; `python scripts/runtime/validate_hooks_usage_model.py --check` proves hooks cannot grant capabilities, mutate active profiles, bypass policies or validators, read unscoped data, execute unregistered tools, write secrets/raw traces, or change module version pins. |
+| Recertification cadence and release policy | `policies/runtime/production-recertification-policy.json` defines target-environment evidence age, required certification modes, release-decision fields, waiver limits, and mandatory recertification triggers; `python scripts/release/validate_production_recertification_policy.py --check` proves the policy remains current and fail-closed for stale or trigger-invalidated evidence. |
 | Live handler binding evidence | The referenced Live Runtime Gates run uploads `live-runtime-handler-binding-evidence`; certification validates passed live E2E cases and sanitized `skill_handlers` where every `handler_id` equals `name@version`. |
 | Executable skill runtime | Profile-selected skills resolve to version-pinned executable handlers; unknown or mismatched handlers fail closed; `python scripts/runtime/skill_handler_coverage.py --check` proves every production-required skill fixture maps to a handler, runtime path, and tests; `python scripts/runtime/production_skill_instruction_packs.py --check` proves instruction packs remain aligned with modules, handlers, and test evidence. |
 | Skill handler version policy | Handler upgrades, deprecations, and rollback follow `docs/policies/skill-handler-version-policy.md` and `policies/runtime/skill-handler-version-policy.json`; rollback uses a newly composed profile with the previous registered version pin. |
@@ -81,7 +82,8 @@ Every production certification must record:
 - approved waivers,
 - owner,
 - completion timestamp,
-- next review trigger.
+- next review trigger,
+- next review due timestamp.
 
 The certification output belongs in the repository or release artifact when it
 describes durable release state. Notion may track the task lifecycle, but Notion
@@ -113,6 +115,9 @@ It also validates the HOOKS usage model and fails closed if configured hook
 points can grant capabilities, mutate active profiles, bypass policies or
 validators, access unscoped data, execute unregistered tools, write secrets or
 raw traces, or change module version pins.
+It validates the production recertification policy and fails closed if the
+target-environment cadence, release-decision requirements, waiver limits, or
+mandatory recertification triggers drift from the committed release policy.
 
 The workflow builds the evidence artifact through
 `scripts/release/build_production_readiness_evidence.py`. In `certify` mode it
@@ -131,7 +136,7 @@ artifact from the referenced Live Runtime Gates run. Certification fails closed
 unless that artifact contains passed live E2E results with sanitized
 `skill_handlers` where every `handler_id` equals `name@version`.
 
-The evidence artifact uses contract version `0.4.0` and includes:
+The evidence artifact uses contract version `0.5.0` and includes:
 
 - release commit, target environment, release scope, workflow run ID, and
   generated timestamp,
@@ -149,6 +154,9 @@ The evidence artifact uses contract version `0.4.0` and includes:
   capabilities,
 - validated external run metadata and live handler-binding summaries in
   `external_evidence`,
+- `recertification_policy`, `recertification_triggers`, and
+  `next_review_due_at`,
+- `waivers`, `owner`, and `completed_at`,
 - `open_release_gaps` for required production gates that are not yet complete,
 - `status` and `final_decision`, and
 - a sensitive-data handling statement.

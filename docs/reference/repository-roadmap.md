@@ -289,4 +289,8 @@ machine-readable release artifacts.
 The HOOKS usage model is now versioned and validated as a machine-readable
 policy so composition and runtime hooks remain profile-bound and fail closed
 instead of granting capabilities or bypassing governance.
+The production recertification cadence is now versioned and validated as a
+machine-readable release policy, and production-readiness evidence records the
+next review due date, recertification triggers, owner, waivers, and completed
+timestamp for each release claim.
 

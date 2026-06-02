@@ -32,6 +32,8 @@ Normative data-plane boundaries remain in
   version-pinned handlers, and test evidence with CI fail-closed validation.
 - Production release evidence workflow exists with external run metadata
   validation.
+- Production recertification cadence and release policy are versioned,
+  validated, and included in release evidence.
 - Main branch protection ruleset is active on GitHub (`main-protection`).
 
 ## Not Yet Implemented
