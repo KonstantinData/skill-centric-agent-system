@@ -1,0 +1,37 @@
+{
+  "decision_id": "structured-evidence-extraction-decision",
+  "version": "0.1.0",
+  "status": "deferred",
+  "recommendation": "defer_runtime_adoption",
+  "official_sources": [
+    "https://platform.openai.com/docs/guides/structured-outputs",
+    "https://platform.openai.com/docs/api-reference/responses/create"
+  ],
+  "findings": {
+    "format_error_reduction": "Structured Outputs can reduce malformed extraction output by enforcing a supplied JSON schema instead of relying on prompt-only JSON.",
+    "semantic_completeness": "Schema adherence does not prove that extracted EvidenceSpans cover every critical scanner finding; deterministic scanner coverage remains authoritative.",
+    "latency": "Provider-side schema processing and constrained decoding can add latency and first-request schema preprocessing cost, so production use needs separate measurement.",
+    "failure_modes": "Unsupported strict-mode schema keywords, model refusal, incomplete outputs, provider errors, or schema incompatibility must fail closed before local validation.",
+    "fallback_behavior": "Fallback must be local validation plus clarification or human review; the system must not silently downgrade to non-strict JSON for authority escalation.",
+    "provider_boundary_risks": "Provider outputs are extraction proposals only and must not grant tools, scopes, validators, policies, or broader runtime authority."
+  },
+  "local_schema_assessment": {
+    "authoritative_schema": "schemas/transition-evidence.schema.json",
+    "provider_subset_schema_required": true,
+    "unsupported_or_risky_keywords": [
+      "$defs",
+      "$ref",
+      "const",
+      "uniqueItems"
+    ],
+    "authoritative_local_validation_required": true
+  },
+  "required_guardrails": [
+    "deterministic_scanners_authoritative",
+    "local_schema_validation_authoritative",
+    "hash_and_offset_verification",
+    "scanner_coverage_required",
+    "fail_closed_on_provider_errors",
+    "no_provider_output_can_grant_authority"
+  ]
+}
