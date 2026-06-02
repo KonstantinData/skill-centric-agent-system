@@ -70,6 +70,13 @@ reseeds the dev registry from `examples/modules/*.json` before running the
 gate. The same workflow can run the live Postgres concurrency smoke by setting
 `run_live_dev_e2e=false` and `run_postgres_concurrency_smoke=true`, or the live
 retrieval/Vectorize smoke by setting `run_live_retrieval_vectorize_smoke=true`.
+Before packaging and uploading the Hetzner runtime snapshot, the workflow
+validates the target Control Plane token against `POST /composition/context`.
+When Control Plane seeding is enabled, it also validates the Cloudflare API
+token with `wrangler whoami` before applying D1 migrations. A 401/403 from the
+Control Plane or an authentication error from Wrangler means the GitHub Actions
+secret for the target environment must be rotated or updated before the live
+gate can produce certification evidence.
 
 Local or direct host command:
 
