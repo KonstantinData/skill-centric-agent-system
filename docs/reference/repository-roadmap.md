@@ -62,7 +62,10 @@ retention cleanup automation are implemented. Production telemetry policy,
 aggregate snapshot contracts, alert evaluation, and production security
 closure are implemented. Analyzer/Composer human-review quality gates now
 convert ambiguous tasks into review-required profiles without selected
-specialized capabilities.
+specialized capabilities. The first evidence-based intent-transition contract
+now defines how multi-turn shifts from research or read-only work toward
+write-capable execution must be backed by transition evidence, capability
+deltas, unknown handling, clarification gates, and controlled recomposition.
 Broader runtime planning quality remains an explicit backlog theme and must not
 obscure the runtime entry gate. The repository now has a dedicated Production
 Readiness Gate in `docs/policies/production-readiness.md`.

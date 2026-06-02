@@ -15,6 +15,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/contracts.md`
 - `docs/policies/module-contracts.md`
 - `docs/policies/runtime-contract.md`
+- `docs/policies/intent-transition-gates.md`
 - `docs/policies/hooks-usage-model.md`
 - `docs/policies/skill-handler-version-policy.md`
 - `docs/policies/production-skill-instruction-packs.md`
