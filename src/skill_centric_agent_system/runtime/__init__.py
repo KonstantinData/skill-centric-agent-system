@@ -41,6 +41,11 @@ from skill_centric_agent_system.runtime.retention import (
     RuntimeRetentionPolicy,
     retention_plan_to_json,
 )
+from skill_centric_agent_system.runtime.safety_compiler import (
+    SafetyCompiler,
+    SafetyCompilerDecision,
+    SafetyCompilerError,
+)
 from skill_centric_agent_system.runtime.skill_handlers import (
     BUILTIN_SKILL_HANDLER_REGISTRY,
     RuntimeSkillPlan,
@@ -94,6 +99,9 @@ __all__ = [
     "RuntimeProfileEnforcer",
     "ErrorClassification",
     "RuntimeSkillPlan",
+    "SafetyCompiler",
+    "SafetyCompilerDecision",
+    "SafetyCompilerError",
     "ResolvedArtifactUri",
     "RuntimeContextManager",
     "RecompositionRequest",

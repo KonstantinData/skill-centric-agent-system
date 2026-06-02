@@ -55,6 +55,12 @@ The Safety Compiler must:
 4. emit a machine-readable decision with the matching `pair_id`,
 5. require reviewed policy artifacts for any non-empty authority delta.
 
+The runtime implementation lives in
+`src/skill_centric_agent_system/runtime/safety_compiler.py`. The Brain promotion
+path can pass learned authority priors into the memory candidate validator; when
+the compiler returns a blocking gate, the candidate remains non-promotable and
+the policy reason records the matched contrastive pair IDs.
+
 Allowed decisions are:
 
 - `allow_ranking_only`,

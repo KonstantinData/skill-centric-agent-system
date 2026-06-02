@@ -6,6 +6,7 @@ from typing import Any
 
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore
 from skill_centric_agent_system.runtime.models import iso_timestamp, slug_id, utc_now
+from skill_centric_agent_system.runtime.safety_compiler import SafetyCompiler
 from skill_centric_agent_system.runtime.storage import RuntimeStore
 
 SENSITIVITIES = frozenset({"public", "internal", "confidential", "secret"})
@@ -118,10 +119,12 @@ class MemoryCandidateValidator:
         store: RuntimeStore,
         allowed_memory_scope_ids: Iterable[str],
         allowed_policy_ids: Iterable[str],
+        safety_compiler: SafetyCompiler | None = None,
     ) -> None:
         self.store = store
         self.allowed_memory_scope_ids = frozenset(allowed_memory_scope_ids)
         self.allowed_policy_ids = frozenset(allowed_policy_ids)
+        self.safety_compiler = safety_compiler
 
     def validate(
         self,
@@ -130,7 +133,7 @@ class MemoryCandidateValidator:
         content: Mapping[str, Any] | None = None,
     ) -> MemoryCandidateValidationResult:
         validation_errors = self._validation_errors(candidate, content)
-        policy_errors = self._policy_errors(candidate)
+        policy_errors = self._policy_errors(candidate, content)
 
         validator_status = "rejected" if validation_errors else "approved"
         policy_status = "rejected" if policy_errors or validation_errors else "approved"
@@ -189,10 +192,37 @@ class MemoryCandidateValidator:
             errors.append("content summary is required")
         return errors
 
-    def _policy_errors(self, candidate: Mapping[str, Any]) -> list[str]:
+    def _policy_errors(
+        self,
+        candidate: Mapping[str, Any],
+        content: Mapping[str, Any] | None,
+    ) -> list[str]:
         errors: list[str] = []
         if candidate.get("target_memory_scope_id") not in self.allowed_memory_scope_ids:
             errors.append("target memory scope is not allowed")
         if candidate.get("policy_id") not in self.allowed_policy_ids:
             errors.append("policy is not allowed")
+        if content is None or self.safety_compiler is None:
+            return errors
+
+        learned_prior = content.get("learned_context_authority_prior")
+        if not isinstance(learned_prior, Mapping):
+            return errors
+        reviewed_artifacts = _string_list(content.get("reviewed_policy_artifacts"))
+        decision = self.safety_compiler.compile_learned_authority_prior(
+            learned_prior,
+            reviewed_policy_artifacts=reviewed_artifacts,
+        )
+        if not decision.automatic_promotion_allowed:
+            pair_text = ", ".join(decision.matched_pair_ids) or "none"
+            errors.append(
+                "semantic drift guard blocked learned authority "
+                f"({decision.decision}; matched_pairs={pair_text})"
+            )
         return errors
+
+
+def _string_list(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
