@@ -106,6 +106,42 @@ def test_task_analyzer_matches_task_neutral_evaluation_cases() -> None:
         assert analyzed.classification_reasons, case["name"]
 
 
+def test_stack_overflow_like_routing_fixture_coverage_is_measured() -> None:
+    cases = json.loads(TASK_ANALYZER_EVALUATIONS_PATH.read_text(encoding="utf-8"))
+    analyzer = TaskAnalyzer()
+
+    stackoverflow_cases = [
+        case for case in cases if "stackoverflow-like" in case.get("fixture_tags", [])
+    ]
+    research_cases = [
+        case
+        for case in stackoverflow_cases
+        if any(
+            tag in case.get("fixture_tags", [])
+            for tag in ("positive-research", "noisy-research")
+        )
+    ]
+    human_review_cases = [
+        case for case in stackoverflow_cases if "human-review" in case.get("fixture_tags", [])
+    ]
+
+    assert len(stackoverflow_cases) >= 5
+    assert len(research_cases) >= 4
+    assert human_review_cases
+
+    research_hits = sum(
+        1 for case in research_cases if analyzer.analyze(case["task"]).task_type == "research"
+    )
+    human_review_hits = sum(
+        1
+        for case in human_review_cases
+        if analyzer.analyze(case["task"]).requires_human_review
+    )
+
+    assert research_hits / len(research_cases) == 1.0
+    assert human_review_hits / len(human_review_cases) == 1.0
+
+
 def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> None:
     task = load_json(TASK_EXAMPLE_PATH)
     context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
