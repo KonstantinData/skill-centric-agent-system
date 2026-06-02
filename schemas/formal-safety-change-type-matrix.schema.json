@@ -102,7 +102,8 @@
         "no_self_granting",
         "mandatory_validators_per_change_type",
         "scope_monotonicity",
-        "immutable_profile_after_seal"
+        "immutable_profile_after_seal",
+        "learned_context_not_authority"
       ]
     },
     "runtimeValidatorId": {

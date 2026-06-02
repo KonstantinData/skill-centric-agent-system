@@ -118,6 +118,7 @@ jobs:
           uv run python scripts/runtime/evaluate_intent_transition_traces.py --check
           uv run python scripts/runtime/evaluate_intent_transition_shadow_metrics.py --check
           uv run python scripts/runtime/validate_structured_evidence_extraction_decision.py --check
+          uv run python scripts/runtime/validate_semantic_drift_guard.py --check
 
       - name: Evaluate error classification gates
         run: |

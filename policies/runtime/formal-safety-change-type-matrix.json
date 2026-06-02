@@ -11,7 +11,8 @@
         "fail_closed_on_unknowns",
         "no_self_granting",
         "mandatory_validators_per_change_type",
-        "immutable_profile_after_seal"
+        "immutable_profile_after_seal",
+        "learned_context_not_authority"
       ],
       "mandatory_runtime_validators": [
         "runtime-profile-schema"
@@ -34,7 +35,8 @@
         "no_self_granting",
         "mandatory_validators_per_change_type",
         "scope_monotonicity",
-        "immutable_profile_after_seal"
+        "immutable_profile_after_seal",
+        "learned_context_not_authority"
       ],
       "mandatory_runtime_validators": [
         "runtime-profile-schema",
@@ -60,7 +62,8 @@
       "mandatory_invariants": [
         "fail_closed_on_unknowns",
         "mandatory_validators_per_change_type",
-        "immutable_profile_after_seal"
+        "immutable_profile_after_seal",
+        "learned_context_not_authority"
       ],
       "mandatory_runtime_validators": [
         "runtime-profile-schema"
@@ -81,7 +84,8 @@
         "fail_closed_on_unknowns",
         "no_self_granting",
         "mandatory_validators_per_change_type",
-        "scope_monotonicity"
+        "scope_monotonicity",
+        "learned_context_not_authority"
       ],
       "mandatory_runtime_validators": [
         "runtime-profile-schema",
@@ -109,7 +113,8 @@
         "no_self_granting",
         "mandatory_validators_per_change_type",
         "scope_monotonicity",
-        "immutable_profile_after_seal"
+        "immutable_profile_after_seal",
+        "learned_context_not_authority"
       ],
       "mandatory_runtime_validators": [
         "runtime-profile-schema",

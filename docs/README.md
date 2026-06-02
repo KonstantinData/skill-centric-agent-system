@@ -22,6 +22,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `examples/evaluations/intent-transition-golden-traces.json`
 - `policies/runtime/intent-transition-shadow-thresholds.json`
 - `policies/runtime/structured-evidence-extraction-decision.json`
+- `docs/policies/semantic-drift-guard.md`
 - `docs/policies/hooks-usage-model.md`
 - `docs/policies/skill-handler-version-policy.md`
 - `docs/policies/production-skill-instruction-packs.md`

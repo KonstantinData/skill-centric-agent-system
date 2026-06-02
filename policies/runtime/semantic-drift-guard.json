@@ -1,0 +1,132 @@
+{
+  "contract_version": "0.1.0",
+  "guard_id": "semantic-drift-guard",
+  "owner": "@KonstantinData",
+  "authority_invariant": "learned_context_not_authority",
+  "default_on_match": "needs_human_review",
+  "influence_classes": [
+    {
+      "id": "retrieval_only",
+      "description": "Learned context may affect retrieval ordering only.",
+      "max_automatic_effect": "retrieval_ordering",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "planner_hint",
+      "description": "Learned context may shape a plan without changing executable authority.",
+      "max_automatic_effect": "planner_hint",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "analyzer_prior",
+      "description": "Learned context may bias task classification and risk hints without granting capabilities.",
+      "max_automatic_effect": "analyzer_prior",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "composer_candidate_bias",
+      "description": "Learned context may adjust candidate ranking while policy gates remain authoritative.",
+      "max_automatic_effect": "candidate_ranking",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "golden_workflow_proposal",
+      "description": "Learned context may propose a reviewed golden workflow update.",
+      "max_automatic_effect": "proposal_only",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "policy_change_proposal",
+      "description": "Learned context may propose a reviewed policy change.",
+      "max_automatic_effect": "proposal_only",
+      "automatic_authority_delta_allowed": false
+    },
+    {
+      "id": "scoped_exception_proposal",
+      "description": "Learned context may propose a reviewed, scoped, expiring exception.",
+      "max_automatic_effect": "proposal_only",
+      "automatic_authority_delta_allowed": false
+    }
+  ],
+  "contrastive_pairs": [
+    {
+      "pair_id": "staging-budget-gap-must-not-generalize-to-prod",
+      "description": "A staging preflight budget gap may improve staging analyzer priors, but must not automatically raise production budgets.",
+      "positive_context": {
+        "environment": "staging",
+        "risk_level": "medium",
+        "workflow_id": "runtime-preflight-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "production-preflight"
+      },
+      "forbidden_generalization": {
+        "environment": "prod",
+        "risk_level": "high",
+        "workflow_id": "runtime-preflight-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "production-preflight",
+        "authority_delta": [
+          "budget_increase"
+        ]
+      },
+      "expected_gate": "needs_human_review",
+      "evidence_uris": [
+        "docs/adr/0007-learned-context-authority-boundary.md",
+        "docs/policies/semantic-drift-guard.md"
+      ]
+    },
+    {
+      "pair_id": "memory-retrieval-prior-must-not-expand-prod-memory-scope",
+      "description": "A useful project-memory retrieval signal must not become an automatic production memory scope expansion.",
+      "positive_context": {
+        "environment": "dev",
+        "risk_level": "low",
+        "workflow_id": "memory-retrieval-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "research"
+      },
+      "forbidden_generalization": {
+        "environment": "prod",
+        "risk_level": "high",
+        "workflow_id": "memory-retrieval-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "research",
+        "authority_delta": [
+          "memory_scope_expansion"
+        ]
+      },
+      "expected_gate": "needs_human_review",
+      "evidence_uris": [
+        "examples/evaluations/learning-memory-roundtrip.json",
+        "docs/policies/semantic-drift-guard.md"
+      ]
+    },
+    {
+      "pair_id": "low-risk-research-must-not-grant-controlled-write-tools",
+      "description": "Low-risk research learning must not generalize into high-risk controlled-write tool grants.",
+      "positive_context": {
+        "environment": "staging",
+        "risk_level": "low",
+        "workflow_id": "research-summary-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "research"
+      },
+      "forbidden_generalization": {
+        "environment": "prod",
+        "risk_level": "high",
+        "workflow_id": "controlled-write-required",
+        "principal_role": "repository-maintainer",
+        "task_type": "task-execution",
+        "authority_delta": [
+          "tool_addition",
+          "scope_expansion"
+        ]
+      },
+      "expected_gate": "reject",
+      "evidence_uris": [
+        "docs/policies/runtime-contract.md",
+        "docs/policies/semantic-drift-guard.md"
+      ]
+    }
+  ]
+}

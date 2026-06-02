@@ -88,6 +88,25 @@ Fail:
 Post-seal mutation changes selected modules, version pins, limits, scopes, or
 policy bindings in the active profile.
 
+### `learned_context_not_authority`
+
+Definition:
+Learned context from memory records, capability gaps, reflection outputs,
+analyzer priors, planner hints, or semantic similarity may improve ranking,
+retrieval, decomposition, and review proposals, but it must not independently
+grant executable authority.
+
+Pass:
+Any learned artifact that would add tools, widen scopes, increase budgets,
+remove validators, relax failure modes, or create a policy exception is routed
+to a reviewed, versioned policy-registry artifact before affecting active
+runtime profiles.
+
+Fail:
+Learned context directly or indirectly changes executable profile authority
+without a reviewed policy artifact, or a low-risk/staging prior automatically
+generalizes into high-risk/production authority.
+
 ## Evidence Requirements
 
 A completed safety slice must include:
@@ -107,8 +126,10 @@ The invariant replay fixture corpus is versioned in:
 ## Related References
 
 - `docs/adr/0006-formal-safety-guarantees-profile-sealing.md`
+- `docs/adr/0007-learned-context-authority-boundary.md`
 - `docs/policies/contracts.md`
 - `docs/policies/formal-safety-change-type-matrix.md`
+- `docs/policies/semantic-drift-guard.md`
 - `docs/policies/shadow-evaluation-harness.md`
 - `docs/policies/shadow-regression-thresholds.md`
 - `docs/policies/automatic-rollback-rules.md`

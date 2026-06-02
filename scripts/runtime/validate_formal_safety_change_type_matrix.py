@@ -21,6 +21,7 @@ REQUIRED_INVARIANTS = {
     "mandatory_validators_per_change_type",
     "scope_monotonicity",
     "immutable_profile_after_seal",
+    "learned_context_not_authority",
 }
 
 
@@ -91,12 +92,22 @@ def validate_matrix(path: Path) -> list[str]:
     return failures
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY_PATH)
-    args = parser.parse_args()
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--print-json", action="store_true")
+    args = parser.parse_args(argv)
 
     failures = validate_matrix(args.policy)
+    report = {
+        "policy": str(args.policy),
+        "status": "failed" if failures else "passed",
+        "violations": failures,
+    }
+    if args.print_json:
+        print(json.dumps(report, indent=2))
+        return 1 if failures else 0
     if failures:
         print("Formal safety change-type matrix validation failed:")
         for failure in failures:

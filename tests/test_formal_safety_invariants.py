@@ -16,6 +16,7 @@ def test_formal_invariant_catalog_is_present_and_complete() -> None:
         "mandatory_validators_per_change_type",
         "scope_monotonicity",
         "immutable_profile_after_seal",
+        "learned_context_not_authority",
     ):
         assert f"`{invariant_id}`" in catalog
 
@@ -35,5 +36,6 @@ def test_formal_invariant_catalog_is_wired_into_core_docs() -> None:
     )
 
     assert "formal-safety-invariants.md" in contracts
+    assert "semantic-drift-guard.md" in contracts
     assert "formal-safety-invariants.md" in architecture
     assert "Post-P5: Recertification cadence and release policy" in queue
