@@ -18,6 +18,12 @@ from skill_centric_agent_system.registries.modules import UnknownModuleError
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GIT_DIFF_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
 PROJECT_MEMORY_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "project-memory.json"
+RESEARCH_CONTEXT_SYNTHESIS_MODULE_PATH = (
+    REPO_ROOT / "examples" / "modules" / "research-context-synthesis.json"
+)
+TASK_EXECUTION_PLANNING_MODULE_PATH = (
+    REPO_ROOT / "examples" / "modules" / "task-execution-planning.json"
+)
 SCORING_EVALUATIONS_PATH = (
     REPO_ROOT / "examples" / "evaluations" / "composition-scoring-cases.json"
 )
@@ -29,6 +35,14 @@ def load_git_diff_module() -> dict[str, object]:
 
 def load_project_memory_module() -> dict[str, object]:
     return json.loads(PROJECT_MEMORY_MODULE_PATH.read_text(encoding="utf-8"))
+
+
+def load_research_context_synthesis_module() -> dict[str, object]:
+    return json.loads(RESEARCH_CONTEXT_SYNTHESIS_MODULE_PATH.read_text(encoding="utf-8"))
+
+
+def load_task_execution_planning_module() -> dict[str, object]:
+    return json.loads(TASK_EXECUTION_PLANNING_MODULE_PATH.read_text(encoding="utf-8"))
 
 
 def module_fixture(
@@ -128,6 +142,8 @@ def registry_with_scoring_modules() -> InMemoryModuleRegistry:
         [
             ModuleMetadata.from_mapping(load_git_diff_module()),
             ModuleMetadata.from_mapping(load_project_memory_module()),
+            ModuleMetadata.from_mapping(load_research_context_synthesis_module()),
+            ModuleMetadata.from_mapping(load_task_execution_planning_module()),
             *dependency_modules(),
         ]
     )
