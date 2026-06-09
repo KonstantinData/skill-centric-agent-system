@@ -9,6 +9,10 @@ It is intentionally compatible with the current fast setup workflow and the
 active main-branch protection ruleset. It does not replace review, CI, or
 Notion lifecycle tracking.
 
+Use `docs/runbooks/notion-issue-tracking.md` for general Notion issue comment
+rules and documentation reconciliation. This runbook is the canonical source
+for post-merge completion and branch cleanup evidence.
+
 ## Required Order
 
 1. Verify the PR is merged and record the PR URL and merge commit.
@@ -17,13 +21,8 @@ Notion lifecycle tracking.
 4. Delete the merged local topic branch.
 5. Delete or prune the merged remote topic branch.
 6. Verify `git status --short --branch` is clean on `main`.
-7. Update the matching Issues & Open Questions page:
-   - `Status = Done`,
-   - `Completed At` with datetime,
-   - PR URL,
-   - merge commit,
-   - verification performed,
-   - branch cleanup evidence.
+7. Update the matching Issues & Open Questions page using the post-merge
+   Notion completion fields below.
 8. Update the matching Feature Backlog entry to `Done` with the same PR URL and
    completion timestamp.
 
@@ -60,10 +59,13 @@ repository runtime. The agent or maintainer must still write a page-level
 comment on the active Issues & Open Questions task and then mark both the issue
 and Feature Backlog entry complete.
 
-Every post-merge Notion completion note should include:
+Every post-merge Notion completion note must include:
 
+- `Status = Done`,
+- `Completed At` with datetime,
 - PR number and URL,
 - merge commit,
+- required PR checks result,
 - local and remote branch cleanup result,
-- main check result,
+- local `main` sync and `git status --short --branch` result,
 - any remaining follow-up.
