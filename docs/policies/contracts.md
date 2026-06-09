@@ -21,6 +21,9 @@ Use these files as the authoritative contract documents:
   `schemas/`
 - Learned-context authority boundaries and semantic drift guards:
   `docs/policies/semantic-drift-guard.md`
+- Task-subject data, Runtime Evidence, Knowledge Records, Procedural Agent
+  Memory, and semantic retrieval boundaries:
+  `docs/reference/memory-architecture.md`
 
 `docs/policies/contracts.md` is intentionally high-level and must only define
 cross-document boundaries and invariants.
@@ -60,6 +63,8 @@ rules.
   `docs/policies/formal-safety-change-type-matrix.md`
 - Learned-context authority boundary and contrastive drift guard:
   `docs/policies/semantic-drift-guard.md`
+- Task-neutral memory taxonomy and promotion architecture:
+  `docs/reference/memory-architecture.md`
 - Production release gates and evidence requirements:
   `docs/policies/production-readiness.md`
 

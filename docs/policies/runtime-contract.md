@@ -283,6 +283,32 @@ The request may include only profile-selected knowledge and memory scopes. The
 response must be checked before use; any returned scope outside the active
 profile is a policy denial and must fail closed.
 
+## Memory Promotion Boundary
+
+Runtime Evidence is task-local material: source extracts, tool outputs,
+intermediate notes, report drafts, checkpoints, validation evidence, and raw
+runtime artifacts. Runtime Evidence belongs on the Hetzner Runtime Plane.
+
+Task-subject data is factual content about the concrete target of a task. It
+must not be promoted to Agent Memory. If factual content needs durable reuse, it
+must follow the Knowledge Record path with source owner, source URI,
+sensitivity, quality metadata, retention, scope, and policy approval.
+
+Agent Memory is reserved for procedural lessons about how to perform tasks.
+Memory candidates must be classified before promotion. Each candidate record
+must declare `candidate_class` and `classification_reason`; each candidate
+envelope must conform to
+`schemas/memory-candidate-classification.schema.json`. Only
+`procedural_lesson` candidates with provenance, allowed memory scope,
+acceptable sensitivity, retention policy, validator approval, policy approval,
+`authoritative=false`, and a non-authoritative influence class may be submitted
+to Cloudflare memory ingestion.
+
+Learned procedural memory may guide retrieval ranking, planner hints, analyzer
+priors, or composer candidate bias. It must not grant tools, widen knowledge,
+data, or memory scopes, raise budgets, remove validators, relax policies, or
+change failure behavior without a reviewed policy artifact.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

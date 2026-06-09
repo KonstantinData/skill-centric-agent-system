@@ -44,6 +44,8 @@ def memory_candidate() -> dict[str, object]:
         "profile_id": "profile-runtime",
         "source_step_id": "step-validator",
         "target_memory_scope_id": "mod-project-memory",
+        "candidate_class": "procedural_lesson",
+        "classification_reason": "Fixture captures a reusable runtime safety lesson.",
         "content_uri": "hetzner://runtime/run-semantic-drift/memory/candidate.json",
         "sensitivity": "internal",
         "retention_policy": "project-memory-180d",

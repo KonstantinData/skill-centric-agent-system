@@ -10,6 +10,23 @@ from skill_centric_agent_system.runtime.safety_compiler import SafetyCompiler
 from skill_centric_agent_system.runtime.storage import RuntimeStore
 
 SENSITIVITIES = frozenset({"public", "internal", "confidential", "secret"})
+CANDIDATE_CLASSES = frozenset(
+    {
+        "procedural_lesson",
+        "task_subject_fact",
+        "runtime_evidence",
+        "knowledge_record_proposal",
+        "rejected",
+    }
+)
+PROMOTABLE_CANDIDATE_CLASS = "procedural_lesson"
+PROMOTION_ROUTES = {
+    "procedural_lesson": "agent_memory",
+    "task_subject_fact": "scoped_knowledge_record",
+    "runtime_evidence": "runtime_plane_evidence",
+    "knowledge_record_proposal": "knowledge_record_approval",
+    "rejected": "none",
+}
 
 
 class MemoryCandidateError(ValueError):
@@ -53,6 +70,8 @@ class MemoryCandidateExtractor:
         sensitivity: str,
         retention_policy: str,
         policy_id: str,
+        candidate_class: str = PROMOTABLE_CANDIDATE_CLASS,
+        classification_reason: str | None = None,
         validator_id: str = "memory-candidate-contract",
         candidate_id: str | None = None,
         redact_sensitive_data: bool = True,
@@ -62,6 +81,14 @@ class MemoryCandidateExtractor:
             raise MemoryCandidateError("Memory candidate content requires a non-empty summary.")
         if sensitivity not in SENSITIVITIES:
             raise MemoryCandidateError("Memory candidate sensitivity is invalid.")
+        if candidate_class not in CANDIDATE_CLASSES:
+            raise MemoryCandidateError("Memory candidate class is invalid.")
+        resolved_classification_reason = (
+            classification_reason
+            or f"Candidate classified as {candidate_class} by extraction contract."
+        )
+        if not resolved_classification_reason.strip():
+            raise MemoryCandidateError("Memory candidate classification reason is required.")
 
         identifier = candidate_id or slug_id(
             f"{run['id']}-{source_step['id']}-{target_memory_scope_id}",
@@ -70,11 +97,19 @@ class MemoryCandidateExtractor:
         content_uri = self.artifacts.write_json(
             ("artifacts", str(run["id"]), "memory-candidates", identifier),
             {
+                "contract_version": "0.1.0",
                 **dict(content),
                 "source_run_id": run["id"],
                 "source_profile_id": run["profile_id"],
                 "source_step_id": source_step["id"],
                 "target_memory_scope_id": target_memory_scope_id,
+                "candidate_class": candidate_class,
+                "classification_reason": resolved_classification_reason,
+                "promotion_route": PROMOTION_ROUTES[candidate_class],
+                "sensitivity": sensitivity,
+                "retention_policy": retention_policy,
+                "policy_id": policy_id,
+                "validator_id": validator_id,
             },
             redact=redact_sensitive_data,
         )
@@ -84,6 +119,8 @@ class MemoryCandidateExtractor:
             "profile_id": str(run["profile_id"]),
             "source_step_id": str(source_step["id"]),
             "target_memory_scope_id": target_memory_scope_id,
+            "candidate_class": candidate_class,
+            "classification_reason": resolved_classification_reason,
             "content_uri": content_uri,
             "sensitivity": sensitivity,
             "retention_policy": retention_policy,
@@ -175,6 +212,8 @@ class MemoryCandidateValidator:
             "profile_id",
             "source_step_id",
             "target_memory_scope_id",
+            "candidate_class",
+            "classification_reason",
             "content_uri",
             "sensitivity",
             "retention_policy",
@@ -186,6 +225,13 @@ class MemoryCandidateValidator:
             errors.append("secret candidates must not be promoted to Cloudflare memory")
         if candidate.get("sensitivity") not in SENSITIVITIES:
             errors.append("sensitivity is invalid")
+        candidate_class = candidate.get("candidate_class")
+        if candidate_class not in CANDIDATE_CLASSES:
+            errors.append("candidate_class is invalid")
+        elif candidate_class != PROMOTABLE_CANDIDATE_CLASS:
+            errors.append(_non_promotable_candidate_reason(str(candidate_class)))
+        if not str(candidate.get("classification_reason", "")).strip():
+            errors.append("classification_reason is required")
         if not str(candidate.get("content_uri", "")).startswith("hetzner://runtime/"):
             errors.append("content_uri must point to a Hetzner runtime artifact")
         if content is not None and not str(content.get("summary", "")).strip():
@@ -226,3 +272,22 @@ def _string_list(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, str))
+
+
+def _non_promotable_candidate_reason(candidate_class: str) -> str:
+    reasons = {
+        "task_subject_fact": (
+            "task-subject facts must be proposed through scoped knowledge records, "
+            "not promoted to Agent Memory"
+        ),
+        "runtime_evidence": (
+            "runtime evidence must remain in the Hetzner Runtime Plane, "
+            "not promoted to Agent Memory"
+        ),
+        "knowledge_record_proposal": (
+            "knowledge record proposals require the knowledge approval path, "
+            "not Agent Memory promotion"
+        ),
+        "rejected": "rejected candidates cannot be promoted to Agent Memory",
+    }
+    return reasons.get(candidate_class, "candidate_class is not promotable to Agent Memory")

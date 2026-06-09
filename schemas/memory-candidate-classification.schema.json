@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:memory-candidate-classification:0.1.0",
+  "title": "SCAS Memory Candidate Classification Envelope",
+  "description": "Classified Hetzner Runtime Plane candidate envelope before any Cloudflare memory or knowledge ingestion.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "contract_version",
+    "candidate_class",
+    "classification_reason",
+    "promotion_route",
+    "source_run_id",
+    "source_profile_id",
+    "source_step_id",
+    "target_memory_scope_id",
+    "policy_id",
+    "validator_id",
+    "sensitivity",
+    "retention_policy",
+    "summary"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "candidate_class": {
+      "$ref": "#/$defs/candidateClass"
+    },
+    "classification_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "promotion_route": {
+      "$ref": "#/$defs/promotionRoute"
+    },
+    "source_run_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source_profile_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source_step_id": {
+      "$ref": "#/$defs/id"
+    },
+    "target_memory_scope_id": {
+      "$ref": "#/$defs/id"
+    },
+    "policy_id": {
+      "$ref": "#/$defs/id"
+    },
+    "validator_id": {
+      "$ref": "#/$defs/id"
+    },
+    "sensitivity": {
+      "$ref": "#/$defs/sensitivity"
+    },
+    "retention_policy": {
+      "$ref": "#/$defs/id"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_uris": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/uri"
+      },
+      "default": []
+    },
+    "authoritative": {
+      "type": "boolean"
+    },
+    "influence_class": {
+      "type": "string",
+      "enum": [
+        "planner_hint",
+        "retrieval_ranking",
+        "composer_candidate_bias"
+      ]
+    },
+    "allowed_effects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "planner_hint",
+          "retrieval_ranking",
+          "composer_candidate_bias"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "forbidden_effects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "tool_grant",
+          "scope_grant",
+          "policy_override",
+          "validator_override",
+          "profile_mutation",
+          "runtime_authority"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "applicability": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "candidate_class": {
+            "const": "procedural_lesson"
+          }
+        },
+        "required": [
+          "candidate_class"
+        ]
+      },
+      "then": {
+        "required": [
+          "authoritative",
+          "influence_class",
+          "allowed_effects",
+          "forbidden_effects",
+          "applicability"
+        ],
+        "properties": {
+          "promotion_route": {
+            "const": "agent_memory"
+          },
+          "authoritative": {
+            "const": false
+          },
+          "applicability": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "candidate_class": {
+            "const": "task_subject_fact"
+          }
+        },
+        "required": [
+          "candidate_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "promotion_route": {
+            "const": "scoped_knowledge_record"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "candidate_class": {
+            "const": "runtime_evidence"
+          }
+        },
+        "required": [
+          "candidate_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "promotion_route": {
+            "const": "runtime_plane_evidence"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "candidate_class": {
+            "const": "knowledge_record_proposal"
+          }
+        },
+        "required": [
+          "candidate_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "promotion_route": {
+            "const": "knowledge_record_approval"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "candidate_class": {
+            "const": "rejected"
+          }
+        },
+        "required": [
+          "candidate_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "promotion_route": {
+            "const": "none"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidateClass": {
+      "type": "string",
+      "enum": [
+        "procedural_lesson",
+        "task_subject_fact",
+        "runtime_evidence",
+        "knowledge_record_proposal",
+        "rejected"
+      ]
+    },
+    "promotionRoute": {
+      "type": "string",
+      "enum": [
+        "agent_memory",
+        "scoped_knowledge_record",
+        "runtime_plane_evidence",
+        "knowledge_record_approval",
+        "none"
+      ]
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "secret"
+      ]
+    }
+  }
+}

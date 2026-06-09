@@ -31,7 +31,8 @@ profile.
 Model outputs are not durable truth until they pass the selected validators and
 the relevant policy gates. Durable memory promotion must go through memory
 candidates with source run, source profile, sensitivity, retention policy,
-validator status, policy status, and recorded reasons.
+candidate class, classification reason, validator status, policy status, and
+recorded reasons.
 
 ## Audit Minimization
 
@@ -68,6 +69,31 @@ sensitivity, unknown source type, missing owner, or attempts to ingest secret
 content into Cloudflare. Lower-confidence sources may remain usable, but their
 confidence must be visible to scoring, validation, or review.
 
+## Task-Subject Data And Agent Memory
+
+Task-subject data is factual content about the concrete subject of a task. It
+includes facts about companies, people, products, repositories, documents,
+markets, customer cases, legal topics, operational incidents, or any other
+task-specific target.
+
+Task-subject data must not be stored as Agent Memory. It remains Runtime Plane
+evidence during the run unless a separate, policy-approved Knowledge Record
+promotion is required for durable factual reuse.
+
+Memory candidates classified as `task_subject_fact`, `runtime_evidence`,
+`knowledge_record_proposal`, or `rejected` are not eligible for Agent Memory
+promotion. Only `procedural_lesson` candidates may enter the Cloudflare memory
+ingestion path.
+
+Agent Memory is limited to procedural lessons: reusable process knowledge about
+how to perform tasks, what sequence worked, which approach failed, which source
+or tool pattern should be preferred or avoided, and which non-authoritative
+planning hints are supported by evidence.
+
+Semantic retrieval is an access mechanism for scoped Knowledge Records and
+procedural Agent Memory. It is not permission to merge task-subject facts into
+Agent Memory.
+
 ## Agent Autonomy Boundary
 
 Supportive guardrails:
@@ -84,6 +110,7 @@ Mandatory blockers:
   ingestion,
 - unscoped data or memory access,
 - missing owner/sensitivity for production sources,
+- task-subject facts promoted into Agent Memory,
 - unauthorized scope expansion,
 - failed required validators,
 - missing release evidence for production-ready claims.

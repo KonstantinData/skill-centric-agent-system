@@ -197,13 +197,14 @@ class PostgresRuntimeStore:
             """
             INSERT INTO runtime.memory_candidates (
                 id, run_id, profile_id, source_step_id, target_memory_scope_id,
-                content_uri, sensitivity, retention_policy, validator_status,
-                validator_id, validation_reason, policy_status, policy_id,
-                policy_reason, created_at
+                candidate_class, classification_reason, content_uri, sensitivity,
+                retention_policy, validator_status, validator_id, validation_reason,
+                policy_status, policy_id, policy_reason, created_at
             )
             VALUES (
                 %(id)s, %(run_id)s, %(profile_id)s, %(source_step_id)s,
-                %(target_memory_scope_id)s, %(content_uri)s, %(sensitivity)s,
+                %(target_memory_scope_id)s, %(candidate_class)s,
+                %(classification_reason)s, %(content_uri)s, %(sensitivity)s,
                 %(retention_policy)s, %(validator_status)s, %(validator_id)s,
                 %(validation_reason)s, %(policy_status)s, %(policy_id)s,
                 %(policy_reason)s, %(created_at)s
@@ -322,7 +323,8 @@ class PostgresRuntimeStore:
                 "memory_candidates": self._fetch_all(
                     """
                     SELECT id, run_id, profile_id, source_step_id,
-                           target_memory_scope_id, content_uri, sensitivity,
+                           target_memory_scope_id, candidate_class,
+                           classification_reason, content_uri, sensitivity,
                            retention_policy, validator_status, validator_id,
                            validation_reason, policy_status, policy_id,
                            policy_reason, created_at

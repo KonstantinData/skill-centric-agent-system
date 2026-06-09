@@ -27,6 +27,7 @@ def approved_candidate() -> dict[str, Any]:
         "profile_id": "profile-code-review",
         "target_memory_scope_id": "mod-project-memory",
         "content_uri": "hetzner://runtime/traces/run-code-review/memory/candidate.json",
+        "candidate_class": "procedural_lesson",
         "sensitivity": "internal",
         "retention_policy": "project-memory-180d",
         "validator_status": "approved",
@@ -88,5 +89,17 @@ def test_memory_feedback_pipeline_rejects_unapproved_candidates(
 
     with pytest.raises(MemoryFeedbackError, match=message):
         pipeline.submit_candidate(candidate, consolidated_content={"summary": "not approved"})
+
+    assert client.requests == []
+
+
+def test_memory_feedback_pipeline_rejects_non_procedural_candidates() -> None:
+    client = FakeMemoryClient()
+    pipeline = MemoryFeedbackPipeline(client)  # type: ignore[arg-type]
+    candidate = approved_candidate()
+    candidate["candidate_class"] = "task_subject_fact"
+
+    with pytest.raises(MemoryFeedbackError, match="procedural_lesson"):
+        pipeline.submit_candidate(candidate, consolidated_content={"summary": "not memory"})
 
     assert client.requests == []

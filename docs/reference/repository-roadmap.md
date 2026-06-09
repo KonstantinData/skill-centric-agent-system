@@ -331,3 +331,14 @@ naming canon, not the current implementation status or release gate.
 9. `P1.09 Build Live Dev E2E Gate`
 10. `P1.10 Establish Operations Baseline`
 
+## Memory Architecture Backlog
+
+The target memory architecture is now defined in
+`docs/reference/memory-architecture.md` and accepted in
+`docs/adr/0009-task-subject-data-and-procedural-memory-separation.md`.
+
+The implementation backlog lives in
+`docs/roadmap/memory-architecture-backlog.md`. It must be executed before SCAS
+claims that Agent Memory safely distinguishes procedural lessons from
+task-subject facts across all task classes.
+

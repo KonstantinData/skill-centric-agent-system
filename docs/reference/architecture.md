@@ -100,6 +100,13 @@ tool results allowed by the profile. Knowledge and memory retrieval must go
 through the bounded Cloudflare `POST /retrieval/context` endpoint instead of
 direct broad store reads.
 
+`Memory Architecture` separates Runtime Evidence, Task-Subject Data, Knowledge
+Records, Procedural Agent Memory, and semantic retrieval. Agent Memory stores
+reusable process lessons only. Factual task-subject content remains Runtime
+Plane evidence unless it is explicitly promoted through the scoped Knowledge
+Record path. The durable target architecture is
+`docs/reference/memory-architecture.md`, and ADR-0009 records the decision.
+
 `Planner` creates and revises the task plan inside profile constraints and
 budgets. Executable skill behavior is resolved through the runtime skill handler
 registry by exact selected skill name and `module_versions` pin.
@@ -222,6 +229,9 @@ The current repository has implemented the first control-plane slice:
   including status/reason updates before Cloudflare ingestion,
 - a controlled learning evaluation fixture that proves approved memory can be
   retrieved later while unauthorized retrieval is blocked,
+- a task-neutral memory target architecture that separates Runtime Evidence,
+  task-subject data, Knowledge Records, Procedural Agent Memory, and semantic
+  retrieval,
 - runtime retention cleanup execution with dry-run-first apply behavior,
 - scheduled runtime retention cleanup automation with dry-run-only scheduled
   runs and manual confirmed-delete dispatch,

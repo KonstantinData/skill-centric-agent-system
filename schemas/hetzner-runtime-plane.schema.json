@@ -151,6 +151,16 @@
         "secret"
       ]
     },
+    "memoryCandidateClass": {
+      "type": "string",
+      "enum": [
+        "procedural_lesson",
+        "task_subject_fact",
+        "runtime_evidence",
+        "knowledge_record_proposal",
+        "rejected"
+      ]
+    },
     "runtimeStatus": {
       "type": "string",
       "enum": [
@@ -543,6 +553,8 @@
         "profile_id",
         "source_step_id",
         "target_memory_scope_id",
+        "candidate_class",
+        "classification_reason",
         "content_uri",
         "sensitivity",
         "retention_policy",
@@ -567,6 +579,13 @@
         },
         "target_memory_scope_id": {
           "$ref": "#/$defs/id"
+        },
+        "candidate_class": {
+          "$ref": "#/$defs/memoryCandidateClass"
+        },
+        "classification_reason": {
+          "type": "string",
+          "minLength": 1
         },
         "content_uri": {
           "$ref": "#/$defs/uri"

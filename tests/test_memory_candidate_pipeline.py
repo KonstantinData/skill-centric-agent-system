@@ -26,6 +26,9 @@ COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
 )
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
+CLASSIFICATION_SCHEMA_PATH = (
+    REPO_ROOT / "schemas" / "memory-candidate-classification.schema.json"
+)
 LEARNING_FIXTURE_PATH = REPO_ROOT / "examples" / "evaluations" / "learning-memory-roundtrip.json"
 
 
@@ -43,6 +46,12 @@ class FakeMemoryClient:
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_runtime_artifact(artifact_root: Path, uri: str) -> dict[str, Any]:
+    prefix = "hetzner://runtime/"
+    assert uri.startswith(prefix)
+    return load_json(artifact_root / uri.removeprefix(prefix))
 
 
 def completed_runtime(tmp_path: Path) -> tuple[InMemoryRuntimeStore, JsonArtifactStore, str]:
@@ -78,6 +87,18 @@ def test_memory_candidate_can_be_extracted_validated_and_submitted(tmp_path: Pat
     content = {
         "summary": "Use Flight Recorder events and checkpoints for runtime reconstruction.",
         "evidence_uris": [store.validation_results[0]["findings_uri"]],
+        "authoritative": False,
+        "influence_class": "planner_hint",
+        "allowed_effects": ["planner_hint", "retrieval_ranking"],
+        "forbidden_effects": [
+            "tool_grant",
+            "scope_grant",
+            "policy_override",
+            "validator_override",
+            "profile_mutation",
+            "runtime_authority",
+        ],
+        "applicability": ["runtime reconstruction tasks"],
     }
     extractor = MemoryCandidateExtractor(store=store, artifacts=artifacts)
 
@@ -93,7 +114,12 @@ def test_memory_candidate_can_be_extracted_validated_and_submitted(tmp_path: Pat
 
     assert candidate["validator_status"] == "pending"
     assert candidate["policy_status"] == "pending"
+    assert candidate["candidate_class"] == "procedural_lesson"
+    assert str(candidate["classification_reason"]).strip()
     assert str(candidate["content_uri"]).startswith("hetzner://runtime/")
+    Draft202012Validator(load_json(CLASSIFICATION_SCHEMA_PATH)).validate(
+        load_runtime_artifact(tmp_path, str(candidate["content_uri"]))
+    )
 
     validator = MemoryCandidateValidator(
         store=store,
@@ -173,9 +199,43 @@ def test_memory_candidate_validator_records_rejection_reasons(tmp_path: Path) ->
     assert "target memory scope" in str(validation.candidate["policy_reason"])
 
 
+def test_memory_candidate_validator_rejects_task_subject_facts(tmp_path: Path) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    extractor = MemoryCandidateExtractor(store=store, artifacts=artifacts)
+    candidate = extractor.extract_from_step(
+        run=store.runtime_runs[run_id],
+        source_step=validator_step(store, run_id),
+        target_memory_scope_id="mod-project-memory",
+        content={
+            "summary": "The reviewed task involved a specific customer record.",
+            "evidence_uris": [store.validation_results[0]["findings_uri"]],
+        },
+        sensitivity="internal",
+        retention_policy="project-memory-180d",
+        policy_id="mod-no-destructive-commands",
+        candidate_class="task_subject_fact",
+        classification_reason=(
+            "The content describes a subject-specific fact from the task, "
+            "not a reusable process lesson."
+        ),
+    )
+    validator = MemoryCandidateValidator(
+        store=store,
+        allowed_memory_scope_ids={"mod-project-memory"},
+        allowed_policy_ids={"mod-no-destructive-commands"},
+    )
+
+    validation = validator.validate(candidate, content={"summary": "task-subject fact"})
+
+    assert not validation.approved
+    assert validation.candidate["validator_status"] == "rejected"
+    assert "task-subject facts" in str(validation.candidate["validation_reason"])
+
+
 def test_learning_evaluation_fixture_documents_positive_and_negative_roundtrip() -> None:
     fixture = load_json(LEARNING_FIXTURE_PATH)
 
+    assert fixture["producer"]["expected_candidate"]["candidate_class"] == "procedural_lesson"
     assert fixture["producer"]["expected_candidate"]["validator_status"] == "approved"
     assert fixture["producer"]["expected_candidate"]["policy_status"] == "approved"
     assert (

@@ -59,6 +59,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 ## Reference
 
 - `docs/reference/architecture.md`
+- `docs/reference/memory-architecture.md`
 - `docs/reference/runtime-api.md`
 - `docs/reference/registries.md`
 - `docs/reference/repository-roadmap.md`
@@ -66,5 +67,6 @@ This repository uses `docs/` as an operational documentation surface, not only a
 
 ## Roadmap
 
+- `docs/roadmap/memory-architecture-backlog.md`
 - `docs/roadmap/production-readiness-backlog.md`
 - `docs/roadmap/scas-execution-queue.md`

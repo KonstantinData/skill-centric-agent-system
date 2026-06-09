@@ -66,6 +66,9 @@ def test_hetzner_runtime_migration_enforces_runtime_contract_constraints() -> No
         "policy_status IN ('pending', 'approved', 'rejected', 'needs_clarification')"
         in migration
     )
+    assert "candidate_class IN (" in migration
+    assert "'procedural_lesson'" in migration
+    assert "'task_subject_fact'" in migration
     assert "profile_version ~ '^[0-9]+\\.[0-9]+\\.[0-9]+$'" in migration
 
 
@@ -105,6 +108,7 @@ def test_hetzner_runtime_migration_adds_lookup_indexes() -> None:
         "idx_validation_results_validator_status",
         "idx_memory_candidates_scope_status",
         "idx_memory_candidates_validation_status",
+        "idx_memory_candidates_class_status",
     }
 
     for index in required_indexes:
