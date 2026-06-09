@@ -270,6 +270,6 @@ Implementation status, sequencing, and backlog tracking are intentionally kept
 out of this policy file.
 Track those in:
 
-- `docs/runbooks/infrastructure-implementation-status.md`
+- `docs/roadmap/infrastructure-implementation-status.md`
 - `docs/roadmap/production-readiness-backlog.md`
 

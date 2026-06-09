@@ -1,8 +1,10 @@
 # Infrastructure Implementation Status
 
+Last reviewed: 2026-06-09
+
 ## Purpose
 
-This runbook tracks implementation status and sequencing for infrastructure work.
+This status document tracks implementation status and sequencing for infrastructure work.
 Normative data-plane boundaries remain in
 `docs/policies/infrastructure-boundary.md`.
 
