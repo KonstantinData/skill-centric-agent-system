@@ -86,6 +86,11 @@ This backlog converts the target architecture in
   `authoritative=false`, non-authoritative allowed effects, forbidden authority
   effects, and `render_profile=procedural_memory_context_v1` into runtime
   context.)
+- Add a post-planning invariant validator for memory-influenced plans. (Initial
+  implementation complete: `PostPlanningMemoryInvariantValidator` rejects
+  memory-derived authority deltas, tool/scope/policy/validator/budget/failure
+  policy changes, runtime profile authority mutations, and memory IDs used as
+  authority justification.)
 - Add runtime tests for mixed retrieval where Knowledge provides facts and
   Memory provides process lessons.
 
