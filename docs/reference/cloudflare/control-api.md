@@ -35,6 +35,12 @@ writes normalized objects, chunks, and a manifest to R2, then records
 `knowledge_sources`, `knowledge_documents`, `knowledge_chunks`,
 `ingestion_jobs`, and `audit_events` in D1. It also creates an
 `embedding_update` job and publishes a message to `SCAS_INGEST_QUEUE`.
+Knowledge records that originate from task-subject runtime facts may include a
+`proposal` object produced by the Runtime Plane `KnowledgeRecordProposal` path.
+When present, the Worker fails closed unless the proposal includes source run,
+profile, and step provenance, Hetzner Runtime evidence URIs, freshness review
+days, confidence tier, validation rules, and retention policy. The approved
+proposal metadata is copied into the R2 manifest for auditability.
 
 `POST /memory/ingest` accepts only validated consolidated memory records. It
 writes memory content and a manifest to R2, then records `memory_records`,

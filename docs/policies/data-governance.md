@@ -63,6 +63,11 @@ Every production knowledge or data source must define:
 The generic machine-readable policy shape lives in
 `schemas/knowledge-quality-policy.schema.json`. Example policy data lives in
 `examples/governance/knowledge-quality-policy.json`.
+Runtime-created factual proposals use
+`schemas/knowledge-record-proposal.schema.json` and must carry source
+provenance, owner, source URI, scope, freshness, confidence, validation rules,
+retention, and Hetzner Runtime evidence before `POST /knowledge/ingest` may
+accept them as durable Knowledge input.
 
 Quality controls must fail closed for missing required metadata, invalid
 sensitivity, unknown source type, missing owner, or attempts to ingest secret

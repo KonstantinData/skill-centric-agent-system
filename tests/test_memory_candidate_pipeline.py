@@ -12,6 +12,8 @@ from jsonschema import Draft202012Validator
 from skill_centric_agent_system.runtime import (
     InMemoryRuntimeStore,
     JsonArtifactStore,
+    KnowledgeRecordProposalBuilder,
+    KnowledgeRecordProposalValidator,
     MemoryCandidateError,
     MemoryCandidateExtractor,
     MemoryCandidateValidator,
@@ -19,6 +21,7 @@ from skill_centric_agent_system.runtime import (
     MinimalRuntimeLoop,
     PostRunReflectionExtractor,
     RuntimeEntryPoint,
+    knowledge_ingest_request_from_proposal,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +32,9 @@ COMPOSITION_CONTEXT_RESPONSE_PATH = (
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
 CLASSIFICATION_SCHEMA_PATH = (
     REPO_ROOT / "schemas" / "memory-candidate-classification.schema.json"
+)
+KNOWLEDGE_PROPOSAL_SCHEMA_PATH = (
+    REPO_ROOT / "schemas" / "knowledge-record-proposal.schema.json"
 )
 LEARNING_FIXTURE_PATH = REPO_ROOT / "examples" / "evaluations" / "learning-memory-roundtrip.json"
 
@@ -491,6 +497,97 @@ def test_memory_candidate_validator_rejects_authority_language_and_generalizatio
     reason = str(validation.candidate["validation_reason"])
     assert "authority-changing language" in reason
     assert "generalize to all tasks" in reason
+
+
+def test_knowledge_record_proposal_routes_task_subject_facts_to_knowledge(
+    tmp_path: Path,
+) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    run = store.runtime_runs[run_id]
+    step = validator_step(store, run_id)
+    builder = KnowledgeRecordProposalBuilder(artifacts=artifacts)
+
+    proposal = builder.propose_from_step(
+        run=run,
+        source_step=step,
+        source={
+            "id": "knowledge-source-review-notes",
+            "name": "Review Notes",
+            "source_type": "manual",
+            "uri": "manual://review-notes/scas-runtime",
+            "owner": "repository-maintainer",
+            "sensitivity": "internal",
+        },
+        document={
+            "id": "knowledge-doc-runtime-fact",
+            "version": "0.1.0",
+            "content": "The runtime uses Flight Recorder checkpoints for run reconstruction.",
+            "scope_id": "mod-architecture-docs",
+        },
+        evidence_uris=[store.validation_results[0]["findings_uri"]],
+        freshness_review_days=90,
+        confidence_tier="high",
+        validation_rules=["source-owner-review", "scope-binding-required"],
+        retention_policy="knowledge-retain-365d",
+    )
+
+    assert proposal["validator_status"] == "approved"
+    assert proposal["candidate_class"] == "knowledge_record_proposal"
+    assert proposal["promotion_route"] == "knowledge_record_approval"
+    assert str(proposal["proposal_uri"]).startswith("hetzner://runtime/")
+
+    artifact = load_runtime_artifact(tmp_path, str(proposal["proposal_uri"]))
+    Draft202012Validator(load_json(KNOWLEDGE_PROPOSAL_SCHEMA_PATH)).validate(artifact)
+
+    ingest_request = knowledge_ingest_request_from_proposal(proposal)
+    assert ingest_request["source"]["owner"] == "repository-maintainer"  # type: ignore[index]
+    assert ingest_request["document"]["scope_id"] == "mod-architecture-docs"  # type: ignore[index]
+    assert ingest_request["proposal"]["confidence_tier"] == "high"  # type: ignore[index]
+
+
+def test_knowledge_record_proposal_fails_closed_without_quality_metadata() -> None:
+    validator = KnowledgeRecordProposalValidator(
+        allowed_knowledge_scope_ids={"mod-architecture-docs"},
+    )
+
+    validation = validator.validate(
+        {
+            "contract_version": "0.1.0",
+            "proposal_id": "proposal-runtime-fact",
+            "source_run_id": "run-runtime",
+            "source_profile_id": "profile-runtime",
+            "source_step_id": "step-runtime",
+            "source": {
+                "id": "knowledge-source-review-notes",
+                "name": "Review Notes",
+                "source_type": "manual",
+                "uri": "",
+                "owner": "",
+                "sensitivity": "secret",
+            },
+            "document": {
+                "id": "knowledge-doc-runtime-fact",
+                "version": "0.1.0",
+                "content": "Runtime fact.",
+                "scope_id": "mod-architecture-docs",
+            },
+            "evidence_uris": ["https://example.com/raw-output.json"],
+            "freshness_review_days": 0,
+            "confidence_tier": "unknown",
+            "validation_rules": [],
+            "retention_policy": "",
+            "candidate_class": "knowledge_record_proposal",
+            "promotion_route": "knowledge_record_approval",
+        }
+    )
+
+    assert not validation.approved
+    reason = validation.validation_reason
+    assert "source.uri" in reason
+    assert "source.owner" in reason
+    assert "secret knowledge proposals" in reason
+    assert "Hetzner runtime artifacts" in reason
+    assert "validation_rules" in reason
 
 
 def test_learning_evaluation_fixture_documents_positive_and_negative_roundtrip() -> None:

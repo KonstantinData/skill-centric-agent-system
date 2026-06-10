@@ -56,13 +56,20 @@ This backlog converts the target architecture in
 ### 4. Knowledge Proposal Path
 
 - Add a `KnowledgeRecordProposal` path for factual task-subject content that
-  may need durable reuse.
+  may need durable reuse. (Initial implementation complete:
+  `KnowledgeRecordProposalBuilder` emits artifact-backed proposal records and
+  `schemas/knowledge-record-proposal.schema.json` defines the contract.)
 - Reuse the knowledge quality policy fields: owner, source URI, sensitivity,
   scope, freshness expectation, confidence tier, validation rules, and
-  retention.
+  retention. (Initial implementation complete for proposal validation and
+  optional `POST /knowledge/ingest` proposal metadata.)
 - Add policy gates that fail closed when factual content lacks source quality
-  metadata.
+  metadata. (Initial implementation complete for owner, source URI,
+  non-secret sensitivity, scope, Hetzner evidence, freshness, confidence,
+  validation rules, and retention.)
 - Add fixtures proving that reusable factual context uses `POST /knowledge/ingest`.
+  (Initial fixture complete:
+  `examples/control-api/knowledge-ingest-from-proposal-request.json`.)
 
 ### 5. Scope And Module Cleanup
 
