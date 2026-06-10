@@ -47,6 +47,13 @@ from skill_centric_agent_system.runtime.memory_invariants import (
     PostPlanningMemoryInvariantValidator,
 )
 from skill_centric_agent_system.runtime.models import RecompositionRequest
+from skill_centric_agent_system.runtime.planner_memory import (
+    LessonConflictSet,
+    PlannerMemoryRecordError,
+    build_lesson_conflict_sets,
+    build_planner_memory_selection_record,
+    validate_planner_memory_selection_record,
+)
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.policy_denials import (
     PolicyDenialLedger,
@@ -112,6 +119,7 @@ __all__ = [
     "KnowledgeRecordProposalError",
     "KnowledgeRecordProposalValidationResult",
     "KnowledgeRecordProposalValidator",
+    "LessonConflictSet",
     "MemoryFeedbackError",
     "MemoryFeedbackPipeline",
     "MemoryCandidateError",
@@ -122,6 +130,7 @@ __all__ = [
     "PostRunReflectionExtractor",
     "PostPlanningMemoryInvariantResult",
     "PostPlanningMemoryInvariantValidator",
+    "PlannerMemoryRecordError",
     "PolicyDenialLedger",
     "PolicyDenialLedgerError",
     "PolicyDenialLookup",
@@ -166,6 +175,8 @@ __all__ = [
     "ToolInvocationResult",
     "BUILTIN_SKILL_HANDLER_REGISTRY",
     "build_capability_gap_candidate",
+    "build_lesson_conflict_sets",
+    "build_planner_memory_selection_record",
     "build_policy_denial_record",
     "capture_capability_gap_candidate",
     "knowledge_ingest_request_from_proposal",
@@ -173,5 +184,6 @@ __all__ = [
     "open_runtime_store_session",
     "redact_sensitive_data",
     "retention_plan_to_json",
+    "validate_planner_memory_selection_record",
     "validate_policy_denial_record",
 ]

@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:planner-memory-selection-record:0.1.0",
+  "title": "SCAS Planner Memory Selection Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "record_id",
+    "plan_id",
+    "used_memory_ids",
+    "ignored_memory_ids",
+    "effect",
+    "selection_reason",
+    "authority_delta",
+    "plan_change",
+    "authority_impact",
+    "conflict_sets"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "record_id": {
+      "$ref": "#/$defs/id"
+    },
+    "plan_id": {
+      "$ref": "#/$defs/id"
+    },
+    "used_memory_ids": {
+      "$ref": "#/$defs/nonEmptyIdArray"
+    },
+    "ignored_memory_ids": {
+      "$ref": "#/$defs/idArray"
+    },
+    "effect": {
+      "type": "string",
+      "enum": [
+        "planner_hint",
+        "retrieval_ranking",
+        "composer_candidate_bias"
+      ]
+    },
+    "selection_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_delta": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "plan_change": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "validator_visible",
+        "checked_by"
+      ],
+      "properties": {
+        "status": {
+          "const": "none"
+        },
+        "validator_visible": {
+          "const": true
+        },
+        "checked_by": {
+          "const": "PostPlanningMemoryInvariantValidator"
+        }
+      }
+    },
+    "conflict_sets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conflictSet"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "idArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "nonEmptyIdArray": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/idArray"
+        },
+        {
+          "minItems": 1
+        }
+      ]
+    },
+    "conflictSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflict_id",
+        "memory_ids",
+        "relation",
+        "resolution"
+      ],
+      "properties": {
+        "conflict_id": {
+          "$ref": "#/$defs/id"
+        },
+        "memory_ids": {
+          "$ref": "#/$defs/nonEmptyIdArray"
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "conflicts",
+            "contradicts",
+            "supersedes",
+            "duplicates",
+            "refines"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
