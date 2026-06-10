@@ -236,6 +236,32 @@ def test_registry_scores_positive_and_negative_structured_evidence() -> None:
     assert "phrase:deploy" in negative_score.negative_signals
 
 
+def test_project_memory_scope_rejects_task_subject_storage_requests() -> None:
+    registry = registry_with_scoring_modules()
+    module = registry.resolve("project-memory", "0.1.0")
+
+    procedural_score = registry.score(
+        module,
+        code_review_signals(phrases=["project memory", "previous workflow decision"]),
+    )
+    factual_score = registry.score(
+        module,
+        code_review_signals(
+            phrases=[
+                "project memory",
+                "task-subject fact",
+                "customer record",
+                "factual knowledge",
+            ]
+        ),
+    )
+
+    assert procedural_score.score > factual_score.score
+    assert "phrase:project memory" in procedural_score.matched_signals
+    assert "phrase:task-subject fact" in factual_score.negative_signals
+    assert "phrase:customer record" in factual_score.negative_signals
+
+
 def test_registry_applies_error_feedback_penalty_to_matching_capability_class() -> None:
     registry = registry_with_scoring_modules()
     module = registry.resolve("git-diff-analysis", "0.1.0")

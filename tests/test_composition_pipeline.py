@@ -23,6 +23,9 @@ HUMAN_REVIEW_PROFILE_EXAMPLE_PATH = (
 COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response.json"
 )
+RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-research.json"
+)
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RUNTIME_PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
 TASK_ANALYZER_EVALUATIONS_PATH = (
@@ -164,6 +167,30 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     }
     assert profile["tools"] == ["filesystem-read", "git-read", "test-runner"]
     assert profile["memory_scopes"] == []
+
+
+def test_profile_composer_rejects_memory_scope_as_knowledge_substitute() -> None:
+    task = {
+        "id": "task-research-runtime-context",
+        "objective": "Research runtime context and explain what causes validation drift.",
+    }
+    context_response = load_json(RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response["allowed_knowledge_scopes"] = []
+    context_response["allowed_memory_scopes"] = [
+        {
+            "id": "mod-project-memory",
+            "name": "project-memory",
+            "kind": "memory_scope",
+            "version": "0.1.0",
+            "score": 0.5,
+            "reason": "Allowed for principal by scope binding.",
+        }
+    ]
+
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="Memory scopes cannot substitute"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
 
 
 def test_profile_composer_emits_review_required_profile_for_ambiguous_task() -> None:

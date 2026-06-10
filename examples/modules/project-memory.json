@@ -2,12 +2,13 @@
   "name": "project-memory",
   "version": "0.1.0",
   "kind": "memory_scope",
-  "description": "Allow access to validated, project-scoped memory records that have passed runtime memory candidate validation and policy gates.",
+  "description": "Allow access to validated, project-scoped procedural Agent Memory records that have passed runtime memory candidate validation and policy gates. This scope contains reusable process lessons only, not task-subject facts or source data.",
   "capability_class": "memory_access",
   "domain_tags": [
     "software-engineering",
     "runtime",
-    "project-memory"
+    "project-memory",
+    "procedural-memory"
   ],
   "task_signals": {
     "task_types": [
@@ -25,25 +26,31 @@
     ],
     "required_inputs": [],
     "phrases": [
-      "remember",
-      "previous decision",
+      "procedural lesson",
+      "previous workflow decision",
       "project memory",
       "runtime reconstruction"
     ],
     "negative_phrases": [
+      "customer record",
+      "durable fact",
+      "factual knowledge",
       "raw trace",
+      "remember this customer",
+      "source extract",
       "secret",
-      "credentials"
+      "credentials",
+      "task-subject fact"
     ]
   },
   "triggers": [
-    "remember",
+    "procedural lesson",
     "project memory",
-    "previous decision"
+    "previous workflow decision"
   ],
   "inputs": [],
   "outputs": [
-    "project-memory-records"
+    "procedural-memory-records"
   ],
   "required_tools": [],
   "optional_tools": [],
@@ -61,7 +68,17 @@
       {
         "signal": "phrase:project memory",
         "weight": 0.2,
-        "reason": "Project memory is relevant when the task asks for prior project decisions."
+        "reason": "Project memory is relevant when the task asks for prior procedural project lessons."
+      },
+      {
+        "signal": "phrase:task-subject fact",
+        "weight": -0.55,
+        "reason": "Task-subject facts must use scoped Knowledge Records, not procedural Agent Memory."
+      },
+      {
+        "signal": "phrase:customer record",
+        "weight": -0.55,
+        "reason": "Customer-specific factual content is not eligible for procedural Agent Memory."
       },
       {
         "signal": "phrase:secret",
@@ -73,6 +90,7 @@
   },
   "tests": [
     "retrieves-approved-project-memory",
-    "denies-raw-runtime-trace-memory"
+    "denies-raw-runtime-trace-memory",
+    "denies-task-subject-fact-memory"
   ]
 }

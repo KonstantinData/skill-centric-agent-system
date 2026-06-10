@@ -74,12 +74,19 @@ This backlog converts the target architecture in
 ### 5. Scope And Module Cleanup
 
 - Rename or clarify memory scope descriptions so they refer to procedural
-  Agent Memory instead of generic project memory.
+  Agent Memory instead of generic project memory. (Initial implementation
+  complete for the `project-memory` module and Control Plane seed metadata.)
 - Add selection negative phrases for task-subject fact storage requests.
+  (Initial implementation complete for customer records, durable facts,
+  factual knowledge, source extracts, raw traces, credentials, and
+  task-subject facts.)
 - Add or update policies that distinguish procedural memory access from
-  knowledge access.
+  knowledge access. (Initial implementation complete through module metadata
+  and composer fail-closed checks; broader policy ledger work remains in the
+  dedicated denial-ledger slice.)
 - Ensure runtime profiles never select memory scopes as a substitute for
-  knowledge scopes.
+  knowledge scopes. (Initial implementation complete: research/retrieval
+  composition fails closed when only memory scopes are returned.)
 
 ### 6. Retrieval And Runtime Integration
 

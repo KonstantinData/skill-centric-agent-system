@@ -325,6 +325,21 @@ Memory, but retrieval must remain profile-bounded:
   metadata does not match the Knowledge/Memory semantics,
 - retrieved memory may guide planning or ranking but must not grant authority.
 
+## Memory Scope Selection Semantics
+
+Memory scope modules must describe procedural Agent Memory explicitly. They are
+selection metadata for approved process lessons, not general project fact
+stores. Their positive phrases should point to prior workflow decisions,
+procedural lessons, or project memory as process context. Their negative
+phrases must penalize task-subject storage requests such as customer records,
+factual knowledge, durable facts, source extracts, raw traces, credentials, and
+task-subject facts.
+
+Runtime composition must not use memory scopes as a substitute for knowledge
+scopes. For research or retrieval tasks, a Control Plane context that returns
+memory scopes but no knowledge scopes fails closed rather than composing a
+profile that would treat procedural memory as factual Knowledge.
+
 ## Implementation Tasks
 
 The executable backlog derived from this target architecture lives in
