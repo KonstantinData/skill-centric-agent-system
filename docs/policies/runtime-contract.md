@@ -328,6 +328,15 @@ Scope closure entries are `reachability_only` metadata for already-approved
 scope/policy reachability. They must never encode semantic lesson authority and
 must remain separate from procedural memory relationship graphs.
 
+## Planner Memory Selection Records
+
+Plans that use procedural memory must record memory influence as structured
+data. The record must list used and ignored memory IDs, the non-authoritative
+effect, a concise selection reason, the plan change, explicit conflict sets when
+lessons disagree, and `authority_delta=[]`. `authority_impact` must be visible
+to the post-planning invariant validator and must report no authority impact.
+Selection records must not include chain-of-thought.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

@@ -304,6 +304,27 @@ knowledge scopes, memory scopes, data scopes, policies, validators, limits, or
 failure policy. This keeps procedural memory from becoming a path to runtime
 recomposition or authority expansion.
 
+## Planner Lesson Selection Records
+
+When the planner uses procedural memory, it emits a structured
+Planner Memory Selection Record before execution. The record is data for
+validation and attribution, not a transcript of private reasoning. It includes:
+
+- `used_memory_ids` and `ignored_memory_ids`,
+- `effect`, limited to `planner_hint`, `retrieval_ranking`, or
+  `composer_candidate_bias`,
+- a concise structured `selection_reason`,
+- `authority_delta=[]`,
+- `plan_change`,
+- `authority_impact.status=none` with validator visibility,
+- explicit `conflict_sets` when retrieved lessons contradict, supersede,
+  duplicate, refine, or otherwise conflict.
+
+The executable contract is
+`schemas/planner-memory-selection-record.schema.json`. Selection reasons must
+not contain chain-of-thought. The post-planning invariant validator remains the
+hard gate that rejects any memory-derived authority change.
+
 ## Retrieval Semantics
 
 Semantic retrieval is allowed for both Knowledge Records and Procedural Agent

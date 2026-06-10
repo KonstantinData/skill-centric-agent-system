@@ -109,6 +109,11 @@ This backlog converts the target architecture in
   memory-derived authority deltas, tool/scope/policy/validator/budget/failure
   policy changes, runtime profile authority mutations, and memory IDs used as
   authority justification.)
+- Add planner lesson conflict and selection records. (Initial implementation
+  complete: `PlannerMemorySelectionRecord` captures used/ignored memory IDs,
+  non-authoritative effect, structured selection reason, empty
+  `authority_delta`, plan change, validator-visible authority impact, and
+  explicit conflict sets without chain-of-thought.)
 - Add runtime tests for mixed retrieval where Knowledge provides facts and
   Memory provides process lessons. (Initial schema, Worker, and Runtime Context
   Manager tests cover metadata separation and fail-closed metadata validation.)
