@@ -197,11 +197,12 @@
       {
         "id": "msm-project-memory-0-1-0",
         "module_version_id": "mv-project-memory-0-1-0",
-        "description": "Long-lived project memory scope for consolidated decisions.",
+        "description": "Long-lived project memory scope for validated procedural Agent Memory lessons. This scope contains reusable process lessons only, not task-subject facts or source data.",
         "capability_class": "memory_access",
         "domain_tags": [
           "repository",
-          "project-memory"
+          "project-memory",
+          "procedural-memory"
         ],
         "task_types": [
           "code-review"
@@ -216,17 +217,47 @@
         ],
         "required_inputs": [],
         "phrases": [
-          "memory"
+          "procedural lesson",
+          "project memory",
+          "previous workflow decision"
         ],
-        "negative_phrases": [],
+        "negative_phrases": [
+          "customer record",
+          "durable fact",
+          "factual knowledge",
+          "raw trace",
+          "remember this customer",
+          "source extract",
+          "secret",
+          "credentials",
+          "task-subject fact"
+        ],
         "triggers": [
-          "memory"
+          "procedural lesson",
+          "project memory",
+          "previous workflow decision"
         ],
         "inputs": [],
         "outputs": [
-          "project-memory"
+          "procedural-memory-records"
         ],
-        "score_modifiers": [],
+        "score_modifiers": [
+          {
+            "signal": "phrase:project memory",
+            "weight": 0.2,
+            "reason": "Project memory is relevant when the task asks for prior procedural project lessons."
+          },
+          {
+            "signal": "phrase:task-subject fact",
+            "weight": -0.55,
+            "reason": "Task-subject facts must use scoped Knowledge Records, not procedural Agent Memory."
+          },
+          {
+            "signal": "phrase:customer record",
+            "weight": -0.55,
+            "reason": "Customer-specific factual content is not eligible for procedural Agent Memory."
+          }
+        ],
         "requires_all_policies": false
       },
       {

@@ -211,6 +211,15 @@ class RuntimeProfileComposer:
         if analyzed_task.requires_human_review:
             return
 
+        if _requires_knowledge_context(analyzed_task):
+            allowed_knowledge_scopes = _references(context_response, "allowed_knowledge_scopes")
+            allowed_memory_scopes = _references(context_response, "allowed_memory_scopes")
+            if allowed_memory_scopes and not allowed_knowledge_scopes:
+                raise CompositionError(
+                    "Memory scopes cannot substitute for knowledge scopes on research or "
+                    "retrieval tasks."
+                )
+
         policy_effects = {
             decision["module"]["name"]: decision["effect"]
             for decision in _policy_decisions(context_response)
@@ -395,6 +404,10 @@ def _skill_execution_roles(
         "non_runtime_skills": non_runtime_skills,
         "shared_skills": shared_skills,
     }
+
+
+def _requires_knowledge_context(analyzed_task: AnalyzedTask) -> bool:
+    return analyzed_task.task_type == "research" or "retrieval" in analyzed_task.capability_hints
 
 
 def _version_for(

@@ -153,6 +153,10 @@ block selection but may reduce effectiveness.
 `knowledge_scopes` - Knowledge bases the module needs read access to. These are
 validated against the profile's `knowledge_scopes` allowlist.
 
+`memory_scope` modules are procedural Agent Memory scopes. They must not be
+described or scored as factual Knowledge stores, and their negative selection
+signals should penalize task-subject fact storage requests.
+
 `data_scopes` - Data access scopes. Validated against the profile's
 `data_scopes` allowlist and the principal's authorization claims.
 
