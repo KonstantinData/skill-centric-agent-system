@@ -147,6 +147,21 @@ This backlog converts the target architecture in
   drift guard, and post-planning invariant validator rather than adding a second
   authority model. (Initial implementation complete.)
 
+### 6c. Lesson Attribution And Ranking Feedback Gate
+
+- Add Lesson Attribution Records for selected procedural lessons with outcome,
+  context fingerprint, success/failure criteria, and error classification
+  linkage. (Initial implementation complete:
+  `schemas/lesson-attribution-record.schema.json` and
+  `examples/evaluations/lesson-attribution-record.json`.)
+- Gate ranking feedback so it is context-bound, non-authoritative, bounded by
+  safe weight deltas, and limited to selected or ignored lesson IDs from the
+  source selection record. (Initial implementation complete:
+  `build_lesson_ranking_feedback_gate`.)
+- Keep attribution feedback separate from authority changes. (Initial
+  implementation complete: attribution records and feedback gates require
+  `authority_delta=[]`.)
+
 ### 7. Operations And Evidence
 
 - Add a live dev smoke that creates one procedural lesson and one factual

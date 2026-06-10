@@ -337,6 +337,21 @@ lessons disagree, and `authority_delta=[]`. `authority_impact` must be visible
 to the post-planning invariant validator and must report no authority impact.
 Selection records must not include chain-of-thought.
 
+## Lesson Attribution Records
+
+After execution, selected lessons may receive outcome attribution through
+`schemas/lesson-attribution-record.schema.json`; the example contract lives at
+`examples/evaluations/lesson-attribution-record.json`. Attribution records must
+link back to the selection record, include a context fingerprint, success or
+failure criteria with Hetzner evidence, and error classification data.
+
+Ranking feedback from attribution is gated as
+`non_authoritative_ranking_only`. Each item must be context-bound, reference a
+selected or ignored memory ID from the original selection record, cap its
+weight delta, and carry `authority_delta=[]`. Attribution feedback must never
+grant tools, scopes, policies, validators, budgets, profile mutation, or runtime
+authority.
+
 ## Run Lifecycle
 
 Runtime run statuses are:
