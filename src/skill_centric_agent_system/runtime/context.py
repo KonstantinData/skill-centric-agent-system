@@ -150,6 +150,35 @@ def _assert_retrieval_response_is_bounded(
             stop_reason="policy_denied",
             code="retrieval_response_scope_not_in_runtime_profile",
         )
+    for chunk in response.get("knowledge_chunks", []):
+        if not isinstance(chunk, Mapping):
+            continue
+        if str(chunk.get("scope_id")) not in allowed_knowledge:
+            raise _retrieval_metadata_error()
+        if (
+            chunk.get("record_kind") != "knowledge_record"
+            or chunk.get("context_kind") != "factual_knowledge"
+        ):
+            raise _retrieval_metadata_error()
+    for memory in response.get("memory_records", []):
+        if not isinstance(memory, Mapping):
+            continue
+        if str(memory.get("memory_scope_id")) not in allowed_memory:
+            raise _retrieval_metadata_error()
+        if (
+            memory.get("record_kind") != "procedural_agent_memory"
+            or memory.get("instruction_status") != MEMORY_INSTRUCTION_STATUS
+            or memory.get("authoritative") is not False
+        ):
+            raise _retrieval_metadata_error()
+
+
+def _retrieval_metadata_error() -> ProfileEnforcementError:
+    return ProfileEnforcementError(
+        "Retrieval response metadata does not match scoped Knowledge/Memory semantics.",
+        stop_reason="policy_denied",
+        code="retrieval_response_metadata_invalid",
+    )
 
 
 def _render_memory_record(record: Mapping[str, Any]) -> dict[str, Any]:

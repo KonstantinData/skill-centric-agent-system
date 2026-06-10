@@ -20,6 +20,8 @@
   ],
   "knowledge_chunks": [
     {
+      "record_kind": "knowledge_record",
+      "context_kind": "factual_knowledge",
       "id": "chunk-knowledge-doc-runtime-0",
       "document_id": "knowledge-doc-runtime",
       "chunk_index": 0,
@@ -31,6 +33,22 @@
   ],
   "memory_records": [
     {
+      "record_kind": "procedural_agent_memory",
+      "instruction_status": "not_an_instruction",
+      "authoritative": false,
+      "allowed_effects": [
+        "planner_hint",
+        "retrieval_ranking",
+        "composer_candidate_bias"
+      ],
+      "forbidden_effects": [
+        "tool_grant",
+        "scope_grant",
+        "policy_override",
+        "validator_override",
+        "profile_mutation",
+        "runtime_authority"
+      ],
       "id": "memory-runtime-decision",
       "memory_scope_id": "mod-project-memory",
       "version": "0.1.0",

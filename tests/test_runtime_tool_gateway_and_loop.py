@@ -630,6 +630,22 @@ def test_runtime_context_manager_injects_memory_renderer_metadata() -> None:
                 "knowledge_chunks": [],
                 "memory_records": [
                     {
+                        "record_kind": "procedural_agent_memory",
+                        "instruction_status": "not_an_instruction",
+                        "authoritative": False,
+                        "allowed_effects": [
+                            "planner_hint",
+                            "retrieval_ranking",
+                            "composer_candidate_bias",
+                        ],
+                        "forbidden_effects": [
+                            "tool_grant",
+                            "scope_grant",
+                            "policy_override",
+                            "validator_override",
+                            "profile_mutation",
+                            "runtime_authority",
+                        ],
                         "id": "memory-runtime-decision",
                         "memory_scope_id": "mod-project-memory",
                         "version": "0.1.0",
@@ -666,6 +682,57 @@ def test_runtime_context_manager_injects_memory_renderer_metadata() -> None:
     assert "tool_grant" in rendered["forbidden_effects"]
     assert "policy_override" in rendered["forbidden_effects"]
     assert "runtime_authority" in rendered["forbidden_effects"]
+
+
+def test_runtime_context_manager_rejects_invalid_retrieval_metadata() -> None:
+    class BadMetadataRetrievalClient:
+        def retrieval_context(self, request_body: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "contract_version": "0.1.0",
+                "retrieval_status": "ready",
+                "query": request_body["query"],
+                "vectorize": {
+                    "status": "d1_prefilter_ready",
+                    "knowledge_index": "scas-knowledge-dev",
+                    "memory_index": "scas-memory-dev",
+                    "bindings": {"knowledge": True, "memory": True},
+                    "note": "D1 prefilter only.",
+                },
+                "allowed_knowledge_scope_ids": [],
+                "allowed_memory_scope_ids": ["mod-project-memory"],
+                "knowledge_chunks": [],
+                "memory_records": [
+                    {
+                        "record_kind": "knowledge_record",
+                        "instruction_status": "instruction",
+                        "authoritative": True,
+                        "id": "memory-runtime-decision",
+                        "memory_scope_id": "mod-project-memory",
+                        "version": "0.1.0",
+                        "content_uri": "r2://scas-memory-dev/memory/content.json",
+                        "manifest_uri": "r2://scas-memory-dev/memory/manifest.json",
+                        "source_run_id": "run-code-review",
+                        "source_profile_id": "profile-code-review",
+                        "sensitivity": "internal",
+                        "retention_policy": "project-memory-180d",
+                        "status": "active",
+                        "vector_id": "vec-memory-runtime-decision",
+                    }
+                ],
+                "vectorize_matches": {"knowledge": [], "memory": []},
+            }
+
+    profile = deepcopy(load_json(PROFILE_EXAMPLE_PATH))
+    profile["memory_scopes"] = ["project-memory"]
+    manager = RuntimeContextManager(
+        enforcer=RuntimeProfileEnforcer(profile),
+        control_plane_client=BadMetadataRetrievalClient(),
+    )
+
+    with pytest.raises(ProfileEnforcementError) as exc_info:
+        manager.load(profile, query=profile["objective"])
+
+    assert exc_info.value.code == "retrieval_response_metadata_invalid"
 
 
 def test_minimal_runtime_loop_fails_closed_for_unknown_profile_validator(
