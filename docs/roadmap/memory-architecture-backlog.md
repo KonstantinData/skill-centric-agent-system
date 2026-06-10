@@ -178,11 +178,27 @@ This backlog converts the target architecture in
 ### 7. Operations And Evidence
 
 - Add a live dev smoke that creates one procedural lesson and one factual
-  knowledge proposal from the same run evidence.
+  knowledge proposal from the same run evidence. (Initial aggregate evidence
+  contract complete in `examples/operations/memory-operations-evidence.json`.)
 - Add aggregate telemetry for candidate classifications and rejection reasons.
+  (Initial implementation complete:
+  `schemas/memory-operations-evidence.schema.json`.)
 - Add retention checks that keep Runtime Evidence cleanup independent from
-  Cloudflare Knowledge and Memory retention.
+  Cloudflare Knowledge and Memory retention. (Initial implementation complete
+  through the `retention_separation` evidence gate.)
 - Update production readiness evidence to include the memory taxonomy gate.
+  (Initial implementation complete: `Memory taxonomy operations evidence` gate
+  added to production readiness evidence.)
+
+### 7a. Operations Telemetry And Evidence Gates
+
+- Add aggregate gates for contrastive false negatives/positives,
+  abstention/review rate, post-planning invariant violations, Top-K memory
+  load, retrieval cache hit rate, renderer behavior, denial-ledger outcomes,
+  relationship graph authority deltas, and retention separation. (Initial
+  implementation complete: `evaluate_memory_operations_evidence`.)
+- Keep evidence secret-free and aggregate-only. (Initial implementation
+  complete: `raw_data_policy=aggregate_metadata_only`.)
 
 ## Acceptance Criteria
 

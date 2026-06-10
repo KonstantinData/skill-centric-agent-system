@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:memory-operations-evidence:0.1.0",
+  "title": "SCAS Memory Operations Evidence",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "snapshot_id",
+    "generated_at",
+    "environment",
+    "live_smoke",
+    "aggregate_metrics",
+    "retention_separation",
+    "renderer_behavior",
+    "denial_ledger",
+    "relationship_graph",
+    "raw_data_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "snapshot_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "environment": {
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ]
+    },
+    "live_smoke": {
+      "type": "object",
+      "required": [
+        "status",
+        "procedural_lesson_created",
+        "knowledge_proposal_created",
+        "same_run_evidence_uri"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "procedural_lesson_created": {
+          "type": "boolean"
+        },
+        "knowledge_proposal_created": {
+          "type": "boolean"
+        },
+        "same_run_evidence_uri": {
+          "type": "string",
+          "pattern": "^hetzner://runtime/.+"
+        }
+      }
+    },
+    "aggregate_metrics": {
+      "type": "object",
+      "required": [
+        "candidate_class_counts",
+        "rejection_reason_counts",
+        "contrastive_false_negative_count",
+        "contrastive_false_positive_count",
+        "abstention_review_rate",
+        "post_planning_invariant_violation_count",
+        "top_k_memory_load_p95",
+        "retrieval_cache_hit_rate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidate_class_counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "rejection_reason_counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "contrastive_false_negative_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contrastive_false_positive_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "abstention_review_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "post_planning_invariant_violation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "top_k_memory_load_p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "retrieval_cache_hit_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "retention_separation": {
+      "type": "object",
+      "required": [
+        "runtime_evidence_cleanup_status",
+        "knowledge_memory_retention_independent",
+        "cloudflare_memory_deleted_by_runtime_cleanup"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runtime_evidence_cleanup_status": {
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "knowledge_memory_retention_independent": {
+          "type": "boolean"
+        },
+        "cloudflare_memory_deleted_by_runtime_cleanup": {
+          "type": "boolean"
+        }
+      }
+    },
+    "renderer_behavior": {
+      "type": "object",
+      "required": [
+        "memory_context_record_count",
+        "authoritative_record_count",
+        "instruction_record_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "memory_context_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authoritative_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "instruction_record_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "denial_ledger": {
+      "type": "object",
+      "required": [
+        "active_denial_count",
+        "authority_grant_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "active_denial_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authority_grant_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "relationship_graph": {
+      "type": "object",
+      "required": [
+        "edge_count",
+        "authority_delta_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "edge_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authority_delta_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "raw_data_policy": {
+      "const": "aggregate_metadata_only"
+    }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}
