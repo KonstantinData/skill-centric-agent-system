@@ -22,13 +22,18 @@ This backlog converts the target architecture in
 ### 2. Post-Run Reflection
 
 - Add a deterministic post-run reflection interface that reads completed
-  runtime steps and artifact URIs.
+  runtime steps and artifact URIs. (Initial implementation:
+  `PostRunReflectionExtractor` emits artifact-backed envelopes.)
 - Make reflection emit classified candidate envelopes instead of direct memory
-  candidates.
+  candidates. (Initial implementation complete for in-process runtime
+  reflection; validator and ingestion routing remain later slices.)
 - Require evidence URIs, source run/profile/step IDs, sensitivity, retention,
-  target scope, and policy ID on every candidate envelope.
+  target scope, and policy ID on every candidate envelope. (Initial schema and
+  tests complete.)
 - Add negative fixtures for raw tool output, source extracts, customer-specific
-  content, and secret-like values.
+  content, and secret-like values. (Initial raw-tool-output and secret-like
+  fail-closed checks complete; broader contrastive fixture coverage remains in
+  the dedicated evaluation slice.)
 
 ### 3. Procedural Memory Validation
 

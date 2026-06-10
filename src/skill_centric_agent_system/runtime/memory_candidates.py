@@ -27,6 +27,26 @@ PROMOTION_ROUTES = {
     "knowledge_record_proposal": "knowledge_record_approval",
     "rejected": "none",
 }
+REFLECTION_REJECTION_KEYS = frozenset(
+    {
+        "raw_tool_output",
+        "raw_tool_outputs",
+        "source_extract",
+        "source_extracts",
+        "customer_data",
+        "private_data",
+        "secret_value",
+        "credential",
+    }
+)
+SECRET_LIKE_TERMS = (
+    "api key",
+    "apikey",
+    "password",
+    "private key",
+    "secret",
+    "token",
+)
 
 
 class MemoryCandidateError(ValueError):
@@ -145,6 +165,131 @@ class MemoryCandidateExtractor:
             raise MemoryCandidateError(
                 "Memory candidates can only be extracted from completed steps."
             )
+
+
+class PostRunReflectionExtractor:
+    """Emit classified post-run memory envelopes without direct memory admission."""
+
+    def __init__(
+        self,
+        *,
+        artifacts: JsonArtifactStore,
+        clock: Callable[[], Any] = utc_now,
+    ) -> None:
+        self.artifacts = artifacts
+        self.clock = clock
+
+    def emit_candidate_envelope(
+        self,
+        *,
+        run: Mapping[str, Any],
+        source_step: Mapping[str, Any],
+        target_memory_scope_id: str,
+        content: Mapping[str, Any],
+        sensitivity: str,
+        retention_policy: str,
+        policy_id: str,
+        candidate_class: str,
+        classification_reason: str,
+        validator_id: str = "memory-candidate-contract",
+        candidate_id: str | None = None,
+        redact_sensitive_data: bool = True,
+    ) -> Mapping[str, Any]:
+        MemoryCandidateExtractor._validate_extractable_step(run, source_step)
+        self._validate_reflection_request(
+            content=content,
+            sensitivity=sensitivity,
+            candidate_class=candidate_class,
+            classification_reason=classification_reason,
+        )
+
+        resolved_class = self._resolved_candidate_class(
+            requested_class=candidate_class,
+            content=content,
+            sensitivity=sensitivity,
+        )
+        resolved_reason = classification_reason
+        if resolved_class == "rejected" and candidate_class != "rejected":
+            resolved_reason = (
+                f"{classification_reason} Rejected by post-run reflection safety precheck."
+            )
+        identifier = candidate_id or slug_id(
+            f"{run['id']}-{source_step['id']}-{target_memory_scope_id}-reflection",
+            prefix="mce",
+        )
+        envelope = {
+            "contract_version": "0.1.0",
+            **dict(content),
+            "source_run_id": run["id"],
+            "source_profile_id": run["profile_id"],
+            "source_step_id": source_step["id"],
+            "target_memory_scope_id": target_memory_scope_id,
+            "candidate_class": resolved_class,
+            "classification_reason": resolved_reason,
+            "promotion_route": PROMOTION_ROUTES[resolved_class],
+            "sensitivity": sensitivity,
+            "retention_policy": retention_policy,
+            "policy_id": policy_id,
+            "validator_id": validator_id,
+            "created_at": iso_timestamp(self.clock()),
+        }
+        envelope_uri = self.artifacts.write_json(
+            ("artifacts", str(run["id"]), "memory-reflection-candidates", identifier),
+            envelope,
+            redact=redact_sensitive_data,
+        )
+        return {
+            "id": identifier,
+            "run_id": str(run["id"]),
+            "profile_id": str(run["profile_id"]),
+            "source_step_id": str(source_step["id"]),
+            "target_memory_scope_id": target_memory_scope_id,
+            "candidate_class": resolved_class,
+            "classification_reason": resolved_reason,
+            "promotion_route": PROMOTION_ROUTES[resolved_class],
+            "envelope_uri": envelope_uri,
+            "created_at": envelope["created_at"],
+        }
+
+    @staticmethod
+    def _validate_reflection_request(
+        *,
+        content: Mapping[str, Any],
+        sensitivity: str,
+        candidate_class: str,
+        classification_reason: str,
+    ) -> None:
+        if not isinstance(content.get("summary"), str) or not content["summary"]:
+            raise MemoryCandidateError("Reflection envelope requires a non-empty summary.")
+        evidence_uris = content.get("evidence_uris")
+        if not isinstance(evidence_uris, list) or not evidence_uris:
+            raise MemoryCandidateError("Reflection envelope requires evidence_uris.")
+        if any(not str(uri).startswith("hetzner://runtime/") for uri in evidence_uris):
+            raise MemoryCandidateError(
+                "Reflection envelope evidence_uris must point to Hetzner runtime artifacts."
+            )
+        if sensitivity not in SENSITIVITIES:
+            raise MemoryCandidateError("Reflection envelope sensitivity is invalid.")
+        if candidate_class not in CANDIDATE_CLASSES:
+            raise MemoryCandidateError("Reflection envelope candidate_class is invalid.")
+        if not classification_reason.strip():
+            raise MemoryCandidateError("Reflection envelope classification_reason is required.")
+
+    @staticmethod
+    def _resolved_candidate_class(
+        *,
+        requested_class: str,
+        content: Mapping[str, Any],
+        sensitivity: str,
+    ) -> str:
+        if requested_class == "rejected" or sensitivity == "secret":
+            return "rejected"
+        if REFLECTION_REJECTION_KEYS.intersection(content):
+            return "rejected"
+        summary = str(content.get("summary", "")).lower()
+        if any(term in summary for term in SECRET_LIKE_TERMS):
+            return "rejected"
+        return requested_class
 
 
 class MemoryCandidateValidator:

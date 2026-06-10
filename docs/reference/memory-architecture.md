@@ -112,8 +112,10 @@ The post-run promotion pipeline has six gates:
 
 1. Evidence selection chooses only completed runtime steps and their artifact
    URIs.
-2. Reflection extracts candidate lessons and preserves source run/profile/step
-   provenance.
+2. Reflection extracts candidate lessons into classified candidate envelopes
+   and preserves source run/profile/step provenance. The reflection step writes
+   envelope artifacts on the Hetzner Runtime Plane and does not insert directly
+   into `memory_candidates`.
 3. Classification labels each candidate as `procedural_lesson`,
    `task_subject_fact`, `runtime_evidence`, `knowledge_record_proposal`, or
    `rejected`. The envelope contract is
@@ -128,6 +130,29 @@ The post-run promotion pipeline has six gates:
    behavior without reviewed policy artifacts.
 6. Ingestion writes only approved procedural memory records to Cloudflare
    Memory. Approved factual records use Cloudflare Knowledge ingestion instead.
+
+## Post-Run Reflection Envelope
+
+Post-run reflection is the first executable boundary after a runtime run
+finishes. It reads completed runtime steps and artifact URIs, then emits a
+classified candidate envelope. It must not directly promote records to
+Cloudflare Memory.
+
+Every envelope must include:
+
+- `source_run_id`, `source_profile_id`, and `source_step_id`,
+- at least one `evidence_uris` entry pointing to Hetzner Runtime Plane evidence,
+- `candidate_class`, `classification_reason`, and `promotion_route`,
+- `sensitivity`, `retention_policy`, `target_memory_scope_id`, `policy_id`,
+  and `validator_id`.
+
+Reflection rejects or reroutes unsafe content before validation:
+
+- raw tool outputs and source extracts remain Runtime Evidence,
+- secret-like content is rejected,
+- customer-specific or private data cannot become Agent Memory,
+- procedural lessons stay non-authoritative and may only influence planning,
+  retrieval ranking, or candidate bias after later validation.
 
 ## Procedural Memory Content Contract
 

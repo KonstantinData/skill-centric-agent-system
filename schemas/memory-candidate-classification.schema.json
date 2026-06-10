@@ -18,7 +18,8 @@
     "validator_id",
     "sensitivity",
     "retention_policy",
-    "summary"
+    "summary",
+    "evidence_uris"
   ],
   "properties": {
     "contract_version": {
@@ -67,7 +68,7 @@
       "items": {
         "$ref": "#/$defs/uri"
       },
-      "default": []
+      "minItems": 1
     },
     "authoritative": {
       "type": "boolean"

@@ -17,6 +17,7 @@ from skill_centric_agent_system.runtime import (
     MemoryCandidateValidator,
     MemoryFeedbackPipeline,
     MinimalRuntimeLoop,
+    PostRunReflectionExtractor,
     RuntimeEntryPoint,
 )
 
@@ -166,6 +167,141 @@ def test_memory_candidate_extraction_requires_completed_step(tmp_path: Path) -> 
             sensitivity="internal",
             retention_policy="project-memory-180d",
             policy_id="mod-no-destructive-commands",
+        )
+
+
+def test_post_run_reflection_emits_classified_envelope_without_memory_admission(
+    tmp_path: Path,
+) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    run = store.runtime_runs[run_id]
+    step = validator_step(store, run_id)
+    reflector = PostRunReflectionExtractor(artifacts=artifacts)
+
+    reflected = reflector.emit_candidate_envelope(
+        run=run,
+        source_step=step,
+        target_memory_scope_id="mod-project-memory",
+        content={
+            "summary": "Prefer Flight Recorder checkpoints for runtime reconstruction audits.",
+            "evidence_uris": [store.validation_results[0]["findings_uri"]],
+            "authoritative": False,
+            "influence_class": "planner_hint",
+            "allowed_effects": ["planner_hint"],
+            "forbidden_effects": [
+                "tool_grant",
+                "scope_grant",
+                "policy_override",
+                "validator_override",
+                "profile_mutation",
+                "runtime_authority",
+            ],
+            "applicability": ["runtime reconstruction audits"],
+        },
+        sensitivity="internal",
+        retention_policy="project-memory-180d",
+        policy_id="mod-no-destructive-commands",
+        candidate_class="procedural_lesson",
+        classification_reason="The content is a reusable process lesson.",
+    )
+
+    assert reflected["candidate_class"] == "procedural_lesson"
+    assert reflected["promotion_route"] == "agent_memory"
+    assert reflected["envelope_uri"] != store.validation_results[0]["findings_uri"]
+    assert store.memory_candidates == []
+
+    envelope = load_runtime_artifact(tmp_path, str(reflected["envelope_uri"]))
+    Draft202012Validator(load_json(CLASSIFICATION_SCHEMA_PATH)).validate(envelope)
+    assert envelope["source_run_id"] == run_id
+    assert envelope["source_step_id"] == step["id"]
+
+
+def test_post_run_reflection_rejects_raw_tool_output_envelope(tmp_path: Path) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    reflector = PostRunReflectionExtractor(artifacts=artifacts)
+
+    reflected = reflector.emit_candidate_envelope(
+        run=store.runtime_runs[run_id],
+        source_step=validator_step(store, run_id),
+        target_memory_scope_id="mod-project-memory",
+        content={
+            "summary": "Persist the raw tool output as memory for later reuse.",
+            "evidence_uris": [store.validation_results[0]["findings_uri"]],
+            "raw_tool_output": "full command output should remain runtime evidence",
+        },
+        sensitivity="internal",
+        retention_policy="project-memory-180d",
+        policy_id="mod-no-destructive-commands",
+        candidate_class="procedural_lesson",
+        classification_reason="Requested as a lesson but contains raw output.",
+    )
+
+    assert reflected["candidate_class"] == "rejected"
+    assert reflected["promotion_route"] == "none"
+    assert store.memory_candidates == []
+
+    envelope = load_runtime_artifact(tmp_path, str(reflected["envelope_uri"]))
+    Draft202012Validator(load_json(CLASSIFICATION_SCHEMA_PATH)).validate(envelope)
+    assert "Rejected by post-run reflection safety precheck" in envelope[
+        "classification_reason"
+    ]
+
+
+def test_post_run_reflection_rejects_secret_like_summary(tmp_path: Path) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    reflector = PostRunReflectionExtractor(artifacts=artifacts)
+
+    reflected = reflector.emit_candidate_envelope(
+        run=store.runtime_runs[run_id],
+        source_step=validator_step(store, run_id),
+        target_memory_scope_id="mod-project-memory",
+        content={
+            "summary": "Remember that this task used a private key rotation token.",
+            "evidence_uris": [store.validation_results[0]["findings_uri"]],
+        },
+        sensitivity="internal",
+        retention_policy="project-memory-180d",
+        policy_id="mod-no-destructive-commands",
+        candidate_class="procedural_lesson",
+        classification_reason="Requested as a lesson but contains secret-like content.",
+    )
+
+    assert reflected["candidate_class"] == "rejected"
+    assert reflected["promotion_route"] == "none"
+    assert store.memory_candidates == []
+
+
+def test_post_run_reflection_requires_hetzner_evidence_uri(tmp_path: Path) -> None:
+    store, artifacts, run_id = completed_runtime(tmp_path)
+    reflector = PostRunReflectionExtractor(artifacts=artifacts)
+
+    with pytest.raises(MemoryCandidateError, match="evidence_uris"):
+        reflector.emit_candidate_envelope(
+            run=store.runtime_runs[run_id],
+            source_step=validator_step(store, run_id),
+            target_memory_scope_id="mod-project-memory",
+            content={"summary": "Missing evidence must fail closed."},
+            sensitivity="internal",
+            retention_policy="project-memory-180d",
+            policy_id="mod-no-destructive-commands",
+            candidate_class="procedural_lesson",
+            classification_reason="No evidence was provided.",
+        )
+
+    with pytest.raises(MemoryCandidateError, match="Hetzner runtime artifacts"):
+        reflector.emit_candidate_envelope(
+            run=store.runtime_runs[run_id],
+            source_step=validator_step(store, run_id),
+            target_memory_scope_id="mod-project-memory",
+            content={
+                "summary": "Evidence must stay anchored to the Runtime Plane.",
+                "evidence_uris": ["https://example.com/raw-output.json"],
+            },
+            sensitivity="internal",
+            retention_policy="project-memory-180d",
+            policy_id="mod-no-destructive-commands",
+            candidate_class="procedural_lesson",
+            classification_reason="Evidence URI is not Runtime Plane evidence.",
         )
 
 

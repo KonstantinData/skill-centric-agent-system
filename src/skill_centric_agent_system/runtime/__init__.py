@@ -28,6 +28,7 @@ from skill_centric_agent_system.runtime.memory_candidates import (
     MemoryCandidateExtractor,
     MemoryCandidateValidationResult,
     MemoryCandidateValidator,
+    PostRunReflectionExtractor,
 )
 from skill_centric_agent_system.runtime.memory_feedback import (
     CloudflareMemoryIngestionClient,
@@ -94,6 +95,7 @@ __all__ = [
     "MemoryCandidateExtractor",
     "MemoryCandidateValidationResult",
     "MemoryCandidateValidator",
+    "PostRunReflectionExtractor",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
     "ProfileEnforcementError",
