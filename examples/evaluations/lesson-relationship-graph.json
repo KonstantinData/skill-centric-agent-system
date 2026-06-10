@@ -1,0 +1,74 @@
+{
+  "contract_version": "0.1.0",
+  "graph_id": "lesson-relationship-graph",
+  "feedback_effect": "non_authoritative_relationship_metadata",
+  "lesson_edges": [
+    {
+      "contract_version": "0.1.0",
+      "edge_id": "edge-focused-tests-refines-full-gate",
+      "source_memory_id": "lesson-focused-tests",
+      "target_memory_id": "lesson-full-gate-first",
+      "relation": "refines",
+      "direction": "directed",
+      "confidence": "high",
+      "reason": "Focused tests refine the broader full-gate lesson for narrow runtime-helper changes.",
+      "evidence_uris": [
+        "hetzner://runtime/run-runtime-reconstruction/relationships/focused-refines-full.json"
+      ],
+      "ranking_effect": "promote_related",
+      "visibility_effects": [
+        "ranking"
+      ],
+      "non_authoritative": true,
+      "authority_delta": []
+    },
+    {
+      "contract_version": "0.1.0",
+      "edge_id": "edge-fast-path-contradicts-full-gate",
+      "source_memory_id": "lesson-fast-path",
+      "target_memory_id": "lesson-full-gate-first",
+      "relation": "contradicts",
+      "direction": "symmetric",
+      "confidence": "medium",
+      "reason": "The lessons disagree on whether validation can skip broad gates.",
+      "evidence_uris": [
+        "hetzner://runtime/run-runtime-reconstruction/relationships/fast-path-conflict.json"
+      ],
+      "ranking_effect": "surface_conflict",
+      "visibility_effects": [
+        "conflict_display"
+      ],
+      "non_authoritative": true,
+      "authority_delta": []
+    }
+  ],
+  "relation_counts": {
+    "contradicts": 1,
+    "refines": 1
+  },
+  "ranking_hints": [
+    {
+      "source_memory_id": "lesson-focused-tests",
+      "target_memory_id": "lesson-full-gate-first",
+      "relation": "refines",
+      "ranking_effect": "promote_related",
+      "visibility_effects": [
+        "ranking"
+      ],
+      "non_authoritative": true,
+      "authority_delta": []
+    },
+    {
+      "source_memory_id": "lesson-fast-path",
+      "target_memory_id": "lesson-full-gate-first",
+      "relation": "contradicts",
+      "ranking_effect": "surface_conflict",
+      "visibility_effects": [
+        "conflict_display"
+      ],
+      "non_authoritative": true,
+      "authority_delta": []
+    }
+  ],
+  "authority_delta": []
+}

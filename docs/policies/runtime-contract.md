@@ -352,6 +352,20 @@ weight delta, and carry `authority_delta=[]`. Attribution feedback must never
 grant tools, scopes, policies, validators, budgets, profile mutation, or runtime
 authority.
 
+## Lesson Relationship Graph
+
+Lesson relationship metadata is defined by
+`schemas/lesson-relationship-graph.schema.json`; the reference fixture lives at
+`examples/evaluations/lesson-relationship-graph.json`. Relationship edges may
+model `reinforces`, `contradicts`, `supersedes`, `refines`, and `duplicates`.
+
+Graph output is `non_authoritative_relationship_metadata`. It may produce
+ranking hints, conflict display hints, supersession notices, or dedupe hints
+only. Every edge and graph output must keep `authority_delta=[]` and
+`non_authoritative=true`; relationship metadata must not alter tools, scopes,
+policies, validators, budgets, memory scopes, profile fields, or failure
+behavior.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

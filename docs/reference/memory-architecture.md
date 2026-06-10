@@ -354,6 +354,23 @@ record. Feedback weight deltas are capped and may affect only future ranking or
 planner hints. They cannot add tools, scopes, policies, validators, budgets, or
 runtime authority.
 
+## Non-Authoritative Lesson Relationship Graph
+
+Lesson relationships are metadata for retrieval quality, conflict visibility,
+supersession display, deduplication, and attribution. The graph contract is
+`schemas/lesson-relationship-graph.schema.json`, with a reference fixture in
+`examples/evaluations/lesson-relationship-graph.json`.
+
+Allowed relations are `reinforces`, `contradicts`, `supersedes`, `refines`,
+and `duplicates`. Graph output uses
+`feedback_effect=non_authoritative_relationship_metadata` and
+`authority_delta=[]`. Relationship ranking hints may surface conflicts,
+promote related lessons, down-rank superseded lessons, or deduplicate duplicate
+lessons, but they must never grant tools, scopes, policies, validators, budgets,
+memory scopes, or failure behavior. Scope closure remains the only approved
+scope reachability metadata; lesson relationships cannot inherit or expand
+authority.
+
 ## Retrieval Semantics
 
 Semantic retrieval is allowed for both Knowledge Records and Procedural Agent

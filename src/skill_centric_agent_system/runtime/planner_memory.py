@@ -14,6 +14,17 @@ LESSON_FEEDBACK_EFFECTS = frozenset({"ranking_adjustment", "planner_hint_adjustm
 LESSON_FEEDBACK_DIRECTIONS = frozenset({"promote", "demote", "neutral"})
 LESSON_FEEDBACK_OUTPUT_EFFECT = "non_authoritative_ranking_only"
 MAX_LESSON_FEEDBACK_WEIGHT_DELTA = 0.2
+LESSON_RELATIONS = frozenset(
+    {"reinforces", "contradicts", "supersedes", "refines", "duplicates"}
+)
+LESSON_RELATION_DIRECTIONS = frozenset({"directed", "symmetric"})
+LESSON_RELATION_RANKING_EFFECTS = frozenset(
+    {"promote_related", "demote_superseded", "dedupe_duplicate", "surface_conflict", "none"}
+)
+LESSON_RELATION_VISIBILITY_EFFECTS = frozenset(
+    {"ranking", "conflict_display", "supersession_notice", "dedupe"}
+)
+LESSON_RELATION_OUTPUT_EFFECT = "non_authoritative_relationship_metadata"
 
 
 class PlannerMemoryRecordError(ValueError):
@@ -256,6 +267,128 @@ def build_lesson_ranking_feedback_gate(record: Mapping[str, Any]) -> Mapping[str
         "feedback_effect": LESSON_FEEDBACK_OUTPUT_EFFECT,
         "authority_delta": [],
         "items": list(attribution["ranking_feedback"]),
+    }
+
+
+def build_lesson_relationship_edge(
+    *,
+    edge_id: str,
+    source_memory_id: str,
+    target_memory_id: str,
+    relation: str,
+    direction: str,
+    reason: str,
+    evidence_uris: Iterable[str],
+    ranking_effect: str,
+    visibility_effects: Iterable[str],
+    confidence: str = "medium",
+) -> Mapping[str, Any]:
+    edge = {
+        "contract_version": "0.1.0",
+        "edge_id": edge_id,
+        "source_memory_id": source_memory_id,
+        "target_memory_id": target_memory_id,
+        "relation": relation,
+        "direction": direction,
+        "confidence": confidence,
+        "reason": reason,
+        "evidence_uris": _string_tuple(evidence_uris),
+        "ranking_effect": ranking_effect,
+        "visibility_effects": _string_tuple(visibility_effects),
+        "non_authoritative": True,
+        "authority_delta": [],
+    }
+    return validate_lesson_relationship_edge(edge)
+
+
+def validate_lesson_relationship_edge(edge: Mapping[str, Any]) -> Mapping[str, Any]:
+    required = {
+        "contract_version",
+        "edge_id",
+        "source_memory_id",
+        "target_memory_id",
+        "relation",
+        "direction",
+        "confidence",
+        "reason",
+        "evidence_uris",
+        "ranking_effect",
+        "visibility_effects",
+        "non_authoritative",
+        "authority_delta",
+    }
+    missing = sorted(field for field in required if field not in edge)
+    if missing:
+        raise PlannerMemoryRecordError("missing fields: " + ", ".join(missing))
+    if edge["contract_version"] != "0.1.0":
+        raise PlannerMemoryRecordError("contract_version must be 0.1.0")
+    source_memory_id = str(edge.get("source_memory_id", "")).strip()
+    target_memory_id = str(edge.get("target_memory_id", "")).strip()
+    if not source_memory_id or not target_memory_id:
+        raise PlannerMemoryRecordError("lesson relationship endpoints are required")
+    if source_memory_id == target_memory_id:
+        raise PlannerMemoryRecordError("lesson relationship endpoints must differ")
+    if edge["relation"] not in LESSON_RELATIONS:
+        raise PlannerMemoryRecordError("lesson relationship relation is invalid")
+    if edge["direction"] not in LESSON_RELATION_DIRECTIONS:
+        raise PlannerMemoryRecordError("lesson relationship direction is invalid")
+    if edge["confidence"] not in {"low", "medium", "high"}:
+        raise PlannerMemoryRecordError("lesson relationship confidence is invalid")
+    if not str(edge.get("reason", "")).strip():
+        raise PlannerMemoryRecordError("lesson relationship reason is required")
+    evidence_uris = _string_tuple(edge.get("evidence_uris"))
+    if not evidence_uris:
+        raise PlannerMemoryRecordError("lesson relationship evidence_uris are required")
+    if any(not uri.startswith("hetzner://runtime/") for uri in evidence_uris):
+        raise PlannerMemoryRecordError("lesson relationship evidence must stay on Hetzner")
+    if edge["ranking_effect"] not in LESSON_RELATION_RANKING_EFFECTS:
+        raise PlannerMemoryRecordError("lesson relationship ranking_effect is invalid")
+    visibility_effects = _string_tuple(edge.get("visibility_effects"))
+    if not visibility_effects:
+        raise PlannerMemoryRecordError("lesson relationship visibility_effects are required")
+    if any(effect not in LESSON_RELATION_VISIBILITY_EFFECTS for effect in visibility_effects):
+        raise PlannerMemoryRecordError("lesson relationship visibility_effect is invalid")
+    if edge.get("non_authoritative") is not True:
+        raise PlannerMemoryRecordError("lesson relationship must be non-authoritative")
+    if _string_tuple(edge.get("authority_delta")):
+        raise PlannerMemoryRecordError("lesson relationship authority_delta must be empty")
+    return {
+        **dict(edge),
+        "evidence_uris": list(evidence_uris),
+        "visibility_effects": list(visibility_effects),
+    }
+
+
+def build_lesson_relationship_graph(
+    edges: Iterable[Mapping[str, Any]],
+    *,
+    graph_id: str = "lesson-relationship-graph",
+) -> Mapping[str, Any]:
+    validated_edges = [validate_lesson_relationship_edge(edge) for edge in edges]
+    relation_counts: dict[str, int] = {}
+    ranking_hints: list[dict[str, Any]] = []
+    for edge in validated_edges:
+        relation = str(edge["relation"])
+        relation_counts[relation] = relation_counts.get(relation, 0) + 1
+        ranking_hints.append(
+            {
+                "source_memory_id": edge["source_memory_id"],
+                "target_memory_id": edge["target_memory_id"],
+                "relation": relation,
+                "ranking_effect": edge["ranking_effect"],
+                "visibility_effects": list(edge["visibility_effects"]),
+                "non_authoritative": True,
+                "authority_delta": [],
+            }
+        )
+    return {
+        "contract_version": "0.1.0",
+        "graph_id": graph_id,
+        "feedback_effect": LESSON_RELATION_OUTPUT_EFFECT,
+        "lesson_edges": validated_edges,
+        "relation_counts": dict(sorted(relation_counts.items())),
+        "ranking_hints": ranking_hints,
+        "authority_delta": [],
     }
 
 
