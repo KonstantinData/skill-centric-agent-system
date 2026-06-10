@@ -123,8 +123,9 @@ The post-run promotion pipeline has six gates:
    Runtime Plane row must also carry `candidate_class` and
    `classification_reason`.
 4. Policy validation rejects secrets, customer-specific content in Agent
-   Memory, unscoped memory targets, missing retention policy, and unsafe
-   authority deltas.
+   Memory, unscoped memory targets, missing retention policy, missing
+   procedural metadata, raw/source/task-subject fields, imperative authority
+   language, unsafe generalization, and unsafe authority deltas.
 5. Safety compilation rejects learned context that would grant tools, widen
    scopes, raise budgets, remove validators, relax policies, or change failure
    behavior without reviewed policy artifacts.
@@ -181,6 +182,43 @@ It must not contain:
 - unreviewed policy exceptions,
 - generalizations that cross risk, environment, data, or memory-scope
   boundaries.
+
+## Procedural Memory Validation Gate
+
+`MemoryCandidateValidator` is the executable gate between Hetzner Runtime Plane
+candidate records and Cloudflare Agent Memory ingestion. It approves only
+`procedural_lesson` candidates that satisfy both record-level and content-level
+requirements.
+
+Record-level validation requires:
+
+- source run, profile, and step provenance,
+- a target memory scope allowed by the active policy context,
+- a policy ID allowed by the active policy context,
+- a Hetzner Runtime Plane `content_uri`,
+- non-secret sensitivity,
+- retention policy and validator metadata,
+- `candidate_class=procedural_lesson`.
+
+Content-level validation requires:
+
+- a non-empty `summary`,
+- non-empty `applicability` metadata,
+- at least one `evidence_uris` value under `hetzner://runtime/`,
+- `authoritative=false`,
+- `influence_class` limited to `planner_hint`, `retrieval_ranking`, or
+  `composer_candidate_bias`,
+- `allowed_effects` limited to those non-authoritative effects,
+- `forbidden_effects` covering `tool_grant`, `scope_grant`,
+  `policy_override`, `validator_override`, `profile_mutation`, and
+  `runtime_authority`.
+
+The validator fails closed when procedural content contains raw tool output,
+source extracts, customer/private fields, task-subject fact fields,
+secret-like summary terms, imperative authority-changing language, or
+all-task/global generalization markers. Existing semantic drift guard checks
+still run for `learned_context_authority_prior` so learned context cannot
+expand authority without reviewed policy artifacts.
 
 ## Retrieval Semantics
 
