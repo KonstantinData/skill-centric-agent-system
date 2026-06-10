@@ -48,6 +48,14 @@ from skill_centric_agent_system.runtime.memory_invariants import (
 )
 from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
+from skill_centric_agent_system.runtime.policy_denials import (
+    PolicyDenialLedger,
+    PolicyDenialLedgerError,
+    PolicyDenialLookup,
+    ScopePolicyClosure,
+    build_policy_denial_record,
+    validate_policy_denial_record,
+)
 from skill_centric_agent_system.runtime.retention import (
     ResolvedArtifactUri,
     RuntimeArtifactUriResolver,
@@ -114,6 +122,9 @@ __all__ = [
     "PostRunReflectionExtractor",
     "PostPlanningMemoryInvariantResult",
     "PostPlanningMemoryInvariantValidator",
+    "PolicyDenialLedger",
+    "PolicyDenialLedgerError",
+    "PolicyDenialLookup",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
     "ProfileEnforcementError",
@@ -132,6 +143,7 @@ __all__ = [
     "SafetyCompilerError",
     "ResolvedArtifactUri",
     "RuntimeContextManager",
+    "ScopePolicyClosure",
     "RecompositionRequest",
     "RuntimeLoopError",
     "RuntimeLoopResult",
@@ -154,10 +166,12 @@ __all__ = [
     "ToolInvocationResult",
     "BUILTIN_SKILL_HANDLER_REGISTRY",
     "build_capability_gap_candidate",
+    "build_policy_denial_record",
     "capture_capability_gap_candidate",
     "knowledge_ingest_request_from_proposal",
     "profile_redacts_sensitive_data",
     "open_runtime_store_session",
     "redact_sensitive_data",
     "retention_plan_to_json",
+    "validate_policy_denial_record",
 ]
