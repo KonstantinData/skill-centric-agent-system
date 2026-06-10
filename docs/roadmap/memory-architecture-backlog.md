@@ -81,7 +81,11 @@ This backlog converts the target architecture in
 - Add retrieval response metadata that identifies whether returned records are
   factual Knowledge Records or procedural Agent Memory.
 - Ensure the Runtime Context Manager treats retrieved memory as planning or
-  ranking context only.
+  ranking context only. (Initial renderer implementation complete:
+  `MemoryRenderer` injects `instruction_status=not_an_instruction`,
+  `authoritative=false`, non-authoritative allowed effects, forbidden authority
+  effects, and `render_profile=procedural_memory_context_v1` into runtime
+  context.)
 - Add runtime tests for mixed retrieval where Knowledge provides facts and
   Memory provides process lessons.
 

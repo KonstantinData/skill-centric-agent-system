@@ -220,6 +220,32 @@ all-task/global generalization markers. Existing semantic drift guard checks
 still run for `learned_context_authority_prior` so learned context cannot
 expand authority without reviewed policy artifacts.
 
+## Memory Renderer Contract
+
+The Runtime Context Manager keeps retrieved memory records separate from
+instructions and renders them through a non-authoritative metadata wrapper
+before planner use. The wrapper is intentionally redundant with validation
+metadata so downstream runtime code can inspect safety semantics without
+reinterpreting the original memory content.
+
+Every rendered procedural memory record uses
+`render_profile=procedural_memory_context_v1` and injects:
+
+- `record_kind=procedural_agent_memory`,
+- `instruction_status=not_an_instruction`,
+- `authoritative=false`,
+- `allowed_effects` limited to `planner_hint`, `retrieval_ranking`, and
+  `composer_candidate_bias`,
+- `forbidden_effects` covering `tool_grant`, `scope_grant`,
+  `policy_override`, `validator_override`, `profile_mutation`, and
+  `runtime_authority`,
+- source run/profile IDs and memory scope ID.
+
+Renderer metadata improves context clarity but is not the safety boundary.
+The safety boundary remains the immutable runtime profile, retrieval scope
+checks, procedural validation gate, policy gates, semantic drift guard, and
+post-planning invariant validator.
+
 ## Retrieval Semantics
 
 Semantic retrieval is allowed for both Knowledge Records and Procedural Agent

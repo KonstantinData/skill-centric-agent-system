@@ -7,7 +7,7 @@ from skill_centric_agent_system.runtime.capability_gaps import (
     build_capability_gap_candidate,
     capture_capability_gap_candidate,
 )
-from skill_centric_agent_system.runtime.context import RuntimeContextManager
+from skill_centric_agent_system.runtime.context import MemoryRenderer, RuntimeContextManager
 from skill_centric_agent_system.runtime.enforcement import (
     ProfileEnforcementError,
     RuntimeProfileEnforcer,
@@ -95,6 +95,7 @@ __all__ = [
     "MemoryCandidateExtractor",
     "MemoryCandidateValidationResult",
     "MemoryCandidateValidator",
+    "MemoryRenderer",
     "PostRunReflectionExtractor",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
