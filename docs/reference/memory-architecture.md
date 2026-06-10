@@ -334,6 +334,26 @@ The executable contract is
 not contain chain-of-thought. The post-planning invariant validator remains the
 hard gate that rejects any memory-derived authority change.
 
+## Lesson Attribution And Ranking Feedback
+
+After execution, SCAS may emit a Lesson Attribution Record that links selected
+procedural memory to the observed outcome. The record is defined by
+`schemas/lesson-attribution-record.schema.json` and captures:
+
+- the source Planner Memory Selection Record,
+- used and ignored memory IDs,
+- a deterministic `context_fingerprint`,
+- success criteria with Hetzner evidence URIs,
+- error classification linkage, and
+- bounded ranking or planner-hint feedback.
+
+`build_lesson_ranking_feedback_gate` accepts only feedback that is
+context-bound, uses `feedback_effect=non_authoritative_ranking_only`, keeps
+`authority_delta=[]`, and references a memory ID from the original selection
+record. Feedback weight deltas are capped and may affect only future ranking or
+planner hints. They cannot add tools, scopes, policies, validators, budgets, or
+runtime authority.
+
 ## Retrieval Semantics
 
 Semantic retrieval is allowed for both Knowledge Records and Procedural Agent

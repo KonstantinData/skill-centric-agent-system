@@ -1,0 +1,58 @@
+{
+  "contract_version": "0.1.0",
+  "record_id": "lesson-attribution-runtime-reconstruction",
+  "run_id": "run-runtime-reconstruction",
+  "selection_record_id": "pmr-runtime-reconstruction",
+  "plan_id": "plan-runtime-reconstruction",
+  "used_memory_ids": [
+    "lesson-focused-tests"
+  ],
+  "ignored_memory_ids": [
+    "lesson-full-gate-first"
+  ],
+  "context_fingerprint": "sha256:5567244a60c1d1f9ec9d4132fcef80093cbde4e6ef4244a318dcff147c12809b",
+  "outcome": "succeeded",
+  "success_criteria": [
+    {
+      "criterion": "Focused memory-guided test ran before full gate and did not miss a regression.",
+      "status": "met",
+      "evidence_uris": [
+        "hetzner://runtime/run-runtime-reconstruction/validation/focused-tests.json"
+      ]
+    }
+  ],
+  "error_classification": {
+    "error_class": "NONE",
+    "error_confidence": "high",
+    "classification_source": "rule_based_runtime_v1",
+    "error_evidence": {
+      "tool_calls": 8,
+      "tokens_used": 12000
+    },
+    "runtime_playbook": "no_action_required"
+  },
+  "ranking_feedback": [
+    {
+      "memory_id": "lesson-focused-tests",
+      "effect": "ranking_adjustment",
+      "direction": "promote",
+      "weight_delta": 0.05,
+      "context_fingerprint": "sha256:5567244a60c1d1f9ec9d4132fcef80093cbde4e6ef4244a318dcff147c12809b",
+      "context_bound": true,
+      "reason": "The selected lesson matched the narrow runtime-helper context and produced a clean validation path.",
+      "authority_delta": []
+    },
+    {
+      "memory_id": "lesson-full-gate-first",
+      "effect": "planner_hint_adjustment",
+      "direction": "neutral",
+      "weight_delta": 0,
+      "context_fingerprint": "sha256:5567244a60c1d1f9ec9d4132fcef80093cbde4e6ef4244a318dcff147c12809b",
+      "context_bound": true,
+      "reason": "The broader lesson remains valid for high-impact surfaces but was not decisive in this narrow context.",
+      "authority_delta": []
+    }
+  ],
+  "feedback_effect": "non_authoritative_ranking_only",
+  "authority_delta": []
+}

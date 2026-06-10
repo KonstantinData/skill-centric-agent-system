@@ -50,8 +50,12 @@ from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.planner_memory import (
     LessonConflictSet,
     PlannerMemoryRecordError,
+    build_context_fingerprint,
+    build_lesson_attribution_record,
     build_lesson_conflict_sets,
+    build_lesson_ranking_feedback_gate,
     build_planner_memory_selection_record,
+    validate_lesson_attribution_record,
     validate_planner_memory_selection_record,
 )
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
@@ -175,7 +179,10 @@ __all__ = [
     "ToolInvocationResult",
     "BUILTIN_SKILL_HANDLER_REGISTRY",
     "build_capability_gap_candidate",
+    "build_context_fingerprint",
+    "build_lesson_attribution_record",
     "build_lesson_conflict_sets",
+    "build_lesson_ranking_feedback_gate",
     "build_planner_memory_selection_record",
     "build_policy_denial_record",
     "capture_capability_gap_candidate",
@@ -184,6 +191,7 @@ __all__ = [
     "open_runtime_store_session",
     "redact_sensitive_data",
     "retention_plan_to_json",
+    "validate_lesson_attribution_record",
     "validate_planner_memory_selection_record",
     "validate_policy_denial_record",
 ]
