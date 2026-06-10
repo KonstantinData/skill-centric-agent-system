@@ -37,16 +37,21 @@ PHASE_1_ITEMS = [
 ]
 
 
-def test_runtime_preflight_document_defines_phase_order() -> None:
+def test_runtime_preflight_document_defines_durable_gate_sections() -> None:
     preflight = PREFLIGHT_PATH.read_text(encoding="utf-8")
-    for item in [*PHASE_0_ITEMS, *PHASE_1_ITEMS]:
-        assert item in preflight
+    for heading in (
+        "## Purpose",
+        "## Naming Rules",
+        "## Dev Infrastructure Verification",
+        "## Entry Criteria",
+        "## Generic Validation Scenarios",
+        "## Risk Boundaries",
+    ):
+        assert heading in preflight
 
-    phase_0_positions = [preflight.index(item) for item in PHASE_0_ITEMS]
-    phase_1_positions = [preflight.index(item) for item in PHASE_1_ITEMS]
-    assert phase_0_positions == sorted(phase_0_positions)
-    assert phase_1_positions == sorted(phase_1_positions)
-    assert max(phase_0_positions) < min(phase_1_positions)
+    assert "## Phase 0 Order" not in preflight
+    assert "## Phase 1 Order" not in preflight
+    assert "docs/reference/repository-roadmap.md" in preflight
 
 
 def test_roadmap_architecture_and_infrastructure_reference_preflight_gate() -> None:
@@ -69,18 +74,16 @@ def test_task_type_values_use_kebab_case_in_json_contract_examples() -> None:
 
 
 def test_runtime_gate_docs_use_the_english_backlog_titles() -> None:
-    combined_docs = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in [
-            PREFLIGHT_PATH,
-            ROADMAP_PATH,
-            ARCHITECTURE_PATH,
-            INFRASTRUCTURE_PATH,
-            REPO_ROOT / "README.md",
-        ]
-    )
-    assert "P0.01 Runtime Preflight Gate: Synchronize Backlog and Roadmap" in combined_docs
-    assert "P1.10 Establish Operations Baseline" in combined_docs
+    roadmap = ROADMAP_PATH.read_text(encoding="utf-8")
+    assert "## Historical Runtime Preflight Backlog Titles (Canon)" in roadmap
+    for item in [*PHASE_0_ITEMS, *PHASE_1_ITEMS]:
+        assert item in roadmap
+
+    phase_0_positions = [roadmap.index(item) for item in PHASE_0_ITEMS]
+    phase_1_positions = [roadmap.index(item) for item in PHASE_1_ITEMS]
+    assert phase_0_positions == sorted(phase_0_positions)
+    assert phase_1_positions == sorted(phase_1_positions)
+    assert max(phase_0_positions) < min(phase_1_positions)
 
 
 def test_live_preflight_docs_define_auth_and_secret_checks() -> None:

@@ -122,7 +122,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/policies/threat-model.md`: production threat model, token-scope closure, and residual security risks.
 - `docs/policies/formal-safety-invariants.md`: authoritative profile-sealing invariant catalog with pass/fail semantics.
 - `docs/policies/formal-safety-change-type-matrix.md`: machine-readable invariant-to-change-type validator matrix.
-- `docs/runbooks/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, risk boundaries, and Phase 1 implementation order.
+- `docs/runbooks/runtime-preflight.md`: productive Runtime Phase entry gate, naming rules, validation scenarios, and risk boundaries.
 - `docs/policies/production-readiness.md`: production-ready release gate, evidence rules, status vocabulary, and prioritized production backlog.
 - `docs/policies/runtime-contract.md`: generic runtime lifecycle, failure, observability, result, and recomposition contract.
 - `docs/reference/runtime-api.md`: runtime start/status/result/cancel/retry API and CLI contract.
@@ -133,6 +133,7 @@ Executor -> Selected Skills / Allowed Tools / Scoped Data / Retrieved Knowledge
 - `docs/runbooks/operations-runbook.md`: operations baseline for migrations, smoke tests, diagnostics, and disable paths.
 - `docs/policies/error-taxonomy.md`: runtime error taxonomy, class playbooks, and CI gate metrics for F1/F2/R8.
 - `docs/roadmap/scas-execution-queue.md`: operational execution order for open SCAS backlog/issues work.
+- `docs/roadmap/infrastructure-implementation-status.md`: current infrastructure implementation status and next-order tracking.
 - `docs/roadmap/production-readiness-backlog.md`: prioritized production-readiness implementation backlog.
 - `docs/reference/registries.md`: registry implementation semantics for discovery, scoring, filtering, resolution, and graph validation.
 - `docs/reference/cloudflare/control-api.md`: Cloudflare Control API bootstrap, validation, and dev deployment runbook.

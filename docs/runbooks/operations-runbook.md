@@ -281,17 +281,9 @@ the E2E script from the Hetzner host or provide an agreed local connection
 string.
 
 When the Control API token is available only as a GitHub Actions secret, use
-the manual live runtime workflow instead of copying the token to a local shell:
-
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=true \
-  -f run_postgres_concurrency_smoke=false \
-  -f run_live_retrieval_vectorize_smoke=false \
-  -f seed_control_plane_dev=true \
-  -f live_task_suite=generic
-```
+the manual live runtime workflow instead of copying the token to a local shell.
+The canonical live E2E command and passing criteria live in
+`docs/runbooks/runtime-live-dev-e2e.md`.
 
 For `staging` and `prod`, set `target_environment` accordingly and provide
 `-f control_api_url=https://<worker-url>`.
@@ -303,26 +295,9 @@ PostgreSQL over the local Unix socket, and stores artifacts below
 `task-execution`, and `general-task` cases against the live Control Plane and
 Hetzner Runtime Plane.
 
-Use the same workflow for the live Postgres concurrency smoke:
-
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=false \
-  -f run_postgres_concurrency_smoke=true \
-  -f run_live_retrieval_vectorize_smoke=false
-```
-
-Use the same workflow for the live retrieval and Vectorize smoke:
-
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=false \
-  -f run_postgres_concurrency_smoke=false \
-  -f run_live_retrieval_vectorize_smoke=true \
-  -f seed_control_plane_dev=true
-```
+The same workflow also runs the live Postgres concurrency smoke and live
+retrieval/Vectorize smoke. Use the mode-specific commands in
+`docs/runbooks/runtime-live-dev-e2e.md`.
 
 Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
 when the Worker needs `OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
@@ -405,41 +380,31 @@ ssh "$HETZNER_USER@$HETZNER_HOST" \
 
 Live dev E2E gate:
 
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=true \
-  -f run_postgres_concurrency_smoke=false \
-  -f run_live_retrieval_vectorize_smoke=false \
-  -f seed_control_plane_dev=true \
-  -f live_task_suite=generic
+Use `docs/runbooks/runtime-live-dev-e2e.md` for the canonical manual GitHub
+Actions command, required environment, and passing criteria. For local or
+direct host checks, run:
 
+```bash
 python scripts/runtime/live_dev_e2e.py \
   --task-suite generic
 ```
 
 Live retrieval and Vectorize smoke:
 
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=false \
-  -f run_postgres_concurrency_smoke=false \
-  -f run_live_retrieval_vectorize_smoke=true \
-  -f seed_control_plane_dev=true
+Use `docs/runbooks/runtime-live-dev-e2e.md` for the workflow-dispatch mode.
+For local or direct host checks, run:
 
+```bash
 python scripts/runtime/live_retrieval_vectorize_smoke.py \
   --control-plane-url "$SCAS_CONTROL_API_URL"
 ```
 
 Postgres concurrency smoke:
 
-```bash
-gh workflow run live-runtime-gates.yml \
-  -f target_environment=dev \
-  -f run_live_dev_e2e=false \
-  -f run_postgres_concurrency_smoke=true
+Use `docs/runbooks/runtime-live-dev-e2e.md` for the workflow-dispatch mode.
+For local or direct host checks, run:
 
+```bash
 python scripts/runtime/postgres_concurrency_smoke.py --events 20
 ```
 

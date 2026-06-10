@@ -301,3 +301,33 @@ high-impact paths and separate deterministic PR desired-state checks from a
 scheduled/manual live GitHub governance drift workflow with structured
 remediation evidence.
 
+## Historical Runtime Preflight Backlog Titles (Canon)
+
+This appendix preserves the exact English backlog titles used to synchronize
+Notion Feature Backlog records with durable repository documentation. It is a
+naming canon, not the current implementation status or release gate.
+
+### Phase 0
+
+1. `P0.01 Runtime Preflight Gate: Synchronize Backlog and Roadmap`
+2. `P0.02 Runtime Preflight Gate: Finalize Terms and Naming`
+3. `P0.03 Runtime Preflight Gate: Define Productive Runtime Phase`
+4. `P0.04 Runtime Preflight Gate: Verify Dev Infrastructure Status`
+5. `P0.05 Runtime Preflight Gate: Define Runtime Entry Criteria`
+6. `P0.06 Runtime Preflight Gate: Define Generic Validation Scenarios`
+7. `P0.07 Runtime Preflight Gate: Define Risk Boundaries`
+8. `P0.08 Runtime Preflight Gate: Seed Project Memory Scope and Fail Closed on Unknown Memory Scope`
+
+### Phase 1
+
+1. `P1.01 Finalize Generic Runtime Contract`
+2. `P1.02 Define Runtime API/CLI Contract`
+3. `P1.03 Wire Real Hetzner Runtime Storage`
+4. `P1.04 Complete Profile Enforcement`
+5. `P1.05 Harden Tool Gateway for Productive Runtime Use`
+6. `P1.06 Bind Context Manager to Control API Retrieval`
+7. `P1.07 Make Validator Framework Generic`
+8. `P1.08 Implement Controlled Recomposition Path`
+9. `P1.09 Build Live Dev E2E Gate`
+10. `P1.10 Establish Operations Baseline`
+

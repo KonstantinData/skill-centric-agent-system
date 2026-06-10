@@ -17,22 +17,6 @@ Productive Runtime Phase means:
 - observable failure modes with constrained stop reasons,
 - no public production launch commitment unless a separate release gate says so.
 
-## Phase 0 Order
-
-The Feature Backlog order for Phase 0 is:
-
-1. `P0.01 Runtime Preflight Gate: Synchronize Backlog and Roadmap`
-2. `P0.02 Runtime Preflight Gate: Finalize Terms and Naming`
-3. `P0.03 Runtime Preflight Gate: Define Productive Runtime Phase`
-4. `P0.04 Runtime Preflight Gate: Verify Dev Infrastructure Status`
-5. `P0.05 Runtime Preflight Gate: Define Runtime Entry Criteria`
-6. `P0.06 Runtime Preflight Gate: Define Generic Validation Scenarios`
-7. `P0.07 Runtime Preflight Gate: Define Risk Boundaries`
-8. `P0.08 Runtime Preflight Gate: Seed Project Memory Scope and Fail Closed on Unknown Memory Scope`
-
-Phase 1 must not start until the Phase 0 checklist below is satisfied or each
-exception is tracked as an explicit backlog item.
-
 ## Naming Rules
 
 Composition and runtime identifiers use kebab-case unless a third-party API
@@ -152,26 +136,8 @@ First productive runtime slice:
 - raw runtime traces and raw tool outputs must not cross from Hetzner into
   Cloudflare.
 
-## Phase 1 Order
-
-After Phase 0 is satisfied, implement Phase 1 in this order:
-
-1. `P1.01 Finalize Generic Runtime Contract`
-2. `P1.02 Define Runtime API/CLI Contract`
-3. `P1.03 Wire Real Hetzner Runtime Storage`
-4. `P1.04 Complete Profile Enforcement`
-5. `P1.05 Harden Tool Gateway for Productive Runtime Use`
-6. `P1.06 Bind Context Manager to Control API Retrieval`
-7. `P1.07 Make Validator Framework Generic`
-8. `P1.08 Implement Controlled Recomposition Path`
-9. `P1.09 Build Live Dev E2E Gate`
-10. `P1.10 Establish Operations Baseline`
-
-Queue-backed async indexing is implemented in the Control API Worker. The
-remaining follow-up items for runtime expansion beyond the initial fixture and
-retention cleanup remain backlog work after the Phase 1 core runtime gate
-unless explicitly pulled forward by a failing entry criterion. AI Gateway live
-secret rollout is handled by the manual dev deployment smoke workflow.
+Historical P0/P1 backlog title canon and sequencing references live in
+`docs/reference/repository-roadmap.md`.
 
 The durable runtime contract lives in `docs/policies/runtime-contract.md`. Runtime API
 and CLI semantics live in `docs/reference/runtime-api.md`, with machine-readable examples

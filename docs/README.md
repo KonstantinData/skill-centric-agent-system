@@ -50,6 +50,12 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/post-merge-lifecycle.md`
 - `docs/runbooks/notion-issue-tracking.md`
 
+## Roadmap
+
+- `docs/roadmap/scas-execution-queue.md`
+- `docs/roadmap/infrastructure-implementation-status.md`
+- `docs/roadmap/production-readiness-backlog.md`
+
 ## Reference
 
 - `docs/reference/architecture.md`
