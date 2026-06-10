@@ -77,6 +77,13 @@ REPOSITORY_GATE_RESULTS = (
         ),
     ),
     (
+        "Memory taxonomy operations evidence",
+        (
+            "python -m pytest tests/test_memory_operations_evidence.py; "
+            "examples/operations/memory-operations-evidence.json"
+        ),
+    ),
+    (
         "Security hardening and threat model closure",
         (
             "python scripts/security/validate_security_closure.py; "

@@ -157,6 +157,39 @@ The initial policy covers:
 - Retention cleanup error count.
 - Retention cleanup missing-artifact count.
 
+## Memory Operations Evidence
+
+Memory taxonomy operations evidence is separate from raw runtime telemetry. It
+uses aggregate, secret-free metadata only and is evaluated by
+`evaluate_memory_operations_evidence`.
+
+The clean fixture and schema live in:
+
+```text
+examples/operations/memory-operations-evidence.json
+schemas/memory-operations-evidence.schema.json
+```
+
+The evidence gate covers:
+
+- a live smoke that creates one procedural lesson and one knowledge proposal
+  from the same Hetzner run evidence,
+- candidate class counts and rejection reason counts,
+- contrastive false-negative and false-positive counts,
+- abstention/review rate,
+- post-planning invariant violation count,
+- Top-K memory load and retrieval cache hit rate,
+- retention separation between Runtime Evidence cleanup and Cloudflare
+  Knowledge/Memory retention,
+- renderer behavior proving memory remains non-authoritative, and
+- denial-ledger and lesson-relationship graph authority-delta counts.
+
+Validate the clean memory operations evidence with:
+
+```bash
+python -m pytest tests/test_memory_operations_evidence.py
+```
+
 Alert response:
 
 - `critical`: stop certification or rollout, inspect the referenced runbook
