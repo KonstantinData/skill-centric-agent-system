@@ -54,6 +54,27 @@ def memory_candidate() -> dict[str, object]:
     }
 
 
+def procedural_content(**extra: object) -> dict[str, object]:
+    content: dict[str, object] = {
+        "summary": "Research retrieval signal only changes ranking.",
+        "evidence_uris": ["hetzner://runtime/run-semantic-drift/validation/findings.json"],
+        "authoritative": False,
+        "influence_class": "planner_hint",
+        "allowed_effects": ["planner_hint"],
+        "forbidden_effects": [
+            "tool_grant",
+            "scope_grant",
+            "policy_override",
+            "validator_override",
+            "profile_mutation",
+            "runtime_authority",
+        ],
+        "applicability": ["runtime safety review"],
+    }
+    content.update(extra)
+    return content
+
+
 def test_safety_compiler_loads_semantic_drift_guard_policy() -> None:
     compiler = SafetyCompiler.from_policy_file(POLICY_PATH)
 
@@ -139,10 +160,10 @@ def test_memory_promotion_rejects_learned_authority_boundary() -> None:
 
     result = validator.validate(
         candidate,
-        content={
-            "summary": "Staging budget issue should become a prod budget prior.",
-            "learned_context_authority_prior": staging_to_prod_budget_prior(),
-        },
+        content=procedural_content(
+            summary="Staging budget issue should become a prod budget prior.",
+            learned_context_authority_prior=staging_to_prod_budget_prior(),
+        ),
     )
 
     assert not result.approved
@@ -164,14 +185,13 @@ def test_memory_promotion_allows_ranking_only_prior() -> None:
 
     result = validator.validate(
         candidate,
-        content={
-            "summary": "Research retrieval signal only changes ranking.",
-            "learned_context_authority_prior": {
+        content=procedural_content(
+            learned_context_authority_prior={
                 "source_context": {"environment": "dev", "risk_level": "low"},
                 "target_context": {"environment": "dev", "risk_level": "low"},
                 "authority_delta": [],
             },
-        },
+        ),
     )
 
     assert result.approved

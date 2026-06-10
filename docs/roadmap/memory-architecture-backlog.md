@@ -38,12 +38,20 @@ This backlog converts the target architecture in
 ### 3. Procedural Memory Validation
 
 - Extend `MemoryCandidateValidator` with a content classifier gate that rejects
-  task-subject facts for Agent Memory.
+  task-subject facts for Agent Memory. (Initial implementation complete for
+  deterministic raw/source/customer/private/secret/task-subject and
+  authority-language gates.)
 - Require procedural candidates to contain a reusable lesson and applicability
-  metadata, not only a free-form summary.
+  metadata, not only a free-form summary. (Initial implementation complete:
+  validators require `applicability`, Hetzner `evidence_uris`,
+  `authoritative=false`, non-authoritative `allowed_effects`, and full
+  `forbidden_effects` coverage.)
 - Keep semantic drift guard checks for authority-changing learned context.
+  (Preserved and covered by existing tests with procedural metadata.)
 - Add tests proving that procedural lessons can be promoted while factual task
-  content is routed to Knowledge or retained as Runtime Evidence.
+  content is routed to Knowledge or retained as Runtime Evidence. (Validator
+  rejection tests are complete; explicit Knowledge routing remains the
+  Knowledge Proposal Path slice.)
 
 ### 4. Knowledge Proposal Path
 

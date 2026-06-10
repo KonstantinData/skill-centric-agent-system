@@ -47,6 +47,61 @@ SECRET_LIKE_TERMS = (
     "secret",
     "token",
 )
+PROCEDURAL_ALLOWED_EFFECTS = frozenset(
+    {
+        "planner_hint",
+        "retrieval_ranking",
+        "composer_candidate_bias",
+    }
+)
+PROCEDURAL_REQUIRED_FORBIDDEN_EFFECTS = frozenset(
+    {
+        "tool_grant",
+        "scope_grant",
+        "policy_override",
+        "validator_override",
+        "profile_mutation",
+        "runtime_authority",
+    }
+)
+TASK_SUBJECT_CONTENT_KEYS = frozenset(
+    {
+        "task_subject_fact",
+        "task_subject_facts",
+        "factual_claim",
+        "factual_claims",
+        "subject_data",
+        "subject_facts",
+        "customer_record",
+        "customer_records",
+    }
+)
+AUTHORITY_LANGUAGE_TERMS = (
+    "grant tool",
+    "grant tools",
+    "allow tool",
+    "allow tools",
+    "increase budget",
+    "raise budget",
+    "override policy",
+    "override validator",
+    "disable validator",
+    "remove validator",
+    "relax policy",
+    "ignore policy",
+    "expand scope",
+    "widen scope",
+    "profile mutation",
+    "runtime authority",
+)
+TASK_SUBJECT_LANGUAGE_TERMS = (
+    "customer record",
+    "customer-specific",
+    "client record",
+    "private data",
+    "source extract",
+    "raw tool output",
+)
 
 
 class MemoryCandidateError(ValueError):
@@ -381,6 +436,11 @@ class MemoryCandidateValidator:
             errors.append("content_uri must point to a Hetzner runtime artifact")
         if content is not None and not str(content.get("summary", "")).strip():
             errors.append("content summary is required")
+        if (
+            candidate_class == PROMOTABLE_CANDIDATE_CLASS
+            and content is not None
+        ):
+            errors.extend(_procedural_content_errors(content))
         return errors
 
     def _policy_errors(
@@ -417,6 +477,71 @@ def _string_list(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, str))
+
+
+def _procedural_content_errors(content: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+    summary = str(content.get("summary", "")).strip()
+    summary_lower = summary.lower()
+
+    if not _non_empty_string_list(content.get("applicability")):
+        errors.append("procedural lessons require applicability metadata")
+    evidence_uris = _non_empty_string_list(content.get("evidence_uris"))
+    if not evidence_uris or any(
+        not uri.startswith("hetzner://runtime/") for uri in evidence_uris
+    ):
+        errors.append("procedural lessons require Hetzner evidence_uris")
+    if content.get("authoritative") is not False:
+        errors.append("procedural lessons must set authoritative=false")
+
+    influence_class = content.get("influence_class")
+    if influence_class not in PROCEDURAL_ALLOWED_EFFECTS:
+        errors.append("procedural lesson influence_class is invalid")
+
+    allowed_effects = _string_set(content.get("allowed_effects"))
+    if not allowed_effects:
+        errors.append("procedural lessons require allowed_effects")
+    elif not allowed_effects <= PROCEDURAL_ALLOWED_EFFECTS:
+        errors.append("procedural lesson allowed_effects include authority effects")
+
+    forbidden_effects = _string_set(content.get("forbidden_effects"))
+    missing_forbidden = PROCEDURAL_REQUIRED_FORBIDDEN_EFFECTS - forbidden_effects
+    if missing_forbidden:
+        errors.append(
+            "procedural lessons must forbid authority effects: "
+            + ", ".join(sorted(missing_forbidden))
+        )
+
+    blocked_keys = (
+        REFLECTION_REJECTION_KEYS
+        | TASK_SUBJECT_CONTENT_KEYS
+    ).intersection(content)
+    if blocked_keys:
+        errors.append(
+            "procedural lessons must not contain raw, source, customer, private, "
+            "secret, or task-subject fields: "
+            + ", ".join(sorted(blocked_keys))
+        )
+    if any(term in summary_lower for term in SECRET_LIKE_TERMS):
+        errors.append("procedural lessons must not contain secret-like values")
+    if any(term in summary_lower for term in TASK_SUBJECT_LANGUAGE_TERMS):
+        errors.append("procedural lessons must not contain task-subject content")
+    if any(term in summary_lower for term in AUTHORITY_LANGUAGE_TERMS):
+        errors.append("procedural lessons must not contain authority-changing language")
+    if content.get("applies_to_all_tasks") is True:
+        errors.append("procedural lessons must not generalize to all tasks")
+    if str(content.get("generalization_scope", "")).lower() in {"global", "all"}:
+        errors.append("procedural lessons must not use unsafe generalization scope")
+    return errors
+
+
+def _non_empty_string_list(value: Any) -> tuple[str, ...]:
+    items = _string_list(value)
+    return tuple(item for item in items if item.strip())
+
+
+def _string_set(value: Any) -> frozenset[str]:
+    return frozenset(_non_empty_string_list(value))
 
 
 def _non_promotable_candidate_reason(candidate_class: str) -> str:
