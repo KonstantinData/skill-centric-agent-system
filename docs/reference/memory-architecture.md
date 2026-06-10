@@ -220,6 +220,15 @@ all-task/global generalization markers. Existing semantic drift guard checks
 still run for `learned_context_authority_prior` so learned context cannot
 expand authority without reviewed policy artifacts.
 
+Contrastive memory safety coverage lives in
+`examples/evaluations/contrastive-memory-safety-fixtures.json` and is evaluated
+through `src/skill_centric_agent_system/operations/memory_safety_evaluation.py`.
+The fixture runs positive and negative cases through the existing candidate
+validator, semantic drift guard, and post-planning invariant validator. It
+reports false negative rate, false positive rate, abstention/review rate, and
+coverage for authority-leak classes rather than creating a second authority
+model.
+
 ## Knowledge Record Proposal Path
 
 Task-subject facts that need durable reuse use a separate
