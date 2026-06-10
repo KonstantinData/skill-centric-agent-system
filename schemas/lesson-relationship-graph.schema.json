@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:lesson-relationship-graph:0.1.0",
+  "title": "SCAS Non-Authoritative Lesson Relationship Graph",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "graph_id",
+    "feedback_effect",
+    "lesson_edges",
+    "relation_counts",
+    "ranking_hints",
+    "authority_delta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "graph_id": {
+      "$ref": "#/$defs/id"
+    },
+    "feedback_effect": {
+      "const": "non_authoritative_relationship_metadata"
+    },
+    "lesson_edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lessonEdge"
+      }
+    },
+    "relation_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "ranking_hints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_memory_id",
+          "target_memory_id",
+          "relation",
+          "ranking_effect",
+          "visibility_effects",
+          "non_authoritative",
+          "authority_delta"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source_memory_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_memory_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relation": {
+            "$ref": "#/$defs/relation"
+          },
+          "ranking_effect": {
+            "$ref": "#/$defs/rankingEffect"
+          },
+          "visibility_effects": {
+            "$ref": "#/$defs/visibilityEffects"
+          },
+          "non_authoritative": {
+            "const": true
+          },
+          "authority_delta": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    "authority_delta": {
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "lessonEdge": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "edge_id",
+        "source_memory_id",
+        "target_memory_id",
+        "relation",
+        "direction",
+        "confidence",
+        "reason",
+        "evidence_uris",
+        "ranking_effect",
+        "visibility_effects",
+        "non_authoritative",
+        "authority_delta"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1.0"
+        },
+        "edge_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "$ref": "#/$defs/relation"
+        },
+        "direction": {
+          "enum": [
+            "directed",
+            "symmetric"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_uris": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^hetzner://runtime/.+"
+          }
+        },
+        "ranking_effect": {
+          "$ref": "#/$defs/rankingEffect"
+        },
+        "visibility_effects": {
+          "$ref": "#/$defs/visibilityEffects"
+        },
+        "non_authoritative": {
+          "const": true
+        },
+        "authority_delta": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "relation": {
+      "enum": [
+        "reinforces",
+        "contradicts",
+        "supersedes",
+        "refines",
+        "duplicates"
+      ]
+    },
+    "rankingEffect": {
+      "enum": [
+        "promote_related",
+        "demote_superseded",
+        "dedupe_duplicate",
+        "surface_conflict",
+        "none"
+      ]
+    },
+    "visibilityEffects": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "ranking",
+          "conflict_display",
+          "supersession_notice",
+          "dedupe"
+        ]
+      }
+    }
+  }
+}

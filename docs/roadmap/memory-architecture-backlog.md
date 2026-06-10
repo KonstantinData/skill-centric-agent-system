@@ -162,6 +162,19 @@ This backlog converts the target architecture in
   implementation complete: attribution records and feedback gates require
   `authority_delta=[]`.)
 
+### 6d. Non-Authoritative Lesson Relationship Graph
+
+- Add lesson edge records for `reinforces`, `contradicts`, `supersedes`,
+  `refines`, and `duplicates`. (Initial implementation complete:
+  `schemas/lesson-relationship-graph.schema.json` and
+  `examples/evaluations/lesson-relationship-graph.json`.)
+- Emit graph ranking hints for conflict display, supersession, dedupe, and
+  related-lesson ranking without granting authority. (Initial implementation
+  complete: `build_lesson_relationship_graph`.)
+- Keep lesson relationships separate from scope closure and denial-ledger
+  reachability metadata. (Initial implementation complete: graph and edges
+  require `authority_delta=[]` and `non_authoritative=true`.)
+
 ### 7. Operations And Evidence
 
 - Add a live dev smoke that creates one procedural lesson and one factual
