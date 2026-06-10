@@ -293,6 +293,11 @@ Task-subject data is factual content about the concrete target of a task. It
 must not be promoted to Agent Memory. If factual content needs durable reuse, it
 must follow the Knowledge Record path with source owner, source URI,
 sensitivity, quality metadata, retention, scope, and policy approval.
+Runtime-created factual proposals use the `KnowledgeRecordProposal` contract:
+they must identify the source run, profile, step, source owner, source URI,
+knowledge scope, freshness review window, confidence tier, validation rules,
+retention policy, and Hetzner Runtime evidence URIs before the Control API may
+accept them through `POST /knowledge/ingest`.
 
 Agent Memory is reserved for procedural lessons about how to perform tasks.
 Memory candidates must be classified before promotion. Each candidate record

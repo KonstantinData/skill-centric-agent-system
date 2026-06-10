@@ -54,6 +54,33 @@ const knowledgeIngestRequest = {
   },
 };
 
+const knowledgeProposalIngestRequest = {
+  ...knowledgeIngestRequest,
+  source: {
+    ...knowledgeIngestRequest.source,
+    id: "knowledge-source-review-notes",
+    name: "Review Notes",
+    source_type: "manual",
+    uri: "manual://review-notes/scas-runtime",
+  },
+  document: {
+    ...knowledgeIngestRequest.document,
+    id: "knowledge-doc-runtime-fact",
+    content: "The runtime uses Flight Recorder checkpoints for run reconstruction.",
+  },
+  proposal: {
+    proposal_id: "krp-run-runtime-step-validator-knowledge-doc-runtime-fact",
+    source_run_id: "run-runtime",
+    source_profile_id: "profile-runtime",
+    source_step_id: "step-validator",
+    evidence_uris: ["hetzner://runtime/artifacts/run-runtime/validation/findings.json"],
+    freshness_review_days: 90,
+    confidence_tier: "high",
+    validation_rules: ["source-owner-review", "scope-binding-required"],
+    retention_policy: "knowledge-retain-365d",
+  },
+};
+
 const memoryIngestRequest = {
   contract_version: "0.1.0",
   memory: {
@@ -1005,6 +1032,61 @@ describe("control API worker", () => {
         attempts: 0,
       }),
     );
+  });
+
+  it("ingests approved knowledge proposals with quality metadata", async () => {
+    const response = await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(knowledgeProposalIngestRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("succeeded");
+    expect(body.document_id).toBe("knowledge-doc-runtime-fact");
+
+    const manifest = await env.SCAS_KNOWLEDGE_BUCKET.get(
+      "knowledge/knowledge-source-review-notes/knowledge-doc-runtime-fact/v0.1.0/manifest.json",
+    );
+    const manifestBody = await manifest?.json();
+    expect(manifestBody).toEqual(
+      expect.objectContaining({
+        document_id: "knowledge-doc-runtime-fact",
+        proposal: expect.objectContaining({
+          proposal_id: "krp-run-runtime-step-validator-knowledge-doc-runtime-fact",
+          confidence_tier: "high",
+          retention_policy: "knowledge-retain-365d",
+        }),
+      }),
+    );
+  });
+
+  it("rejects knowledge proposals without source quality metadata", async () => {
+    const invalidRequest = {
+      ...knowledgeProposalIngestRequest,
+      proposal: {
+        ...knowledgeProposalIngestRequest.proposal,
+        evidence_uris: ["https://example.com/raw-output.json"],
+        freshness_review_days: 0,
+        validation_rules: [],
+      },
+    };
+
+    const response = await fetchJson("/knowledge/ingest", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(invalidRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("invalid_ingestion_request");
+    expect(body.error.message).toContain("proposal.evidence_uris");
   });
 
   it("ingests validated memory without copying raw runtime traces", async () => {

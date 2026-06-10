@@ -18,6 +18,13 @@ from skill_centric_agent_system.runtime.entrypoint import (
     RuntimeStartResult,
 )
 from skill_centric_agent_system.runtime.error_taxonomy import ErrorClassification
+from skill_centric_agent_system.runtime.knowledge_proposals import (
+    KnowledgeRecordProposalBuilder,
+    KnowledgeRecordProposalError,
+    KnowledgeRecordProposalValidationResult,
+    KnowledgeRecordProposalValidator,
+    knowledge_ingest_request_from_proposal,
+)
 from skill_centric_agent_system.runtime.loop import (
     MinimalRuntimeLoop,
     RuntimeLoopError,
@@ -93,6 +100,10 @@ __all__ = [
     "CapabilityGapCaptureResult",
     "InMemoryRuntimeStore",
     "JsonArtifactStore",
+    "KnowledgeRecordProposalBuilder",
+    "KnowledgeRecordProposalError",
+    "KnowledgeRecordProposalValidationResult",
+    "KnowledgeRecordProposalValidator",
     "MemoryFeedbackError",
     "MemoryFeedbackPipeline",
     "MemoryCandidateError",
@@ -144,6 +155,7 @@ __all__ = [
     "BUILTIN_SKILL_HANDLER_REGISTRY",
     "build_capability_gap_candidate",
     "capture_capability_gap_candidate",
+    "knowledge_ingest_request_from_proposal",
     "profile_redacts_sensitive_data",
     "open_runtime_store_session",
     "redact_sensitive_data",

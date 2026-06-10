@@ -220,6 +220,33 @@ all-task/global generalization markers. Existing semantic drift guard checks
 still run for `learned_context_authority_prior` so learned context cannot
 expand authority without reviewed policy artifacts.
 
+## Knowledge Record Proposal Path
+
+Task-subject facts that need durable reuse use a separate
+`KnowledgeRecordProposal` path instead of Agent Memory. The Runtime Plane emits
+a proposal artifact under `hetzner://runtime/` after a completed step, and the
+proposal remains factual Knowledge input until a policy-approved Knowledge
+ingest request is submitted.
+
+Every proposal must include:
+
+- `source_run_id`, `source_profile_id`, and `source_step_id`,
+- source metadata: `source.id`, `source.name`, `source_type`, `uri`, `owner`,
+  and non-secret `sensitivity`,
+- document metadata: `document.id`, `version`, `content`, and `scope_id`,
+- at least one Hetzner Runtime `evidence_uris` entry,
+- `freshness_review_days`, `confidence_tier`, `validation_rules`, and
+  `retention_policy`,
+- `candidate_class=knowledge_record_proposal` and
+  `promotion_route=knowledge_record_approval`.
+
+The executable artifact contract is
+`schemas/knowledge-record-proposal.schema.json`. Approved proposals can be
+converted into the `POST /knowledge/ingest` body; the Worker validates the
+proposal metadata again and copies it into the Knowledge manifest. The path
+fails closed when owner, source URI, scope, evidence, freshness, confidence,
+validation rules, retention, or non-secret sensitivity is missing.
+
 ## Memory Renderer Contract
 
 The Runtime Context Manager keeps retrieved memory records separate from

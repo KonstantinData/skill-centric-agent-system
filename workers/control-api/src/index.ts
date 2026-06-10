@@ -136,6 +136,17 @@ type KnowledgeIngestRequest = {
     content: string;
     scope_id: string;
   };
+  proposal?: {
+    proposal_id: string;
+    source_run_id: string;
+    source_profile_id: string;
+    source_step_id: string;
+    evidence_uris: string[];
+    freshness_review_days: number;
+    confidence_tier: "low" | "medium" | "high" | "verified";
+    validation_rules: string[];
+    retention_policy: string;
+  };
 };
 
 type MemoryIngestRequest = {
@@ -647,6 +658,54 @@ function validateKnowledgeIngestRequest(body: unknown): string | null {
   }
   if (!isId(body.document.scope_id)) {
     return "document.scope_id must be a valid id.";
+  }
+  if (hasProperty(body, "proposal")) {
+    if (!isObject(body.proposal)) {
+      return "proposal must be a JSON object.";
+    }
+    if (!isId(body.proposal.proposal_id)) {
+      return "proposal.proposal_id must be a valid id.";
+    }
+    if (!isId(body.proposal.source_run_id)) {
+      return "proposal.source_run_id must be a valid id.";
+    }
+    if (!isId(body.proposal.source_profile_id)) {
+      return "proposal.source_profile_id must be a valid id.";
+    }
+    if (!isId(body.proposal.source_step_id)) {
+      return "proposal.source_step_id must be a valid id.";
+    }
+    if (
+      !Array.isArray(body.proposal.evidence_uris) ||
+      body.proposal.evidence_uris.length === 0 ||
+      body.proposal.evidence_uris.some(
+        (uri) => typeof uri !== "string" || !uri.startsWith("hetzner://runtime/"),
+      )
+    ) {
+      return "proposal.evidence_uris must point to Hetzner runtime artifacts.";
+    }
+    if (
+      typeof body.proposal.freshness_review_days !== "number" ||
+      body.proposal.freshness_review_days < 1
+    ) {
+      return "proposal.freshness_review_days must be a positive number.";
+    }
+    if (!["low", "medium", "high", "verified"].includes(String(body.proposal.confidence_tier))) {
+      return "proposal.confidence_tier is invalid.";
+    }
+    if (
+      !Array.isArray(body.proposal.validation_rules) ||
+      body.proposal.validation_rules.length === 0 ||
+      body.proposal.validation_rules.some((rule) => typeof rule !== "string" || rule.length === 0)
+    ) {
+      return "proposal.validation_rules are required.";
+    }
+    if (!isId(body.proposal.retention_policy)) {
+      return "proposal.retention_policy must be a valid id.";
+    }
+    if (body.source.sensitivity === "secret") {
+      return "secret knowledge proposals must not be ingested.";
+    }
   }
   return null;
 }
@@ -1579,6 +1638,19 @@ async function handleKnowledgeIngest(request: Request, env: Env): Promise<Respon
     normalized_uri: r2Uri(bucketName, normalizedKey),
     chunks_uri: r2Uri(bucketName, chunksKey),
     chunk_count: chunkRows.length,
+    proposal: body.proposal
+      ? {
+          proposal_id: body.proposal.proposal_id,
+          source_run_id: body.proposal.source_run_id,
+          source_profile_id: body.proposal.source_profile_id,
+          source_step_id: body.proposal.source_step_id,
+          evidence_uris: body.proposal.evidence_uris,
+          freshness_review_days: body.proposal.freshness_review_days,
+          confidence_tier: body.proposal.confidence_tier,
+          validation_rules: body.proposal.validation_rules,
+          retention_policy: body.proposal.retention_policy,
+        }
+      : undefined,
   });
   for (const chunk of chunkRows) {
     await putJson(env.SCAS_KNOWLEDGE_BUCKET, `${baseKey}/chunks/${chunk.chunk_index}.json`, {

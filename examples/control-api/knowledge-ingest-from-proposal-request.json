@@ -1,0 +1,33 @@
+{
+  "contract_version": "0.1.0",
+  "source": {
+    "id": "knowledge-source-review-notes",
+    "name": "Review Notes",
+    "source_type": "manual",
+    "uri": "manual://review-notes/scas-runtime",
+    "owner": "repository-maintainer",
+    "sensitivity": "internal"
+  },
+  "document": {
+    "id": "knowledge-doc-runtime-fact",
+    "version": "0.1.0",
+    "content": "The runtime uses Flight Recorder checkpoints for run reconstruction.",
+    "scope_id": "mod-architecture-docs"
+  },
+  "proposal": {
+    "proposal_id": "krp-run-runtime-step-validator-knowledge-doc-runtime-fact",
+    "source_run_id": "run-runtime",
+    "source_profile_id": "profile-runtime",
+    "source_step_id": "step-validator",
+    "evidence_uris": [
+      "hetzner://runtime/artifacts/run-runtime/validation/findings.json"
+    ],
+    "freshness_review_days": 90,
+    "confidence_tier": "high",
+    "validation_rules": [
+      "source-owner-review",
+      "scope-binding-required"
+    ],
+    "retention_policy": "knowledge-retain-365d"
+  }
+}

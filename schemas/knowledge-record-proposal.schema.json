@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:knowledge-record-proposal:0.1.0",
+  "title": "SCAS Knowledge Record Proposal",
+  "description": "Factual task-subject content proposed for durable scoped Knowledge ingestion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "proposal_id",
+    "source_run_id",
+    "source_profile_id",
+    "source_step_id",
+    "source",
+    "document",
+    "evidence_uris",
+    "freshness_review_days",
+    "confidence_tier",
+    "validation_rules",
+    "retention_policy",
+    "candidate_class",
+    "promotion_route",
+    "validator_status",
+    "validation_reason",
+    "created_at"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "proposal_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source_run_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source_profile_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source_step_id": {
+      "$ref": "#/$defs/id"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "source_type",
+        "uri",
+        "owner",
+        "sensitivity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "repo",
+            "notion",
+            "r2",
+            "url",
+            "manual"
+          ]
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/nonSecretSensitivity"
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "content",
+        "scope_id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "evidence_uris": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^hetzner://runtime/.+"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "freshness_review_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "confidence_tier": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "verified"
+      ]
+    },
+    "validation_rules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "retention_policy": {
+      "$ref": "#/$defs/id"
+    },
+    "candidate_class": {
+      "const": "knowledge_record_proposal"
+    },
+    "promotion_route": {
+      "const": "knowledge_record_approval"
+    },
+    "validator_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    },
+    "validation_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "nonSecretSensitivity": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential"
+      ]
+    }
+  }
+}
