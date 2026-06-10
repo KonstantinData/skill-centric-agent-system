@@ -144,6 +144,8 @@
         "profile_id": "profile-storage-contract-fixture",
         "source_step_id": "step-storage-contract-validator",
         "target_memory_scope_id": "mod-project-memory",
+        "candidate_class": "procedural_lesson",
+        "classification_reason": "Fixture captures a reusable process lesson from ADR 0004.",
         "content_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture/memory-candidates/mc-adr-0004-boundary.json",
         "sensitivity": "internal",
         "retention_policy": "retain-project-memory",

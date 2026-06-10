@@ -106,6 +106,7 @@ def _validate_candidate(candidate: Mapping[str, Any]) -> None:
         "content_uri",
         "sensitivity",
         "retention_policy",
+        "candidate_class",
         "validator_status",
         "policy_status",
     }
@@ -116,3 +117,7 @@ def _validate_candidate(candidate: Mapping[str, Any]) -> None:
         raise MemoryFeedbackError("Memory candidate validator_status must be approved.")
     if candidate["policy_status"] != "approved":
         raise MemoryFeedbackError("Memory candidate policy_status must be approved.")
+    if candidate["candidate_class"] != "procedural_lesson":
+        raise MemoryFeedbackError(
+            "Only procedural_lesson candidates can be submitted as Agent Memory."
+        )

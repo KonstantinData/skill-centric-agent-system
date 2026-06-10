@@ -865,6 +865,8 @@ def test_postgres_runtime_store_uses_uri_tool_and_validation_payloads() -> None:
             "profile_id": "profile-example",
             "source_step_id": "step-example",
             "target_memory_scope_id": "mod-project-memory",
+            "candidate_class": "procedural_lesson",
+            "classification_reason": "Fixture captures a reusable runtime lesson.",
             "content_uri": "hetzner://runtime/memory/candidate.json",
             "sensitivity": "internal",
             "retention_policy": "project-memory-180d",

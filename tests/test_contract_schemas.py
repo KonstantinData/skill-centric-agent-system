@@ -1163,6 +1163,12 @@ def test_cloudflare_d1_migration_rejects_invalid_foreign_key() -> None:
             ),
             "'policy_status' is a required property",
         ),
+        (
+            lambda runtime_plane: runtime_plane["records"]["memory_candidates"][0].pop(
+                "candidate_class"
+            ),
+            "'candidate_class' is a required property",
+        ),
     ],
 )
 def test_invalid_runtime_plane_records_are_rejected_by_schema(

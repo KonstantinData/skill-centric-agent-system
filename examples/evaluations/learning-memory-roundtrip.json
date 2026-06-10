@@ -5,6 +5,7 @@
     "task_id": "task-code-review-latest-commit",
     "expected_candidate": {
       "target_memory_scope_id": "mod-project-memory",
+      "candidate_class": "procedural_lesson",
       "sensitivity": "internal",
       "retention_policy": "project-memory-180d",
       "validator_status": "approved",
