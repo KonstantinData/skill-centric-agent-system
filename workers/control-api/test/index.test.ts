@@ -1258,6 +1258,8 @@ describe("control API worker", () => {
     });
     expect(body.knowledge_chunks[0]).toEqual(
       expect.objectContaining({
+        record_kind: "knowledge_record",
+        context_kind: "factual_knowledge",
         id: "chunk-knowledge-doc-runtime-0",
         scope_id: "mod-architecture-docs",
         vector_id: "vec-knowledge-doc-runtime-0",
@@ -1265,10 +1267,26 @@ describe("control API worker", () => {
     );
     expect(body.memory_records[0]).toEqual(
       expect.objectContaining({
+        record_kind: "procedural_agent_memory",
+        instruction_status: "not_an_instruction",
+        authoritative: false,
         id: "memory-runtime-decision",
         memory_scope_id: "mod-project-memory",
       }),
     );
+    expect(body.memory_records[0].allowed_effects).toEqual([
+      "planner_hint",
+      "retrieval_ranking",
+      "composer_candidate_bias",
+    ]);
+    expect(body.memory_records[0].forbidden_effects).toEqual([
+      "tool_grant",
+      "scope_grant",
+      "policy_override",
+      "validator_override",
+      "profile_mutation",
+      "runtime_authority",
+    ]);
   });
 
   it("returns no retrieval records for unauthorized principals", async () => {

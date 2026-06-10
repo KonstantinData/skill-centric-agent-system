@@ -288,6 +288,14 @@ Memory, but retrieval must remain profile-bounded:
 - the Worker post-validates vector matches against D1 rows,
 - the Runtime Context Manager rejects any returned scope outside the active
   profile,
+- `POST /retrieval/context` marks factual records with
+  `record_kind=knowledge_record` and `context_kind=factual_knowledge`,
+- `POST /retrieval/context` marks procedural memory with
+  `record_kind=procedural_agent_memory`, `instruction_status=not_an_instruction`,
+  `authoritative=false`, allowed non-authoritative effects, and forbidden
+  authority effects,
+- the Runtime Context Manager rejects retrieval records whose row scope or
+  metadata does not match the Knowledge/Memory semantics,
 - retrieved memory may guide planning or ranking but must not grant authority.
 
 ## Implementation Tasks

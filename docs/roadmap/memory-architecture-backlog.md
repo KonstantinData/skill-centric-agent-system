@@ -79,7 +79,11 @@ This backlog converts the target architecture in
 - Preserve the existing D1 prefilter, Vectorize lookup, and D1 post-validation
   path for both Knowledge and Memory.
 - Add retrieval response metadata that identifies whether returned records are
-  factual Knowledge Records or procedural Agent Memory.
+  factual Knowledge Records or procedural Agent Memory. (Initial implementation
+  complete: `POST /retrieval/context` emits `record_kind=knowledge_record` /
+  `context_kind=factual_knowledge` for knowledge chunks and
+  `record_kind=procedural_agent_memory` plus non-authoritative metadata for
+  memory records.)
 - Ensure the Runtime Context Manager treats retrieved memory as planning or
   ranking context only. (Initial renderer implementation complete:
   `MemoryRenderer` injects `instruction_status=not_an_instruction`,
@@ -92,7 +96,8 @@ This backlog converts the target architecture in
   policy changes, runtime profile authority mutations, and memory IDs used as
   authority justification.)
 - Add runtime tests for mixed retrieval where Knowledge provides facts and
-  Memory provides process lessons.
+  Memory provides process lessons. (Initial schema, Worker, and Runtime Context
+  Manager tests cover metadata separation and fail-closed metadata validation.)
 
 ### 7. Operations And Evidence
 

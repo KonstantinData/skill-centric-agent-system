@@ -189,6 +189,21 @@ type MemoryRetrievalRow = {
   vector_id: string;
 };
 
+const MEMORY_ALLOWED_EFFECTS = [
+  "planner_hint",
+  "retrieval_ranking",
+  "composer_candidate_bias",
+] as const;
+
+const MEMORY_FORBIDDEN_EFFECTS = [
+  "tool_grant",
+  "scope_grant",
+  "policy_override",
+  "validator_override",
+  "profile_mutation",
+  "runtime_authority",
+] as const;
+
 type EmbeddingTargetKind = "knowledge_document" | "memory_record";
 
 type EmbeddingIndexMessage = {
@@ -2200,8 +2215,19 @@ async function handleRetrievalContext(request: Request, env: Env): Promise<Respo
       })),
     );
   }
-  const boundedKnowledgeChunks = knowledgeChunks.slice(0, body.top_k);
-  const boundedMemoryRecords = memoryRecords.slice(0, body.top_k);
+  const boundedKnowledgeChunks = knowledgeChunks.slice(0, body.top_k).map((chunk) => ({
+    record_kind: "knowledge_record",
+    context_kind: "factual_knowledge",
+    ...chunk,
+  }));
+  const boundedMemoryRecords = memoryRecords.slice(0, body.top_k).map((memory) => ({
+    record_kind: "procedural_agent_memory",
+    instruction_status: "not_an_instruction",
+    authoritative: false,
+    allowed_effects: [...MEMORY_ALLOWED_EFFECTS],
+    forbidden_effects: [...MEMORY_FORBIDDEN_EFFECTS],
+    ...memory,
+  }));
   const knowledgeVectorIds = new Set(boundedKnowledgeChunks.map((chunk) => chunk.vector_id));
   const memoryVectorIds = new Set(boundedMemoryRecords.map((memory) => memory.vector_id));
   const environment = env.ENVIRONMENT || "dev";

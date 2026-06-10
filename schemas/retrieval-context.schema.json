@@ -146,6 +146,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_kind",
+        "context_kind",
         "id",
         "document_id",
         "chunk_index",
@@ -155,6 +157,12 @@
         "token_count"
       ],
       "properties": {
+        "record_kind": {
+          "const": "knowledge_record"
+        },
+        "context_kind": {
+          "const": "factual_knowledge"
+        },
         "id": {
           "$ref": "#/$defs/id"
         },
@@ -185,6 +193,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_kind",
+        "instruction_status",
+        "authoritative",
+        "allowed_effects",
+        "forbidden_effects",
         "id",
         "memory_scope_id",
         "version",
@@ -198,6 +211,42 @@
         "vector_id"
       ],
       "properties": {
+        "record_kind": {
+          "const": "procedural_agent_memory"
+        },
+        "instruction_status": {
+          "const": "not_an_instruction"
+        },
+        "authoritative": {
+          "const": false
+        },
+        "allowed_effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "planner_hint",
+              "retrieval_ranking",
+              "composer_candidate_bias"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "forbidden_effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "tool_grant",
+              "scope_grant",
+              "policy_override",
+              "validator_override",
+              "profile_mutation",
+              "runtime_authority"
+            ]
+          },
+          "uniqueItems": true
+        },
         "id": {
           "$ref": "#/$defs/id"
         },
