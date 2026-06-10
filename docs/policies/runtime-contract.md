@@ -314,6 +314,20 @@ priors, or composer candidate bias. It must not grant tools, widen knowledge,
 data, or memory scopes, raise budgets, remove validators, relax policies, or
 change failure behavior without a reviewed policy artifact.
 
+## Policy Denial Ledger
+
+Runtime policy denials may be recorded in a versioned Policy Denial Ledger to
+avoid redundant retries or recomposition loops. Denial records are
+non-authoritative and `deny_only`; they cannot grant capabilities, mutate
+profiles, override policies, or alter validators. A repeated denial can be
+matched by exact fingerprint or by scope closure when the same profile,
+principal, policy, and closure version prove that an active denied ancestor
+scope subsumes the requested child scope.
+
+Scope closure entries are `reachability_only` metadata for already-approved
+scope/policy reachability. They must never encode semantic lesson authority and
+must remain separate from procedural memory relationship graphs.
+
 ## Run Lifecycle
 
 Runtime run statuses are:

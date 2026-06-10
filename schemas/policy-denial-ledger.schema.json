@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:policy-denial-ledger:0.1.0",
+  "title": "SCAS Policy Denial Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "ledger_id",
+    "closure_version",
+    "denial_records",
+    "scope_policy_closure"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "ledger_id": {
+      "$ref": "#/$defs/id"
+    },
+    "closure_version": {
+      "$ref": "#/$defs/id"
+    },
+    "denial_records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/denialRecord"
+      }
+    },
+    "scope_policy_closure": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scopePolicyClosureEntry"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "denialRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "id",
+        "profile_id",
+        "principal_id",
+        "denial_predicate",
+        "requested_authority",
+        "policy_id",
+        "closure_version",
+        "denial_fingerprint",
+        "status",
+        "ttl_expires_at",
+        "non_authoritative",
+        "authority_effect"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1.0"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/id"
+        },
+        "denial_predicate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requested_authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "tool",
+                "policy",
+                "data_scope",
+                "knowledge_scope",
+                "memory_scope",
+                "validator",
+                "budget",
+                "failure_policy"
+              ]
+            },
+            "id": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "closure_version": {
+          "$ref": "#/$defs/id"
+        },
+        "denial_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "expired",
+            "superseded"
+          ]
+        },
+        "ttl_expires_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "non_authoritative": {
+          "const": true
+        },
+        "authority_effect": {
+          "const": "deny_only"
+        }
+      }
+    },
+    "scopePolicyClosureEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closure_version",
+        "scope_kind",
+        "ancestor_scope_id",
+        "descendant_scope_id",
+        "policy_id",
+        "non_authoritative",
+        "authority_effect"
+      ],
+      "properties": {
+        "closure_version": {
+          "$ref": "#/$defs/id"
+        },
+        "scope_kind": {
+          "type": "string",
+          "enum": [
+            "data_scope",
+            "knowledge_scope",
+            "memory_scope"
+          ]
+        },
+        "ancestor_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "descendant_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "non_authoritative": {
+          "const": true
+        },
+        "authority_effect": {
+          "const": "reachability_only"
+        }
+      }
+    }
+  }
+}

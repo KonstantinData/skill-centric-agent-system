@@ -113,6 +113,21 @@ This backlog converts the target architecture in
   Memory provides process lessons. (Initial schema, Worker, and Runtime Context
   Manager tests cover metadata separation and fail-closed metadata validation.)
 
+### 6a. Policy Denial Ledger And Scope Closure
+
+- Add versioned policy denial records with deterministic denial fingerprints.
+  (Initial implementation complete: `PolicyDenialLedger` deduplicates active
+  denial records by fingerprint.)
+- Add approved scope/policy closure metadata for scope-DAG subsumption checks.
+  (Initial implementation complete: `ScopePolicyClosure` can subsume child
+  data, knowledge, or memory scopes only under the same policy and closure
+  version.)
+- Keep denial records and closure entries metadata-only and non-authoritative.
+  (Initial implementation complete: records are `deny_only`, closure entries
+  are `reachability_only`, and validators reject authority-grant fields.)
+- Document that lesson relationship graphs remain separate from scope closure.
+  (Initial implementation complete in ADR-0010 and memory architecture docs.)
+
 ### 7. Operations And Evidence
 
 - Add a live dev smoke that creates one procedural lesson and one factual

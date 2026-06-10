@@ -340,6 +340,26 @@ scopes. For research or retrieval tasks, a Control Plane context that returns
 memory scopes but no knowledge scopes fails closed rather than composing a
 profile that would treat procedural memory as factual Knowledge.
 
+## Policy Denial Ledger And Scope Closure
+
+Repeated policy denials are tracked in a versioned Policy Denial Ledger. The
+ledger is metadata-only: records use `authority_effect=deny_only` and
+`non_authoritative=true`. A denial record can short-circuit redundant runtime
+work when the profile, principal, denial predicate, requested authority, policy,
+and closure version produce the same denial fingerprint.
+
+Scope/policy closure tables may materialize already-approved reachability among
+data, knowledge, or memory scopes. Closure entries use
+`authority_effect=reachability_only` and `non_authoritative=true`; they may show
+that a denied ancestor scope subsumes a requested child scope under the same
+profile, principal, policy, and closure version. They must never grant tools,
+scopes, policies, validators, budgets, failure behavior, memory scope access, or
+runtime profile mutations.
+
+The denial ledger is separate from procedural memory and lesson relationship
+graphs. Lessons and memory records cannot inherit authority from denial records
+or closure entries.
+
 ## Implementation Tasks
 
 The executable backlog derived from this target architecture lives in
@@ -347,3 +367,5 @@ The executable backlog derived from this target architecture lives in
 
 The architecture decision record is
 `docs/adr/0009-task-subject-data-and-procedural-memory-separation.md`.
+The policy denial ledger decision record is
+`docs/adr/0010-policy-denial-ledger-and-scope-closure.md`.
