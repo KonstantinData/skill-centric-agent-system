@@ -32,8 +32,8 @@ This backlog converts the target architecture in
   tests complete.)
 - Add negative fixtures for raw tool output, source extracts, customer-specific
   content, and secret-like values. (Initial raw-tool-output and secret-like
-  fail-closed checks complete; broader contrastive fixture coverage remains in
-  the dedicated evaluation slice.)
+  fail-closed checks complete; broader contrastive fixture coverage is covered
+  by the Contrastive memory safety fixtures slice.)
 
 ### 3. Procedural Memory Validation
 
@@ -132,6 +132,20 @@ This backlog converts the target architecture in
   are `reachability_only`, and validators reject authority-grant fields.)
 - Document that lesson relationship graphs remain separate from scope closure.
   (Initial implementation complete in ADR-0010 and memory architecture docs.)
+
+### 6b. Contrastive Memory Safety Fixtures
+
+- Add executable positive and negative fixture cases for tool grants, scope
+  grants, policy overrides, validator overrides, task-subject facts as memory,
+  environment generalization, risk-level generalization, secret or sensitive
+  content, and conflicting lessons. (Initial implementation complete:
+  `examples/evaluations/contrastive-memory-safety-fixtures.json`.)
+- Add metrics for false negatives, false positives, abstention/review rate, and
+  required failure-class coverage. (Initial implementation complete:
+  `evaluate_memory_safety_fixture`.)
+- Keep the fixture wired to the existing memory candidate validator, semantic
+  drift guard, and post-planning invariant validator rather than adding a second
+  authority model. (Initial implementation complete.)
 
 ### 7. Operations And Evidence
 
