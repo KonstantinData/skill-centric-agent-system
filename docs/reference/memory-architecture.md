@@ -246,6 +246,37 @@ The safety boundary remains the immutable runtime profile, retrieval scope
 checks, procedural validation gate, policy gates, semantic drift guard, and
 post-planning invariant validator.
 
+## Post-Planning Memory Invariant Validator
+
+After planning and before execution, SCAS validates any plan that used
+procedural memory. The validator treats memory as a non-authoritative planning
+signal only. Plans that do not use memory pass this gate unchanged.
+
+For memory-influenced plans, `PostPlanningMemoryInvariantValidator` requires:
+
+- `used_memory_ids` to be explicit,
+- `effect` to be limited to `planner_hint`, `retrieval_ranking`, or
+  `composer_candidate_bias`,
+- `selection_reason` to explain why memory was relevant,
+- `authority_delta` to be absent or empty.
+
+It rejects memory-influenced plans that include or imply:
+
+- tool grants,
+- knowledge, memory, or data scope grants,
+- policy overrides,
+- validator overrides,
+- budget changes,
+- failure-policy changes,
+- runtime profile patches,
+- memory IDs as authority justification.
+
+When a planned runtime profile is available, the validator compares authority
+fields against the immutable runtime profile and rejects changes to tools,
+knowledge scopes, memory scopes, data scopes, policies, validators, limits, or
+failure policy. This keeps procedural memory from becoming a path to runtime
+recomposition or authority expansion.
+
 ## Retrieval Semantics
 
 Semantic retrieval is allowed for both Knowledge Records and Procedural Agent

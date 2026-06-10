@@ -35,6 +35,10 @@ from skill_centric_agent_system.runtime.memory_feedback import (
     MemoryFeedbackError,
     MemoryFeedbackPipeline,
 )
+from skill_centric_agent_system.runtime.memory_invariants import (
+    PostPlanningMemoryInvariantResult,
+    PostPlanningMemoryInvariantValidator,
+)
 from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.policies import profile_redacts_sensitive_data
 from skill_centric_agent_system.runtime.retention import (
@@ -97,6 +101,8 @@ __all__ = [
     "MemoryCandidateValidator",
     "MemoryRenderer",
     "PostRunReflectionExtractor",
+    "PostPlanningMemoryInvariantResult",
+    "PostPlanningMemoryInvariantValidator",
     "MinimalRuntimeLoop",
     "PostgresRuntimeStore",
     "ProfileEnforcementError",
