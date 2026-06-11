@@ -254,8 +254,8 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
    documentation, and dev artifact root split complete; resource provisioning
    remains pending.)
 3. Add a production release evidence workflow. (Initial evidence-only workflow
-   and certification run metadata validation complete; full certification
-   remains pending until the later production gates are complete.)
+   and certification run metadata validation complete; certification-mode
+   evidence has been validated for the configured target environment.)
 4. Add production skill handler runtime support. (Initial version-pinned
    built-in handler registry, coverage manifest gate, and live handler-binding
    evidence gate complete. Handler version upgrade and rollback policy
@@ -278,15 +278,18 @@ The release gate, evidence rules, status vocabulary, and ordered backlog live in
     `dependency-audit` are now production-required fixtures with executable
     handlers, manifest coverage, and runtime tests.)
 11. Run the production readiness certification gate against the target
-    environment.
+    environment. (Initial certification-mode run complete.)
 
-Status: started. The gate is defined, the first environment separation
+Status: complete for the initial production-readiness certification scope. The
+gate is defined, the first environment separation
 manifest exists, the production evidence workflow can validate external live
 gate run metadata, and the initial repository security/governance gate set is
 implemented. The first production skill handler runtime slice, controlled write
 path, scheduled retention cleanup automation, production telemetry alerting,
-and production security closure are implemented. Provisioning and the final
-certification run against live production infrastructure remain pending.
+and production security closure are implemented. The P5.10 certification run
+has completed against the configured target environment. Full production-launch
+claims still require current release evidence under
+`docs/policies/production-readiness.md`.
 Production skill instruction packs are now generated and validated as
 machine-readable release artifacts.
 The HOOKS usage model is now versioned and validated as a machine-readable

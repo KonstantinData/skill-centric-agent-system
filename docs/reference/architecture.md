@@ -250,9 +250,8 @@ The current repository has implemented the first control-plane slice:
 
 The following architecture components are still pending implementation:
 
-- staging and production environment separation,
-- broader production skill handler coverage beyond the current manifest-covered
-  fixture set,
+- production resource provisioning and promotion evidence for a full launch
+  claim,
 - richer task planning beyond the conservative first-slice strategies.
 
 ## Productive Runtime Gate
@@ -267,10 +266,10 @@ validation scenarios live in `docs/runbooks/runtime-preflight.md`.
 
 Production-ready status is a separate release decision. It requires the
 evidence gate in `docs/policies/production-readiness.md`, including environment
-separation, release evidence, broader production handler coverage,
-and certification against the target environment. Until that gate passes, the
-repository must be described as `not-production-ready` for a full production
-launch.
+separation, release evidence, production handler coverage, certification
+against the target environment, and current release-policy validity. Unless
+that evidence is current for the intended launch target, the repository must be
+described as `not-production-ready` for a full production launch.
 
 ## Operational Baseline
 
