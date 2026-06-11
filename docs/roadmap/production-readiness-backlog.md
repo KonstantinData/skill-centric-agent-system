@@ -38,7 +38,8 @@ The cross-phase execution order is tracked in
    Maintain ambiguity handling that routes risky cases to review-required
    profiles.
 10. `P5.10 Production Readiness Certification Run`
-    Run full certification against target environment and record final decision.
+    Maintain certification against the configured target environment and record
+    the release decision with non-secret evidence.
 11. `P5.11 Expand Production Skill Handler Coverage`
     Expand production-required skill handler coverage beyond the first slices.
 12. `Post-P5: Define and govern HOOKS usage model`
@@ -50,3 +51,5 @@ The cross-phase execution order is tracked in
 
 - Current task lifecycle and assignment details are tracked in Notion.
 - Durable release criteria remain in repository policy files.
+- P5.10 initial certification-mode evidence is complete; future production
+  claims require fresh evidence under `docs/policies/production-readiness.md`.
