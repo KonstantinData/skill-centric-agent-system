@@ -315,8 +315,21 @@ The staging artifact root must be:
 
 ### Bootstrap Staging Runtime Storage
 
-Upload or make the repository migrations available on the staging host. Then
-run:
+When staging Hetzner credentials are available only as GitHub Actions secrets,
+use the manual bootstrap workflow:
+
+```bash
+gh workflow run staging-runtime-bootstrap.yml \
+  -f target_environment=staging
+```
+
+The workflow uploads the repository PostgreSQL migrations to
+`/opt/scas/migrations/hetzner/postgres`, runs the existing bootstrap script with
+the staging database, owner, and artifact root, and verifies the runtime table
+is queryable.
+
+For direct host access, upload or make the repository migrations available on
+the staging host. Then run:
 
 ```bash
 SCAS_RUNTIME_DB=scas_runtime_staging \

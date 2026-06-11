@@ -19,6 +19,9 @@ GITHUB_GOVERNANCE_DRIFT_WORKFLOW_PATH = (
 CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "control-api-worker-secrets.yml"
 )
+STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "staging-runtime-bootstrap.yml"
+)
 
 
 def load_ci_workflow() -> str:
@@ -43,6 +46,10 @@ def load_github_governance_drift_workflow() -> str:
 
 def load_control_api_worker_secrets_workflow() -> str:
     return CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_staging_runtime_bootstrap_workflow() -> str:
+    return STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -128,7 +135,8 @@ def test_ci_workflow_validates_hetzner_private_key_format() -> None:
 
     assert "ssh-keygen -y -f" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
-    assert "-----BEGIN OPENSSH PRIVATE KEY-----" in workflow  # pragma: allowlist secret
+    assert "The configured key is missing the expected OpenSSH private key header" in workflow
+    assert "Expected first line" not in workflow
 
 
 def test_infrastructure_smoke_test_is_manual_only() -> None:
@@ -219,6 +227,38 @@ def test_control_api_worker_secrets_workflow_syncs_environment_secrets() -> None
     assert "wrangler secret list" in workflow
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "rm -f" in workflow
+
+
+def test_staging_runtime_bootstrap_workflow_uses_staging_hetzner_secrets() -> None:
+    assert STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH.exists()
+    workflow = load_staging_runtime_bootstrap_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "options:" in workflow
+    assert "- staging" in workflow
+    assert "secrets.SCAS_STAGING_HETZNER_HOST" in workflow
+    assert "secrets.SCAS_STAGING_HETZNER_SSH_KEY" in workflow
+    assert "secrets.SCAS_STAGING_HETZNER_USER" in workflow
+    assert "SCAS_RUNTIME_DB: scas_runtime_staging" in workflow
+    assert "SCAS_RUNTIME_DB_OWNER: scas_runtime_staging_app" in workflow
+    assert "SCAS_RUNTIME_ROOT: /opt/scas/runtime/staging" in workflow
+    assert "SCAS_REMOTE_MIGRATIONS_DIR: /opt/scas/migrations/hetzner/postgres" in workflow
+    assert "scripts/hetzner/bootstrap_runtime_plane.sh" in workflow
+    assert "--migrations-dir \"${SCAS_REMOTE_MIGRATIONS_DIR}\"" in workflow
+    assert "SELECT count(*) FROM runtime.runtime_runs;" in workflow
+
+
+def test_staging_runtime_bootstrap_workflow_does_not_rebuild_or_log_secrets() -> None:
+    workflow = load_staging_runtime_bootstrap_workflow()
+
+    assert "--rebuild" not in workflow
+    assert "printf 'HETZNER_HOST=%s" not in workflow
+    assert "printf 'HETZNER_USER=%s" not in workflow
+    assert "printf 'HETZNER_SSH_KEY=%s" not in workflow
+    assert "ssh-keygen -y -f" in workflow
+    assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
+    assert "The configured key is missing the expected OpenSSH private key header" in workflow
+    assert "Expected first line" not in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

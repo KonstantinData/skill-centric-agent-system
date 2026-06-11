@@ -1,0 +1,144 @@
+name: Staging Runtime Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target environment to bootstrap
+        required: true
+        type: choice
+        options:
+          - staging
+        default: staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-runtime-bootstrap-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bootstrap-runtime:
+    name: Bootstrap Hetzner runtime storage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging'
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_RUNTIME_DB: scas_runtime_staging
+      SCAS_RUNTIME_DB_OWNER: scas_runtime_staging_app
+      SCAS_RUNTIME_ROOT: /opt/scas/runtime/staging
+      SCAS_REMOTE_MIGRATIONS_DIR: /opt/scas/migrations/hetzner/postgres
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Check required secrets are present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: ${name}"
+              missing=1
+            fi
+          done
+
+          exit "${missing}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 600 "${HOME}/.ssh/hetzner_key"
+
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+
+          ssh-keyscan -H "${HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Package runtime bootstrap files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tar -czf scas-runtime-bootstrap.tar.gz \
+            scripts/hetzner/bootstrap_runtime_plane.sh \
+            migrations/hetzner/postgres
+
+      - name: Upload runtime bootstrap files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            scas-runtime-bootstrap.tar.gz \
+            "${HETZNER_USER}@${HETZNER_HOST}:/tmp/scas-runtime-bootstrap-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Bootstrap runtime storage
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${HETZNER_USER}@${HETZNER_HOST}" \
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_RUNTIME_DB='${SCAS_RUNTIME_DB}' SCAS_RUNTIME_DB_OWNER='${SCAS_RUNTIME_DB_OWNER}' SCAS_RUNTIME_ROOT='${SCAS_RUNTIME_ROOT}' SCAS_REMOTE_MIGRATIONS_DIR='${SCAS_REMOTE_MIGRATIONS_DIR}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo "$@"
+            fi
+          }
+
+          archive="/tmp/scas-runtime-bootstrap-${GITHUB_RUN_ID}.tar.gz"
+          workdir="/tmp/scas-runtime-bootstrap-${GITHUB_RUN_ID}"
+
+          rm -rf "${workdir}"
+          install -d -m 755 "${workdir}"
+          tar -xzf "${archive}" -C "${workdir}"
+          chmod -R a+rX "${workdir}"
+
+          sudo_if_needed install -d -m 755 /opt/scas/migrations/hetzner
+          sudo_if_needed rm -rf "${SCAS_REMOTE_MIGRATIONS_DIR}"
+          sudo_if_needed install -d -m 755 "${SCAS_REMOTE_MIGRATIONS_DIR}"
+          sudo_if_needed cp "${workdir}"/migrations/hetzner/postgres/*.sql "${SCAS_REMOTE_MIGRATIONS_DIR}/"
+
+          hostname
+          pwd
+
+          sudo_if_needed env \
+            SCAS_RUNTIME_DB="${SCAS_RUNTIME_DB}" \
+            SCAS_RUNTIME_DB_OWNER="${SCAS_RUNTIME_DB_OWNER}" \
+            SCAS_RUNTIME_ROOT="${SCAS_RUNTIME_ROOT}" \
+            bash "${workdir}/scripts/hetzner/bootstrap_runtime_plane.sh" \
+              --migrations-dir "${SCAS_REMOTE_MIGRATIONS_DIR}"
+
+          test -w "${SCAS_RUNTIME_ROOT}"
+          sudo -u postgres psql -d "${SCAS_RUNTIME_DB}" -Atc 'SELECT count(*) FROM runtime.runtime_runs;'
+
+          rm -f "${archive}"
+          REMOTE

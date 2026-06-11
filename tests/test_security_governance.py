@@ -115,9 +115,6 @@ def test_secret_scan_validators_reject_findings_and_accept_clean_reports(tmp_pat
         json.dumps(
             {
                 "results": {
-                    ".github/workflows/runtime-retention-cleanup.yml": [
-                        {"type": "Private Key", "line_number": 1}
-                    ],
                     "policies/security/production-security-closure.json": [
                         {"type": "Secret Keyword", "line_number": 59}
                     ],
@@ -127,6 +124,21 @@ def test_secret_scan_validators_reject_findings_and_accept_clean_reports(tmp_pat
         encoding="utf-8",
     )
     validate_secret_scan.validate_detect_secrets(detect_report)
+
+    detect_report.write_text(
+        json.dumps(
+            {
+                "results": {
+                    ".github/workflows/runtime-retention-cleanup.yml": [
+                        {"type": "Private Key", "line_number": 1}
+                    ],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="detect-secrets found"):
+        validate_secret_scan.validate_detect_secrets(detect_report)
 
     detect_report.write_text(json.dumps({"results": {}}), encoding="utf-8")
     gitleaks_report.write_text(json.dumps([]), encoding="utf-8")

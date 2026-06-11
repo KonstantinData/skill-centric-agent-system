@@ -161,7 +161,7 @@ jobs:
 
           if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
             echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
-            echo "::error::Expected first line: -----BEGIN OPENSSH PRIVATE KEY-----" # pragma: allowlist secret
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
             exit 1
           fi
 
