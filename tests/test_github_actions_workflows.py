@@ -140,7 +140,8 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "--secrets-file" in workflow
     assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
-    assert "https://scas-control-api-staging.still-butterfly-bbff.workers.dev" in workflow
+    assert 'SCAS_CONTROL_API_URL="https://scas-control-api-staging.' in workflow
+    assert 'still-butterfly-bbff.workers.dev"' in workflow
     assert 'scas-ai-gateway-{target_environment}-run' in workflow
     assert "AI_GATEWAY_ACCOUNT_ID" in workflow
     assert "CLOUDFLARE_ACCOUNT_ID" in workflow
