@@ -16,6 +16,9 @@ RUNTIME_RETENTION_CLEANUP_WORKFLOW_PATH = (
 GITHUB_GOVERNANCE_DRIFT_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "github-governance-drift.yml"
 )
+CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "control-api-worker-secrets.yml"
+)
 
 
 def load_ci_workflow() -> str:
@@ -36,6 +39,10 @@ def load_runtime_retention_cleanup_workflow() -> str:
 
 def load_github_governance_drift_workflow() -> str:
     return GITHUB_GOVERNANCE_DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_control_api_worker_secrets_workflow() -> str:
+    return CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -193,6 +200,25 @@ def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
     assert "scripts/runtime/postgres_concurrency_smoke.py" in workflow
     assert "--events 20" in workflow
     assert "--profile-file examples/profiles/code-review-profile.json" in workflow
+
+
+def test_control_api_worker_secrets_workflow_syncs_environment_secrets() -> None:
+    assert CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH.exists()
+    workflow = load_control_api_worker_secrets_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" in workflow
+    assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
+    assert "SCAS_STAGING_OPENAI_API_KEY" in workflow
+    assert "CONTROL_API_COMPOSITION_TOKEN" in workflow
+    assert "CONTROL_API_INGESTION_TOKEN" in workflow
+    assert "CONTROL_API_RETRIEVAL_TOKEN" in workflow
+    assert "CONTROL_API_AI_GATEWAY_TOKEN" in workflow
+    assert "wrangler secret bulk" in workflow
+    assert "wrangler secret list" in workflow
+    assert "SCAS_WORKER_SECRETS_FILE" in workflow
+    assert "rm -f" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

@@ -47,6 +47,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/runtime-preflight.md`
 - `docs/runbooks/runtime-live-dev-e2e.md`
 - `docs/runbooks/operations-runbook.md`
+- `docs/runbooks/staging-provisioning-checklist.md`
 - `docs/runbooks/post-merge-lifecycle.md`
 - `docs/runbooks/notion-issue-tracking.md`
 
