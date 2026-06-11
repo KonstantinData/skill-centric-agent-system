@@ -135,7 +135,8 @@ def test_ci_workflow_validates_hetzner_private_key_format() -> None:
 
     assert "ssh-keygen -y -f" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
-    assert "-----BEGIN OPENSSH PRIVATE KEY-----" in workflow  # pragma: allowlist secret
+    assert "The configured key is missing the expected OpenSSH private key header" in workflow
+    assert "Expected first line" not in workflow
 
 
 def test_infrastructure_smoke_test_is_manual_only() -> None:
@@ -256,6 +257,8 @@ def test_staging_runtime_bootstrap_workflow_does_not_rebuild_or_log_secrets() ->
     assert "printf 'HETZNER_SSH_KEY=%s" not in workflow
     assert "ssh-keygen -y -f" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
+    assert "The configured key is missing the expected OpenSSH private key header" in workflow
+    assert "Expected first line" not in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

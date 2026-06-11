@@ -23,9 +23,7 @@ IGNORED_PATH_PATTERNS = (
 )
 
 ALLOWED_FINDING_TYPES_BY_PATH = {
-    ".github/workflows/ci.yml": {"Private Key", "Secret Keyword"},
-    ".github/workflows/live-runtime-gates.yml": {"Private Key"},
-    ".github/workflows/runtime-retention-cleanup.yml": {"Private Key"},
+    ".github/workflows/ci.yml": {"Secret Keyword"},
     "examples/infrastructure/environment-manifest.json": {"Secret Keyword"},
     "policies/security/production-security-closure.json": {"Secret Keyword"},
 }
