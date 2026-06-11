@@ -188,6 +188,10 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "Validate Control Plane credentials" in workflow
     assert "--data @examples/control-api/composition-context-request.json" in workflow
     assert "SCAS_${TARGET_ENVIRONMENT^^}_CONTROL_API_TOKEN" in workflow
+    assert 'wrangler_env_args=()' in workflow
+    assert 'if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then' in workflow
+    assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
+    assert 'wrangler.toml "${wrangler_env_args[@]}"' in workflow
     assert "npx wrangler whoami --config workers/control-api/wrangler.toml" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow
