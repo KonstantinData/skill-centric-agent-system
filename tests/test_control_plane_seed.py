@@ -73,6 +73,29 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.scope_bindings) == 4
 
 
+def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
+    expected_validator_by_task_type = {
+        "code-review": "review-findings-contract",
+        "research": "research-output-contract",
+        "task-execution": "task-execution-output-contract",
+        "general-task": "general-output-contract",
+    }
+
+    for module_path in module_paths():
+        module = load_json(module_path)
+        if module["kind"] != "skill":
+            continue
+
+        validators = set(module.get("validators", []))
+        advertised_task_types = module.get("task_signals", {}).get("task_types", [])
+        for task_type in advertised_task_types:
+            expected_validator = expected_validator_by_task_type[task_type]
+            assert expected_validator in validators, (
+                f"{module_path.name} advertises {task_type} but does not require "
+                f"{expected_validator}."
+            )
+
+
 def test_committed_dev_seed_sql_is_generated_from_module_contracts() -> None:
     expected_sql = generate_seed_sql(build_seed_records(module_paths()))
 

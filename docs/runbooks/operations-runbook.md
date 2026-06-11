@@ -261,10 +261,13 @@ Required GitHub secrets for the live gates are environment-prefixed:
 - `SCAS_DEV_CONTROL_API_TOKEN`, `SCAS_STAGING_CONTROL_API_TOKEN`, `SCAS_PROD_CONTROL_API_TOKEN`
 - `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
 
-`CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and must allow
-Worker script writes. The manual Control API rollout deploys Worker code and
-uploads Worker secrets through Wrangler; a token that only supports read-only
-connectivity checks will fail before the live LLM smoke runs.
+`SCAS_DEV_CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and
+must allow Worker script writes for dev rollouts. The manual Control API rollout
+deploys Worker code and uploads Worker secrets through Wrangler; a token that
+only supports read-only connectivity checks will fail before the live LLM smoke
+runs. Legacy `CLOUDFLARE_API_TOKEN` remains a compatibility fallback for older
+dev setups, but production-readiness evidence should use environment-prefixed
+secrets.
 
 Cloudflare readiness:
 
@@ -333,8 +336,8 @@ retrieval/Vectorize smoke. Use the mode-specific commands in
 `docs/runbooks/runtime-live-dev-e2e.md`.
 
 Run the AI Gateway dev deployment and live LLM smoke through GitHub Actions
-when the Worker needs `OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
-`CONTROL_API_TOKEN`, and AI Gateway account configuration:
+when the Worker needs `SCAS_DEV_OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
+`SCAS_DEV_CONTROL_API_TOKEN`, and AI Gateway account configuration:
 
 ```bash
 gh workflow run ci.yml \
@@ -345,7 +348,9 @@ gh workflow run ci.yml \
 
 The workflow passes Worker secrets through a temporary runner-local JSON file
 and `wrangler deploy --secrets-file`. The file is deleted after the deploy
-step; the secret values must still originate from GitHub Actions secrets.
+step; the secret values must still originate from GitHub Actions secrets. The
+dev deployment prefers `SCAS_DEV_*` secrets and falls back to legacy unprefixed
+secrets only for compatibility.
 `OPENAI_API_KEY` is sent to the OpenAI provider through the standard
 `Authorization` header. `AI_GATEWAY_AUTH_TOKEN` is sent separately as
 `cf-aig-authorization` when Authenticated Gateway is enabled on Cloudflare AI
