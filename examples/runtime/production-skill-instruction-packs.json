@@ -6,7 +6,7 @@
       "description": "Audit repository dependency manifests for license, risk, and change-impact signals.",
       "execution_instructions": [
         "Compose a runtime profile that selects dependency-audit@0.1.0 through the standard analyzer -> composer control path.",
-        "Ensure task type is one of [task-execution, code-review] and required inputs [repository] are present before runtime execution starts.",
+        "Ensure task type is one of [task-execution] and required inputs [repository] are present before runtime execution starts.",
         "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for dependency-audit@0.1.0.",
         "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
       ],
@@ -61,7 +61,7 @@
       "description": "Synthesize durable technical documentation updates from profile-authorized context.",
       "execution_instructions": [
         "Compose a runtime profile that selects document-synthesis@0.1.0 through the standard analyzer -> composer control path.",
-        "Ensure task type is one of [research, general-task] and required inputs [] are present before runtime execution starts.",
+        "Ensure task type is one of [general-task] and required inputs [] are present before runtime execution starts.",
         "Run runtime loop execution and confirm emitted planner checkpoints include handler binding evidence for document-synthesis@0.1.0.",
         "Verify all required validators pass and persist non-secret evidence artifacts for release certification."
       ],

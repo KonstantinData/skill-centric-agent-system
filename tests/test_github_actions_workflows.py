@@ -91,7 +91,19 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
 
     assert "run_ai_gateway_live_smoke:" in workflow
     assert "inputs.run_ai_gateway_live_smoke == true" in workflow
-    assert "OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
+    assert "SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}" in workflow
+    assert "SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}" in workflow
+    assert (
+        "SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}"
+        in workflow
+    )
+    assert "SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}" in workflow
+    assert "LEGACY_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
+    assert "LEGACY_CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}" in workflow
+    assert "resolve_dev_secret SCAS_DEV_CONTROL_API_TOKEN LEGACY_CONTROL_API_TOKEN" in workflow
+    assert "resolve_dev_secret SCAS_DEV_OPENAI_API_KEY LEGACY_OPENAI_API_KEY" in workflow
+    assert "secrets.SCAS_DEV_CONTROL_API_TOKEN || secrets.CONTROL_API_TOKEN" in workflow
+    assert "secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN" in workflow
     assert "AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}" in workflow
     assert '"AI_GATEWAY_AUTH_TOKEN"' in workflow
     assert "RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}" in workflow

@@ -199,17 +199,20 @@ gh workflow run ci.yml \
   -f run_infra_smoke=false
 ```
 
-The workflow writes `OPENAI_API_KEY`, optional `AI_GATEWAY_AUTH_TOKEN`, and
-`CONTROL_API_TOKEN` to a temporary runner-local JSON secrets file, deploys
-`scas-control-api-dev` with `wrangler deploy --secrets-file`, rewrites
-`AI_GATEWAY_ACCOUNT_ID` from the GitHub `CLOUDFLARE_ACCOUNT_ID` secret only in
-the deployment workspace, and runs
+The workflow writes `SCAS_DEV_OPENAI_API_KEY`, optional
+`AI_GATEWAY_AUTH_TOKEN`, and `SCAS_DEV_CONTROL_API_TOKEN` to a temporary
+runner-local JSON secrets file, deploys `scas-control-api-dev` with
+`wrangler deploy --secrets-file`, rewrites `AI_GATEWAY_ACCOUNT_ID` from the
+GitHub `SCAS_DEV_CLOUDFLARE_ACCOUNT_ID` secret only in the deployment
+workspace, and runs
 `scripts/cloudflare/ai_gateway_live_smoke.py`.
 
-The GitHub `CLOUDFLARE_API_TOKEN` used by this workflow must allow Worker
-script writes on the target Cloudflare account. The rollout uploads Worker code
-and Worker secrets; a token that only passes read-only readiness checks will
-fail before the AI Gateway smoke request is sent.
+The GitHub `SCAS_DEV_CLOUDFLARE_API_TOKEN` used by this workflow must allow
+Worker script writes on the target Cloudflare account. The rollout uploads
+Worker code and Worker secrets; a token that only passes read-only readiness
+checks will fail before the AI Gateway smoke request is sent. Legacy unprefixed
+secrets remain compatibility fallbacks, but production-readiness evidence should
+use the environment-prefixed secrets that the live gates also consume.
 
 When `run_ai_gateway_live_smoke=true`, the workflow requires
 `AI_GATEWAY_AUTH_TOKEN` as a GitHub Actions secret and fails before deployment

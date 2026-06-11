@@ -12,8 +12,7 @@
   ],
   "task_signals": {
     "task_types": [
-      "task-execution",
-      "code-review"
+      "task-execution"
     ],
     "risk_levels": [
       "low",
