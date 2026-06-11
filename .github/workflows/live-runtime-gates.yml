@@ -269,12 +269,16 @@ jobs:
               ;;
           esac
           control_db="scas-control-${TARGET_ENVIRONMENT}"
+          wrangler_env_args=()
+          if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then
+            wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")
+          fi
 
           npm ci
           npx wrangler whoami --config workers/control-api/wrangler.toml
-          npx wrangler d1 migrations apply "${control_db}" --remote --config workers/control-api/wrangler.toml
+          npx wrangler d1 migrations apply "${control_db}" --remote --config workers/control-api/wrangler.toml "${wrangler_env_args[@]}"
           python scripts/cloudflare/generate_control_plane_seed.py --output "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql"
-          npx wrangler d1 execute "${control_db}" --remote --file "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql" --config workers/control-api/wrangler.toml --yes
+          npx wrangler d1 execute "${control_db}" --remote --file "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql" --config workers/control-api/wrangler.toml "${wrangler_env_args[@]}" --yes
 
       - name: Configure SSH
         shell: bash
