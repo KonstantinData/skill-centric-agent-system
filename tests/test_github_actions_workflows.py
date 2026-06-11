@@ -48,6 +48,7 @@ def test_ci_workflow_runs_repository_validation() -> None:
     assert "uv sync --frozen --extra dev --extra runtime" in workflow
     assert "uv lock --check" in workflow
     assert "uv run pytest" in workflow
+    assert "uv run pytest tests/test_runtime_efficiency_baselines.py" in workflow
     assert "uv run ruff check ." in workflow
     assert "uv run mypy" in workflow
     assert "scripts/runtime/skill_handler_coverage.py --check" in workflow

@@ -237,6 +237,7 @@ Local repository gates:
 
 ```bash
 python -m pytest
+python -m pytest tests/test_runtime_efficiency_baselines.py
 python -m ruff check .
 npm run worker:types
 npm run worker:typecheck
@@ -364,6 +365,7 @@ Repository validation:
 
 ```bash
 python -m pytest
+python -m pytest tests/test_runtime_efficiency_baselines.py
 python -m ruff check .
 npm run worker:typecheck
 npm run worker:test
