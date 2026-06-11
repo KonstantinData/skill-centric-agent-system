@@ -388,6 +388,16 @@ def test_runtime_retention_cleanup_workflow_runs_on_hetzner_and_uploads_evidence
     assert "runtime-retention-cleanup-evidence" in workflow
 
 
+def test_runtime_retention_cleanup_workflow_exports_multiline_ssh_key_safely() -> None:
+    workflow = load_runtime_retention_cleanup_workflow()
+
+    assert "HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
+    assert 'printf \'%s\\n\' "${HETZNER_SSH_KEY}"' in workflow
+    assert "echo '__SCAS_HETZNER_SSH_KEY__'" in workflow
+    assert "value contains reserved delimiter" in workflow
+    assert "printf 'HETZNER_SSH_KEY=%s" not in workflow
+
+
 def test_github_governance_drift_workflow_is_scheduled_and_manual() -> None:
     workflow = load_github_governance_drift_workflow()
 
