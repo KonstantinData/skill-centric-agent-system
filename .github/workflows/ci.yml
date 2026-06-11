@@ -59,6 +59,9 @@ jobs:
       - name: Run contract tests
         run: uv run pytest
 
+      - name: Run runtime efficiency baselines
+        run: uv run pytest tests/test_runtime_efficiency_baselines.py
+
       - name: Run formal safety invariant gate
         run: |
           set -euo pipefail

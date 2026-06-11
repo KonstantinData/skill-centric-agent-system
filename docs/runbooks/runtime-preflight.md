@@ -57,6 +57,7 @@ Recommended local checks:
 
 ```powershell
 python -m pytest
+python -m pytest tests/test_runtime_efficiency_baselines.py
 python -m ruff check .
 npm run worker:typecheck
 npm run worker:test
