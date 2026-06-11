@@ -410,6 +410,7 @@ and AI Gateway config are set:
 
 ```bash
 gh workflow run ci.yml \
+  -f target_environment=staging \
   -f deploy_control_api_dev=false \
   -f run_ai_gateway_live_smoke=true \
   -f run_infra_smoke=false

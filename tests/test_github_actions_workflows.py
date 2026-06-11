@@ -104,27 +104,45 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
 def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
     workflow = load_ci_workflow()
 
+    assert "target_environment:" in workflow
     assert "run_ai_gateway_live_smoke:" in workflow
     assert "inputs.run_ai_gateway_live_smoke == true" in workflow
     assert "SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}" in workflow
     assert "SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}" in workflow
+    assert "SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}" in workflow
+    assert (
+        "SCAS_STAGING_CONTROL_API_TOKEN: "
+        "${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}"
+    ) in workflow
     assert (
         "SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}"
         in workflow
     )
     assert "SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}" in workflow
+    assert (
+        "SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: "
+        "${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}"
+    ) in workflow
+    assert (
+        "SCAS_STAGING_CLOUDFLARE_API_TOKEN: "
+        "${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}"
+    ) in workflow
     assert "LEGACY_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
     assert "LEGACY_CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}" in workflow
-    assert "resolve_dev_secret SCAS_DEV_CONTROL_API_TOKEN LEGACY_CONTROL_API_TOKEN" in workflow
-    assert "resolve_dev_secret SCAS_DEV_OPENAI_API_KEY LEGACY_OPENAI_API_KEY" in workflow
-    assert "secrets.SCAS_DEV_CONTROL_API_TOKEN || secrets.CONTROL_API_TOKEN" in workflow
-    assert "secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN" in workflow
+    assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" CONTROL_API_TOKEN' in workflow
+    assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY' in workflow
+    assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID' in workflow
+    assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN' in workflow
     assert "AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}" in workflow
     assert '"AI_GATEWAY_AUTH_TOKEN"' in workflow
     assert "RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}" in workflow
     assert "Missing required secret for live AI Gateway smoke: AI_GATEWAY_AUTH_TOKEN" in workflow
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "--secrets-file" in workflow
+    assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
+    assert 'SCAS_CONTROL_API_URL="https://scas-control-api-staging.' in workflow
+    assert 'still-butterfly-bbff.workers.dev"' in workflow
+    assert 'scas-ai-gateway-{target_environment}-run' in workflow
     assert "AI_GATEWAY_ACCOUNT_ID" in workflow
     assert "CLOUDFLARE_ACCOUNT_ID" in workflow
     assert "scripts/cloudflare/ai_gateway_live_smoke.py" in workflow
