@@ -17,8 +17,17 @@ on:
         required: true
         type: boolean
         default: false
+      target_environment:
+        description: Target environment for manual deploy and live smoke inputs
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
       run_ai_gateway_live_smoke:
-        description: Deploy dev Worker with AI Gateway config and run a live LLM smoke
+        description: Deploy target Worker with AI Gateway config and run a live LLM smoke
         required: true
         type: boolean
         default: false
@@ -173,8 +182,8 @@ jobs:
       - name: Dry-run Worker deploy
         run: npm run worker:check
 
-  deploy-control-api-dev:
-    name: Deploy Cloudflare Control API dev
+  deploy-control-api:
+    name: Deploy Cloudflare Control API
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: worker
@@ -183,10 +192,19 @@ jobs:
       (inputs.deploy_control_api_dev == true || inputs.run_ai_gateway_live_smoke == true)
 
     env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
       SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}
       SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}
       SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}
       SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}
+      SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_STAGING_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}
+      SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
+      SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}
+      SCAS_PROD_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_PROD_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_PROD_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_API_TOKEN }}
+      SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
+      SCAS_PROD_OPENAI_API_KEY: ${{ secrets.SCAS_PROD_OPENAI_API_KEY }}
       LEGACY_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       LEGACY_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       LEGACY_CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
@@ -194,7 +212,6 @@ jobs:
       AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}
       AI_GATEWAY_ID: ${{ vars.AI_GATEWAY_ID }}
       RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}
-      SCAS_CONTROL_API_URL: https://scas-control-api-dev.still-butterfly-bbff.workers.dev
 
     steps:
       - name: Check out repository
@@ -221,30 +238,56 @@ jobs:
       - name: Dry-run Worker deploy
         run: npm run worker:check
 
-      - name: Prepare dev Worker secrets
+      - name: Prepare Worker secrets
         shell: bash
         run: |
           set -euo pipefail
 
-          resolve_dev_secret() {
-            local env_specific_name="$1"
-            local legacy_name="$2"
-            local env_specific_value="${!env_specific_name:-}"
-            local legacy_value="${!legacy_name:-}"
-            printf '%s' "${env_specific_value:-${legacy_value:-}}"
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  CONTROL_API_TOKEN) value="${SCAS_DEV_CONTROL_API_TOKEN:-${LEGACY_CONTROL_API_TOKEN:-}}" ;;
+                  OPENAI_API_KEY) value="${SCAS_DEV_OPENAI_API_KEY:-${LEGACY_OPENAI_API_KEY:-}}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  CONTROL_API_TOKEN) value="${SCAS_STAGING_CONTROL_API_TOKEN:-}" ;;
+                  OPENAI_API_KEY) value="${SCAS_STAGING_OPENAI_API_KEY:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  CONTROL_API_TOKEN) value="${SCAS_PROD_CONTROL_API_TOKEN:-}" ;;
+                  OPENAI_API_KEY) value="${SCAS_PROD_OPENAI_API_KEY:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
           }
 
-          CONTROL_API_TOKEN="$(resolve_dev_secret SCAS_DEV_CONTROL_API_TOKEN LEGACY_CONTROL_API_TOKEN)"
-          OPENAI_API_KEY="$(resolve_dev_secret SCAS_DEV_OPENAI_API_KEY LEGACY_OPENAI_API_KEY)"
+          CONTROL_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CONTROL_API_TOKEN)"
+          OPENAI_API_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY)"
           export CONTROL_API_TOKEN
           export OPENAI_API_KEY
 
           if [ -z "${CONTROL_API_TOKEN:-}" ]; then
-            echo "::error::Missing required secret: SCAS_DEV_CONTROL_API_TOKEN"
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CONTROL_API_TOKEN"
             exit 1
           fi
           if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo "::error::Missing required secret: SCAS_DEV_OPENAI_API_KEY"
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: OPENAI_API_KEY"
             exit 1
           fi
           if [ "${RUN_AI_GATEWAY_LIVE_SMOKE:-false}" = "true" ] && [ -z "${AI_GATEWAY_AUTH_TOKEN:-}" ]; then
@@ -252,9 +295,13 @@ jobs:
             echo "::error::Set it as a GitHub Actions secret; setting it only on the Worker is not enough for this deployment workflow."
             exit 1
           fi
+          {
+            printf 'CONTROL_API_TOKEN=%s\n' "${CONTROL_API_TOKEN}"
+            printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
+          } >> "${GITHUB_ENV}"
 
           echo "::notice::CLOUDFLARE_API_TOKEN must allow Worker script writes because this job deploys Worker code and secrets."
-          secrets_file="${RUNNER_TEMP}/scas-control-api-dev-secrets.json"
+          secrets_file="${RUNNER_TEMP}/scas-control-api-${TARGET_ENVIRONMENT}-secrets.json"
           export SCAS_WORKER_SECRETS_FILE="${secrets_file}"
           python3 - <<'PY'
           import json
@@ -275,28 +322,78 @@ jobs:
           PY
           echo "SCAS_WORKER_SECRETS_FILE=${secrets_file}" >> "${GITHUB_ENV}"
 
-      - name: Configure AI Gateway dev vars
+      - name: Configure AI Gateway vars
         shell: bash
         run: |
           set -euo pipefail
 
-          resolve_dev_secret() {
-            local env_specific_name="$1"
-            local legacy_name="$2"
-            local env_specific_value="${!env_specific_name:-}"
-            local legacy_value="${!legacy_name:-}"
-            printf '%s' "${env_specific_value:-${legacy_value:-}}"
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_DEV_CLOUDFLARE_ACCOUNT_ID:-${LEGACY_CLOUDFLARE_ACCOUNT_ID:-}}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_DEV_CLOUDFLARE_API_TOKEN:-${LEGACY_CLOUDFLARE_API_TOKEN:-}}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_STAGING_CLOUDFLARE_API_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_PROD_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_PROD_CLOUDFLARE_API_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
           }
 
-          CLOUDFLARE_ACCOUNT_ID="$(
-            resolve_dev_secret SCAS_DEV_CLOUDFLARE_ACCOUNT_ID LEGACY_CLOUDFLARE_ACCOUNT_ID
-          )"
+          CLOUDFLARE_ACCOUNT_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID)"
+          CLOUDFLARE_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN)"
           export CLOUDFLARE_ACCOUNT_ID
+          export CLOUDFLARE_API_TOKEN
 
           if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "::error::Missing required secret: SCAS_DEV_CLOUDFLARE_ACCOUNT_ID"
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CLOUDFLARE_ACCOUNT_ID"
             exit 1
           fi
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CLOUDFLARE_API_TOKEN"
+            exit 1
+          fi
+          {
+            printf 'CLOUDFLARE_ACCOUNT_ID=%s\n' "${CLOUDFLARE_ACCOUNT_ID}"
+            printf 'CLOUDFLARE_API_TOKEN=%s\n' "${CLOUDFLARE_API_TOKEN}"
+          } >> "${GITHUB_ENV}"
+          case "${TARGET_ENVIRONMENT}" in
+            dev)
+              SCAS_CONTROL_API_URL="https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
+              ;;
+            staging)
+              SCAS_CONTROL_API_URL="https://scas-control-api-staging.still-butterfly-bbff.workers.dev"
+              ;;
+            prod)
+              SCAS_CONTROL_API_URL="https://scas-control-api-prod.still-butterfly-bbff.workers.dev"
+              ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              exit 1
+              ;;
+          esac
+          echo "SCAS_CONTROL_API_URL=${SCAS_CONTROL_API_URL}" >> "${GITHUB_ENV}"
           python - <<'PY'
           import os
           import re
@@ -305,7 +402,11 @@ jobs:
           config = Path("workers/control-api/wrangler.toml")
           text = config.read_text(encoding="utf-8")
           account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
-          gateway_id = os.environ.get("AI_GATEWAY_ID", "").strip() or "default"
+          target_environment = os.environ["TARGET_ENVIRONMENT"].strip()
+          gateway_id = (
+              os.environ.get("AI_GATEWAY_ID", "").strip()
+              or f"scas-ai-gateway-{target_environment}-run"
+          )
           text = re.sub(
               r'AI_GATEWAY_ACCOUNT_ID = "[^"]*"',
               f'AI_GATEWAY_ACCOUNT_ID = "{account_id}"',
@@ -319,13 +420,15 @@ jobs:
           config.write_text(text, encoding="utf-8")
           PY
 
-      - name: Deploy dev Worker
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Deploy Worker
         run: |
+          wrangler_env_args=()
+          if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then
+            wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")
+          fi
           npx wrangler deploy \
             --config workers/control-api/wrangler.toml \
+            "${wrangler_env_args[@]}" \
             --secrets-file "${SCAS_WORKER_SECRETS_FILE}"
 
       - name: Remove dev Worker secret file
@@ -338,9 +441,8 @@ jobs:
 
       - name: Run AI Gateway live smoke
         if: inputs.run_ai_gateway_live_smoke == true
-        env:
-          SCAS_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN || secrets.CONTROL_API_TOKEN }}
         run: |
+          export SCAS_CONTROL_API_TOKEN="${CONTROL_API_TOKEN}"
           python3 scripts/cloudflare/ai_gateway_live_smoke.py \
             --control-api-url "${SCAS_CONTROL_API_URL}"
 
