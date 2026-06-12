@@ -67,6 +67,13 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/reference/repository-roadmap.md`
 - `docs/reference/cloudflare/control-api.md`
 
+## Apps
+
+- `apps/streamlit_task_intake_ui/`: thin Streamlit Task Intake surface for
+  creating runtime-compatible task envelopes and local fixture-backed runtime
+  runs.
+- `apps/streamlit_business_ui/`: standalone executive dashboard prototype.
+
 ## Roadmap
 
 - `docs/roadmap/memory-architecture-backlog.md`
