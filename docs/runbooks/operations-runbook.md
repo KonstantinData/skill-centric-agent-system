@@ -37,6 +37,11 @@ The production release gate is defined in `docs/policies/production-readiness.md
 Do not mark the repository or any deployment as production-ready until that
 gate passes for the target environment.
 
+After a successful staging certification, bounded productive staging operation
+is governed by `docs/runbooks/first-productive-agent-operation.md`. That mode
+allows supervised work against certified staging infrastructure, but it is not a
+production launch and must not process production customer data.
+
 Required release evidence includes:
 
 - repository integrity checks,

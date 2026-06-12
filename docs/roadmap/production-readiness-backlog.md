@@ -51,5 +51,10 @@ The cross-phase execution order is tracked in
 
 - Current task lifecycle and assignment details are tracked in Notion.
 - Durable release criteria remain in repository policy files.
-- P5.10 initial certification-mode evidence is complete; future production
-  claims require fresh evidence under `docs/policies/production-readiness.md`.
+- P5.10 staging certification-mode evidence is complete for commit
+  `5bf301b8c0fdfe6d547c50890c72bbd6a0bf7648`; the certified result is
+  `staging-ready`, not `production-ready`.
+- First productive agent operation should start in the controlled staging mode
+  defined by `docs/runbooks/first-productive-agent-operation.md`.
+- Future `prod` claims require prod-specific resources, live evidence, and
+  certification under `docs/policies/production-readiness.md`.

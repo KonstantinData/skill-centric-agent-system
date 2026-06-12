@@ -120,19 +120,24 @@ The repository is past pure design work. It currently includes:
 
 ## Production Status
 
-This repository is intentionally `not-production-ready` for a full production
-launch.
+This repository remains `not-production-ready` for a full `prod` launch.
 
-That status is not hidden. The productive runtime core exists, but a production
-claim requires the release evidence gate in
-`docs/policies/production-readiness.md`, including staging/prod environment
-separation, broader production handler coverage, target-environment
-certification, operational telemetry, and security closure evidence.
+Staging has passed certification for the first bounded productive runtime core
+at commit `5bf301b8c0fdfe6d547c50890c72bbd6a0bf7648`. That means supervised
+staging operations may start under
+`docs/runbooks/first-productive-agent-operation.md`; it does not certify
+production traffic or production data handling.
+
+A `production-ready` claim still requires the release evidence gate in
+`docs/policies/production-readiness.md` against `prod`, including target
+environment certification, operational telemetry, security closure evidence,
+and an owner-approved release decision.
 
 Current production-readiness boundaries are tracked in:
 
 - `docs/policies/production-readiness.md`
 - `docs/roadmap/production-readiness-backlog.md`
+- `docs/runbooks/first-productive-agent-operation.md`
 - `docs/policies/environment-separation.md`
 - `docs/policies/infrastructure-boundary.md`
 - `docs/policies/threat-model.md`
@@ -161,6 +166,8 @@ surfaces are:
   smoke commands.
 - `docs/runbooks/operations-runbook.md`: migrations, live gates, retention
   cleanup, diagnostics, disable paths, and GitHub Actions operations.
+- `docs/runbooks/first-productive-agent-operation.md`: controlled staging
+  operation rules after staging certification and before production launch.
 - `docs/policies/environment-separation.md` and
   `docs/policies/infrastructure-boundary.md`: staging/prod separation and
   Cloudflare/Hetzner ownership boundaries.
@@ -218,8 +225,9 @@ live in:
 SCAS demonstrates the hard part of agent engineering: not calling tools, but
 controlling when tools may exist in the runtime at all.
 
-The current `not-production-ready` status is part of that demonstration. It
-shows that the project distinguishes a working core from a production system
-with environment separation, handler coverage, telemetry, security closure,
-release evidence, rollback paths, and certification against the target
-environment. That discipline is the point of the architecture.
+The current split between `staging-ready` and `not-production-ready` for `prod`
+is part of that demonstration. It shows that the project distinguishes a
+working certified staging core from a production system with production
+environment evidence, telemetry, security closure, rollback paths, and an
+owner-approved release decision. That discipline is the point of the
+architecture.
