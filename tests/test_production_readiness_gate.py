@@ -5,6 +5,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_READINESS_PATH = REPO_ROOT / "docs" / "policies" / "production-readiness.md"
 README_PATH = REPO_ROOT / "README.md"
+FIRST_PRODUCTIVE_OPERATION_PATH = (
+    REPO_ROOT / "docs" / "runbooks" / "first-productive-agent-operation.md"
+)
 
 
 def test_production_readiness_gate_exists() -> None:
@@ -52,4 +55,17 @@ def test_readme_links_production_readiness_gate() -> None:
 
     assert "docs/policies/production-readiness.md" in readme
     assert "not-production-ready" in readme
+    assert "docs/runbooks/first-productive-agent-operation.md" in readme
+
+
+def test_first_productive_operation_runbook_defines_staging_boundary() -> None:
+    runbook = FIRST_PRODUCTIVE_OPERATION_PATH.read_text(encoding="utf-8")
+
+    assert "staging" in runbook
+    assert "This baseline certifies staging only. It does not certify `prod`." in runbook
+    assert "SCAS_CONTROL_API_TOKEN" not in runbook
+    assert "SCAS_RUNTIME_DATABASE_URL" not in runbook
+    assert "production customer data" in runbook
+    assert "workflow_dispatch" in runbook
+    assert "live-runtime-handler-binding-evidence" in runbook
 
