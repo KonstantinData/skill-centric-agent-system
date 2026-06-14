@@ -11,6 +11,7 @@ from skill_centric_agent_system.control_plane import build_seed_records, generat
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULES_DIR = REPO_ROOT / "registry" / "modules"
+TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 MODULE_SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 DEV_SEED_SQL_PATH = REPO_ROOT / "examples" / "control-plane" / "dev-seed.sql"
 D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
@@ -32,6 +33,10 @@ def module_paths() -> list[Path]:
     return sorted(MODULES_DIR.rglob("module.json"))
 
 
+def tenant_paths() -> list[Path]:
+    return sorted(TENANTS_DIR.glob("*.json"))
+
+
 def test_seed_source_modules_match_module_schema() -> None:
     module_schema = load_json(MODULE_SCHEMA_PATH)
     validator = Draft202012Validator(module_schema)
@@ -41,7 +46,7 @@ def test_seed_source_modules_match_module_schema() -> None:
 
 
 def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
-    seed = build_seed_records(module_paths())
+    seed = build_seed_records(module_paths(), tenant_paths=tenant_paths())
     module_names = {module["name"] for module in seed.modules}
 
     assert module_names == {
@@ -71,6 +76,12 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.module_dependencies) == 38
     assert len(seed.policy_bindings) == 8
     assert len(seed.scope_bindings) == 4
+    assert len(seed.tenants) == 1
+    assert len(seed.tenant_memberships) == 1
+    assert len(seed.tenant_role_bundles) == 2
+    assert len(seed.tenant_data_sources) == 1
+    assert len(seed.tenant_role_capability_grants) == 2
+    assert len(seed.tenant_role_data_source_grants) == 1
 
 
 def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
@@ -97,13 +108,15 @@ def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
 
 
 def test_committed_dev_seed_sql_is_generated_from_module_contracts() -> None:
-    expected_sql = generate_seed_sql(build_seed_records(module_paths()))
+    expected_sql = generate_seed_sql(
+        build_seed_records(module_paths(), tenant_paths=tenant_paths())
+    )
 
     assert DEV_SEED_SQL_PATH.read_text(encoding="utf-8") == expected_sql
 
 
 def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
-    seed_sql = generate_seed_sql(build_seed_records(module_paths()))
+    seed_sql = generate_seed_sql(build_seed_records(module_paths(), tenant_paths=tenant_paths()))
 
     with create_d1_connection() as connection:
         connection.executescript(seed_sql)
@@ -122,6 +135,22 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
         ).fetchone()[0]
         scope_binding_count = connection.execute(
             "SELECT COUNT(*) FROM scope_bindings"
+        ).fetchone()[0]
+        tenant_count = connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0]
+        tenant_membership_count = connection.execute(
+            "SELECT COUNT(*) FROM tenant_memberships"
+        ).fetchone()[0]
+        tenant_role_count = connection.execute(
+            "SELECT COUNT(*) FROM tenant_role_bundles"
+        ).fetchone()[0]
+        tenant_data_source_count = connection.execute(
+            "SELECT COUNT(*) FROM tenant_data_sources"
+        ).fetchone()[0]
+        tenant_capability_grant_count = connection.execute(
+            "SELECT COUNT(*) FROM tenant_role_capability_grants"
+        ).fetchone()[0]
+        tenant_data_source_grant_count = connection.execute(
+            "SELECT COUNT(*) FROM tenant_role_data_source_grants"
         ).fetchone()[0]
         missing_current_versions = connection.execute(
             """
@@ -149,5 +178,11 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
     assert dependency_count == 38
     assert policy_binding_count == 8
     assert scope_binding_count == 4
+    assert tenant_count == 1
+    assert tenant_membership_count == 1
+    assert tenant_role_count == 2
+    assert tenant_data_source_count == 1
+    assert tenant_capability_grant_count == 2
+    assert tenant_data_source_grant_count == 1
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

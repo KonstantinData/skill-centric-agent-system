@@ -34,6 +34,75 @@ CAPABILITY_CLASS_BY_KIND = {
 }
 
 SEED_TABLE_COLUMNS = {
+    "tenants": (
+        "id",
+        "area_id",
+        "display_name",
+        "legal_name",
+        "status",
+        "default_locale",
+        "contact_email",
+        "contact_phone",
+        "contact_website",
+        "memory_area_brain_id",
+        "shared_promotion_allowed",
+        "knowledge_scope_id",
+        "policy_bundle_json",
+        "validators_json",
+        "created_at",
+        "updated_at",
+    ),
+    "tenant_hostnames": (
+        "id",
+        "tenant_id",
+        "hostname",
+        "purpose",
+        "expected_origin",
+        "cloudflare_proxy_expected",
+    ),
+    "tenant_data_sources": (
+        "id",
+        "tenant_id",
+        "source_type",
+        "display_name",
+        "access_modes_json",
+        "status",
+        "sensitivity",
+    ),
+    "tenant_role_bundles": (
+        "id",
+        "tenant_id",
+        "display_name",
+        "role_type",
+        "assignable_to_users",
+        "derived_skills_json",
+        "derived_workflows_json",
+        "derived_tools_json",
+        "derived_policies_json",
+        "derived_validators_json",
+    ),
+    "tenant_memberships": (
+        "id",
+        "tenant_id",
+        "principal_id",
+        "status",
+        "role_ids_json",
+        "created_at",
+        "updated_at",
+    ),
+    "tenant_role_capability_grants": (
+        "id",
+        "tenant_id",
+        "role_bundle_id",
+        "capability_id",
+    ),
+    "tenant_role_data_source_grants": (
+        "id",
+        "tenant_id",
+        "role_bundle_id",
+        "data_source_id",
+        "access_modes_json",
+    ),
     "modules": (
         "id",
         "name",
@@ -99,6 +168,13 @@ SEED_TABLE_COLUMNS = {
 
 @dataclass(frozen=True)
 class ControlPlaneSeedRecords:
+    tenants: tuple[dict[str, Any], ...]
+    tenant_hostnames: tuple[dict[str, Any], ...]
+    tenant_data_sources: tuple[dict[str, Any], ...]
+    tenant_role_bundles: tuple[dict[str, Any], ...]
+    tenant_memberships: tuple[dict[str, Any], ...]
+    tenant_role_capability_grants: tuple[dict[str, Any], ...]
+    tenant_role_data_source_grants: tuple[dict[str, Any], ...]
     modules: tuple[dict[str, Any], ...]
     module_versions: tuple[dict[str, Any], ...]
     module_selection_metadata: tuple[dict[str, Any], ...]
@@ -108,6 +184,13 @@ class ControlPlaneSeedRecords:
 
     def table_records(self) -> dict[str, tuple[dict[str, Any], ...]]:
         return {
+            "tenants": self.tenants,
+            "tenant_hostnames": self.tenant_hostnames,
+            "tenant_data_sources": self.tenant_data_sources,
+            "tenant_role_bundles": self.tenant_role_bundles,
+            "tenant_memberships": self.tenant_memberships,
+            "tenant_role_capability_grants": self.tenant_role_capability_grants,
+            "tenant_role_data_source_grants": self.tenant_role_data_source_grants,
             "modules": self.modules,
             "module_versions": self.module_versions,
             "module_selection_metadata": self.module_selection_metadata,
@@ -120,6 +203,7 @@ class ControlPlaneSeedRecords:
 def build_seed_records(
     module_paths: list[Path],
     *,
+    tenant_paths: list[Path] | None = None,
     created_at: str = DEFAULT_CREATED_AT,
     principal_kind: str = DEFAULT_PRINCIPAL_KIND,
     principal_id: str = DEFAULT_PRINCIPAL_ID,
@@ -214,7 +298,19 @@ def build_seed_records(
                 }
             )
 
+    tenant_records = _tenant_seed_records(
+        tenant_paths or [],
+        created_at=created_at,
+        default_principal_id=principal_id,
+    )
     return ControlPlaneSeedRecords(
+        tenants=tenant_records["tenants"],
+        tenant_hostnames=tenant_records["tenant_hostnames"],
+        tenant_data_sources=tenant_records["tenant_data_sources"],
+        tenant_role_bundles=tenant_records["tenant_role_bundles"],
+        tenant_memberships=tenant_records["tenant_memberships"],
+        tenant_role_capability_grants=tenant_records["tenant_role_capability_grants"],
+        tenant_role_data_source_grants=tenant_records["tenant_role_data_source_grants"],
         modules=tuple(sorted(modules, key=lambda item: item["id"])),
         module_versions=tuple(sorted(module_versions, key=lambda item: item["id"])),
         module_selection_metadata=tuple(sorted(metadata, key=lambda item: item["id"])),
@@ -222,6 +318,151 @@ def build_seed_records(
         policy_bindings=tuple(sorted(policy_bindings, key=lambda item: item["id"])),
         scope_bindings=tuple(sorted(scope_bindings, key=lambda item: item["id"])),
     )
+
+
+def _tenant_seed_records(
+    tenant_paths: list[Path],
+    *,
+    created_at: str,
+    default_principal_id: str,
+) -> dict[str, tuple[dict[str, Any], ...]]:
+    tenants: list[dict[str, Any]] = []
+    hostnames: list[dict[str, Any]] = []
+    data_sources: list[dict[str, Any]] = []
+    role_bundles: list[dict[str, Any]] = []
+    memberships: list[dict[str, Any]] = []
+    capability_grants: list[dict[str, Any]] = []
+    data_source_grants: list[dict[str, Any]] = []
+
+    for tenant_path in sorted(tenant_paths):
+        tenant = json.loads(tenant_path.read_text(encoding="utf-8"))
+        tenant_id = tenant["tenant_id"]
+        contact = tenant["contact_profile"]
+        legal = tenant["legal_profile"]
+        tenants.append(
+            {
+                "id": tenant_id,
+                "area_id": tenant["area_id"],
+                "display_name": tenant["display_name"],
+                "legal_name": legal["legal_name"],
+                "status": tenant["status"],
+                "default_locale": tenant["default_locale"],
+                "contact_email": contact["email"],
+                "contact_phone": contact["phone"],
+                "contact_website": contact["website"],
+                "memory_area_brain_id": tenant["memory"]["area_brain_id"],
+                "shared_promotion_allowed": int(tenant["memory"]["shared_promotion_allowed"]),
+                "knowledge_scope_id": tenant["knowledge"]["scope_id"],
+                "policy_bundle_json": _json_array(tenant["policy_bundle"]),
+                "validators_json": _json_array(tenant["validators"]),
+                "created_at": created_at,
+                "updated_at": created_at,
+            }
+        )
+
+        for hostname in tenant["hostnames"]:
+            hostnames.append(
+                {
+                    "id": _tenant_hostname_id(tenant_id, hostname["hostname"]),
+                    "tenant_id": tenant_id,
+                    "hostname": hostname["hostname"],
+                    "purpose": hostname["purpose"],
+                    "expected_origin": hostname["expected_origin"],
+                    "cloudflare_proxy_expected": int(hostname["cloudflare_proxy_expected"]),
+                }
+            )
+
+        for data_source in tenant["data_sources"]:
+            data_sources.append(
+                {
+                    "id": data_source["id"],
+                    "tenant_id": data_source["tenant_id"],
+                    "source_type": data_source["type"],
+                    "display_name": data_source["display_name"],
+                    "access_modes_json": _json_array(data_source["access_modes"]),
+                    "status": data_source["status"],
+                    "sensitivity": data_source["sensitivity"],
+                }
+            )
+
+        owner = tenant["admin_model"]["initial_owner"]
+        tenant_memberships: list[dict[str, Any]] = []
+        if owner is not None:
+            tenant_memberships.append(
+                {
+                    "id": _tenant_membership_id(tenant_id, owner["user_id"]),
+                    "tenant_id": tenant_id,
+                    "principal_id": owner["user_id"],
+                    "status": "active",
+                    "role_ids_json": _json_array([f"{tenant_id}-owner"]),
+                    "created_at": created_at,
+                    "updated_at": created_at,
+                }
+            )
+
+        if not tenant_memberships:
+            tenant_memberships.append(
+                {
+                    "id": _tenant_membership_id(tenant_id, default_principal_id),
+                    "tenant_id": tenant_id,
+                    "principal_id": default_principal_id,
+                    "status": "active",
+                    "role_ids_json": _json_array([tenant["role_bundles"][0]["id"]]),
+                    "created_at": created_at,
+                    "updated_at": created_at,
+                }
+            )
+        memberships.extend(tenant_memberships)
+
+        for role in tenant["role_bundles"]:
+            derived = role["derived_runtime_modules"]
+            role_bundles.append(
+                {
+                    "id": role["id"],
+                    "tenant_id": role["tenant_id"],
+                    "display_name": role["display_name"],
+                    "role_type": role["role_type"],
+                    "assignable_to_users": int(role["assignable_to_users"]),
+                    "derived_skills_json": _json_array(derived["skills"]),
+                    "derived_workflows_json": _json_array(derived["workflows"]),
+                    "derived_tools_json": _json_array(derived["tools"]),
+                    "derived_policies_json": _json_array(derived["policies"]),
+                    "derived_validators_json": _json_array(derived["validators"]),
+                }
+            )
+            for capability in role["capability_grants"]:
+                capability_grants.append(
+                    {
+                        "id": _tenant_capability_grant_id(role["id"], capability),
+                        "tenant_id": role["tenant_id"],
+                        "role_bundle_id": role["id"],
+                        "capability_id": capability,
+                    }
+                )
+            for grant in role["data_source_grants"]:
+                data_source_grants.append(
+                    {
+                        "id": _tenant_data_source_grant_id(role["id"], grant["data_source_id"]),
+                        "tenant_id": role["tenant_id"],
+                        "role_bundle_id": role["id"],
+                        "data_source_id": grant["data_source_id"],
+                        "access_modes_json": _json_array(grant["access_modes"]),
+                    }
+                )
+
+    return {
+        "tenants": tuple(sorted(tenants, key=lambda item: item["id"])),
+        "tenant_hostnames": tuple(sorted(hostnames, key=lambda item: item["id"])),
+        "tenant_data_sources": tuple(sorted(data_sources, key=lambda item: item["id"])),
+        "tenant_role_bundles": tuple(sorted(role_bundles, key=lambda item: item["id"])),
+        "tenant_memberships": tuple(sorted(memberships, key=lambda item: item["id"])),
+        "tenant_role_capability_grants": tuple(
+            sorted(capability_grants, key=lambda item: item["id"])
+        ),
+        "tenant_role_data_source_grants": tuple(
+            sorted(data_source_grants, key=lambda item: item["id"])
+        ),
+    }
 
 
 def generate_seed_sql(records: ControlPlaneSeedRecords) -> str:
@@ -468,3 +709,26 @@ def _policy_binding_id(policy_name: str, module_name: str) -> str:
 
 def _scope_binding_id(scope_name: str, principal_id: str) -> str:
     return f"sb-{principal_id}-{scope_name}"
+
+
+def _tenant_hostname_id(tenant_id: str, hostname: str) -> str:
+    return f"th-{tenant_id}-{_slugify(hostname)}"
+
+
+def _tenant_membership_id(tenant_id: str, principal_id: str) -> str:
+    return f"tm-{tenant_id}-{principal_id}"
+
+
+def _tenant_capability_grant_id(role_id: str, capability_id: str) -> str:
+    return f"trcg-{role_id}-{capability_id}"
+
+
+def _tenant_data_source_grant_id(role_id: str, data_source_id: str) -> str:
+    return f"trdsg-{role_id}-{data_source_id}"
+
+
+def _slugify(value: str) -> str:
+    slug = "".join(character if character.isalnum() else "-" for character in value.casefold())
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-")

@@ -238,6 +238,11 @@ Generate the dev registry seed from the module contracts:
 python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
 ```
 
+By default, the generator also reads neutral tenant fixtures from
+`examples/tenants/*.json`. Use `--tenants-dir` only when intentionally pointing
+at another non-secret fixture directory. Customer-specific onboarding data must
+not be copied into reusable examples.
+
 Seed the local D1 database:
 
 ```bash
@@ -361,13 +366,30 @@ python scripts/cloudflare/ai_gateway_live_smoke.py \
 ## Seed Scope
 
 `examples/control-plane/dev-seed.sql` is generated from
-`registry/modules/**/module.json` and is the operational dev registry seed. Referenced
-tools, scopes, policies, and validators are emitted as generated stub modules
-until they have first-class module metadata files.
+`registry/modules/**/module.json` and neutral tenant fixtures in
+`examples/tenants/*.json`. It is the operational dev registry and tenant
+control-plane seed. Referenced tools, scopes, policies, and validators are
+emitted as generated stub modules until they have first-class module metadata
+files.
+
+Tenant seed records populate the D1 tenant projection tables:
+
+- `tenants`
+- `tenant_hostnames`
+- `tenant_memberships`
+- `tenant_role_bundles`
+- `tenant_data_sources`
+- `tenant_role_capability_grants`
+- `tenant_role_data_source_grants`
+
+Those records model the production authority chain. Users receive tenant roles
+only; capabilities, runtime modules, and data-source grants are derived from
+tenant role bundles.
 
 `examples/control-plane/cloudflare-control-plane.json` is a broader storage
 contract fixture. It exercises knowledge and memory record shapes in addition
-to registry records and should not be treated as the exact deployed dev seed.
+to registry and tenant records and should not be treated as the exact deployed
+dev seed.
 
 ## CI And Deployment
 

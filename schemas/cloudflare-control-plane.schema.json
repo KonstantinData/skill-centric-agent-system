@@ -31,6 +31,13 @@
         "memory_records",
         "scope_bindings",
         "policy_bindings",
+        "tenants",
+        "tenant_hostnames",
+        "tenant_memberships",
+        "tenant_role_bundles",
+        "tenant_data_sources",
+        "tenant_role_capability_grants",
+        "tenant_role_data_source_grants",
         "ingestion_jobs",
         "audit_events"
       ],
@@ -93,6 +100,48 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/policyBinding"
+          }
+        },
+        "tenants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenant"
+          }
+        },
+        "tenant_hostnames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantHostname"
+          }
+        },
+        "tenant_memberships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantMembership"
+          }
+        },
+        "tenant_role_bundles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantRoleBundle"
+          }
+        },
+        "tenant_data_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantDataSource"
+          }
+        },
+        "tenant_role_capability_grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantRoleCapabilityGrant"
+          }
+        },
+        "tenant_role_data_source_grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tenantRoleDataSourceGrant"
           }
         },
         "ingestion_jobs": {
@@ -667,6 +716,344 @@
         "allow",
         "deny"
       ]
+    },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "area_id",
+        "display_name",
+        "legal_name",
+        "status",
+        "default_locale",
+        "contact_email",
+        "contact_phone",
+        "contact_website",
+        "memory_area_brain_id",
+        "shared_promotion_allowed",
+        "knowledge_scope_id",
+        "policy_bundle",
+        "validators",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "area_id": {
+          "$ref": "#/$defs/id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legal_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "setup",
+            "active",
+            "disabled",
+            "archived"
+          ]
+        },
+        "default_locale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contact_email": {
+          "type": "string",
+          "format": "email"
+        },
+        "contact_phone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "contact_website": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "memory_area_brain_id": {
+          "$ref": "#/$defs/id"
+        },
+        "shared_promotion_allowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "knowledge_scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_bundle": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "validators": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "tenantHostname": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "hostname",
+        "purpose",
+        "expected_origin",
+        "cloudflare_proxy_expected"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "hostname": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "primary-ui",
+            "api",
+            "admin"
+          ]
+        },
+        "expected_origin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "cloudflare_proxy_expected": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tenantMembership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "principal_id",
+        "status",
+        "role_ids",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "invited",
+            "active",
+            "disabled"
+          ]
+        },
+        "role_ids": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "tenantRoleBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "display_name",
+        "role_type",
+        "assignable_to_users",
+        "derived_skills",
+        "derived_workflows",
+        "derived_tools",
+        "derived_policies",
+        "derived_validators"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_type": {
+          "type": "string",
+          "enum": [
+            "system",
+            "tenant-custom"
+          ]
+        },
+        "assignable_to_users": {
+          "type": "boolean"
+        },
+        "derived_skills": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "derived_workflows": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "derived_tools": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "derived_policies": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "derived_validators": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "tenantDataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "source_type",
+        "display_name",
+        "access_modes",
+        "status",
+        "sensitivity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "github_repository",
+            "notion_page_tree",
+            "google_drive_folder",
+            "sharepoint_site",
+            "hubspot_account",
+            "website",
+            "database",
+            "other"
+          ]
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "access_modes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "active",
+            "disabled",
+            "archived"
+          ]
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        }
+      }
+    },
+    "tenantRoleCapabilityGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "role_bundle_id",
+        "capability_id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "role_bundle_id": {
+          "$ref": "#/$defs/id"
+        },
+        "capability_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "tenantRoleDataSourceGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "role_bundle_id",
+        "data_source_id",
+        "access_modes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "role_bundle_id": {
+          "$ref": "#/$defs/id"
+        },
+        "data_source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "access_modes": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
     },
     "ingestionJob": {
       "type": "object",
