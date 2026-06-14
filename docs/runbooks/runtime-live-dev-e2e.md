@@ -22,6 +22,15 @@ It is intentionally manual because it requires live Cloudflare and Hetzner
 credentials and should not run on every pull request.
 The generic task suite covers `code-review`, `research`, `task-execution`, and
 `general-task` without turning those task classes into separate agents.
+Tenant-scoped backend E2E coverage is validated in CI with neutral demo-tenant
+fixtures before live tenant infrastructure is used. That coverage proves:
+
+- task auth produces `tenant_context`,
+- the runtime entrypoint requests composition context through the Control API
+  client,
+- the Composer seals `tenant_authority` into the profile,
+- the Runtime Profile Enforcer and tenant validators run before execution,
+- invalid tenant authority, missing membership, and tampered scopes fail closed.
 
 ## Required Environment
 

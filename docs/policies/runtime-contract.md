@@ -482,6 +482,21 @@ Each validator checks the `runtime_output` object against the task class chosen
 by the active profile. The machine-readable result schema is
 `schemas/runtime-output.schema.json`.
 
+Tenant-scoped runtime profiles also select tenant isolation validators. These
+validators are executable Runtime Validator Framework registrations:
+
+- `tenant-profile-validator` checks tenant identity, area, membership,
+  principal, and direct-user-grant invariants,
+- `no-cross-tenant-scope-validator` checks selected knowledge, data, and memory
+  scopes against the sealed `tenant_authority`,
+- `no-cross-area-scope-validator` checks that tenant area identity remains
+  consistent between `tenant_context` and `tenant_authority`,
+- `knowledge-scope-validator` checks selected tenant knowledge scopes against
+  the sealed authority snapshot.
+
+Unknown tenant validators fail closed the same way as any other unknown
+selected validator.
+
 ## Recomposition
 
 Recomposition is a controlled request to the Composer. It is allowed only when:
