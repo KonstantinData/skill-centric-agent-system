@@ -88,7 +88,11 @@ def assert_lockfile_current(
 
 def _hash_module_dir(module_dir: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(item for item in module_dir.rglob("*") if item.is_file()):
+    files = sorted(
+        (item for item in module_dir.rglob("*") if item.is_file()),
+        key=lambda item: item.relative_to(module_dir).as_posix(),
+    )
+    for path in files:
         relative = path.relative_to(module_dir).as_posix()
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")

@@ -145,6 +145,46 @@ def test_registry_lockfile_hash_normalizes_text_line_endings(tmp_path: Path) -> 
     assert lf["modules"][0]["sha256"] == crlf["modules"][0]["sha256"]
 
 
+def test_registry_lockfile_hash_uses_posix_relative_path_order(tmp_path: Path) -> None:
+    module_dir = tmp_path / "modules" / "skills" / "sample"
+    module_dir.mkdir(parents=True)
+    module = {
+        "name": "sample",
+        "version": "0.1.0",
+        "kind": "skill",
+        "status": "active",
+        "schema_version": "0.1.0",
+        "environments": ["dev"],
+    }
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+    (module_dir / "SKILL.md").write_text(
+        "---\nname: sample\ndescription: test\n---\n",
+        encoding="utf-8",
+    )
+
+    payload = build_lockfile(
+        registry_root=tmp_path / "modules",
+        generated_at="2026-06-13T00:00:00+00:00",
+    )
+    digest = payload["modules"][0]["sha256"]
+
+    (module_dir / "SKILL.md").unlink()
+    (module_dir / "module.json").unlink()
+    (module_dir / "SKILL.md").write_text(
+        "---\nname: sample\ndescription: test\n---\n",
+        encoding="utf-8",
+    )
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+
+    assert (
+        build_lockfile(
+            registry_root=tmp_path / "modules",
+            generated_at="2026-06-13T00:00:00+00:00",
+        )["modules"][0]["sha256"]
+        == digest
+    )
+
+
 def test_registry_lockfile_check_fails_on_stale_file(tmp_path: Path) -> None:
     lockfile = tmp_path / "lockfile.json"
     payload = build_lockfile(
