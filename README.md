@@ -204,6 +204,19 @@ scas-runtime-start `
   --run-minimal-loop
 ```
 
+Start the first thin task-intake UI:
+
+```powershell
+python -m pip install -e ".[ui]"
+streamlit run apps\streamlit_task_intake_ui\app.py
+```
+
+The Streamlit intake UI captures a task request, writes a runtime-compatible
+task envelope to `.scas-runtime/intake/`, and can start a local fixture-backed
+runtime run. It does not select skills, tools, scopes, policies, validators, or
+runtime profiles directly; those remain controlled by the Analyzer, Composer,
+registries, policies, and validators.
+
 Full validation, Worker checks, security/governance gates, live runtime gates,
 retention cleanup, AI Gateway smoke tests, and production certification commands
 live in:

@@ -70,6 +70,26 @@ Output:
 The command must fail before execution when no Control Plane client or explicit
 composition context response is available.
 
+## Task Intake UI
+
+The first Streamlit task-intake surface lives in
+`apps/streamlit_task_intake_ui/`.
+
+Run it locally with:
+
+```powershell
+python -m pip install -e ".[ui]"
+streamlit run apps\streamlit_task_intake_ui\app.py
+```
+
+The UI creates runtime-compatible task envelopes under `.scas-runtime/intake/`
+and can start a local fixture-backed runtime run through the same CLI semantics
+defined above. It is not a workflow router and must not directly select skills,
+tools, data scopes, memory scopes, policies, validators, or runtime profiles.
+Those decisions remain controlled by task analysis, composition context,
+registry scoring, policy filtering, graph validation, and immutable runtime
+profile validation.
+
 When the minimal loop is enabled, the runtime dispatches a deterministic
 strategy from `profile.task_type`. The supported first-slice strategies are
 `code-review`, `research`, `task-execution`, and `general-task`. The response
