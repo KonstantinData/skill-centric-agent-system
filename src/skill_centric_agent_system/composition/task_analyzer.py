@@ -66,7 +66,7 @@ class AnalyzedTask:
         generation_mode: Literal["initial", "recomposition"] = "initial",
         parent_profile_id: str | None = None,
     ) -> dict[str, Any]:
-        return {
+        request: dict[str, Any] = {
             "contract_version": COMPOSITION_CONTEXT_CONTRACT_VERSION,
             "environment": environment,
             "principal": {
@@ -94,6 +94,14 @@ class AnalyzedTask:
                 },
             },
         }
+        if self.auth_claims.tenant_id != "global":
+            request["tenant_context"] = {
+                "tenant_id": self.auth_claims.tenant_id,
+                "area_id": self.auth_claims.area_id,
+                "hostname": self.auth_claims.tenant_hostname,
+                "membership_id": self.auth_claims.membership_id,
+            }
+        return request
 
 
 class TaskAnalyzer:

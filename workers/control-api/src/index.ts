@@ -54,6 +54,12 @@ type CompositionRequest = {
     kind: PrincipalKind;
     id: string;
   };
+  tenant_context?: {
+    tenant_id: string;
+    area_id: string;
+    hostname: string | null;
+    membership_id: string | null;
+  };
   requested_profile_generation: {
     mode: "initial" | "recomposition";
     parent_profile_id: string | null;
@@ -118,6 +124,47 @@ type CompositionContextResponse = {
   validation_requirements: ModuleReference[];
   policy_decisions: PolicyDecision[];
   graph_validation: GraphValidation;
+  tenant_authority?: TenantAuthority;
+};
+
+type TenantAuthority = {
+  tenant_id: string;
+  area_id: string;
+  status: string;
+  direct_user_grants_allowed: false;
+  membership: {
+    id: string;
+    tenant_id: string;
+    principal_id: string;
+    status: string;
+    role_ids: string[];
+  };
+  role_bundles: TenantAuthorityRoleBundle[];
+  data_sources: {
+    id: string;
+    tenant_id: string;
+    status: string;
+  }[];
+  allowed_knowledge_scopes: string[];
+  allowed_data_scopes: string[];
+  allowed_memory_scopes: string[];
+};
+
+type TenantAuthorityRoleBundle = {
+  id: string;
+  tenant_id: string;
+  capability_grants: string[];
+  data_source_grants: {
+    data_source_id: string;
+    access_modes: string[];
+  }[];
+  derived_runtime_modules: {
+    skills: string[];
+    workflows: string[];
+    tools: string[];
+    policies: string[];
+    validators: string[];
+  };
 };
 
 type KnowledgeIngestRequest = {
@@ -322,6 +369,47 @@ type ScopeBinding = {
   scopeKind: ModuleKind;
   policyId: string;
   effect: "allow" | "deny";
+};
+
+type TenantRow = {
+  id: string;
+  area_id: string;
+  status: string;
+};
+
+type TenantMembershipRow = {
+  id: string;
+  tenant_id: string;
+  principal_id: string;
+  status: string;
+  role_ids_json: string;
+};
+
+type TenantRoleBundleRow = {
+  id: string;
+  tenant_id: string;
+  derived_skills_json: string;
+  derived_workflows_json: string;
+  derived_tools_json: string;
+  derived_policies_json: string;
+  derived_validators_json: string;
+};
+
+type TenantDataSourceRow = {
+  id: string;
+  tenant_id: string;
+  status: string;
+};
+
+type TenantRoleCapabilityGrantRow = {
+  role_bundle_id: string;
+  capability_id: string;
+};
+
+type TenantRoleDataSourceGrantRow = {
+  role_bundle_id: string;
+  data_source_id: string;
+  access_modes_json: string;
 };
 
 type ScoredModule = {
@@ -538,6 +626,26 @@ function validateCompositionRequest(body: unknown): string | null {
 
   if (!isId(body.principal.id)) {
     return "principal.id must be a valid id.";
+  }
+
+  if (hasProperty(body, "tenant_context")) {
+    if (!isObject(body.tenant_context)) {
+      return "tenant_context must be a JSON object.";
+    }
+    if (!isId(body.tenant_context.tenant_id)) {
+      return "tenant_context.tenant_id must be a valid id.";
+    }
+    if (!isId(body.tenant_context.area_id)) {
+      return "tenant_context.area_id must be a valid id.";
+    }
+    const hostname = body.tenant_context.hostname;
+    if (hostname !== null && hostname !== undefined && typeof hostname !== "string") {
+      return "tenant_context.hostname must be null or a string.";
+    }
+    const membershipId = body.tenant_context.membership_id;
+    if (membershipId !== null && membershipId !== undefined && !isId(membershipId)) {
+      return "tenant_context.membership_id must be null or a valid id.";
+    }
   }
 
   if (!isObject(body.requested_profile_generation)) {
@@ -1082,6 +1190,271 @@ async function loadScopeBindings(
   });
 }
 
+async function loadTenantAuthority(
+  env: Env,
+  request: CompositionRequest,
+  scopeBindings: ScopeBinding[],
+  modulesById: Map<string, RegistryModule>,
+): Promise<TenantAuthority | null> {
+  const tenantContext = request.tenant_context;
+  if (
+    tenantContext === undefined ||
+    tenantContext.tenant_id === "global" ||
+    tenantContext.area_id === "global"
+  ) {
+    return null;
+  }
+  if (tenantContext.membership_id === null) {
+    throw new Error("tenant_membership_required");
+  }
+
+  const tenant = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id, area_id, status
+    FROM tenants
+    WHERE id = ?
+      AND area_id = ?
+    `,
+  )
+    .bind(tenantContext.tenant_id, tenantContext.area_id)
+    .first<TenantRow>();
+  if (tenant === null) {
+    throw new Error("tenant_not_found");
+  }
+
+  const membership = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id, tenant_id, principal_id, status, role_ids_json
+    FROM tenant_memberships
+    WHERE id = ?
+      AND tenant_id = ?
+      AND principal_id = ?
+    `,
+  )
+    .bind(tenantContext.membership_id, tenantContext.tenant_id, request.principal.id)
+    .first<TenantMembershipRow>();
+  if (membership === null) {
+    throw new Error("tenant_membership_not_found");
+  }
+
+  const roleIds = parseStringArray(membership.role_ids_json, "tenant_membership.role_ids");
+  if (roleIds.length === 0) {
+    throw new Error("tenant_membership_roles_required");
+  }
+
+  const roleRows = await selectTenantRoleBundles(env, tenantContext.tenant_id, roleIds);
+  if (roleRows.length !== roleIds.length) {
+    throw new Error("tenant_role_not_found");
+  }
+  const roleIdSet = new Set(roleIds);
+
+  const [dataSourceRows, capabilityGrantRows, dataSourceGrantRows] = await Promise.all([
+    selectTenantDataSources(env, tenantContext.tenant_id),
+    selectTenantRoleCapabilityGrants(env, tenantContext.tenant_id, roleIds),
+    selectTenantRoleDataSourceGrants(env, tenantContext.tenant_id, roleIds),
+  ]);
+
+  const capabilityGrantsByRole = groupCapabilityGrantsByRole(capabilityGrantRows);
+  const dataSourceGrantsByRole = groupDataSourceGrantsByRole(dataSourceGrantRows);
+
+  const roleBundles = roleRows.map((role): TenantAuthorityRoleBundle => {
+    if (!roleIdSet.has(role.id)) {
+      throw new Error("tenant_role_not_requested");
+    }
+    return {
+      id: role.id,
+      tenant_id: role.tenant_id,
+      capability_grants: capabilityGrantsByRole.get(role.id) ?? [],
+      data_source_grants: dataSourceGrantsByRole.get(role.id) ?? [],
+      derived_runtime_modules: {
+        skills: parseStringArray(role.derived_skills_json, "tenant_role_bundles.derived_skills"),
+        workflows: parseStringArray(
+          role.derived_workflows_json,
+          "tenant_role_bundles.derived_workflows",
+        ),
+        tools: parseStringArray(role.derived_tools_json, "tenant_role_bundles.derived_tools"),
+        policies: parseStringArray(
+          role.derived_policies_json,
+          "tenant_role_bundles.derived_policies",
+        ),
+        validators: parseStringArray(
+          role.derived_validators_json,
+          "tenant_role_bundles.derived_validators",
+        ),
+      },
+    };
+  });
+
+  const allowedScopeNames = allowedScopeNamesByKind(scopeBindings, modulesById);
+  return {
+    tenant_id: tenant.id,
+    area_id: tenant.area_id,
+    status: tenant.status,
+    direct_user_grants_allowed: false,
+    membership: {
+      id: membership.id,
+      tenant_id: membership.tenant_id,
+      principal_id: membership.principal_id,
+      status: membership.status,
+      role_ids: roleIds,
+    },
+    role_bundles: roleBundles,
+    data_sources: dataSourceRows.map((source) => ({
+      id: source.id,
+      tenant_id: source.tenant_id,
+      status: source.status,
+    })),
+    allowed_knowledge_scopes: allowedScopeNames.knowledge_scope,
+    allowed_data_scopes: allowedScopeNames.data_scope,
+    allowed_memory_scopes: allowedScopeNames.memory_scope,
+  };
+}
+
+async function selectTenantRoleBundles(
+  env: Env,
+  tenantId: string,
+  roleIds: string[],
+): Promise<TenantRoleBundleRow[]> {
+  const placeholders = roleIds.map(() => "?").join(", ");
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT
+      id,
+      tenant_id,
+      derived_skills_json,
+      derived_workflows_json,
+      derived_tools_json,
+      derived_policies_json,
+      derived_validators_json
+    FROM tenant_role_bundles
+    WHERE tenant_id = ?
+      AND id IN (${placeholders})
+    ORDER BY id ASC
+    `,
+  )
+    .bind(tenantId, ...roleIds)
+    .all<TenantRoleBundleRow>();
+  return result.results ?? [];
+}
+
+async function selectTenantDataSources(
+  env: Env,
+  tenantId: string,
+): Promise<TenantDataSourceRow[]> {
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id, tenant_id, status
+    FROM tenant_data_sources
+    WHERE tenant_id = ?
+    ORDER BY id ASC
+    `,
+  )
+    .bind(tenantId)
+    .all<TenantDataSourceRow>();
+  return result.results ?? [];
+}
+
+async function selectTenantRoleCapabilityGrants(
+  env: Env,
+  tenantId: string,
+  roleIds: string[],
+): Promise<TenantRoleCapabilityGrantRow[]> {
+  const placeholders = roleIds.map(() => "?").join(", ");
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT role_bundle_id, capability_id
+    FROM tenant_role_capability_grants
+    WHERE tenant_id = ?
+      AND role_bundle_id IN (${placeholders})
+    ORDER BY role_bundle_id ASC, capability_id ASC
+    `,
+  )
+    .bind(tenantId, ...roleIds)
+    .all<TenantRoleCapabilityGrantRow>();
+  return result.results ?? [];
+}
+
+async function selectTenantRoleDataSourceGrants(
+  env: Env,
+  tenantId: string,
+  roleIds: string[],
+): Promise<TenantRoleDataSourceGrantRow[]> {
+  const placeholders = roleIds.map(() => "?").join(", ");
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT role_bundle_id, data_source_id, access_modes_json
+    FROM tenant_role_data_source_grants
+    WHERE tenant_id = ?
+      AND role_bundle_id IN (${placeholders})
+    ORDER BY role_bundle_id ASC, data_source_id ASC
+    `,
+  )
+    .bind(tenantId, ...roleIds)
+    .all<TenantRoleDataSourceGrantRow>();
+  return result.results ?? [];
+}
+
+function groupCapabilityGrantsByRole(
+  rows: TenantRoleCapabilityGrantRow[],
+): Map<string, string[]> {
+  const grouped = new Map<string, string[]>();
+  for (const row of rows) {
+    const values = grouped.get(row.role_bundle_id) ?? [];
+    values.push(row.capability_id);
+    grouped.set(row.role_bundle_id, values);
+  }
+  return grouped;
+}
+
+function groupDataSourceGrantsByRole(
+  rows: TenantRoleDataSourceGrantRow[],
+): Map<string, TenantAuthorityRoleBundle["data_source_grants"]> {
+  const grouped = new Map<string, TenantAuthorityRoleBundle["data_source_grants"]>();
+  for (const row of rows) {
+    const values = grouped.get(row.role_bundle_id) ?? [];
+    values.push({
+      data_source_id: row.data_source_id,
+      access_modes: parseStringArray(
+        row.access_modes_json,
+        "tenant_role_data_source_grants.access_modes",
+      ),
+    });
+    grouped.set(row.role_bundle_id, values);
+  }
+  return grouped;
+}
+
+function allowedScopeNamesByKind(
+  scopeBindings: ScopeBinding[],
+  modulesById: Map<string, RegistryModule>,
+): Record<"knowledge_scope" | "data_scope" | "memory_scope", string[]> {
+  const allowed: Record<"knowledge_scope" | "data_scope" | "memory_scope", Set<string>> = {
+    knowledge_scope: new Set(),
+    data_scope: new Set(),
+    memory_scope: new Set(),
+  };
+  for (const binding of scopeBindings) {
+    if (binding.effect !== "allow" || !SCOPE_KINDS.has(binding.scopeKind)) {
+      continue;
+    }
+    const module = modulesById.get(binding.scopeId);
+    if (
+      module === undefined ||
+      (module.kind !== "knowledge_scope" &&
+        module.kind !== "data_scope" &&
+        module.kind !== "memory_scope")
+    ) {
+      continue;
+    }
+    allowed[module.kind].add(module.name);
+  }
+  return {
+    knowledge_scope: Array.from(allowed.knowledge_scope).sort(),
+    data_scope: Array.from(allowed.data_scope).sort(),
+    memory_scope: Array.from(allowed.memory_scope).sort(),
+  };
+}
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -1490,8 +1863,18 @@ async function compositionContextResponse(
     dependenciesByVersion,
     scopeBindings,
   );
+  let tenantAuthority: TenantAuthority | undefined;
+  let tenantAuthorityValid = true;
+  try {
+    tenantAuthority =
+      (await loadTenantAuthority(env, request, scopeBindings, modulesById)) ?? undefined;
+  } catch {
+    tenantAuthorityValid = false;
+  }
   const compositionStatus =
-    candidateScores.length === 0 || allowedCandidates.length === 0 ? "denied" : "ready";
+    candidateScores.length === 0 || allowedCandidates.length === 0 || !tenantAuthorityValid
+      ? "denied"
+      : "ready";
 
   return {
     contract_version: CONTRACT_VERSION,
@@ -1507,6 +1890,7 @@ async function compositionContextResponse(
     validation_requirements: validationRequirements,
     policy_decisions: policyDecisions,
     graph_validation: graphValidation,
+    ...(tenantAuthority === undefined ? {} : { tenant_authority: tenantAuthority }),
   };
 }
 

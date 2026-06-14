@@ -87,6 +87,36 @@ def test_task_analyzer_emits_control_plane_request_contract() -> None:
     assert analyzed.missing_information == ()
 
 
+def test_task_analyzer_emits_tenant_context_for_tenant_scoped_request() -> None:
+    task = deepcopy(load_json(TASK_EXAMPLE_PATH))
+    task["context"]["auth"] = {
+        "principal_id": "tenant-user",
+        "tenant_id": "demo-tenant",
+        "area_id": "demo-tenant",
+        "tenant_hostname": "demo-tenant.example.invalid",
+        "membership_id": "demo-tenant-membership-user",
+        "roles": ["demo-tenant-reviewer"],
+        "control_plane_principal_kind": "user",
+        "control_plane_principal_id": "tenant-user",
+    }
+    schema = load_json(COMPOSITION_CONTEXT_SCHEMA_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    request = analyzed.to_composition_context_request()
+
+    Draft202012Validator(schema_ref(schema, "#/$defs/request")).validate(request)
+    assert request["principal"] == {
+        "kind": "user",
+        "id": "tenant-user",
+    }
+    assert request["tenant_context"] == {
+        "tenant_id": "demo-tenant",
+        "area_id": "demo-tenant",
+        "hostname": "demo-tenant.example.invalid",
+        "membership_id": "demo-tenant-membership-user",
+    }
+
+
 def test_task_analyzer_matches_task_neutral_evaluation_cases() -> None:
     cases = json.loads(TASK_ANALYZER_EVALUATIONS_PATH.read_text(encoding="utf-8"))
     analyzer = TaskAnalyzer()

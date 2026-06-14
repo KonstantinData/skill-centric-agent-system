@@ -25,6 +25,13 @@ The Composer fails closed when this authority snapshot is missing or does not
 derive the selected profile modules and data-source grants from the user's
 tenant roles.
 
+Tenant-scoped composition requests include `tenant_context` with tenant ID,
+area ID, hostname, and membership ID. The Worker uses that context plus the
+authenticated principal to read D1 `tenants`, `tenant_memberships`,
+`tenant_role_bundles`, `tenant_data_sources`, and tenant grant tables. Missing
+or mismatched tenant authority returns `composition_status: "denied"` and does
+not emit a partial authority snapshot.
+
 D1 remains authoritative for registry and policy-sensitive reads. KV is used
 only for the optional `registry:version` value returned in the response.
 
