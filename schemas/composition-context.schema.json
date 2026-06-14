@@ -220,6 +220,192 @@
         }
       }
     },
+    "tenantAuthority": {
+      "type": "object",
+      "description": "Tenant-local authority snapshot used by the Composer to fail closed before emitting a runtime profile.",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "area_id",
+        "status",
+        "direct_user_grants_allowed",
+        "membership",
+        "role_bundles",
+        "data_sources",
+        "allowed_knowledge_scopes",
+        "allowed_data_scopes",
+        "allowed_memory_scopes"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "area_id": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "setup",
+            "active",
+            "disabled",
+            "archived"
+          ]
+        },
+        "direct_user_grants_allowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "membership": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "tenant_id",
+            "principal_id",
+            "status",
+            "role_ids"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "tenant_id": {
+              "$ref": "#/$defs/id"
+            },
+            "principal_id": {
+              "$ref": "#/$defs/id"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "invited",
+                "active",
+                "disabled"
+              ]
+            },
+            "role_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        "role_bundles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "tenant_id",
+              "capability_grants",
+              "data_source_grants",
+              "derived_runtime_modules"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "tenant_id": {
+                "$ref": "#/$defs/id"
+              },
+              "capability_grants": {
+                "$ref": "#/$defs/idArray"
+              },
+              "data_source_grants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data_source_id",
+                    "access_modes"
+                  ],
+                  "properties": {
+                    "data_source_id": {
+                      "$ref": "#/$defs/id"
+                    },
+                    "access_modes": {
+                      "$ref": "#/$defs/idArray"
+                    }
+                  }
+                }
+              },
+              "derived_runtime_modules": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "skills",
+                  "workflows",
+                  "tools",
+                  "policies",
+                  "validators"
+                ],
+                "properties": {
+                  "skills": {
+                    "$ref": "#/$defs/idArray"
+                  },
+                  "workflows": {
+                    "$ref": "#/$defs/idArray"
+                  },
+                  "tools": {
+                    "$ref": "#/$defs/idArray"
+                  },
+                  "policies": {
+                    "$ref": "#/$defs/idArray"
+                  },
+                  "validators": {
+                    "$ref": "#/$defs/idArray"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "data_sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "tenant_id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "tenant_id": {
+                "$ref": "#/$defs/id"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "planned",
+                  "active",
+                  "disabled",
+                  "archived"
+                ]
+              }
+            }
+          }
+        },
+        "allowed_knowledge_scopes": {
+          "$ref": "#/$defs/idArray"
+        },
+        "allowed_data_scopes": {
+          "$ref": "#/$defs/idArray"
+        },
+        "allowed_memory_scopes": {
+          "$ref": "#/$defs/idArray"
+        }
+      }
+    },
     "principal": {
       "type": "object",
       "additionalProperties": false,
@@ -306,6 +492,13 @@
           "type": "boolean"
         }
       }
+    },
+    "idArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
     },
     "task": {
       "type": "object",
@@ -464,6 +657,9 @@
         },
         "graph_validation": {
           "$ref": "#/$defs/graphValidation"
+        },
+        "tenant_authority": {
+          "$ref": "#/$defs/tenantAuthority"
         }
       }
     }

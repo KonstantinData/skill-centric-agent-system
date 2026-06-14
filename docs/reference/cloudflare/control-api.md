@@ -18,6 +18,13 @@ shape, reads active registry metadata from D1, scores candidates against task
 signals, applies policy bindings, checks principal scope bindings, and returns a
 graph-validation summary for the selected context.
 
+For tenant-scoped requests, the composition response must also include
+`tenant_authority`: the tenant, active membership, role bundles, tenant-owned
+data sources, allowed scopes, and proof that direct user grants are disabled.
+The Composer fails closed when this authority snapshot is missing or does not
+derive the selected profile modules and data-source grants from the user's
+tenant roles.
+
 D1 remains authoritative for registry and policy-sensitive reads. KV is used
 only for the optional `registry:version` value returned in the response.
 

@@ -13,6 +13,10 @@ from skill_centric_agent_system.composition.task_analyzer import (
     AuthClaims,
     TaskAnalyzer,
 )
+from skill_centric_agent_system.composition.tenant_access import (
+    TenantAccessError,
+    TenantAccessValidator,
+)
 
 __all__ = [
     "AnalyzedTask",
@@ -22,4 +26,6 @@ __all__ = [
     "ControlPlaneClientError",
     "RuntimeProfileComposer",
     "TaskAnalyzer",
+    "TenantAccessError",
+    "TenantAccessValidator",
 ]

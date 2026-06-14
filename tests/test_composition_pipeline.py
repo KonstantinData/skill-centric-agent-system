@@ -26,6 +26,9 @@ COMPOSITION_CONTEXT_RESPONSE_PATH = (
 RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response-research.json"
 )
+TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-tenant-research.json"
+)
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RUNTIME_PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
 TASK_ANALYZER_EVALUATIONS_PATH = (
@@ -176,18 +179,24 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
 
 
 def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
-    task = deepcopy(load_json(TASK_EXAMPLE_PATH))
-    task["context"]["auth"] = {
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
-        "tenant_hostname": "demo-tenant.example.invalid",
-        "membership_id": "demo-tenant-membership-user",
-        "roles": ["demo-tenant-researcher"],
-        "control_plane_principal_id": "demo-tenant-researcher",
-        "role_data_sources": ["demo-tenant-website"],
-        "role_capabilities": ["research"],
+    task = {
+        "id": "task-demo-tenant-research",
+        "objective": "Research the tenant website and summarize current context.",
+        "context": {
+            "auth": {
+                "principal_id": "tenant-user",
+                "tenant_id": "demo-tenant",
+                "area_id": "demo-tenant",
+                "tenant_hostname": "demo-tenant.example.invalid",
+                "membership_id": "demo-tenant-membership-user",
+                "roles": ["demo-tenant-researcher"],
+                "control_plane_principal_id": "demo-tenant-researcher",
+                "role_data_sources": ["demo-tenant-website"],
+                "role_capabilities": ["research"],
+            }
+        },
     }
-    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response = load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)
 
     analyzed = TaskAnalyzer().analyze(task)
     profile = RuntimeProfileComposer().compose(analyzed, context_response)
@@ -207,6 +216,145 @@ def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
         "allowed_role_data_sources": ["demo-tenant-website"],
         "allowed_role_capabilities": ["research"],
     }
+
+
+def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None:
+    task = {
+        "id": "task-demo-tenant-research",
+        "objective": "Research the tenant website and summarize current context.",
+        "context": {
+            "auth": {
+                "principal_id": "tenant-user",
+                "tenant_id": "demo-tenant",
+                "area_id": "demo-tenant",
+                "tenant_hostname": "demo-tenant.example.invalid",
+                "membership_id": "demo-tenant-membership-user",
+                "roles": ["demo-tenant-researcher"],
+                "control_plane_principal_id": "demo-tenant-researcher",
+                "role_data_sources": ["demo-tenant-website"],
+                "role_capabilities": ["research"],
+            }
+        },
+    }
+    context_response = load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    profile = RuntimeProfileComposer().compose(analyzed, context_response)
+
+    assert profile["tenant_context"]["tenant_id"] == "demo-tenant"
+    assert profile["tenant_context"]["membership_id"] == "demo-tenant-membership-user"
+    assert profile["skills"] == ["research-context-synthesis"]
+    assert profile["knowledge_scopes"] == ["knowledge-demo-tenant-docs"]
+    assert profile["data_scopes"] == ["demo-tenant-website-read"]
+    assert profile["tenant_context"]["allowed_role_data_sources"] == ["demo-tenant-website"]
+    assert profile["tenant_context"]["allowed_role_capabilities"] == ["research"]
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message_part"),
+    [
+        (
+            lambda task, response: task["context"]["auth"].pop("membership_id"),
+            "membership id is required",
+        ),
+        (
+            lambda task, response: task["context"]["auth"].__setitem__(
+                "roles",
+                ["other-tenant-researcher"],
+            ),
+            "not granted by the active membership",
+        ),
+        (
+            lambda task, response: task["context"]["auth"].__setitem__(
+                "role_data_sources",
+                ["other-tenant-website"],
+            ),
+            "not derived from tenant roles",
+        ),
+        (
+            lambda task, response: response["tenant_authority"].__setitem__(
+                "status",
+                "disabled",
+            ),
+            "Tenant is not active",
+        ),
+        (
+            lambda task, response: response["tenant_authority"].__setitem__(
+                "direct_user_grants_allowed",
+                True,
+            ),
+            "Direct user grants are not allowed",
+        ),
+        (
+            lambda task, response: response["tenant_authority"]["role_bundles"][0][
+                "derived_runtime_modules"
+            ]["skills"].clear(),
+            "Selected skills are not allowed",
+        ),
+        (
+            lambda task, response: response["tenant_authority"].__setitem__(
+                "allowed_knowledge_scopes",
+                [],
+            ),
+            "Selected knowledge_scopes are not allowed",
+        ),
+    ],
+)
+def test_profile_composer_fails_closed_on_invalid_tenant_authority(
+    mutator: Any,
+    message_part: str,
+) -> None:
+    task = {
+        "id": "task-demo-tenant-research",
+        "objective": "Research the tenant website and summarize current context.",
+        "context": {
+            "auth": {
+                "principal_id": "tenant-user",
+                "tenant_id": "demo-tenant",
+                "area_id": "demo-tenant",
+                "tenant_hostname": "demo-tenant.example.invalid",
+                "membership_id": "demo-tenant-membership-user",
+                "roles": ["demo-tenant-researcher"],
+                "control_plane_principal_id": "demo-tenant-researcher",
+                "role_data_sources": ["demo-tenant-website"],
+                "role_capabilities": ["research"],
+            }
+        },
+    }
+    context_response = load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)
+    mutator(task, context_response)
+
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match=message_part):
+        RuntimeProfileComposer().compose(analyzed, context_response)
+
+
+def test_profile_composer_requires_tenant_authority_for_tenant_profile() -> None:
+    task = {
+        "id": "task-demo-tenant-research",
+        "objective": "Research the tenant website and summarize current context.",
+        "context": {
+            "auth": {
+                "principal_id": "tenant-user",
+                "tenant_id": "demo-tenant",
+                "area_id": "demo-tenant",
+                "tenant_hostname": "demo-tenant.example.invalid",
+                "membership_id": "demo-tenant-membership-user",
+                "roles": ["demo-tenant-researcher"],
+                "control_plane_principal_id": "demo-tenant-researcher",
+                "role_data_sources": ["demo-tenant-website"],
+                "role_capabilities": ["research"],
+            }
+        },
+    }
+    context_response = load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response.pop("tenant_authority")
+
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="Tenant authority is required"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
 
 
 def test_profile_composer_rejects_memory_scope_as_knowledge_substitute() -> None:
