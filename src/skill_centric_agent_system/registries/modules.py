@@ -75,9 +75,7 @@ class ModuleMetadata:
             version=module["version"],
             kind=module["kind"],
             description=module["description"],
-            runtime_role=(
-                str(module["runtime_role"]) if module.get("runtime_role") is not None else None
-            ),
+            runtime_role=_runtime_role(module),
             capability_class=module["capability_class"],
             domain_tags=frozenset(module["domain_tags"]),
             task_types=frozenset(task_signals["task_types"]),
@@ -98,7 +96,7 @@ class ModuleMetadata:
             base_score=float(selection["base_score"]),
             score_modifiers=tuple(selection["score_modifiers"]),
             requires_all_policies=bool(selection["requires_all_policies"]),
-            tests=frozenset(module["tests"]),
+            tests=frozenset(_module_tests(module)),
             raw=module,
         )
 
@@ -424,7 +422,33 @@ class InMemoryModuleRegistry:
 def _iter_json_files(path: Path) -> tuple[Path, ...]:
     if path.is_file():
         return (path,)
+    module_files = tuple(sorted(path.rglob("module.json")))
+    if module_files:
+        return module_files
     return tuple(sorted(path.rglob("*.json")))
+
+
+def _runtime_role(module: dict[str, Any]) -> str | None:
+    if module.get("runtime_role") is not None:
+        return str(module["runtime_role"])
+    runtime_roles = module.get("runtime_roles")
+    if isinstance(runtime_roles, dict) and runtime_roles.get("default") is not None:
+        return str(runtime_roles["default"])
+    return None
+
+
+def _module_tests(module: dict[str, Any]) -> tuple[str, ...]:
+    tests = module.get("tests", ())
+    if isinstance(tests, dict):
+        values: list[str] = []
+        for field in ("contract", "runtime", "fixtures"):
+            field_values = tests.get(field, ())
+            if isinstance(field_values, list):
+                values.extend(str(value) for value in field_values)
+        return tuple(values)
+    if isinstance(tests, list):
+        return tuple(str(value) for value in tests)
+    return ()
 
 
 def _normalize_texts(values: Iterable[str]) -> tuple[str, ...]:

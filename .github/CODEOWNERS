@@ -1,6 +1,7 @@
 # High-impact governance paths.
 /.github/ @KonstantinData
 /policies/ @KonstantinData
+/registry/ @KonstantinData
 /schemas/ @KonstantinData
 /migrations/ @KonstantinData
 /workers/control-api/ @KonstantinData

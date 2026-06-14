@@ -1,0 +1,115 @@
+{
+  "$schema": "../../../../schemas/module.schema.json",
+  "schema_version": "0.1.0",
+  "name": "document-synthesis",
+  "version": "0.1.0",
+  "kind": "skill",
+  "status": "active",
+  "description": "Synthesize durable technical documentation updates from profile-authorized context.",
+  "runtime_role": "runtime",
+  "runtime_roles": {
+    "default": "runtime",
+    "allowed": [
+      "runtime"
+    ]
+  },
+  "capability_class": "analysis",
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "entrypoint": {
+    "type": "skill_folder",
+    "path": "SKILL.md"
+  },
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_version_pin": true,
+    "requires_handler_binding": true
+  },
+  "domain_tags": [
+    "documentation",
+    "repository"
+  ],
+  "task_signals": {
+    "task_types": [
+      "general-task"
+    ],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "domains": [
+      "documentation",
+      "software-engineering",
+      "repository"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "summarize docs",
+      "document",
+      "synthesize"
+    ],
+    "negative_phrases": [
+      "deploy",
+      "delete",
+      "destroy"
+    ]
+  },
+  "triggers": [
+    "summarize docs",
+    "document",
+    "synthesize"
+  ],
+  "inputs": [
+    "retrieval-context"
+  ],
+  "outputs": [
+    "documentation-summary"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "validators": [
+    "general-output-contract"
+  ],
+  "selection": {
+    "base_score": 0.66,
+    "score_modifiers": [
+      {
+        "signal": "domain:documentation",
+        "weight": 0.16,
+        "reason": "Documentation-focused tasks need synthesis from approved context."
+      },
+      {
+        "signal": "phrase:synthesize",
+        "weight": 0.08,
+        "reason": "Explicit synthesis language increases module relevance."
+      },
+      {
+        "signal": "phrase:deploy",
+        "weight": -0.3,
+        "reason": "Deployment requests must not route through documentation synthesis."
+      }
+    ],
+    "requires_all_policies": true
+  },
+  "tests": {
+    "contract": [],
+    "runtime": [
+      "document-synthesis-positive",
+      "document-synthesis-denies-deploy"
+    ],
+    "fixtures": []
+  }
+}

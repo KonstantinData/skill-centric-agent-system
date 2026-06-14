@@ -1,0 +1,23 @@
+{
+  "name": "dev",
+  "strategy": "allowlist",
+  "allowed_statuses": [
+    "active",
+    "draft",
+    "deprecated"
+  ],
+  "allowed_capability_classes": [
+    "analysis",
+    "planning",
+    "execution",
+    "retrieval",
+    "validation",
+    "policy",
+    "instruction",
+    "tool_access",
+    "knowledge_access",
+    "data_access",
+    "memory_access",
+    "context"
+  ]
+}

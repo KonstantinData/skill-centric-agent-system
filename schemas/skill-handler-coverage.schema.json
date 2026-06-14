@@ -31,7 +31,7 @@
       "const": "skill_centric_agent_system.runtime.skill_handlers.BUILTIN_SKILL_HANDLER_REGISTRY"
     },
     "module_glob": {
-      "const": "examples/modules/*.json"
+      "const": "registry/modules/**/module.json"
     },
     "summary": {
       "type": "object",
@@ -81,6 +81,10 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9._/-]+$"
     },
+    "registryModulePath": {
+      "type": "string",
+      "pattern": "^registry/modules/[A-Za-z0-9._/-]+/module\\.json$"
+    },
     "stringArray": {
       "type": "array",
       "items": {
@@ -116,7 +120,7 @@
           "$ref": "#/$defs/semver"
         },
         "module_path": {
-          "$ref": "#/$defs/repositoryPath"
+          "$ref": "#/$defs/registryModulePath"
         },
         "production_required": {
           "type": "boolean"

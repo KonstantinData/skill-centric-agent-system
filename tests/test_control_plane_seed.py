@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from skill_centric_agent_system.control_plane import build_seed_records, generate_seed_sql
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULES_DIR = REPO_ROOT / "examples" / "modules"
+MODULES_DIR = REPO_ROOT / "registry" / "modules"
 MODULE_SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 DEV_SEED_SQL_PATH = REPO_ROOT / "examples" / "control-plane" / "dev-seed.sql"
 D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
@@ -29,7 +29,7 @@ def create_d1_connection() -> sqlite3.Connection:
 
 
 def module_paths() -> list[Path]:
-    return sorted(MODULES_DIR.glob("*.json"))
+    return sorted(MODULES_DIR.rglob("module.json"))
 
 
 def test_seed_source_modules_match_module_schema() -> None:

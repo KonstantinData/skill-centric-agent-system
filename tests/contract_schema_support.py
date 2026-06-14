@@ -17,7 +17,9 @@ RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schem
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
-MODULE_EXAMPLE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
+MODULE_EXAMPLE_PATH = (
+    REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
+)
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
 HUMAN_REVIEW_PROFILE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "profiles" / "human-review-required-profile.json"

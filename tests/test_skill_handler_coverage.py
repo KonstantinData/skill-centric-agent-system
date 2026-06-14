@@ -15,7 +15,7 @@ from scripts.runtime.skill_handler_coverage import (
 from skill_centric_agent_system.runtime import SkillHandlerRegistry
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULES_DIR = REPO_ROOT / "examples" / "modules"
+MODULES_DIR = REPO_ROOT / "registry" / "modules"
 MANIFEST_PATH = REPO_ROOT / "examples" / "runtime" / "skill-handler-coverage.json"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "skill-handler-coverage.schema.json"
 

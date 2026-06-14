@@ -4,15 +4,37 @@ Use this reference when defining selectable modules. All fields must conform to
 `schemas/module.schema.json`. A module that fails schema validation will be
 rejected by the registry before it can be selected.
 
+The governed source of truth is `registry/modules/**/module.json`. For skill
+modules, `SKILL.md` is an agent-readable entrypoint loaded only after the
+Composer selects the skill through a sealed runtime profile. The Composer must
+not parse `SKILL.md` for selection metadata.
+
 ## Required Metadata
 
 ```json
 {
+  "$schema": "../../../../schemas/module.schema.json",
+  "schema_version": "0.1.0",
   "name": "module-name",
   "version": "0.1.0",
+  "status": "active",
   "kind": "skill|instruction|tool|knowledge_scope|data_scope|policy|validator|memory_scope",
   "description": "What this module provides and when to select it.",
+  "runtime_roles": {
+    "default": "runtime",
+    "allowed": ["runtime"]
+  },
   "capability_class": "analysis|planning|execution|retrieval|validation|policy|instruction|tool_access|knowledge_access|data_access|memory_access|context",
+  "environments": ["dev", "staging", "prod"],
+  "entrypoint": {
+    "type": "skill_folder",
+    "path": "SKILL.md"
+  },
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_version_pin": true,
+    "requires_handler_binding": true
+  },
   "domain_tags": ["domain-a", "domain-b"],
   "task_signals": {
     "task_types": ["code-review"],
@@ -42,7 +64,11 @@ rejected by the registry before it can be selected.
     ],
     "requires_all_policies": true
   },
-  "tests": ["fixture-name"]
+  "tests": {
+    "contract": ["tests/contract/module-contract.json"],
+    "runtime": ["tests/test_runtime_skill_handlers.py::test_example"],
+    "fixtures": ["examples/runtime/example.json"]
+  }
 }
 ```
 
@@ -77,6 +103,29 @@ module occupies and which profile fields it populates.
 `description` - One or two sentences. State what the module does and the
 condition under which the Composer should select it. This text is not used for
 scoring; it is for human reviewers and auditors.
+
+`status` - Lifecycle status. `active` modules can be selected in environments
+that allow them. `draft`, `deprecated`, and `disabled` are environment-gated and
+must not become production selectable unless the environment allowlist permits
+that status.
+
+`environments` - Explicit environment allowlist. New modules do not inherit
+staging or production access. Environment policy files under
+`registry/environments/` must also allow the module status and capability class.
+
+`runtime_roles` - Static module capability declaration. `default` is the role
+the Composer should assign unless task-specific policy narrows it; `allowed`
+lists every role the module may take. The final concrete role is stored in the
+runtime profile. This mirrors the distinction between `profile_sealable` as a
+module capability and `sealed` as a profile artifact state.
+
+`entrypoint` - Required for `skill` modules. `entrypoint.path` is relative to the
+module folder and must resolve to the local `SKILL.md`. Non-skill modules do not
+define `entrypoint` in v0.1.0.
+
+`runtime_contract` - Declares whether the module can participate in sealed
+runtime profiles, requires exact version pins, and requires executable handler
+binding. This is capability metadata, not profile state.
 
 ### Capability Classification
 
@@ -192,9 +241,10 @@ remaining policies are evaluated at runtime.
 
 ### Tests
 
-`tests` - Names of test fixtures or validation cases that verify the module
-behaves as specified. At minimum, include one positive fixture where the module
-should be selected and one negative fixture where it should not.
+`tests` - Typed test references. `contract` contains schema-backed contract test
+fixtures, `runtime` contains pytest node IDs or named runtime validation cases,
+and `fixtures` contains example fixture paths. Contract and runtime entries are
+gates; fixtures are consistency checks.
 
 ## Selection Flow
 
@@ -216,11 +266,29 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
 
 ```json
 {
+  "$schema": "../../../../schemas/module.schema.json",
+  "schema_version": "0.1.0",
   "name": "git-diff-analysis",
   "version": "0.1.0",
   "kind": "skill",
+  "status": "active",
   "description": "Analyze git diffs for behavioral changes, regressions, and review-relevant risks.",
+  "runtime_role": "runtime",
+  "runtime_roles": {
+    "default": "runtime",
+    "allowed": ["runtime"]
+  },
   "capability_class": "analysis",
+  "environments": ["dev", "staging", "prod"],
+  "entrypoint": {
+    "type": "skill_folder",
+    "path": "SKILL.md"
+  },
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_version_pin": true,
+    "requires_handler_binding": true
+  },
   "domain_tags": [
     "software-engineering",
     "git",
@@ -264,10 +332,14 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
     ],
     "requires_all_policies": true
   },
-  "tests": [
-    "detects-risky-diff-fixture",
-    "requires-file-line-references"
-  ]
+  "tests": {
+    "contract": [],
+    "runtime": [
+      "detects-risky-diff-fixture",
+      "requires-file-line-references"
+    ],
+    "fixtures": []
+  }
 }
 ```
 
@@ -277,6 +349,8 @@ Validate a module definition against the schema before committing:
 
 ```bash
 python -m pytest tests/test_contract_schemas.py -k module
+python scripts/registry/validate_registry.py --phase 3a
+python scripts/registry/validate_registry.py --phase 3b
 ```
 
 The CI pipeline runs this check on every push. A module that does not pass
@@ -298,3 +372,5 @@ schema validation will not be accepted into the registry.
   Composer.
 - Skip `tests` - untested modules cannot be trusted in a registry that gates on
   validation.
+- Put active modules under `examples/` - examples are fixtures only, not source
+  of truth.

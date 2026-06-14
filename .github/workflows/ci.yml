@@ -110,6 +110,12 @@ jobs:
       - name: Type-check runtime + composition
         run: uv run mypy
 
+      - name: Validate governed registry
+        run: |
+          PYTHONPATH=src uv run python scripts/registry/validate_registry.py --phase 3a
+          PYTHONPATH=src uv run python scripts/registry/validate_registry.py --phase 3b
+          PYTHONPATH=src uv run python scripts/registry/generate_lockfile.py --check
+
       - name: Validate skill handler coverage manifest
         run: PYTHONPATH=src uv run python scripts/runtime/skill_handler_coverage.py --check
 

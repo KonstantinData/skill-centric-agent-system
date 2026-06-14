@@ -17,7 +17,7 @@ from skill_centric_agent_system.runtime import (
 CONTRACT_VERSION = "0.1.0"
 GENERATED_BY = "scripts/runtime/production_skill_instruction_packs.py"
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MODULES_DIR = REPO_ROOT / "examples" / "modules"
+DEFAULT_MODULES_DIR = REPO_ROOT / "registry" / "modules"
 DEFAULT_OUTPUT = REPO_ROOT / "examples" / "runtime" / "production-skill-instruction-packs.json"
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "production-skill-instruction-packs.schema.json"
 
@@ -57,7 +57,7 @@ def build_instruction_packs(
                 "required_validators": [str(value) for value in module.get("validators", [])],
                 "handler": handler.descriptor(),
                 "test_evidence": {
-                    "module_tests": [str(value) for value in module.get("tests", [])],
+                    "module_tests": _module_tests(module),
                     "runtime_tests": list(handler.test_coverage),
                 },
                 "execution_instructions": _execution_instructions(
@@ -181,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _load_runtime_skill_modules(modules_dir: Path) -> tuple[tuple[Path, dict[str, Any]], ...]:
     modules: list[tuple[Path, dict[str, Any]]] = []
-    for module_path in sorted(modules_dir.glob("*.json")):
+    for module_path in sorted(modules_dir.rglob("module.json")):
         payload = _load_json(module_path)
         if payload.get("kind") != "skill":
             continue
@@ -194,6 +194,20 @@ def _load_runtime_skill_modules(modules_dir: Path) -> tuple[tuple[Path, dict[str
             key=lambda item: (str(item[1]["name"]), str(item[1]["version"])),
         )
     )
+
+
+def _module_tests(module: Mapping[str, Any]) -> list[str]:
+    tests = module.get("tests", [])
+    if isinstance(tests, Mapping):
+        values: list[str] = []
+        for field in ("contract", "runtime", "fixtures"):
+            field_values = tests.get(field, [])
+            if isinstance(field_values, list):
+                values.extend(str(value) for value in field_values)
+        return values
+    if isinstance(tests, list):
+        return [str(value) for value in tests]
+    return []
 
 
 def _execution_instructions(

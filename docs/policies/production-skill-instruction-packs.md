@@ -5,7 +5,7 @@
 Production-required skill handlers need executable, version-pinned instruction
 packs that bind:
 
-- module metadata (`examples/modules/*.json`),
+- module metadata (`registry/modules/**/module.json`),
 - handler registration (`src/skill_centric_agent_system/runtime/skill_handlers.py`),
 - static test evidence, and
 - live-run evidence requirements for certification.

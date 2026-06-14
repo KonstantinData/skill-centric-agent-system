@@ -1,16 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:module:0.3.0",
-  "title": "Selectable Module Metadata",
-  "description": "Metadata contract for a selectable skill, instruction, tool, scope, policy, validator, or memory module.",
+  "$id": "urn:scas:schema:module:0.4.0",
+  "title": "SCAS Registry Module Metadata",
+  "description": "Metadata contract for a governed SCAS registry module. module.json is machine-readable selection and policy metadata; SKILL.md and bundled resources remain agent-readable entrypoints where applicable.",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "$schema",
+    "schema_version",
     "name",
     "version",
     "kind",
+    "status",
     "description",
+    "runtime_roles",
     "capability_class",
+    "environments",
+    "runtime_contract",
     "domain_tags",
     "task_signals",
     "triggers",
@@ -26,6 +32,14 @@
     "tests"
   ],
   "properties": {
+    "$schema": {
+      "type": "string",
+      "pattern": "^[.][.]/|^[.]/|^[^:/]+$"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"
@@ -47,6 +61,15 @@
         "memory_scope"
       ]
     },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated",
+        "disabled"
+      ]
+    },
     "description": {
       "type": "string",
       "minLength": 1
@@ -58,6 +81,27 @@
         "non-runtime",
         "shared"
       ]
+    },
+    "runtime_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default",
+        "allowed"
+      ],
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/runtimeRole"
+        },
+        "allowed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeRole"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
     },
     "capability_class": {
       "type": "string",
@@ -75,6 +119,58 @@
         "memory_access",
         "context"
       ]
+    },
+    "environments": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "dev",
+          "staging",
+          "prod"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "path"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "skill_folder"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        }
+      }
+    },
+    "runtime_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_sealable",
+        "requires_version_pin",
+        "requires_handler_binding"
+      ],
+      "properties": {
+        "profile_sealable": {
+          "type": "boolean"
+        },
+        "requires_version_pin": {
+          "type": "boolean"
+        },
+        "requires_handler_binding": {
+          "type": "boolean"
+        }
+      }
     },
     "domain_tags": {
       "$ref": "#/$defs/stringArray"
@@ -164,7 +260,24 @@
       }
     },
     "tests": {
-      "$ref": "#/$defs/stringArray"
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "runtime",
+        "fixtures"
+      ],
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/relativePathArray"
+        },
+        "runtime": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "fixtures": {
+          "$ref": "#/$defs/relativePathArray"
+        }
+      }
     }
   },
   "allOf": [
@@ -181,12 +294,52 @@
       },
       "then": {
         "required": [
+          "entrypoint",
           "runtime_role"
         ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "entrypoint"
+          ]
+        }
       }
     }
   ],
   "$defs": {
+    "runtimeRole": {
+      "type": "string",
+      "enum": [
+        "runtime",
+        "non-runtime",
+        "shared"
+      ]
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "^[A-Za-z]:"
+          },
+          {
+            "pattern": "^/"
+          },
+          {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9+.-]*:"
+          }
+        ]
+      }
+    },
+    "relativePathArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      },
+      "uniqueItems": true
+    },
     "stringArray": {
       "type": "array",
       "items": {

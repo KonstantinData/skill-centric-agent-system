@@ -361,7 +361,7 @@ python scripts/cloudflare/ai_gateway_live_smoke.py \
 ## Seed Scope
 
 `examples/control-plane/dev-seed.sql` is generated from
-`examples/modules/*.json` and is the operational dev registry seed. Referenced
+`registry/modules/**/module.json` and is the operational dev registry seed. Referenced
 tools, scopes, policies, and validators are emitted as generated stub modules
 until they have first-class module metadata files.
 

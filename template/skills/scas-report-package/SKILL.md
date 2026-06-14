@@ -7,19 +7,17 @@ description: Build the ReportWriter final package from the current SCAS runtime 
 
 Use this skill for final operator-facing packaging.
 
-## Source Runtime
+## SCAS Runtime Surfaces
 
-- `src/agents/report_writer.py`
-- `src/orchestration/report_runtime.py`
-- `src/orchestration/report_knowledge.py`
-- `knowledge/report/blueprint_de.yaml`
-- `knowledge/report/blueprint_en.yaml`
-- `knowledge/report/quality_gates.yaml`
-- `knowledge/report/rules.yaml`
+- `registry/modules/**/module.json`
+- `schemas/runtime-profile.schema.json`
+- `src/skill_centric_agent_system/runtime/`
+- `docs/policies/module-contracts.md`
+- report blueprint, quality gate, and report rule modules selected by the runtime profile
 
 ## Workflow
 
-1. Build report context from pipeline data, synthesis, company profile, market network, contact intelligence, quality review, data request sheet, and outreach playbook.
+1. Build report context from run data, synthesis, company profile, market network, contact intelligence, quality review, data request sheet, and outreach playbook.
 2. Compose German and English drafts from report blueprints.
 3. Use structured LLM composition when configured and allowed.
 4. Merge deterministic fallback fields when LLM output is missing required fields.

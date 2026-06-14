@@ -1,0 +1,75 @@
+{
+  "$schema": "../../../../schemas/module.schema.json",
+  "schema_version": "0.1.0",
+  "name": "no-destructive-commands",
+  "version": "0.1.0",
+  "kind": "policy",
+  "status": "active",
+  "description": "Governed policy module for no-destructive-commands.",
+  "runtime_roles": {
+    "default": "non-runtime",
+    "allowed": [
+      "non-runtime"
+    ]
+  },
+  "capability_class": "policy",
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_version_pin": true,
+    "requires_handler_binding": false
+  },
+  "domain_tags": [
+    "software-engineering"
+  ],
+  "task_signals": {
+    "task_types": [
+      "code-review",
+      "research",
+      "task-execution",
+      "general-task"
+    ],
+    "risk_levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "domains": [
+      "software-engineering"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "no-destructive-commands"
+    ],
+    "negative_phrases": []
+  },
+  "triggers": [
+    "no-destructive-commands"
+  ],
+  "inputs": [],
+  "outputs": [
+    "no-destructive-commands-output"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [],
+  "data_scopes": [],
+  "policies": [],
+  "validators": [],
+  "selection": {
+    "base_score": 0.5,
+    "score_modifiers": [],
+    "requires_all_policies": false
+  },
+  "tests": {
+    "contract": [],
+    "runtime": [
+      "no-destructive-commands-registry-contract"
+    ],
+    "fixtures": []
+  }
+}

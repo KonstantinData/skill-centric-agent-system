@@ -137,7 +137,7 @@
           },
           "module_path": {
             "type": "string",
-            "pattern": "^examples/modules/.+\\.json$"
+            "pattern": "^registry/modules/.+/module\\.json$"
           },
           "required_policies": {
             "type": "array",

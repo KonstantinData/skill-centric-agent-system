@@ -1,0 +1,74 @@
+{
+  "$schema": "../../../../schemas/module.schema.json",
+  "schema_version": "0.1.0",
+  "name": "git-read",
+  "version": "0.1.0",
+  "kind": "tool",
+  "status": "active",
+  "description": "Governed tool module for git-read.",
+  "runtime_roles": {
+    "default": "non-runtime",
+    "allowed": [
+      "non-runtime"
+    ]
+  },
+  "capability_class": "tool_access",
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_version_pin": true,
+    "requires_handler_binding": false
+  },
+  "domain_tags": [
+    "software-engineering",
+    "git"
+  ],
+  "task_signals": {
+    "task_types": [
+      "code-review"
+    ],
+    "risk_levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "domains": [
+      "software-engineering",
+      "git"
+    ],
+    "required_inputs": [],
+    "phrases": [
+      "git-read"
+    ],
+    "negative_phrases": []
+  },
+  "triggers": [
+    "git-read"
+  ],
+  "inputs": [],
+  "outputs": [
+    "git-read-output"
+  ],
+  "required_tools": [],
+  "optional_tools": [],
+  "knowledge_scopes": [],
+  "data_scopes": [],
+  "policies": [],
+  "validators": [],
+  "selection": {
+    "base_score": 0.5,
+    "score_modifiers": [],
+    "requires_all_policies": false
+  },
+  "tests": {
+    "contract": [],
+    "runtime": [
+      "git-read-registry-contract"
+    ],
+    "fixtures": []
+  }
+}

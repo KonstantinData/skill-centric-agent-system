@@ -19,7 +19,7 @@ from skill_centric_agent_system.runtime import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULES_DIR = REPO_ROOT / "examples" / "modules"
+MODULES_DIR = REPO_ROOT / "registry" / "modules"
 OUTPUT_PATH = REPO_ROOT / "examples" / "runtime" / "production-skill-instruction-packs.json"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "production-skill-instruction-packs.schema.json"
 
