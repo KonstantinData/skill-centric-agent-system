@@ -4,6 +4,10 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from skill_centric_agent_system.composition.task_analyzer import AnalyzedTask
+from skill_centric_agent_system.composition.tenant_access import (
+    TenantAccessError,
+    TenantAccessValidator,
+)
 
 RUNTIME_PROFILE_VERSION = "0.5.0"
 BASELINE_MODULE_VERSIONS = {
@@ -71,6 +75,9 @@ class CompositionError(ValueError):
 class RuntimeProfileComposer:
     """Build schema-shaped runtime profiles from Control Plane composition context."""
 
+    def __init__(self, tenant_access_validator: TenantAccessValidator | None = None) -> None:
+        self.tenant_access_validator = tenant_access_validator or TenantAccessValidator()
+
     def compose(
         self,
         analyzed_task: AnalyzedTask,
@@ -102,7 +109,7 @@ class RuntimeProfileComposer:
         )
 
         if analyzed_task.requires_human_review:
-            return _human_review_profile(
+            profile = _human_review_profile(
                 analyzed_task,
                 context_response,
                 version_by_name,
@@ -110,6 +117,21 @@ class RuntimeProfileComposer:
                 parent_profile_id=parent_profile_id,
                 recomposition_reason=recomposition_reason,
             )
+            self._assert_tenant_access(
+                analyzed_task,
+                context_response,
+                selected_modules={
+                    "instructions": profile["instructions"],
+                    "skills": profile["skills"],
+                    "tools": profile["tools"],
+                    "knowledge_scopes": profile["knowledge_scopes"],
+                    "data_scopes": profile["data_scopes"],
+                    "memory_scopes": profile["memory_scopes"],
+                    "policies": profile["policies"],
+                    "validators": profile["validators"],
+                },
+            )
+            return profile
 
         instructions = _dedupe(
             (
@@ -146,6 +168,21 @@ class RuntimeProfileComposer:
             *policies,
             *validators,
         )
+        selected_by_field = {
+            "instructions": instructions,
+            "skills": skills,
+            "tools": tools,
+            "knowledge_scopes": knowledge_scopes,
+            "data_scopes": data_scopes,
+            "memory_scopes": memory_scopes,
+            "policies": policies,
+            "validators": validators,
+        }
+        self._assert_tenant_access(
+            analyzed_task,
+            context_response,
+            selected_modules=selected_by_field,
+        )
 
         return {
             "id": _profile_id(analyzed_task.task_id, profile_generation),
@@ -181,6 +218,22 @@ class RuntimeProfileComposer:
                 "redact_sensitive_data": True,
             },
         }
+
+    def _assert_tenant_access(
+        self,
+        analyzed_task: AnalyzedTask,
+        context_response: Mapping[str, Any],
+        *,
+        selected_modules: Mapping[str, Iterable[str]],
+    ) -> None:
+        try:
+            self.tenant_access_validator.validate(
+                analyzed_task,
+                context_response,
+                selected_modules=selected_modules,
+            )
+        except TenantAccessError as error:
+            raise CompositionError(str(error)) from error
 
     def _assert_composable(
         self,

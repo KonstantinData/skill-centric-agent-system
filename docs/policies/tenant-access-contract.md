@@ -115,9 +115,22 @@ schemas/runtime-profile.schema.json
 - proof that direct user grants are disabled,
 - role-derived data-source and capability grants.
 
+For tenant-scoped profiles, the Composer must also receive a
+`tenant_authority` snapshot in the Control Plane composition response. That
+snapshot is validated before profile emission and includes:
+
+- tenant status,
+- active membership for the authenticated principal,
+- tenant-local role bundles,
+- tenant-owned data sources,
+- role-derived capability and data-source grants,
+- allowed tenant knowledge, data, and memory scopes,
+- proof that direct user grants are disabled.
+
 The runtime profile is invalid when:
 
 - `tenant_context` is missing,
+- `tenant_authority` is missing for a non-global tenant,
 - direct user grants are enabled,
 - scopes from more than one tenant or area are present,
 - selected tools, skills, data sources, memory scopes, or knowledge scopes are
@@ -144,6 +157,7 @@ Every enforcement layer must use the same authority chain:
 Tenant Registry
 -> Tenant Membership
 -> Tenant Role Bundle
+-> Control Plane tenant_authority
 -> Runtime Profile
 -> Validator
 -> Tool Gateway / Retrieval / Memory Gate

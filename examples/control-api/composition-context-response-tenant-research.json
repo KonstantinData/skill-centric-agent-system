@@ -1,0 +1,245 @@
+{
+  "contract_version": "0.1.0",
+  "registry_version": "0.1.0",
+  "composition_status": "ready",
+  "candidate_modules": [
+    {
+      "id": "mod-research-context-synthesis",
+      "name": "research-context-synthesis",
+      "kind": "skill",
+      "runtime_role": "runtime",
+      "version": "0.1.0",
+      "score": 0.93,
+      "reason": "Tenant research tasks require context synthesis."
+    }
+  ],
+  "applicable_policies": [
+    {
+      "id": "mod-strict-tenant-isolation",
+      "name": "strict-tenant-isolation",
+      "kind": "policy",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles require strict tenant isolation."
+    },
+    {
+      "id": "mod-no-cross-area-access",
+      "name": "no-cross-area-access",
+      "kind": "policy",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles must not cross area boundaries."
+    },
+    {
+      "id": "mod-no-cross-tenant-access",
+      "name": "no-cross-tenant-access",
+      "kind": "policy",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles must not cross tenant boundaries."
+    }
+  ],
+  "allowed_knowledge_scopes": [
+    {
+      "id": "mod-knowledge-demo-tenant-docs",
+      "name": "knowledge-demo-tenant-docs",
+      "kind": "knowledge_scope",
+      "version": "0.1.0",
+      "score": 0.5,
+      "reason": "Allowed by tenant role."
+    }
+  ],
+  "allowed_data_scopes": [
+    {
+      "id": "mod-demo-tenant-website-read",
+      "name": "demo-tenant-website-read",
+      "kind": "data_scope",
+      "version": "0.1.0",
+      "score": 0.5,
+      "reason": "Allowed by tenant role."
+    }
+  ],
+  "allowed_memory_scopes": [],
+  "validation_requirements": [
+    {
+      "id": "mod-tenant-profile-validator",
+      "name": "tenant-profile-validator",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles require tenant validation."
+    },
+    {
+      "id": "mod-no-cross-tenant-scope-validator",
+      "name": "no-cross-tenant-scope-validator",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles require tenant scope validation."
+    },
+    {
+      "id": "mod-no-cross-area-scope-validator",
+      "name": "no-cross-area-scope-validator",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant profiles require area scope validation."
+    },
+    {
+      "id": "mod-knowledge-scope-validator",
+      "name": "knowledge-scope-validator",
+      "kind": "validator",
+      "version": "0.1.0",
+      "score": 1,
+      "reason": "Tenant research profiles require knowledge scope validation."
+    }
+  ],
+  "policy_decisions": [
+    {
+      "module": {
+        "id": "mod-research-context-synthesis",
+        "name": "research-context-synthesis",
+        "kind": "skill",
+        "runtime_role": "runtime",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Required tenant policies are allowed for the module."
+      ]
+    }
+  ],
+  "graph_validation": {
+    "is_valid": true,
+    "errors": [],
+    "reachable_modules": [
+      {
+        "id": "mod-knowledge-demo-tenant-docs",
+        "name": "knowledge-demo-tenant-docs",
+        "kind": "knowledge_scope",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-demo-tenant-website-read",
+        "name": "demo-tenant-website-read",
+        "kind": "data_scope",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-research-context-synthesis",
+        "name": "research-context-synthesis",
+        "kind": "skill",
+        "runtime_role": "runtime",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-strict-tenant-isolation",
+        "name": "strict-tenant-isolation",
+        "kind": "policy",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-no-cross-area-access",
+        "name": "no-cross-area-access",
+        "kind": "policy",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-no-cross-tenant-access",
+        "name": "no-cross-tenant-access",
+        "kind": "policy",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-tenant-profile-validator",
+        "name": "tenant-profile-validator",
+        "kind": "validator",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-no-cross-tenant-scope-validator",
+        "name": "no-cross-tenant-scope-validator",
+        "kind": "validator",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-no-cross-area-scope-validator",
+        "name": "no-cross-area-scope-validator",
+        "kind": "validator",
+        "version": "0.1.0"
+      },
+      {
+        "id": "mod-knowledge-scope-validator",
+        "name": "knowledge-scope-validator",
+        "kind": "validator",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "tenant_authority": {
+    "tenant_id": "demo-tenant",
+    "area_id": "demo-tenant",
+    "status": "active",
+    "direct_user_grants_allowed": false,
+    "membership": {
+      "id": "demo-tenant-membership-user",
+      "tenant_id": "demo-tenant",
+      "principal_id": "tenant-user",
+      "status": "active",
+      "role_ids": [
+        "demo-tenant-researcher"
+      ]
+    },
+    "role_bundles": [
+      {
+        "id": "demo-tenant-researcher",
+        "tenant_id": "demo-tenant",
+        "capability_grants": [
+          "research"
+        ],
+        "data_source_grants": [
+          {
+            "data_source_id": "demo-tenant-website",
+            "access_modes": [
+              "read"
+            ]
+          }
+        ],
+        "derived_runtime_modules": {
+          "skills": [
+            "research-context-synthesis"
+          ],
+          "workflows": [
+            "research-intake"
+          ],
+          "tools": [],
+          "policies": [
+            "strict-tenant-isolation",
+            "no-cross-area-access",
+            "no-cross-tenant-access"
+          ],
+          "validators": [
+            "tenant-profile-validator",
+            "no-cross-tenant-scope-validator",
+            "no-cross-area-scope-validator",
+            "knowledge-scope-validator"
+          ]
+        }
+      }
+    ],
+    "data_sources": [
+      {
+        "id": "demo-tenant-website",
+        "tenant_id": "demo-tenant",
+        "status": "active"
+      }
+    ],
+    "allowed_knowledge_scopes": [
+      "knowledge-demo-tenant-docs"
+    ],
+    "allowed_data_scopes": [
+      "demo-tenant-website-read"
+    ],
+    "allowed_memory_scopes": []
+  }
+}

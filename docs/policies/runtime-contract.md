@@ -130,7 +130,9 @@ Hard enforcement covers:
 - selected skills and their `skill_execution_roles`,
 - `tenant_context`, including tenant ID, area ID, role IDs, and the requirement
   that capabilities and data sources derive from tenant role bundles rather
-  than direct user grants,
+  than direct user grants. For non-global tenants, profile composition must
+  validate the Control Plane `tenant_authority` response before emitting the
+  profile,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,
