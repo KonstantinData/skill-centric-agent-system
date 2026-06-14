@@ -111,6 +111,40 @@ def test_registry_lockfile_hash_changes_when_module_changes(tmp_path: Path) -> N
     assert before["modules"][0]["sha256"] != after["modules"][0]["sha256"]
 
 
+def test_registry_lockfile_hash_normalizes_text_line_endings(tmp_path: Path) -> None:
+    lf_root = tmp_path / "lf" / "modules" / "skills" / "sample"
+    crlf_root = tmp_path / "crlf" / "modules" / "skills" / "sample"
+    lf_root.mkdir(parents=True)
+    crlf_root.mkdir(parents=True)
+    module = {
+        "name": "sample",
+        "version": "0.1.0",
+        "kind": "skill",
+        "status": "active",
+        "schema_version": "0.1.0",
+        "environments": ["dev"],
+    }
+    lf_module = json.dumps(module, indent=2) + "\n"
+    crlf_module = lf_module.replace("\n", "\r\n")
+    lf_skill = "---\nname: sample\ndescription: test\n---\n"
+    crlf_skill = lf_skill.replace("\n", "\r\n")
+    (lf_root / "module.json").write_bytes(lf_module.encode("utf-8"))
+    (crlf_root / "module.json").write_bytes(crlf_module.encode("utf-8"))
+    (lf_root / "SKILL.md").write_bytes(lf_skill.encode("utf-8"))
+    (crlf_root / "SKILL.md").write_bytes(crlf_skill.encode("utf-8"))
+
+    lf = build_lockfile(
+        registry_root=tmp_path / "lf" / "modules",
+        generated_at="2026-06-13T00:00:00+00:00",
+    )
+    crlf = build_lockfile(
+        registry_root=tmp_path / "crlf" / "modules",
+        generated_at="2026-06-13T00:00:00+00:00",
+    )
+
+    assert lf["modules"][0]["sha256"] == crlf["modules"][0]["sha256"]
+
+
 def test_registry_lockfile_check_fails_on_stale_file(tmp_path: Path) -> None:
     lockfile = tmp_path / "lockfile.json"
     payload = build_lockfile(

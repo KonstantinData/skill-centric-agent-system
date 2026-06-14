@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "generated_at": "2026-06-14T18:42:22+00:00",
+  "generated_at": "2026-06-14T18:51:56+00:00",
   "lockfile_version": "0.1.0",
   "module_count": 20,
   "modules": [
@@ -9,7 +9,7 @@
       "name": "repository-readonly",
       "path": "registry/modules/data-scopes/repository-readonly",
       "schema_version": "0.1.0",
-      "sha256": "f8c93883686ff9aebf9401b8330b1e616d4dc404645cfddc24de32f1b7f482c9",
+      "sha256": "6562b98de3cd1d72482067d9284a019275b7d388bc3770417caf16e2ef3e3185",
       "status": "active",
       "version": "0.1.0"
     },
@@ -18,7 +18,7 @@
       "name": "architecture-docs",
       "path": "registry/modules/knowledge-scopes/architecture-docs",
       "schema_version": "0.1.0",
-      "sha256": "3078ee9294b46636b182fb46cf4cc901e5998a37ee610687c0d1f20b96ed6fef",
+      "sha256": "cab80f326ea89c169610ee67569db58c314739ae64760dbcadc7bbcfe08a597a",
       "status": "active",
       "version": "0.1.0"
     },
@@ -27,7 +27,7 @@
       "name": "coding-guidelines",
       "path": "registry/modules/knowledge-scopes/coding-guidelines",
       "schema_version": "0.1.0",
-      "sha256": "956cf6ea2f57bfbf7b0af7dbe3b6094e28a532e113c2e29699fa9dd3072194b8",
+      "sha256": "02e1b64c8d789cbdeae43be4a40d94002a5b6293e8d0f71ccfbe5839b98cbdfe",
       "status": "active",
       "version": "0.1.0"
     },
@@ -36,7 +36,7 @@
       "name": "project-memory",
       "path": "registry/modules/memory-scopes/project-memory",
       "schema_version": "0.1.0",
-      "sha256": "529d515bfaf556bd1b5f99a447e497cb4e55fca7eecbd082a7cf4e5be1fcad71",
+      "sha256": "f05554b6e4fc5afc5b95d49ab37c03c12f555d0e31f00a3b27261896acdada10",
       "status": "active",
       "version": "0.1.0"
     },
@@ -45,7 +45,7 @@
       "name": "no-destructive-commands",
       "path": "registry/modules/policies/no-destructive-commands",
       "schema_version": "0.1.0",
-      "sha256": "96d4cc84bb905823564ee72a5af1f948ad1c3fdc7ec10641aa187be0c1305c54",
+      "sha256": "ad260f72b37825ea68cceadfbbb2dc29ae71465f5e044c79c1118ac1fae17659",
       "status": "active",
       "version": "0.1.0"
     },
@@ -54,7 +54,7 @@
       "name": "require-file-references",
       "path": "registry/modules/policies/require-file-references",
       "schema_version": "0.1.0",
-      "sha256": "b7572248363afc884e816210e5150fe33a5c4810500d6d12719825149fff1a1f",
+      "sha256": "65513d07e06a6fdd7aaf9dc72a935dca3bc8c125d7042307408ddb7a873421f0",
       "status": "active",
       "version": "0.1.0"
     },
@@ -63,7 +63,7 @@
       "name": "dependency-audit",
       "path": "registry/modules/skills/dependency-audit",
       "schema_version": "0.1.0",
-      "sha256": "eeaa5c2800b718f743aee90ce903319b1c6b53d4fff5fc79b1ff658bf594d1d2",
+      "sha256": "73a6384e9093093e14db6a8a18602445715696cfe81f7dfae3beca3bf113441d",
       "status": "active",
       "version": "0.1.0"
     },
@@ -72,7 +72,7 @@
       "name": "document-synthesis",
       "path": "registry/modules/skills/document-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "556762aba63bc9c9cb8310dc27b69bb35220cf721d96ab6d6e1d659e6bf977c7",
+      "sha256": "ff11c770776e24223da918fa557dcb072d9b7fe99351dadc35faa223d5bd304c",
       "status": "active",
       "version": "0.1.0"
     },
@@ -81,7 +81,7 @@
       "name": "general-task-summary",
       "path": "registry/modules/skills/general-task-summary",
       "schema_version": "0.1.0",
-      "sha256": "b0fee69e112d6ed10b9e7d363ccf2563fa33f4bd90c4346be4f9566aed16271f",
+      "sha256": "1126545abce21902fec4fa71bbe1c529bb3443648e5e34d57aa7c2a54b741e59",
       "status": "active",
       "version": "0.1.0"
     },
@@ -90,7 +90,7 @@
       "name": "git-diff-analysis",
       "path": "registry/modules/skills/git-diff-analysis",
       "schema_version": "0.1.0",
-      "sha256": "de907fb5c3eea23caaa864083e8e546bc9e8b89c2c6e21fe395d8a38c0d154c5",
+      "sha256": "a50f750d8b7e7e9d1381e27c8e1b57475e594c1abb30fc5832a1908009e169d9",
       "status": "active",
       "version": "0.1.0"
     },
@@ -99,7 +99,7 @@
       "name": "research-context-synthesis",
       "path": "registry/modules/skills/research-context-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "da17906f4cfd86287a1e4ab05e97c9f9688c398db01eaef97dc1fb3107042e30",
+      "sha256": "de7e3e7ce8f04e7a84596c3d4256441494358c83cffbc5fe9ddf831f4dad3d1f",
       "status": "active",
       "version": "0.1.0"
     },
@@ -108,7 +108,7 @@
       "name": "task-execution-planning",
       "path": "registry/modules/skills/task-execution-planning",
       "schema_version": "0.1.0",
-      "sha256": "99cd20c6e9e5e1447d06fbaf545751251eb25c00a96cdc561462a43582f74daa",
+      "sha256": "f4c0656da9685c067da4c82e49d0ad330068f267b076c6b12a7c0078588fc1fc",
       "status": "active",
       "version": "0.1.0"
     },
@@ -117,7 +117,7 @@
       "name": "filesystem-list",
       "path": "registry/modules/tools/filesystem-list",
       "schema_version": "0.1.0",
-      "sha256": "8b014321e946cc4659e05813f85816375cc30790e7b9d88ce8b80f9581c609ca",
+      "sha256": "599d1f33bc455a4f658d12342f55a6a4b817ba992f5aba332efe4f1a221b3112",
       "status": "active",
       "version": "0.1.0"
     },
@@ -126,7 +126,7 @@
       "name": "filesystem-read",
       "path": "registry/modules/tools/filesystem-read",
       "schema_version": "0.1.0",
-      "sha256": "b1112dd3ed581413ca0e91c0f38935f1055d8ce234c8071f819fbec77c9e00b9",
+      "sha256": "c7a7e92a676e74ce2e021e5d67277010e5c9a0346a27c9f859d240c89c08efdc",
       "status": "active",
       "version": "0.1.0"
     },
@@ -135,7 +135,7 @@
       "name": "git-read",
       "path": "registry/modules/tools/git-read",
       "schema_version": "0.1.0",
-      "sha256": "c0341e342e4f04f8c9b6e9c0f6d0143969e590bf6633c49695352038d7ac0b47",
+      "sha256": "e2399de8dd5f3077d4340125c443ecdc09735075c9f9e968adad1c5a7105e9e5",
       "status": "active",
       "version": "0.1.0"
     },
@@ -144,7 +144,7 @@
       "name": "test-runner",
       "path": "registry/modules/tools/test-runner",
       "schema_version": "0.1.0",
-      "sha256": "3817b460f703489290aded18d93f5c5ebbbf601d8b8f94a945cc0adae517863d",
+      "sha256": "a8091aee526b8bbee6f1539afa6e8aff583271a6d00c0ef4567dab7c2c119a5f",
       "status": "active",
       "version": "0.1.0"
     },
@@ -153,7 +153,7 @@
       "name": "general-output-contract",
       "path": "registry/modules/validators/general-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "61ea7fb0ffb818f9fa3f4f4741a2026c09b39cc61c108d1f34a866aa615691ce",
+      "sha256": "a89e382b320b5ea41f1e667bf858d065c579a3f46bde6d5b08af7e22055a5f7c",
       "status": "active",
       "version": "0.1.0"
     },
@@ -162,7 +162,7 @@
       "name": "research-output-contract",
       "path": "registry/modules/validators/research-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "6926faa2c0b09e04ae13961924dde5b5a2575fb009ab35ca3885d573669c7e99",
+      "sha256": "221236ff645996b60435e88baf0faeb1f2430709540b6769c44d5349df1805bf",
       "status": "active",
       "version": "0.1.0"
     },
@@ -171,7 +171,7 @@
       "name": "review-findings-contract",
       "path": "registry/modules/validators/review-findings-contract",
       "schema_version": "0.1.0",
-      "sha256": "d764991552e79c1e983e04102a780be6dbf627eb7b3d655d082ce0f3eee37421",
+      "sha256": "9b24b4acb53b458b57b315d1283586e7a3e753467f0d06a7bedc493c765aaa42",
       "status": "active",
       "version": "0.1.0"
     },
@@ -180,7 +180,7 @@
       "name": "task-execution-output-contract",
       "path": "registry/modules/validators/task-execution-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "c4022653388fb4f296c0a2fa283945847a81c56eca10950cb91898e502575779",
+      "sha256": "03fc87ae8a81cb89650410fd72ea69cdb815d6ef2f5a735ac210149b6939ee5e",
       "status": "active",
       "version": "0.1.0"
     }

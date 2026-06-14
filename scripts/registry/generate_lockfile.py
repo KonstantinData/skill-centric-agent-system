@@ -92,9 +92,19 @@ def _hash_module_dir(module_dir: Path) -> str:
         relative = path.relative_to(module_dir).as_posix()
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(_stable_file_bytes(path))
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _stable_file_bytes(path: Path) -> bytes:
+    raw = path.read_bytes()
+    if path.suffix.lower() in {".json", ".md"}:
+        try:
+            return raw.decode("utf-8").replace("\r\n", "\n").encode("utf-8")
+        except UnicodeDecodeError:
+            return raw
+    return raw
 
 
 def _load_json(path: Path) -> dict[str, Any]:
