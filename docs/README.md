@@ -15,6 +15,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/contracts.md`
 - `docs/policies/module-contracts.md`
 - `docs/policies/runtime-contract.md`
+- `docs/policies/tenant-access-contract.md`
 - `docs/policies/intent-transition-gates.md`
 - `schemas/transition-evidence.schema.json`
 - `scripts/runtime/scan_transition_signals.py`

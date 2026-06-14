@@ -1,6 +1,6 @@
 {
   "id": "profile-controlled-write-fixture",
-  "profile_version": "0.4.0",
+  "profile_version": "0.5.0",
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
@@ -19,6 +19,23 @@
     "authorization_policies": [
       "write-approval-required"
     ]
+  },
+  "tenant_context": {
+    "tenant_id": "global",
+    "area_id": "global",
+    "hostname": null,
+    "membership_id": null,
+    "role_ids": [
+      "repository-maintainer"
+    ],
+    "role_derivation": {
+      "grant_source": "tenant-role-bundles",
+      "direct_user_grants_allowed": false,
+      "capabilities_derive_from_roles": true,
+      "data_sources_derive_from_roles": true
+    },
+    "allowed_role_data_sources": [],
+    "allowed_role_capabilities": []
   },
   "human_review": {
     "required": false,

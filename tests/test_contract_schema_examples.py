@@ -90,3 +90,16 @@ def test_retrieval_context_examples_match_schema(
 
 def test_runtime_output_schema_is_valid(runtime_output_schema: dict[str, Any]) -> None:
     assert runtime_output_schema["$id"] == "urn:scas:schema:runtime-output:0.1.0"
+
+
+def test_demo_tenant_registry_example_matches_schema(
+    tenant_registry_schema: dict[str, Any],
+    tenant_registry_example: dict[str, Any],
+) -> None:
+    assert_valid(tenant_registry_schema, tenant_registry_example)
+    assert_tenant_registry_references_are_valid(tenant_registry_example)
+    assert tenant_registry_example["tenant_id"] == "demo-tenant"
+    assert tenant_registry_example["admin_model"]["assignment_model"] == (
+        "users-receive-roles-only"
+    )
+    assert tenant_registry_example["legal_profile"]["tax"]["tax_number"] is None

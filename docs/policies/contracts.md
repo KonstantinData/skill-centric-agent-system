@@ -12,6 +12,9 @@ Use these files as the authoritative contract documents:
 - Runtime behavior, profile enforcement, write gating, recomposition, runtime
   failure semantics, observability, retention:
   `docs/policies/runtime-contract.md`
+- Company tenant identity, tenant-local role bundles, data-source ownership,
+  admin access surfaces, and no-cross-tenant access:
+  `docs/policies/tenant-access-contract.md`
 - Multi-turn intent transitions, capability deltas, evidence spans, unknown
   handling, clarification gates, and transition audit evidence:
   `docs/policies/intent-transition-gates.md`
@@ -55,6 +58,8 @@ rules.
   `docs/policies/environment-separation.md`
 - Data-plane ownership and storage boundaries:
   `docs/policies/infrastructure-boundary.md`
+- Tenant-local role and data-source authority:
+  `docs/policies/tenant-access-contract.md`
 - Formal profile-sealing invariant catalog:
   `docs/policies/formal-safety-invariants.md`
 - Evidence-based intent transition gates:

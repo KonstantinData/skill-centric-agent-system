@@ -157,7 +157,13 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     Draft202012Validator(profile_schema).validate(profile)
     assert profile == expected_profile
     assert selected_profile_modules(profile) == set(profile["module_versions"])
-    assert profile["profile_version"] == "0.4.0"
+    assert profile["profile_version"] == "0.5.0"
+    assert profile["tenant_context"]["role_derivation"] == {
+        "grant_source": "tenant-role-bundles",
+        "direct_user_grants_allowed": False,
+        "capabilities_derive_from_roles": True,
+        "data_sources_derive_from_roles": True,
+    }
     assert profile["human_review"]["required"] is False
     assert profile["skills"] == ["git-diff-analysis"]
     assert profile["skill_execution_roles"] == {
@@ -167,6 +173,40 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     }
     assert profile["tools"] == ["filesystem-read", "git-read", "test-runner"]
     assert profile["memory_scopes"] == []
+
+
+def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
+    task = deepcopy(load_json(TASK_EXAMPLE_PATH))
+    task["context"]["auth"] = {
+        "tenant_id": "demo-tenant",
+        "area_id": "demo-tenant",
+        "tenant_hostname": "demo-tenant.example.invalid",
+        "membership_id": "demo-tenant-membership-user",
+        "roles": ["demo-tenant-researcher"],
+        "control_plane_principal_id": "demo-tenant-researcher",
+        "role_data_sources": ["demo-tenant-website"],
+        "role_capabilities": ["research"],
+    }
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+
+    analyzed = TaskAnalyzer().analyze(task)
+    profile = RuntimeProfileComposer().compose(analyzed, context_response)
+
+    assert profile["tenant_context"] == {
+        "tenant_id": "demo-tenant",
+        "area_id": "demo-tenant",
+        "hostname": "demo-tenant.example.invalid",
+        "membership_id": "demo-tenant-membership-user",
+        "role_ids": ["demo-tenant-researcher"],
+        "role_derivation": {
+            "grant_source": "tenant-role-bundles",
+            "direct_user_grants_allowed": False,
+            "capabilities_derive_from_roles": True,
+            "data_sources_derive_from_roles": True,
+        },
+        "allowed_role_data_sources": ["demo-tenant-website"],
+        "allowed_role_capabilities": ["research"],
+    }
 
 
 def test_profile_composer_rejects_memory_scope_as_knowledge_substitute() -> None:

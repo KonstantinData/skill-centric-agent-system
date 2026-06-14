@@ -86,6 +86,17 @@ def test_keyword_only_module_metadata_is_rejected(
             lambda profile: profile["human_review"].__setitem__("status", "maybe"),
             "'maybe' is not one of",
         ),
+        (
+            lambda profile: profile.pop("tenant_context"),
+            "'tenant_context' is a required property",
+        ),
+        (
+            lambda profile: profile["tenant_context"]["role_derivation"].__setitem__(
+                "direct_user_grants_allowed",
+                True,
+            ),
+            "False was expected",
+        ),
     ],
 )
 def test_invalid_runtime_profiles_are_rejected_by_schema(
@@ -122,6 +133,50 @@ def test_runtime_profile_rejects_unselected_version_pin(
     assert_valid(profile_schema, invalid_profile)
     with pytest.raises(AssertionError, match="unselected version pins"):
         assert_profile_version_pins_selected_modules(invalid_profile)
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message_part"),
+    [
+        (
+            lambda tenant: tenant.pop("role_bundles"),
+            "'role_bundles' is a required property",
+        ),
+        (
+            lambda tenant: tenant["admin_model"].__setitem__(
+                "assignment_model",
+                "users-receive-direct-skill-grants",
+            ),
+            "'users-receive-roles-only' was expected",
+        ),
+        (
+            lambda tenant: tenant["memory"].__setitem__("shared_promotion_allowed", True),
+            "False was expected",
+        ),
+    ],
+)
+def test_invalid_tenant_registry_entries_are_rejected(
+    tenant_registry_schema: dict[str, Any],
+    tenant_registry_example: dict[str, Any],
+    mutator: Any,
+    message_part: str,
+) -> None:
+    invalid_tenant = deepcopy(tenant_registry_example)
+    mutator(invalid_tenant)
+
+    assert_invalid(tenant_registry_schema, invalid_tenant, message_part)
+
+
+def test_tenant_registry_rejects_cross_tenant_role_data_source_reference(
+    tenant_registry_schema: dict[str, Any],
+    tenant_registry_example: dict[str, Any],
+) -> None:
+    invalid_tenant = deepcopy(tenant_registry_example)
+    invalid_tenant["data_sources"][0]["tenant_id"] = "other-tenant"
+
+    assert_valid(tenant_registry_schema, invalid_tenant)
+    with pytest.raises(AssertionError, match="belongs to other-tenant"):
+        assert_tenant_registry_references_are_valid(invalid_tenant)
 
 
 @pytest.mark.parametrize(

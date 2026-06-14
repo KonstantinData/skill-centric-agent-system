@@ -1,0 +1,163 @@
+{
+  "contract_version": "0.1.0",
+  "tenant_id": "demo-tenant",
+  "area_id": "demo-tenant",
+  "display_name": "Demo Tenant",
+  "legal_profile": {
+    "legal_name": "Demo Tenant GmbH",
+    "registered_address": {
+      "street": "Example Street",
+      "street_number": "1",
+      "postal_code": "10115",
+      "city": "Example City",
+      "country": "Germany"
+    },
+    "legal_representatives": [
+      {
+        "name": "Example Director",
+        "role": "Managing Director"
+      }
+    ],
+    "commercial_register": {
+      "register_court": "Example Register Court",
+      "registration_number": "HRB 000000"
+    },
+    "tax": {
+      "tax_number": null,
+      "vat_id": "DE000000000",
+      "tax_number_sensitivity": "restricted-business-data"
+    }
+  },
+  "contact_profile": {
+    "email": "admin@example.invalid",
+    "phone": null,
+    "website": "https://example.invalid"
+  },
+  "hostnames": [
+    {
+      "hostname": "demo-tenant.example.invalid",
+      "purpose": "primary-ui",
+      "expected_origin": "192.0.2.10",
+      "cloudflare_proxy_expected": true
+    }
+  ],
+  "status": "setup",
+  "default_locale": "de-DE",
+  "admin_model": {
+    "admin_routes": [
+      "/admin/users",
+      "/admin/roles",
+      "/admin/settings"
+    ],
+    "assignment_model": "users-receive-roles-only",
+    "initial_owner": null
+  },
+  "memory": {
+    "area_brain_id": "brain-area-demo-tenant",
+    "shared_promotion_allowed": false
+  },
+  "knowledge": {
+    "scope_id": "knowledge-demo-tenant",
+    "indexes": [
+      "knowledge-demo-tenant-docs"
+    ]
+  },
+  "data_sources": [
+    {
+      "id": "demo-tenant-website",
+      "tenant_id": "demo-tenant",
+      "type": "website",
+      "display_name": "Demo Tenant Website",
+      "access_modes": [
+        "read"
+      ],
+      "status": "planned",
+      "sensitivity": "public"
+    }
+  ],
+  "role_bundles": [
+    {
+      "id": "demo-tenant-owner",
+      "tenant_id": "demo-tenant",
+      "display_name": "Tenant Owner",
+      "role_type": "system",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "tenant-admin"
+      ],
+      "data_source_grants": [],
+      "derived_runtime_modules": {
+        "skills": [],
+        "workflows": [
+          "tenant-admin"
+        ],
+        "tools": [],
+        "policies": [
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "user-permission-validator",
+          "admin-action-validator"
+        ]
+      }
+    },
+    {
+      "id": "demo-tenant-researcher",
+      "tenant_id": "demo-tenant",
+      "display_name": "Researcher",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "demo-tenant-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake"
+        ],
+        "tools": [],
+        "policies": [
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator"
+        ]
+      }
+    }
+  ],
+  "policy_bundle": [
+    "strict-tenant-isolation",
+    "no-cross-area-access",
+    "no-cross-tenant-access",
+    "fail-closed-unknown-scope"
+  ],
+  "validators": [
+    "tenant-profile-validator",
+    "no-cross-tenant-scope-validator",
+    "no-cross-area-scope-validator",
+    "skill-scope-compatibility-validator",
+    "tool-scope-compatibility-validator",
+    "memory-scope-validator",
+    "knowledge-scope-validator",
+    "user-permission-validator",
+    "admin-action-validator"
+  ]
+}
