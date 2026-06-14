@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
+from skill_centric_agent_system.composition import RuntimeProfileComposer, TaskAnalyzer
 from skill_centric_agent_system.runtime import (
     InMemoryRuntimeStore,
     JsonArtifactStore,
@@ -32,6 +33,9 @@ GENERAL_TASK_EXAMPLE_PATH = REPO_ROOT / "examples" / "tasks" / "general-task.jso
 RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response-research.json"
 )
+TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH = (
+    REPO_ROOT / "examples" / "control-api" / "composition-context-response-tenant-research.json"
+)
 TASK_EXECUTION_COMPOSITION_CONTEXT_RESPONSE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "composition-context-response-task-execution.json"
 )
@@ -49,6 +53,35 @@ def load_artifact(root: Path, uri: str) -> dict[str, Any]:
     artifact_path = root / Path(uri.removeprefix("hetzner://runtime/"))
     return load_json(artifact_path)
 
+
+def tenant_research_task() -> dict[str, Any]:
+    return {
+        "id": "task-demo-tenant-research",
+        "objective": "Research the tenant website and summarize current context.",
+        "context": {
+            "auth": {
+                "principal_id": "tenant-user",
+                "tenant_id": "demo-tenant",
+                "area_id": "demo-tenant",
+                "tenant_hostname": "demo-tenant.example.invalid",
+                "membership_id": "demo-tenant-membership-user",
+                "roles": ["demo-tenant-researcher"],
+                "control_plane_principal_id": "demo-tenant-researcher",
+                "role_data_sources": ["demo-tenant-website"],
+                "role_capabilities": ["research"],
+            }
+        },
+    }
+
+
+def tenant_research_profile() -> dict[str, Any]:
+    analyzed = TaskAnalyzer().analyze(tenant_research_task())
+    return RuntimeProfileComposer().compose(
+        analyzed,
+        load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH),
+    )
+
+
 def test_profile_enforcer_denies_unselected_knowledge_and_memory_scopes() -> None:
     profile = load_json(PROFILE_EXAMPLE_PATH)
     enforcer = RuntimeProfileEnforcer(profile)
@@ -62,6 +95,101 @@ def test_profile_enforcer_denies_unselected_knowledge_and_memory_scopes() -> Non
     assert knowledge_error.value.code == "knowledge_scope_not_in_runtime_profile"
     assert memory_error.value.stop_reason == "policy_denied"
     assert memory_error.value.code == "memory_scope_not_in_runtime_profile"
+
+
+def test_profile_enforcer_accepts_tenant_authority_sealed_profile() -> None:
+    profile = tenant_research_profile()
+    enforcer = RuntimeProfileEnforcer(profile)
+
+    enforcer.validate_profile_for_runtime()
+
+    assert profile["tenant_authority"]["tenant_id"] == "demo-tenant"
+    assert profile["tenant_authority"]["direct_user_grants_allowed"] is False
+
+
+@pytest.mark.parametrize(
+    ("mutator", "expected_code"),
+    [
+        (
+            lambda profile: profile.pop("tenant_authority"),
+            "tenant_authority_missing",
+        ),
+        (
+            lambda profile: profile["tenant_authority"].__setitem__(
+                "tenant_id",
+                "other-tenant",
+            ),
+            "tenant_authority_tenant_mismatch",
+        ),
+        (
+            lambda profile: profile["tenant_context"]["role_ids"].append(
+                "demo-tenant-admin",
+            ),
+            "tenant_role_not_in_membership",
+        ),
+        (
+            lambda profile: (
+                profile["skills"].append("unapproved-skill"),
+                profile["module_versions"].__setitem__("unapproved-skill", "0.1.0"),
+            ),
+            "tenant_skill_denied",
+        ),
+        (
+            lambda profile: (
+                profile["knowledge_scopes"].append("outside-knowledge"),
+                profile["module_versions"].__setitem__("outside-knowledge", "0.1.0"),
+            ),
+            "tenant_knowledge_scope_denied",
+        ),
+        (
+            lambda profile: (
+                profile["data_scopes"].append("other-tenant-website-read"),
+                profile["module_versions"].__setitem__("other-tenant-website-read", "0.1.0"),
+            ),
+            "tenant_data_scope_denied",
+        ),
+        (
+            lambda profile: profile["tenant_context"]["role_derivation"].__setitem__(
+                "direct_user_grants_allowed",
+                True,
+            ),
+            "tenant_direct_user_grants_enabled",
+        ),
+        (
+            lambda profile: profile["tenant_authority"]["membership"].__setitem__(
+                "principal_id",
+                "other-user",
+            ),
+            "tenant_membership_principal_mismatch",
+        ),
+    ],
+)
+def test_profile_enforcer_fails_closed_for_invalid_tenant_authority_profile(
+    mutator: Any,
+    expected_code: str,
+) -> None:
+    profile = tenant_research_profile()
+    mutator(profile)
+    enforcer = RuntimeProfileEnforcer(profile)
+
+    with pytest.raises(ProfileEnforcementError) as error:
+        enforcer.validate_profile_for_runtime()
+
+    assert error.value.stop_reason == "policy_denied"
+    assert error.value.code == expected_code
+
+
+def test_profile_enforcer_rejects_global_profile_with_tenant_authority() -> None:
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    profile["tenant_authority"] = load_json(TENANT_RESEARCH_COMPOSITION_CONTEXT_RESPONSE_PATH)[
+        "tenant_authority"
+    ]
+    enforcer = RuntimeProfileEnforcer(profile)
+
+    with pytest.raises(ProfileEnforcementError) as error:
+        enforcer.validate_profile_for_runtime()
+
+    assert error.value.code == "global_tenant_authority_present"
 
 
 def test_profile_enforcer_enforces_token_and_memory_budgets() -> None:

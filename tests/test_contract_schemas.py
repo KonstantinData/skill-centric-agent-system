@@ -91,6 +91,10 @@ def test_keyword_only_module_metadata_is_rejected(
             "'tenant_context' is a required property",
         ),
         (
+            lambda profile: profile.pop("tenant_authority"),
+            "'tenant_authority' is a required property",
+        ),
+        (
             lambda profile: profile["tenant_context"]["role_derivation"].__setitem__(
                 "direct_user_grants_allowed",
                 True,

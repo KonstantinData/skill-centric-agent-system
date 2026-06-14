@@ -1,6 +1,6 @@
 {
   "id": "profile-controlled-write-fixture",
-  "profile_version": "0.5.0",
+  "profile_version": "0.6.0",
   "profile_generation": 1,
   "parent_profile_id": null,
   "recomposition_reason": null,
@@ -37,6 +37,7 @@
     "allowed_role_data_sources": [],
     "allowed_role_capabilities": []
   },
+  "tenant_authority": null,
   "human_review": {
     "required": false,
     "status": "not_required",

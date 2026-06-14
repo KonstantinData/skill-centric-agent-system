@@ -190,13 +190,14 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
     Draft202012Validator(profile_schema).validate(profile)
     assert profile == expected_profile
     assert selected_profile_modules(profile) == set(profile["module_versions"])
-    assert profile["profile_version"] == "0.5.0"
+    assert profile["profile_version"] == "0.6.0"
     assert profile["tenant_context"]["role_derivation"] == {
         "grant_source": "tenant-role-bundles",
         "direct_user_grants_allowed": False,
         "capabilities_derive_from_roles": True,
         "data_sources_derive_from_roles": True,
     }
+    assert profile["tenant_authority"] is None
     assert profile["human_review"]["required"] is False
     assert profile["skills"] == ["git-diff-analysis"]
     assert profile["skill_execution_roles"] == {
@@ -246,6 +247,7 @@ def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
         "allowed_role_data_sources": ["demo-tenant-website"],
         "allowed_role_capabilities": ["research"],
     }
+    assert profile["tenant_authority"] == context_response["tenant_authority"]
 
 
 def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None:
@@ -278,6 +280,7 @@ def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None
     assert profile["data_scopes"] == ["demo-tenant-website-read"]
     assert profile["tenant_context"]["allowed_role_data_sources"] == ["demo-tenant-website"]
     assert profile["tenant_context"]["allowed_role_capabilities"] == ["research"]
+    assert profile["tenant_authority"]["membership"]["principal_id"] == "tenant-user"
 
 
 @pytest.mark.parametrize(

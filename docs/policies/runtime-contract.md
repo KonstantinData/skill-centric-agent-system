@@ -91,6 +91,7 @@ to `schemas/runtime-profile.schema.json` and include:
 - parent profile and recomposition reason,
 - auth context,
 - tenant context with tenant-local role derivation,
+- sealed tenant authority snapshot, or `null` for global profiles,
 - human-review requirement and analyzer classification evidence,
 - selected instructions, skills, tools, knowledge scopes, data scopes, memory
   scopes, policies, and validators,
@@ -132,7 +133,10 @@ Hard enforcement covers:
   that capabilities and data sources derive from tenant role bundles rather
   than direct user grants. For non-global tenants, profile composition must
   validate the Control Plane `tenant_authority` response before emitting the
-  profile,
+  profile. The emitted profile must then carry the sealed `tenant_authority`
+  snapshot, and runtime profile validation must reject execution if the
+  profile identity, membership, role IDs, selected modules, or selected scopes
+  are not derivable from that snapshot,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,

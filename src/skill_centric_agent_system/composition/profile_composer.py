@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from typing import Any
 
 from skill_centric_agent_system.composition.task_analyzer import AnalyzedTask
@@ -9,7 +10,7 @@ from skill_centric_agent_system.composition.tenant_access import (
     TenantAccessValidator,
 )
 
-RUNTIME_PROFILE_VERSION = "0.5.0"
+RUNTIME_PROFILE_VERSION = "0.6.0"
 BASELINE_MODULE_VERSIONS = {
     "base-agent-rules": "0.1.0",
     "runtime-profile-schema": "0.1.0",
@@ -195,6 +196,7 @@ class RuntimeProfileComposer:
             "risk_level": analyzed_task.risk_level,
             "auth_context": _auth_context(analyzed_task),
             "tenant_context": _tenant_context(analyzed_task),
+            "tenant_authority": _tenant_authority_snapshot(analyzed_task, context_response),
             "human_review": _human_review_not_required(analyzed_task),
             "instructions": list(instructions),
             "skills": list(skills),
@@ -314,6 +316,7 @@ def _human_review_profile(
         "risk_level": analyzed_task.risk_level,
         "auth_context": _auth_context(analyzed_task),
         "tenant_context": _tenant_context(analyzed_task),
+        "tenant_authority": _tenant_authority_snapshot(analyzed_task, context_response),
         "human_review": _human_review_required(analyzed_task),
         "instructions": list(instructions),
         "skills": [],
@@ -537,6 +540,19 @@ def _tenant_context(analyzed_task: AnalyzedTask) -> dict[str, Any]:
         "allowed_role_data_sources": list(role_data_sources),
         "allowed_role_capabilities": list(role_capabilities),
     }
+
+
+def _tenant_authority_snapshot(
+    analyzed_task: AnalyzedTask,
+    context_response: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    if analyzed_task.auth_claims.tenant_id == "global":
+        return None
+
+    authority = context_response.get("tenant_authority")
+    if not isinstance(authority, Mapping):
+        raise CompositionError("Tenant authority is required for tenant-scoped profiles.")
+    return deepcopy(dict(authority))
 
 
 def _profile_id(task_id: str, profile_generation: int = 1) -> str:
