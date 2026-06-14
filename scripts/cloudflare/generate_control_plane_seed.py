@@ -20,8 +20,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--modules-dir",
         type=Path,
-        default=Path("examples/modules"),
-        help="Directory containing module metadata JSON files.",
+        default=Path("registry/modules"),
+        help="Directory containing governed registry module folders.",
     )
     parser.add_argument(
         "--output",
@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    module_paths = sorted(args.modules_dir.glob("*.json"))
+    module_paths = sorted(args.modules_dir.rglob("module.json"))
     records = build_seed_records(
         module_paths,
         principal_kind=args.principal_kind,

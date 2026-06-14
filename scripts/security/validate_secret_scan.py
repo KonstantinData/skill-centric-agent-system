@@ -26,6 +26,7 @@ ALLOWED_FINDING_TYPES_BY_PATH = {
     ".github/workflows/ci.yml": {"Secret Keyword"},
     "examples/infrastructure/environment-manifest.json": {"Secret Keyword"},
     "policies/security/production-security-closure.json": {"Secret Keyword"},
+    "registry/versions/lockfile.json": {"Hex High Entropy String"},
 }
 
 

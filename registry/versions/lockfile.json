@@ -1,0 +1,189 @@
+{
+  "environment": "dev",
+  "generated_at": "2026-06-14T18:57:05+00:00",
+  "lockfile_version": "0.1.0",
+  "module_count": 20,
+  "modules": [
+    {
+      "kind": "data_scope",
+      "name": "repository-readonly",
+      "path": "registry/modules/data-scopes/repository-readonly",
+      "schema_version": "0.1.0",
+      "sha256": "6562b98de3cd1d72482067d9284a019275b7d388bc3770417caf16e2ef3e3185",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "knowledge_scope",
+      "name": "architecture-docs",
+      "path": "registry/modules/knowledge-scopes/architecture-docs",
+      "schema_version": "0.1.0",
+      "sha256": "cab80f326ea89c169610ee67569db58c314739ae64760dbcadc7bbcfe08a597a",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "knowledge_scope",
+      "name": "coding-guidelines",
+      "path": "registry/modules/knowledge-scopes/coding-guidelines",
+      "schema_version": "0.1.0",
+      "sha256": "02e1b64c8d789cbdeae43be4a40d94002a5b6293e8d0f71ccfbe5839b98cbdfe",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "memory_scope",
+      "name": "project-memory",
+      "path": "registry/modules/memory-scopes/project-memory",
+      "schema_version": "0.1.0",
+      "sha256": "f05554b6e4fc5afc5b95d49ab37c03c12f555d0e31f00a3b27261896acdada10",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "policy",
+      "name": "no-destructive-commands",
+      "path": "registry/modules/policies/no-destructive-commands",
+      "schema_version": "0.1.0",
+      "sha256": "ad260f72b37825ea68cceadfbbb2dc29ae71465f5e044c79c1118ac1fae17659",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "policy",
+      "name": "require-file-references",
+      "path": "registry/modules/policies/require-file-references",
+      "schema_version": "0.1.0",
+      "sha256": "65513d07e06a6fdd7aaf9dc72a935dca3bc8c125d7042307408ddb7a873421f0",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "dependency-audit",
+      "path": "registry/modules/skills/dependency-audit",
+      "schema_version": "0.1.0",
+      "sha256": "2c3f933fdf1b5f730cbfcc6bd2db371828db45abbff88cf59c79d0fba74163de",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "document-synthesis",
+      "path": "registry/modules/skills/document-synthesis",
+      "schema_version": "0.1.0",
+      "sha256": "ba9c8a2b36cfcafd36d0f48347bdc8110929629361f4740b3b94c078ead39c65",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "general-task-summary",
+      "path": "registry/modules/skills/general-task-summary",
+      "schema_version": "0.1.0",
+      "sha256": "925c03e4bbd42b39868409284e9f1c9f3116847928cf4fc41d0f57a22238e2d3",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "git-diff-analysis",
+      "path": "registry/modules/skills/git-diff-analysis",
+      "schema_version": "0.1.0",
+      "sha256": "175b5b628300311e57b3d1b6be45da222a618ba0d316853346481896b2635a73",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "research-context-synthesis",
+      "path": "registry/modules/skills/research-context-synthesis",
+      "schema_version": "0.1.0",
+      "sha256": "02064cd125b9798d20304d4d57b74fef9e2d64335a2f9c9945581470e11ee71f",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "skill",
+      "name": "task-execution-planning",
+      "path": "registry/modules/skills/task-execution-planning",
+      "schema_version": "0.1.0",
+      "sha256": "d7ec672d5e074f69d75714f1d5f8ea408b7f510fa168d2bca1ac8a7bc144d624",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "tool",
+      "name": "filesystem-list",
+      "path": "registry/modules/tools/filesystem-list",
+      "schema_version": "0.1.0",
+      "sha256": "599d1f33bc455a4f658d12342f55a6a4b817ba992f5aba332efe4f1a221b3112",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "tool",
+      "name": "filesystem-read",
+      "path": "registry/modules/tools/filesystem-read",
+      "schema_version": "0.1.0",
+      "sha256": "c7a7e92a676e74ce2e021e5d67277010e5c9a0346a27c9f859d240c89c08efdc",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "tool",
+      "name": "git-read",
+      "path": "registry/modules/tools/git-read",
+      "schema_version": "0.1.0",
+      "sha256": "e2399de8dd5f3077d4340125c443ecdc09735075c9f9e968adad1c5a7105e9e5",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "tool",
+      "name": "test-runner",
+      "path": "registry/modules/tools/test-runner",
+      "schema_version": "0.1.0",
+      "sha256": "a8091aee526b8bbee6f1539afa6e8aff583271a6d00c0ef4567dab7c2c119a5f",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "validator",
+      "name": "general-output-contract",
+      "path": "registry/modules/validators/general-output-contract",
+      "schema_version": "0.1.0",
+      "sha256": "a89e382b320b5ea41f1e667bf858d065c579a3f46bde6d5b08af7e22055a5f7c",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "validator",
+      "name": "research-output-contract",
+      "path": "registry/modules/validators/research-output-contract",
+      "schema_version": "0.1.0",
+      "sha256": "221236ff645996b60435e88baf0faeb1f2430709540b6769c44d5349df1805bf",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "validator",
+      "name": "review-findings-contract",
+      "path": "registry/modules/validators/review-findings-contract",
+      "schema_version": "0.1.0",
+      "sha256": "9b24b4acb53b458b57b315d1283586e7a3e753467f0d06a7bedc493c765aaa42",
+      "status": "active",
+      "version": "0.1.0"
+    },
+    {
+      "kind": "validator",
+      "name": "task-execution-output-contract",
+      "path": "registry/modules/validators/task-execution-output-contract",
+      "schema_version": "0.1.0",
+      "sha256": "03fc87ae8a81cb89650410fd72ea69cdb815d6ef2f5a735ac210149b6939ee5e",
+      "status": "active",
+      "version": "0.1.0"
+    }
+  ],
+  "registry_root": "registry/modules"
+}

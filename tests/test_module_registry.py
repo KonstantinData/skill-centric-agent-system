@@ -16,13 +16,22 @@ from skill_centric_agent_system.registries import (
 from skill_centric_agent_system.registries.modules import UnknownModuleError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-GIT_DIFF_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "git-diff-analysis.json"
-PROJECT_MEMORY_MODULE_PATH = REPO_ROOT / "examples" / "modules" / "project-memory.json"
+GIT_DIFF_MODULE_PATH = (
+    REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
+)
+PROJECT_MEMORY_MODULE_PATH = (
+    REPO_ROOT / "registry" / "modules" / "memory-scopes" / "project-memory" / "module.json"
+)
 RESEARCH_CONTEXT_SYNTHESIS_MODULE_PATH = (
-    REPO_ROOT / "examples" / "modules" / "research-context-synthesis.json"
+    REPO_ROOT
+    / "registry"
+    / "modules"
+    / "skills"
+    / "research-context-synthesis"
+    / "module.json"
 )
 TASK_EXECUTION_PLANNING_MODULE_PATH = (
-    REPO_ROOT / "examples" / "modules" / "task-execution-planning.json"
+    REPO_ROOT / "registry" / "modules" / "skills" / "task-execution-planning" / "module.json"
 )
 SCORING_EVALUATIONS_PATH = (
     REPO_ROOT / "examples" / "evaluations" / "composition-scoring-cases.json"

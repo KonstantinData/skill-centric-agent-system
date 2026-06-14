@@ -3,13 +3,13 @@
   "coverage_status": "passed",
   "generated_by": "scripts/runtime/skill_handler_coverage.py",
   "handler_registry": "skill_centric_agent_system.runtime.skill_handlers.BUILTIN_SKILL_HANDLER_REGISTRY",
-  "module_glob": "examples/modules/*.json",
+  "module_glob": "registry/modules/**/module.json",
   "skills": [
     {
       "coverage_status": "covered",
       "handler_id": "dependency-audit@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/dependency-audit.json",
+      "module_path": "registry/modules/skills/dependency-audit/module.json",
       "module_tests": [
         "dependency-audit-positive",
         "dependency-audit-denies-destructive"
@@ -33,7 +33,7 @@
       "coverage_status": "covered",
       "handler_id": "document-synthesis@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/document-synthesis.json",
+      "module_path": "registry/modules/skills/document-synthesis/module.json",
       "module_tests": [
         "document-synthesis-positive",
         "document-synthesis-denies-deploy"
@@ -54,7 +54,7 @@
       "coverage_status": "covered",
       "handler_id": "general-task-summary@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/general-task-summary.json",
+      "module_path": "registry/modules/skills/general-task-summary/module.json",
       "module_tests": [
         "general-task-summary-positive",
         "general-task-summary-denies-destructive"
@@ -75,7 +75,7 @@
       "coverage_status": "covered",
       "handler_id": "git-diff-analysis@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/git-diff-analysis.json",
+      "module_path": "registry/modules/skills/git-diff-analysis/module.json",
       "module_tests": [
         "detects-risky-diff-fixture",
         "requires-file-line-references"
@@ -100,7 +100,7 @@
       "coverage_status": "covered",
       "handler_id": "research-context-synthesis@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/research-context-synthesis.json",
+      "module_path": "registry/modules/skills/research-context-synthesis/module.json",
       "module_tests": [
         "research-context-synthesis-positive",
         "research-context-synthesis-denies-deploy"
@@ -121,7 +121,7 @@
       "coverage_status": "covered",
       "handler_id": "task-execution-planning@0.1.0",
       "lifecycle_status": "active",
-      "module_path": "examples/modules/task-execution-planning.json",
+      "module_path": "registry/modules/skills/task-execution-planning/module.json",
       "module_tests": [
         "task-execution-planning-positive",
         "task-execution-planning-denies-destructive"

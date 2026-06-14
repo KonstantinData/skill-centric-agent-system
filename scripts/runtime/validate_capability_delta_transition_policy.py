@@ -14,7 +14,7 @@ POLICY_VERSION = "0.1.0"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_POLICY = REPO_ROOT / "policies" / "runtime" / "capability-delta-transition-policy.json"
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "capability-delta-transition-policy.schema.json"
-MODULES_DIR = REPO_ROOT / "examples" / "modules"
+MODULES_DIR = REPO_ROOT / "registry" / "modules"
 
 REQUIRED_CAPABILITY_CLASSES = {
     "research",
@@ -198,7 +198,7 @@ def _module_mapping_violations(policy: Mapping[str, Any], modules_dir: Path) -> 
     module_mappings = policy["module_capability_mappings"]
     scope_mappings = policy["scope_mappings"]
 
-    for module_path in sorted(modules_dir.glob("*.json")):
+    for module_path in sorted(modules_dir.rglob("module.json")):
         module = _load_json(module_path)
         if module.get("kind") != "skill":
             continue

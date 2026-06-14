@@ -1,25 +1,25 @@
 ---
 name: scas-research-quality-loop
-description: Execute the SCAS department-internal Lead, Researcher, Critic, Judge, and Coding Specialist loop. Use when Codex needs to transform a department assignment into artifacts, reviews, retry decisions, query refinement, judge resolution, and a finalized DepartmentPackage.
+description: Execute the SCAS domain-package quality loop. Use when Codex needs to transform a domain assignment into artifacts, reviews, retry decisions, query refinement, final resolution, and a finalized DomainPackage.
 ---
 
 # SCAS Research Quality Loop
 
-Use this skill for the department-internal artifact lifecycle.
+Use this skill for the domain-package artifact lifecycle.
 
 ## Loop
 
-1. Lead builds investigation plan and selects the next mandatory task.
-2. Researcher calls `run_research(task_key)` with the exact task key and produces `TaskArtifact`.
-3. Critic calls `review_research(task_key)` and produces `TaskReviewArtifact`.
-4. Lead decides:
+1. Planning builds the investigation plan and selects the next mandatory task.
+2. Research calls `run_research(task_key)` with the exact task key and produces `TaskArtifact`.
+3. Quality gate calls `review_research(task_key)` and produces `TaskReviewArtifact`.
+4. Planning decides:
    - all core rules pass: accept and move on
    - core failures and retries remain: retry with targeted revision
-   - method issue: call Coding Specialist first
-   - retry exhausted: call Judge
-5. Coding Specialist returns a bounded query strategy token and revision focus.
-6. Judge returns final accepted, degraded, or closed-unresolved decision.
-7. Lead finalizes the package from stored artifacts.
+   - method issue: run query refinement first
+   - retry exhausted: run final resolution
+5. Query refinement returns a bounded query strategy token and revision focus.
+6. Resolution returns final accepted, degraded, or closed-unresolved decision.
+7. Planning finalizes the package from stored artifacts.
 
 ## Artifact Rules
 
@@ -37,8 +37,8 @@ Use this skill for the department-internal artifact lifecycle.
 ## Select With
 
 Instructions:
-- `template/instructions/20-department-lead.md`
+- `template/instructions/20-domain-package-planning.md`
 - `template/instructions/30-research-worker.md`
-- `template/instructions/40-critic-quality-gate.md`
-- `template/instructions/50-judge-resolution.md`
-- `template/instructions/60-coding-specialist-query-refinement.md`
+- `template/instructions/40-quality-gate.md`
+- `template/instructions/50-resolution.md`
+- `template/instructions/60-query-refinement.md`

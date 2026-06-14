@@ -20,9 +20,9 @@ GENERATED_BY = "scripts/runtime/skill_handler_coverage.py"
 HANDLER_REGISTRY_REF = (
     "skill_centric_agent_system.runtime.skill_handlers.BUILTIN_SKILL_HANDLER_REGISTRY"
 )
-MODULE_GLOB = "examples/modules/*.json"
+MODULE_GLOB = "registry/modules/**/module.json"
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MODULES_DIR = REPO_ROOT / "examples" / "modules"
+DEFAULT_MODULES_DIR = REPO_ROOT / "registry" / "modules"
 DEFAULT_OUTPUT = REPO_ROOT / "examples" / "runtime" / "skill-handler-coverage.json"
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "skill-handler-coverage.schema.json"
 
@@ -191,7 +191,7 @@ def _coverage_entry(
         "handler_id": descriptor["handler_id"],
         "lifecycle_status": descriptor["lifecycle_status"],
         "module_path": _repo_path(module_path),
-        "module_tests": list(module["tests"]),
+        "module_tests": _module_tests(module),
         "output_contract": descriptor["output_contract"],
         "production_required": production_required,
         "runtime_role": runtime_role,
@@ -206,7 +206,7 @@ def _coverage_entry(
 
 def _load_skill_modules(modules_dir: Path) -> tuple[tuple[Path, dict[str, Any]], ...]:
     modules: list[tuple[Path, dict[str, Any]]] = []
-    for module_path in sorted(modules_dir.glob("*.json")):
+    for module_path in sorted(modules_dir.rglob("module.json")):
         module = _load_json(module_path)
         if module.get("kind") == "skill":
             modules.append((module_path, module))
@@ -216,6 +216,20 @@ def _load_skill_modules(modules_dir: Path) -> tuple[tuple[Path, dict[str, Any]],
             key=lambda item: (str(item[1]["name"]), str(item[1]["version"])),
         )
     )
+
+
+def _module_tests(module: Mapping[str, Any]) -> list[str]:
+    tests = module.get("tests", [])
+    if isinstance(tests, Mapping):
+        values: list[str] = []
+        for field in ("contract", "runtime", "fixtures"):
+            field_values = tests.get(field, [])
+            if isinstance(field_values, list):
+                values.extend(str(value) for value in field_values)
+        return values
+    if isinstance(tests, list):
+        return [str(value) for value in tests]
+    return []
 
 
 def _load_json(path: Path) -> dict[str, Any]:

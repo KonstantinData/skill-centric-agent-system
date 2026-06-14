@@ -152,9 +152,15 @@ surfaces are:
   profile enforcement, Tool Gateway, storage, recomposition, and skill handlers.
 - `workers/control-api/`: Cloudflare Control API for composition, ingestion,
   retrieval, indexing, authentication, and AI Gateway routing.
+- `registry/`: governed source of truth for selectable modules, environment
+  allowlists, and reproducible registry lockfiles.
 - `schemas/` and `examples/`: machine-readable contracts and representative
-  tasks, modules, profiles, API payloads, infrastructure records, and runtime
-  fixtures.
+  tasks, profiles, API payloads, infrastructure records, generated seeds, and
+  runtime fixtures. `examples/` is not the active module registry.
+- `template/`: curated SCAS-native skill and instruction templates for future
+  registry/module authoring. Templates are not active runtime modules until they
+  are migrated into `registry/modules/**` with validated `module.json`
+  metadata.
 - `docs/reference/architecture.md`: system architecture and implemented runtime
   surfaces.
 - `docs/policies/runtime-contract.md`: profile sealing, Tool Gateway rules,

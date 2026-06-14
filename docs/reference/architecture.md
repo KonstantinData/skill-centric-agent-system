@@ -166,7 +166,7 @@ The current repository has implemented the first control-plane slice:
   non-health route,
 - `POST /composition/context`,
 - D1-backed candidate scoring, policy binding, scope binding, and graph validation,
-- generated dev D1 seed data derived from `examples/modules/*.json`,
+- generated dev D1 seed data derived from `registry/modules/**/module.json`,
 - a rule-based Task Analyzer with evaluation coverage for code-review,
   research, task-execution, and general tasks,
 - a Runtime Profile Composer that consumes Control Plane context responses,

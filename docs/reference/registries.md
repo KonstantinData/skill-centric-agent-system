@@ -8,8 +8,8 @@ runtime by selecting only known, versioned, policy-filtered modules.
 
 The first implementation is local and deterministic:
 
-- module metadata is loaded from JSON records that conform to
-  `schemas/module.schema.json`,
+- module metadata is loaded from `registry/modules/**/module.json` records that
+  conform to `schemas/module.schema.json`,
 - discovery uses structured fields, not keyword-only matching,
 - scoring applies explicit `selection.base_score` and
   `selection.score_modifiers`,
@@ -57,9 +57,35 @@ behavior before storage-specific query code is added.
 The detailed module metadata contract is documented in
 `docs/policies/module-contracts.md`.
 
+## Source Of Truth
+
+`registry/` is the durable repository source for module metadata. `examples/`
+contains fixtures, generated examples, and API payload samples only.
+
+Skill modules have two layers:
+
+- `module.json`: machine-readable selection, dependency, policy, version,
+  environment, runtime role, and runtime contract metadata.
+- `SKILL.md`: agent-readable execution guidance loaded only after a sealed
+  runtime profile selects the skill.
+
+The state flow is one-way:
+
+```text
+registry/modules/**/module.json
+  -> registry validation
+  -> registry/versions/lockfile.json
+  -> generated Control Plane seed SQL
+  -> deployed Control Plane state
+```
+
+Control Plane state can drift operationally, but deploys are reproduced from the
+registry source and lockfile. Do not edit generated seed SQL as the source of
+truth.
+
 ## Cloudflare Seed
 
-The dev D1 registry seed is generated from `examples/modules/*.json`:
+The dev D1 registry seed is generated from `registry/modules/**/module.json`:
 
 ```text
 python scripts/cloudflare/generate_control_plane_seed.py --output examples/control-plane/dev-seed.sql
@@ -67,11 +93,11 @@ python scripts/cloudflare/generate_control_plane_seed.py --output examples/contr
 
 The generator writes idempotent upserts for `modules`, `module_versions`,
 `module_selection_metadata`, `module_dependencies`, `policy_bindings`, and
-`scope_bindings`. Referenced tools, scopes, policies, and validators are emitted
-as generated stub modules until first-class module contracts exist for them.
+`scope_bindings`. Referenced tools, scopes, policies, and validators are now
+first-class registry modules instead of generated source-of-truth stubs.
 The current seed includes first-slice skill modules for `code-review`,
-`research`, `task-execution`, and `general-task`, plus generated tool, scope,
-policy, and validator dependencies needed by those modules.
+`research`, `task-execution`, and `general-task`, plus the tool, scope, policy,
+and validator dependencies needed by those modules.
 
 `examples/control-plane/cloudflare-control-plane.json` remains a storage
 contract fixture for the broader Cloudflare record model, including knowledge

@@ -21,7 +21,7 @@ from scripts.runtime.validate_capability_delta_transition_policy import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = REPO_ROOT / "policies" / "runtime" / "capability-delta-transition-policy.json"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "capability-delta-transition-policy.schema.json"
-MODULES_DIR = REPO_ROOT / "examples" / "modules"
+MODULES_DIR = REPO_ROOT / "registry" / "modules"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -66,7 +66,7 @@ def test_capability_delta_policy_covers_selectable_skill_capability_classes() ->
     policy = load_json(POLICY_PATH)
     mappings = policy["module_capability_mappings"]
 
-    for module_path in MODULES_DIR.glob("*.json"):
+    for module_path in MODULES_DIR.rglob("module.json"):
         module = load_json(module_path)
         if module["kind"] == "skill":
             assert module["capability_class"] in mappings
@@ -74,10 +74,11 @@ def test_capability_delta_policy_covers_selectable_skill_capability_classes() ->
 
 def test_capability_delta_policy_rejects_unmapped_skill_class(tmp_path: Path) -> None:
     modules_dir = tmp_path / "modules"
-    modules_dir.mkdir()
-    module = load_json(MODULES_DIR / "git-diff-analysis.json")
+    module_dir = modules_dir / "skills" / "git-diff-analysis"
+    module_dir.mkdir(parents=True)
+    module = load_json(MODULES_DIR / "skills" / "git-diff-analysis" / "module.json")
     module["capability_class"] = "unmapped"
-    (modules_dir / "git-diff-analysis.json").write_text(
+    (module_dir / "module.json").write_text(
         json.dumps(module),
         encoding="utf-8",
     )

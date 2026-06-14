@@ -1,0 +1,319 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections.abc import Iterable, Mapping
+from pathlib import Path
+from typing import Any
+
+from jsonschema import Draft202012Validator
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_REGISTRY_ROOT = REPO_ROOT / "registry" / "modules"
+DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "module.schema.json"
+DEFAULT_ENVIRONMENTS_DIR = REPO_ROOT / "registry" / "environments"
+
+KIND_DIRS = {
+    "data_scope": "data-scopes",
+    "instruction": "instructions",
+    "knowledge_scope": "knowledge-scopes",
+    "memory_scope": "memory-scopes",
+    "policy": "policies",
+    "skill": "skills",
+    "tool": "tools",
+    "validator": "validators",
+}
+REFERENCE_FIELDS = {
+    "required_tools": "tool",
+    "optional_tools": "tool",
+    "knowledge_scopes": "knowledge_scope",
+    "data_scopes": "data_scope",
+    "policies": "policy",
+    "validators": "validator",
+}
+
+
+class RegistryValidationError(ValueError):
+    """Raised when the governed registry is invalid."""
+
+
+def validate_registry(
+    *,
+    registry_root: Path = DEFAULT_REGISTRY_ROOT,
+    schema_path: Path = DEFAULT_SCHEMA,
+    environments_dir: Path = DEFAULT_ENVIRONMENTS_DIR,
+    phase: str = "all",
+    environment: str | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    modules = _load_modules(registry_root)
+    schema = _load_json(schema_path)
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+
+    if phase in {"3a", "schema", "all"}:
+        for module_path, module in modules:
+            errors.extend(_schema_errors(validator, module_path, module))
+            errors.extend(_local_invariant_errors(module_path, module, schema_path))
+
+    if phase in {"3b", "graph", "all"}:
+        errors.extend(_graph_errors(modules))
+        errors.extend(_environment_errors(modules, environments_dir, environment))
+
+    if errors:
+        raise RegistryValidationError("\n".join(errors))
+    return []
+
+
+def _load_modules(registry_root: Path) -> tuple[tuple[Path, dict[str, Any]], ...]:
+    modules: list[tuple[Path, dict[str, Any]]] = []
+    for module_path in sorted(registry_root.rglob("module.json")):
+        modules.append((module_path, _load_json(module_path)))
+    if not modules:
+        raise RegistryValidationError(
+            f"no module.json files found under {_repo_path(registry_root)}"
+        )
+    return tuple(modules)
+
+
+def _schema_errors(
+    validator: Draft202012Validator,
+    module_path: Path,
+    module: Mapping[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+    for error in sorted(validator.iter_errors(module), key=lambda item: item.json_path):
+        errors.append(f"{_repo_path(module_path)} {error.json_path}: {error.message}")
+    return errors
+
+
+def _local_invariant_errors(
+    module_path: Path,
+    module: Mapping[str, Any],
+    schema_path: Path,
+) -> list[str]:
+    errors: list[str] = []
+    module_dir = module_path.parent
+
+    schema_ref = module.get("$schema")
+    if isinstance(schema_ref, str):
+        try:
+            resolved_schema = _resolve_inside_repo(module_dir / schema_ref)
+        except ValueError:
+            resolved_schema = (module_dir / schema_ref).resolve()
+        if resolved_schema != schema_path.resolve():
+            errors.append(
+                f"{_repo_path(module_path)} $schema must resolve to {_repo_path(schema_path)}"
+            )
+
+    expected_parent = KIND_DIRS.get(str(module.get("kind")))
+    if expected_parent and module_path.parent.parent.name != expected_parent:
+        errors.append(
+            f"{_repo_path(module_path)} must live under registry/modules/{expected_parent}/"
+        )
+
+    runtime_roles = module.get("runtime_roles", {})
+    if isinstance(runtime_roles, Mapping):
+        default_role = runtime_roles.get("default")
+        allowed_roles = runtime_roles.get("allowed", [])
+        if isinstance(allowed_roles, list) and default_role not in allowed_roles:
+            errors.append(
+                f"{_repo_path(module_path)} runtime_roles.default must be included in allowed"
+            )
+
+    entrypoint = module.get("entrypoint")
+    if module.get("kind") == "skill":
+        if not isinstance(entrypoint, Mapping):
+            errors.append(f"{_repo_path(module_path)} skill module requires entrypoint")
+        else:
+            entrypoint_path = entrypoint.get("path")
+            if isinstance(entrypoint_path, str):
+                resolved = (module_dir / entrypoint_path).resolve()
+                if resolved.parent != module_dir.resolve() or resolved.name != "SKILL.md":
+                    errors.append(
+                        f"{_repo_path(module_path)} skill entrypoint must be local SKILL.md"
+                    )
+                elif not resolved.exists():
+                    errors.append(f"{_repo_path(module_path)} missing SKILL.md entrypoint")
+                else:
+                    errors.extend(_skill_frontmatter_errors(resolved, module))
+
+    for path_value in _path_values(module):
+        candidate = Path(path_value)
+        if candidate.is_absolute() or ":" in candidate.parts[0]:
+            errors.append(f"{_repo_path(module_path)} contains absolute path: {path_value}")
+            continue
+        _resolve_inside_repo(REPO_ROOT / candidate)
+
+    return errors
+
+
+def _skill_frontmatter_errors(skill_path: Path, module: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+    text = skill_path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return [f"{_repo_path(skill_path)} missing YAML frontmatter"]
+    end = text.find("\n---", 4)
+    if end == -1:
+        return [f"{_repo_path(skill_path)} has unterminated YAML frontmatter"]
+    frontmatter = text[4:end].splitlines()
+    values: dict[str, str] = {}
+    for line in frontmatter:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        values[key.strip()] = value.strip()
+    if values.get("name") != module.get("name"):
+        errors.append(f"{_repo_path(skill_path)} frontmatter name must match module name")
+    if not values.get("description"):
+        errors.append(f"{_repo_path(skill_path)} frontmatter description is required")
+    return errors
+
+
+def _graph_errors(modules: Iterable[tuple[Path, Mapping[str, Any]]]) -> list[str]:
+    errors: list[str] = []
+    by_name_version: dict[tuple[str, str], Path] = {}
+    by_name_kind: dict[tuple[str, str], Path] = {}
+    module_list = tuple(modules)
+
+    for module_path, module in module_list:
+        name = str(module.get("name"))
+        version = str(module.get("version"))
+        kind = str(module.get("kind"))
+        version_key = (name, version)
+        kind_key = (name, kind)
+        if version_key in by_name_version:
+            errors.append(
+                f"{_repo_path(module_path)} duplicates {name}@{version} already defined in "
+                f"{_repo_path(by_name_version[version_key])}"
+            )
+        by_name_version[version_key] = module_path
+        by_name_kind[kind_key] = module_path
+
+    for module_path, module in module_list:
+        for field, expected_kind in REFERENCE_FIELDS.items():
+            values = module.get(field, [])
+            if not isinstance(values, list):
+                continue
+            for target_name in values:
+                key = (str(target_name), expected_kind)
+                if key not in by_name_kind:
+                    errors.append(
+                        f"{_repo_path(module_path)} {field} references missing "
+                        f"{expected_kind}: {target_name}"
+                    )
+
+    return errors
+
+
+def _environment_errors(
+    modules: Iterable[tuple[Path, Mapping[str, Any]]],
+    environments_dir: Path,
+    environment: str | None,
+) -> list[str]:
+    errors: list[str] = []
+    environment_paths = (
+        [environments_dir / f"{environment}.json"]
+        if environment
+        else sorted(environments_dir.glob("*.json"))
+    )
+    env_configs = [_load_json(path) for path in environment_paths if path.exists()]
+    env_by_name = {str(config["name"]): config for config in env_configs}
+
+    for module_path, module in modules:
+        module_envs = set(str(value) for value in module.get("environments", []))
+        for env_name in module_envs:
+            config = env_by_name.get(env_name)
+            if config is None:
+                errors.append(
+                    f"{_repo_path(module_path)} references missing environment {env_name}"
+                )
+                continue
+            if config.get("strategy") != "allowlist":
+                environment_path = environments_dir / f"{env_name}.json"
+                errors.append(f"{_repo_path(environment_path)} must use allowlist")
+            allowed_statuses = set(str(value) for value in config.get("allowed_statuses", []))
+            if module.get("status") not in allowed_statuses:
+                errors.append(
+                    f"{_repo_path(module_path)} status {module.get('status')} "
+                    f"is not allowed in {env_name}"
+                )
+            allowed_capabilities = set(
+                str(value) for value in config.get("allowed_capability_classes", [])
+            )
+            if module.get("capability_class") not in allowed_capabilities:
+                errors.append(
+                    f"{_repo_path(module_path)} capability_class {module.get('capability_class')} "
+                    f"is not allowed in {env_name}"
+                )
+    return errors
+
+
+def _path_values(module: Mapping[str, Any]) -> tuple[str, ...]:
+    values: list[str] = []
+    entrypoint = module.get("entrypoint")
+    if isinstance(entrypoint, Mapping) and isinstance(entrypoint.get("path"), str):
+        values.append(str(entrypoint["path"]))
+    tests = module.get("tests")
+    if isinstance(tests, Mapping):
+        for field in ("contract", "fixtures"):
+            field_values = tests.get(field, [])
+            if isinstance(field_values, list):
+                values.extend(str(value) for value in field_values)
+    return tuple(values)
+
+
+def _resolve_inside_repo(path: Path) -> Path:
+    resolved = path.resolve()
+    resolved.relative_to(REPO_ROOT.resolve())
+    return resolved
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    parsed = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(parsed, dict):
+        raise RegistryValidationError(f"{_repo_path(path)} must contain a JSON object")
+    return parsed
+
+
+def _repo_path(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Validate the governed SCAS module registry.")
+    parser.add_argument("--registry-root", type=Path, default=DEFAULT_REGISTRY_ROOT)
+    parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
+    parser.add_argument("--environments-dir", type=Path, default=DEFAULT_ENVIRONMENTS_DIR)
+    parser.add_argument(
+        "--phase",
+        choices=("3a", "schema", "3b", "graph", "all"),
+        default="all",
+    )
+    parser.add_argument("--environment", choices=("dev", "staging", "prod"))
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        validate_registry(
+            registry_root=args.registry_root,
+            schema_path=args.schema,
+            environments_dir=args.environments_dir,
+            phase=args.phase,
+            environment=args.environment,
+        )
+    except (OSError, json.JSONDecodeError, RegistryValidationError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print("registry validation passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
