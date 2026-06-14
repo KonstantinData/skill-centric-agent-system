@@ -31,6 +31,10 @@ authenticated principal to read D1 `tenants`, `tenant_memberships`,
 `tenant_role_bundles`, `tenant_data_sources`, and tenant grant tables. Missing
 or mismatched tenant authority returns `composition_status: "denied"` and does
 not emit a partial authority snapshot.
+When a tenant-scoped runtime profile is emitted, the Composer seals the
+validated snapshot into `tenant_authority`. The Runtime Profile Enforcer then
+revalidates tenant identity, membership, role-derived modules, and allowed
+scopes before execution starts.
 
 D1 remains authoritative for registry and policy-sensitive reads. KV is used
 only for the optional `registry:version` value returned in the response.

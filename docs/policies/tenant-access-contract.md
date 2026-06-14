@@ -131,10 +131,27 @@ The Control API builds `tenant_authority` only from D1 tenant tables and the
 request `tenant_context`. Prompt text, client-supplied role claims, and direct
 user grants are not authority sources.
 
+The Composer seals the validated `tenant_authority` snapshot into the emitted
+runtime profile. Global profiles set `tenant_authority = null`. Tenant-scoped
+profiles must carry the snapshot so the Runtime Profile Enforcer can validate
+the immutable profile independently before execution starts.
+
+Runtime validation must confirm that:
+
+- the profile tenant and area match the sealed authority,
+- the active membership matches the profile membership and principal,
+- selected role IDs are present in the active membership,
+- selected skills, tools, policies, validators, knowledge scopes, data scopes,
+  and memory scopes are reachable through tenant role bundles,
+- role capability and data-source grants are role-derived,
+- no direct user grants are enabled in either `tenant_context` or
+  `tenant_authority`.
+
 The runtime profile is invalid when:
 
 - `tenant_context` is missing,
 - `tenant_authority` is missing for a non-global tenant,
+- `tenant_authority` is present for the global tenant,
 - direct user grants are enabled,
 - scopes from more than one tenant or area are present,
 - selected tools, skills, data sources, memory scopes, or knowledge scopes are

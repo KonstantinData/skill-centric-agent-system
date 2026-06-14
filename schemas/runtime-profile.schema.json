@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:runtime-profile:0.5.0",
+  "$id": "urn:scas:schema:runtime-profile:0.6.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",
@@ -16,6 +16,7 @@
     "risk_level",
     "auth_context",
     "tenant_context",
+    "tenant_authority",
     "human_review",
     "instructions",
     "skills",
@@ -198,6 +199,109 @@
           "$ref": "#/$defs/stringArray"
         }
       }
+    },
+    "tenant_authority": {
+      "description": "Sealed Control Plane tenant authority snapshot used by runtime profile validation. Global profiles set this to null; non-global tenant profiles must include the D1-derived authority snapshot.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tenant_id",
+            "area_id",
+            "status",
+            "direct_user_grants_allowed",
+            "membership",
+            "role_bundles",
+            "data_sources",
+            "allowed_knowledge_scopes",
+            "allowed_data_scopes",
+            "allowed_memory_scopes"
+          ],
+          "properties": {
+            "tenant_id": {
+              "$ref": "#/$defs/id"
+            },
+            "area_id": {
+              "$ref": "#/$defs/id"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "setup",
+                "active",
+                "disabled",
+                "archived"
+              ]
+            },
+            "direct_user_grants_allowed": {
+              "type": "boolean",
+              "const": false
+            },
+            "membership": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "tenant_id",
+                "principal_id",
+                "status",
+                "role_ids"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/id"
+                },
+                "tenant_id": {
+                  "$ref": "#/$defs/id"
+                },
+                "principal_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "suspended",
+                    "removed"
+                  ]
+                },
+                "role_ids": {
+                  "$ref": "#/$defs/nonEmptyIdArray"
+                }
+              }
+            },
+            "role_bundles": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/tenantAuthorityRoleBundle"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "data_sources": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/tenantAuthorityDataSource"
+              },
+              "uniqueItems": true
+            },
+            "allowed_knowledge_scopes": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "allowed_data_scopes": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "allowed_memory_scopes": {
+              "$ref": "#/$defs/stringArray"
+            }
+          }
+        }
+      ]
     },
     "human_review": {
       "type": "object",
@@ -443,6 +547,102 @@
         "return_error",
         "recompose_once"
       ]
+    },
+    "tenantAuthorityRoleBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "capability_grants",
+        "data_source_grants",
+        "derived_runtime_modules"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "capability_grants": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "data_source_grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "data_source_id",
+              "access_modes"
+            ],
+            "properties": {
+              "data_source_id": {
+                "$ref": "#/$defs/id"
+              },
+              "access_modes": {
+                "$ref": "#/$defs/nonEmptyStringArray"
+              }
+            }
+          },
+          "uniqueItems": true
+        },
+        "derived_runtime_modules": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "skills",
+            "workflows",
+            "tools",
+            "policies",
+            "validators"
+          ],
+          "properties": {
+            "skills": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "workflows": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "tools": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "policies": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "validators": {
+              "$ref": "#/$defs/stringArray"
+            }
+          }
+        }
+      }
+    },
+    "tenantAuthorityDataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "active",
+            "disabled",
+            "archived"
+          ]
+        }
+      }
     }
   }
 }
