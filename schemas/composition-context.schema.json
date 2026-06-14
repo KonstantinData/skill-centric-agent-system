@@ -427,6 +427,38 @@
         }
       }
     },
+    "requestTenantContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "area_id",
+        "hostname",
+        "membership_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "area_id": {
+          "$ref": "#/$defs/id"
+        },
+        "hostname": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "membership_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    },
     "taskSignals": {
       "type": "object",
       "additionalProperties": false,
@@ -572,6 +604,9 @@
         },
         "principal": {
           "$ref": "#/$defs/principal"
+        },
+        "tenant_context": {
+          "$ref": "#/$defs/requestTenantContext"
         },
         "requested_profile_generation": {
           "$ref": "#/$defs/profileGeneration"

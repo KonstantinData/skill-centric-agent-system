@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import migration0001 from "../../../migrations/cloudflare/d1/0001_control_plane.sql?raw";
 import migration0002 from "../../../migrations/cloudflare/d1/0002_module_selection_metadata.sql?raw";
+import migration0003 from "../../../migrations/cloudflare/d1/0003_tenant_control_plane.sql?raw";
 import worker from "../src/index";
 
 const compositionRequest = {
@@ -33,6 +34,20 @@ const compositionRequest = {
       classification_reasons: ["Matched code-review task signals: review, diff."],
       requires_human_review: false,
     },
+  },
+};
+
+const tenantCompositionRequest = {
+  ...compositionRequest,
+  principal: {
+    kind: "user",
+    id: "tenant-user",
+  },
+  tenant_context: {
+    tenant_id: "demo-tenant",
+    area_id: "demo-tenant",
+    hostname: "demo-tenant.example.invalid",
+    membership_id: "demo-tenant-membership-user",
   },
 };
 
@@ -155,7 +170,7 @@ async function fetchJson(
 }
 
 async function migrateControlPlane(): Promise<void> {
-  const migrationSql = `${migration0001}\n${migration0002}`.replaceAll(
+  const migrationSql = `${migration0001}\n${migration0002}\n${migration0003}`.replaceAll(
     "PRAGMA foreign_keys = ON;",
     "",
   );
@@ -610,6 +625,164 @@ async function seedControlPlane(): Promise<void> {
       "memory_scope",
       "mod-no-destructive-commands",
     ),
+    db.prepare(
+      `
+      INSERT INTO scope_bindings (
+        id,
+        scope_id,
+        scope_kind,
+        principal_kind,
+        principal_id,
+        policy_id,
+        effect
+      )
+      VALUES (?, ?, ?, 'user', 'tenant-user', ?, 'allow')
+      `,
+    ).bind(
+      "sb-tenant-user-architecture-docs",
+      "mod-architecture-docs",
+      "knowledge_scope",
+      "mod-no-destructive-commands",
+    ),
+  ]);
+
+  await db.batch([
+    db.prepare(
+      `
+      INSERT INTO tenants (
+        id,
+        area_id,
+        display_name,
+        legal_name,
+        status,
+        default_locale,
+        contact_email,
+        contact_phone,
+        contact_website,
+        memory_area_brain_id,
+        shared_promotion_allowed,
+        knowledge_scope_id,
+        policy_bundle_json,
+        validators_json,
+        created_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, 'active', 'de-DE', ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?)
+      `,
+    ).bind(
+      "demo-tenant",
+      "demo-tenant",
+      "Demo Tenant",
+      "Demo Tenant GmbH",
+      "admin@example.invalid",
+      "https://example.invalid",
+      "brain-area-demo-tenant",
+      "knowledge-demo-tenant",
+      JSON.stringify(["strict-tenant-isolation", "no-cross-tenant-access"]),
+      JSON.stringify(["tenant-profile-validator"]),
+      "2026-05-22T00:00:00Z",
+      "2026-05-22T00:00:00Z",
+    ),
+    db.prepare(
+      `
+      INSERT INTO tenant_memberships (
+        id,
+        tenant_id,
+        principal_id,
+        status,
+        role_ids_json,
+        created_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, 'active', ?, ?, ?)
+      `,
+    ).bind(
+      "demo-tenant-membership-user",
+      "demo-tenant",
+      "tenant-user",
+      JSON.stringify(["demo-tenant-reviewer"]),
+      "2026-05-22T00:00:00Z",
+      "2026-05-22T00:00:00Z",
+    ),
+    db.prepare(
+      `
+      INSERT INTO tenant_role_bundles (
+        id,
+        tenant_id,
+        display_name,
+        role_type,
+        assignable_to_users,
+        derived_skills_json,
+        derived_workflows_json,
+        derived_tools_json,
+        derived_policies_json,
+        derived_validators_json
+      )
+      VALUES (?, ?, ?, 'tenant-custom', 1, ?, ?, ?, ?, ?)
+      `,
+    ).bind(
+      "demo-tenant-reviewer",
+      "demo-tenant",
+      "Demo Tenant Reviewer",
+      JSON.stringify(["git-diff-analysis"]),
+      JSON.stringify(["code-review"]),
+      JSON.stringify([]),
+      JSON.stringify(["no-destructive-commands"]),
+      JSON.stringify([]),
+    ),
+    db.prepare(
+      `
+      INSERT INTO tenant_data_sources (
+        id,
+        tenant_id,
+        source_type,
+        display_name,
+        access_modes_json,
+        status,
+        sensitivity
+      )
+      VALUES (?, ?, 'website', ?, ?, 'active', 'public')
+      `,
+    ).bind(
+      "demo-tenant-website",
+      "demo-tenant",
+      "Demo Tenant Website",
+      JSON.stringify(["read"]),
+    ),
+    db.prepare(
+      `
+      INSERT INTO tenant_role_capability_grants (
+        id,
+        tenant_id,
+        role_bundle_id,
+        capability_id
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+    ).bind(
+      "trcg-demo-tenant-reviewer-code-review",
+      "demo-tenant",
+      "demo-tenant-reviewer",
+      "code-review",
+    ),
+    db.prepare(
+      `
+      INSERT INTO tenant_role_data_source_grants (
+        id,
+        tenant_id,
+        role_bundle_id,
+        data_source_id,
+        access_modes_json
+      )
+      VALUES (?, ?, ?, ?, ?)
+      `,
+    ).bind(
+      "trdsg-demo-tenant-reviewer-demo-tenant-website",
+      "demo-tenant",
+      "demo-tenant-reviewer",
+      "demo-tenant-website",
+      JSON.stringify(["read"]),
+    ),
   ]);
 
   await env.SCAS_CONFIG.put("registry:version", "0.1.0");
@@ -875,6 +1048,85 @@ describe("control API worker", () => {
         },
       ],
     });
+    expect(body.tenant_authority).toBeUndefined();
+  });
+
+  it("returns tenant authority for tenant-scoped composition context", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(tenantCompositionRequest),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("ready");
+    expect(body.tenant_authority).toEqual({
+      tenant_id: "demo-tenant",
+      area_id: "demo-tenant",
+      status: "active",
+      direct_user_grants_allowed: false,
+      membership: {
+        id: "demo-tenant-membership-user",
+        tenant_id: "demo-tenant",
+        principal_id: "tenant-user",
+        status: "active",
+        role_ids: ["demo-tenant-reviewer"],
+      },
+      role_bundles: [
+        {
+          id: "demo-tenant-reviewer",
+          tenant_id: "demo-tenant",
+          capability_grants: ["code-review"],
+          data_source_grants: [
+            {
+              data_source_id: "demo-tenant-website",
+              access_modes: ["read"],
+            },
+          ],
+          derived_runtime_modules: {
+            skills: ["git-diff-analysis"],
+            workflows: ["code-review"],
+            tools: [],
+            policies: ["no-destructive-commands"],
+            validators: [],
+          },
+        },
+      ],
+      data_sources: [
+        {
+          id: "demo-tenant-website",
+          tenant_id: "demo-tenant",
+          status: "active",
+        },
+      ],
+      allowed_knowledge_scopes: ["architecture-docs"],
+      allowed_data_scopes: [],
+      allowed_memory_scopes: [],
+    });
+  });
+
+  it("denies tenant-scoped composition context without matching membership", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...tenantCompositionRequest,
+        tenant_context: {
+          ...tenantCompositionRequest.tenant_context,
+          membership_id: "missing-membership",
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.tenant_authority).toBeUndefined();
   });
 
   it("denies candidates when required policies are not allowed", async () => {

@@ -127,6 +127,10 @@ snapshot is validated before profile emission and includes:
 - allowed tenant knowledge, data, and memory scopes,
 - proof that direct user grants are disabled.
 
+The Control API builds `tenant_authority` only from D1 tenant tables and the
+request `tenant_context`. Prompt text, client-supplied role claims, and direct
+user grants are not authority sources.
+
 The runtime profile is invalid when:
 
 - `tenant_context` is missing,
