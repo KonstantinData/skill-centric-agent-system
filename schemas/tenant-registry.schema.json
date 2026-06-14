@@ -1,0 +1,538 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:tenant-registry:0.1.0",
+  "title": "SCAS Tenant Registry Entry",
+  "description": "Control-plane contract for one company tenant. Users receive tenant-local roles; capabilities, data sources, skills, workflows, policies, and validators derive from those roles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "tenant_id",
+    "area_id",
+    "display_name",
+    "legal_profile",
+    "contact_profile",
+    "hostnames",
+    "status",
+    "default_locale",
+    "admin_model",
+    "memory",
+    "knowledge",
+    "data_sources",
+    "role_bundles",
+    "policy_bundle",
+    "validators"
+  ],
+  "properties": {
+    "contract_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "tenant_id": {
+      "$ref": "#/$defs/id"
+    },
+    "area_id": {
+      "$ref": "#/$defs/id"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "legal_profile": {
+      "$ref": "#/$defs/legalProfile"
+    },
+    "contact_profile": {
+      "$ref": "#/$defs/contactProfile"
+    },
+    "hostnames": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hostnameRecord"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "setup",
+        "active",
+        "disabled",
+        "archived"
+      ]
+    },
+    "default_locale": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[A-Z]{2}$"
+    },
+    "admin_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admin_routes",
+        "assignment_model",
+        "initial_owner"
+      ],
+      "properties": {
+        "admin_routes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "/admin/users",
+              "/admin/roles",
+              "/admin/settings"
+            ]
+          },
+          "minItems": 3,
+          "uniqueItems": true
+        },
+        "assignment_model": {
+          "type": "string",
+          "const": "users-receive-roles-only"
+        },
+        "initial_owner": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "user_id",
+            "email"
+          ],
+          "properties": {
+            "user_id": {
+              "$ref": "#/$defs/id"
+            },
+            "email": {
+              "$ref": "#/$defs/email"
+            }
+          }
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "area_brain_id",
+        "shared_promotion_allowed"
+      ],
+      "properties": {
+        "area_brain_id": {
+          "$ref": "#/$defs/id"
+        },
+        "shared_promotion_allowed": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "indexes"
+      ],
+      "properties": {
+        "scope_id": {
+          "$ref": "#/$defs/id"
+        },
+        "indexes": {
+          "$ref": "#/$defs/idArray"
+        }
+      }
+    },
+    "data_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dataSource"
+      },
+      "uniqueItems": true
+    },
+    "role_bundles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/roleBundle"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "policy_bundle": {
+      "$ref": "#/$defs/idArray"
+    },
+    "validators": {
+      "$ref": "#/$defs/idArray"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "idArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "legalProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legal_name",
+        "registered_address",
+        "legal_representatives",
+        "commercial_register",
+        "tax"
+      ],
+      "properties": {
+        "legal_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registered_address": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "street",
+            "street_number",
+            "postal_code",
+            "city",
+            "country"
+          ],
+          "properties": {
+            "street": {
+              "type": "string",
+              "minLength": 1
+            },
+            "street_number": {
+              "type": "string",
+              "minLength": 1
+            },
+            "postal_code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1
+            },
+            "country": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "legal_representatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "role"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "commercial_register": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "register_court",
+            "registration_number"
+          ],
+          "properties": {
+            "register_court": {
+              "type": "string",
+              "minLength": 1
+            },
+            "registration_number": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "tax": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tax_number",
+            "vat_id",
+            "tax_number_sensitivity"
+          ],
+          "properties": {
+            "tax_number": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "vat_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "tax_number_sensitivity": {
+              "type": "string",
+              "const": "restricted-business-data"
+            }
+          }
+        }
+      }
+    },
+    "contactProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "email",
+        "phone",
+        "website"
+      ],
+      "properties": {
+        "email": {
+          "$ref": "#/$defs/email"
+        },
+        "phone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "website": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
+      }
+    },
+    "hostnameRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname",
+        "purpose",
+        "expected_origin",
+        "cloudflare_proxy_expected"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "primary-ui",
+            "api",
+            "admin"
+          ]
+        },
+        "expected_origin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "cloudflare_proxy_expected": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "type",
+        "display_name",
+        "access_modes",
+        "status",
+        "sensitivity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "github_repository",
+            "notion_page_tree",
+            "google_drive_folder",
+            "sharepoint_site",
+            "hubspot_account",
+            "website",
+            "database",
+            "other"
+          ]
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "access_modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "active",
+            "disabled",
+            "archived"
+          ]
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        }
+      }
+    },
+    "roleBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "display_name",
+        "role_type",
+        "assignable_to_users",
+        "capability_grants",
+        "data_source_grants",
+        "derived_runtime_modules"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_type": {
+          "type": "string",
+          "enum": [
+            "system",
+            "tenant-custom"
+          ]
+        },
+        "assignable_to_users": {
+          "type": "boolean"
+        },
+        "capability_grants": {
+          "$ref": "#/$defs/idArray"
+        },
+        "data_source_grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dataSourceGrant"
+          },
+          "uniqueItems": true
+        },
+        "derived_runtime_modules": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "skills",
+            "workflows",
+            "tools",
+            "policies",
+            "validators"
+          ],
+          "properties": {
+            "skills": {
+              "$ref": "#/$defs/idArray"
+            },
+            "workflows": {
+              "$ref": "#/$defs/idArray"
+            },
+            "tools": {
+              "$ref": "#/$defs/idArray"
+            },
+            "policies": {
+              "$ref": "#/$defs/idArray"
+            },
+            "validators": {
+              "$ref": "#/$defs/idArray"
+            }
+          }
+        }
+      }
+    },
+    "dataSourceGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_source_id",
+        "access_modes"
+      ],
+      "properties": {
+        "data_source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "access_modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

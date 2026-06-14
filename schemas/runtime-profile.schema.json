@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:scas:schema:runtime-profile:0.4.0",
+  "$id": "urn:scas:schema:runtime-profile:0.5.0",
   "title": "Runtime Agent Profile",
   "description": "Task-local execution contract emitted by the Agent Composer and consumed by the Single Agent Runtime.",
   "type": "object",
@@ -15,6 +15,7 @@
     "objective",
     "risk_level",
     "auth_context",
+    "tenant_context",
     "human_review",
     "instructions",
     "skills",
@@ -121,6 +122,80 @@
         },
         "authorization_policies": {
           "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "tenant_context": {
+      "type": "object",
+      "description": "Tenant-local authority context. All runtime capabilities must be derived from tenant roles, never from direct user grants.",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "area_id",
+        "hostname",
+        "membership_id",
+        "role_ids",
+        "role_derivation",
+        "allowed_role_data_sources",
+        "allowed_role_capabilities"
+      ],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "area_id": {
+          "$ref": "#/$defs/id"
+        },
+        "hostname": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "membership_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "role_ids": {
+          "$ref": "#/$defs/nonEmptyIdArray"
+        },
+        "role_derivation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "grant_source",
+            "direct_user_grants_allowed",
+            "capabilities_derive_from_roles",
+            "data_sources_derive_from_roles"
+          ],
+          "properties": {
+            "grant_source": {
+              "type": "string",
+              "const": "tenant-role-bundles"
+            },
+            "direct_user_grants_allowed": {
+              "type": "boolean",
+              "const": false
+            },
+            "capabilities_derive_from_roles": {
+              "type": "boolean",
+              "const": true
+            },
+            "data_sources_derive_from_roles": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "allowed_role_data_sources": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "allowed_role_capabilities": {
+          "$ref": "#/$defs/stringArray"
         }
       }
     },
@@ -331,12 +406,24 @@
     }
   },
   "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
     "stringArray": {
       "type": "array",
       "items": {
         "type": "string",
         "minLength": 1
       },
+      "uniqueItems": true
+    },
+    "nonEmptyIdArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "minItems": 1,
       "uniqueItems": true
     },
     "nonEmptyStringArray": {

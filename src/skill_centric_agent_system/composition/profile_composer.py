@@ -5,7 +5,7 @@ from typing import Any
 
 from skill_centric_agent_system.composition.task_analyzer import AnalyzedTask
 
-RUNTIME_PROFILE_VERSION = "0.4.0"
+RUNTIME_PROFILE_VERSION = "0.5.0"
 BASELINE_MODULE_VERSIONS = {
     "base-agent-rules": "0.1.0",
     "runtime-profile-schema": "0.1.0",
@@ -157,6 +157,7 @@ class RuntimeProfileComposer:
             "objective": analyzed_task.objective,
             "risk_level": analyzed_task.risk_level,
             "auth_context": _auth_context(analyzed_task),
+            "tenant_context": _tenant_context(analyzed_task),
             "human_review": _human_review_not_required(analyzed_task),
             "instructions": list(instructions),
             "skills": list(skills),
@@ -259,6 +260,7 @@ def _human_review_profile(
         "objective": analyzed_task.objective,
         "risk_level": analyzed_task.risk_level,
         "auth_context": _auth_context(analyzed_task),
+        "tenant_context": _tenant_context(analyzed_task),
         "human_review": _human_review_required(analyzed_task),
         "instructions": list(instructions),
         "skills": [],
@@ -460,6 +462,27 @@ def _auth_context(analyzed_task: AnalyzedTask) -> dict[str, Any]:
         "principal": principal,
         "roles": list(analyzed_task.auth_claims.roles),
         "authorization_policies": list(analyzed_task.auth_claims.authorization_policies),
+    }
+
+
+def _tenant_context(analyzed_task: AnalyzedTask) -> dict[str, Any]:
+    role_data_sources = analyzed_task.auth_claims.role_data_sources
+    role_capabilities = analyzed_task.auth_claims.role_capabilities
+
+    return {
+        "tenant_id": analyzed_task.auth_claims.tenant_id,
+        "area_id": analyzed_task.auth_claims.area_id,
+        "hostname": analyzed_task.auth_claims.tenant_hostname,
+        "membership_id": analyzed_task.auth_claims.membership_id,
+        "role_ids": list(analyzed_task.auth_claims.roles),
+        "role_derivation": {
+            "grant_source": "tenant-role-bundles",
+            "direct_user_grants_allowed": False,
+            "capabilities_derive_from_roles": True,
+            "data_sources_derive_from_roles": True,
+        },
+        "allowed_role_data_sources": list(role_data_sources),
+        "allowed_role_capabilities": list(role_capabilities),
     }
 
 

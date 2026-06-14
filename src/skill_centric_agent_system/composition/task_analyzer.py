@@ -24,6 +24,12 @@ class AuthClaims:
     control_plane_principal_kind: ControlPlanePrincipalKind = "role"
     control_plane_principal_id: str = DEFAULT_CONTROL_PLANE_PRINCIPAL_ID
     display_name: str | None = None
+    tenant_id: str = "global"
+    area_id: str = "global"
+    tenant_hostname: str | None = None
+    membership_id: str | None = None
+    role_data_sources: tuple[str, ...] = ()
+    role_capabilities: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -418,6 +424,12 @@ def _auth_claims(task: Mapping[str, Any], task_type: str) -> AuthClaims:
         for policy in auth.get("authorization_policies", [f"submitter-can-request-{task_type}"])
     )
     display_name = auth.get("display_name")
+    tenant_id = _slugify(str(auth.get("tenant_id") or "global"))
+    area_id = _slugify(str(auth.get("area_id") or tenant_id))
+    tenant_hostname = auth.get("tenant_hostname")
+    membership_id = auth.get("membership_id")
+    role_data_sources = _dedupe(str(source) for source in auth.get("role_data_sources", []))
+    role_capabilities = _dedupe(str(capability) for capability in auth.get("role_capabilities", []))
 
     return AuthClaims(
         principal_id=principal_id,
@@ -427,6 +439,20 @@ def _auth_claims(task: Mapping[str, Any], task_type: str) -> AuthClaims:
         control_plane_principal_kind=control_plane_principal_kind,  # type: ignore[arg-type]
         control_plane_principal_id=_slugify(control_plane_principal_id),
         display_name=str(display_name) if isinstance(display_name, str) and display_name else None,
+        tenant_id=tenant_id,
+        area_id=area_id,
+        tenant_hostname=(
+            str(tenant_hostname)
+            if isinstance(tenant_hostname, str) and tenant_hostname.strip()
+            else None
+        ),
+        membership_id=(
+            _slugify(str(membership_id))
+            if isinstance(membership_id, str) and membership_id.strip()
+            else None
+        ),
+        role_data_sources=role_data_sources,
+        role_capabilities=role_capabilities,
     )
 
 

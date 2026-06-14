@@ -17,6 +17,7 @@ RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schem
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
+TENANT_REGISTRY_SCHEMA_PATH = REPO_ROOT / "schemas" / "tenant-registry.schema.json"
 MODULE_EXAMPLE_PATH = (
     REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
 )
@@ -45,6 +46,7 @@ RETRIEVAL_CONTEXT_REQUEST_EXAMPLE_PATH = (
 RETRIEVAL_CONTEXT_RESPONSE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "retrieval-context-response.json"
 )
+TENANT_REGISTRY_EXAMPLE_PATH = REPO_ROOT / "examples" / "tenants" / "demo-tenant.json"
 D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
 D1_MIGRATION_PATHS = tuple(sorted(D1_MIGRATION_DIR.glob("*.sql")))
 
@@ -106,6 +108,13 @@ def runtime_output_schema() -> dict[str, Any]:
     return schema
 
 
+@pytest.fixture(scope="module")
+def tenant_registry_schema() -> dict[str, Any]:
+    schema = load_json(TENANT_REGISTRY_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
 @pytest.fixture
 def module_example() -> dict[str, Any]:
     return load_json(MODULE_EXAMPLE_PATH)
@@ -149,6 +158,11 @@ def retrieval_context_request_example() -> dict[str, Any]:
 @pytest.fixture
 def retrieval_context_response_example() -> dict[str, Any]:
     return load_json(RETRIEVAL_CONTEXT_RESPONSE_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def tenant_registry_example() -> dict[str, Any]:
+    return load_json(TENANT_REGISTRY_EXAMPLE_PATH)
 
 
 def assert_valid(schema: dict[str, Any], instance: dict[str, Any]) -> None:
@@ -290,6 +304,33 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
         assert candidate["run_id"] in runs
         assert candidate["source_step_id"] in steps
         assert candidate["profile_id"] == runs[candidate["run_id"]]["profile_id"]
+
+
+def assert_tenant_registry_references_are_valid(tenant: dict[str, Any]) -> None:
+    tenant_id = tenant["tenant_id"]
+    data_sources = {source["id"]: source for source in tenant["data_sources"]}
+
+    assert tenant["area_id"], "tenant area_id must be set"
+    assert tenant["memory"]["area_brain_id"].endswith(tenant_id), (
+        "tenant memory area brain must be tenant-specific"
+    )
+    assert tenant["knowledge"]["scope_id"].endswith(tenant_id), (
+        "tenant knowledge scope must be tenant-specific"
+    )
+
+    for source in tenant["data_sources"]:
+        assert source["tenant_id"] == tenant_id, (
+            f"data source {source['id']} belongs to {source['tenant_id']}, expected {tenant_id}"
+        )
+
+    for role in tenant["role_bundles"]:
+        assert role["tenant_id"] == tenant_id, (
+            f"role {role['id']} belongs to {role['tenant_id']}, expected {tenant_id}"
+        )
+        for grant in role["data_source_grants"]:
+            source = data_sources.get(grant["data_source_id"])
+            assert source, f"role {role['id']} references missing data source"
+            assert source["tenant_id"] == role["tenant_id"]
 
 
 def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:

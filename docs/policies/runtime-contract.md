@@ -90,6 +90,7 @@ to `schemas/runtime-profile.schema.json` and include:
 - profile version and generation,
 - parent profile and recomposition reason,
 - auth context,
+- tenant context with tenant-local role derivation,
 - human-review requirement and analyzer classification evidence,
 - selected instructions, skills, tools, knowledge scopes, data scopes, memory
   scopes, policies, and validators,
@@ -127,6 +128,9 @@ guidance text.
 Hard enforcement covers:
 
 - selected skills and their `skill_execution_roles`,
+- `tenant_context`, including tenant ID, area ID, role IDs, and the requirement
+  that capabilities and data sources derive from tenant role bundles rather
+  than direct user grants,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,
