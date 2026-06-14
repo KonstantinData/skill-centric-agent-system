@@ -389,6 +389,151 @@
         "priority": 100
       }
     ],
+    "tenants": [
+      {
+        "id": "demo-tenant",
+        "area_id": "demo-tenant",
+        "display_name": "Demo Tenant",
+        "legal_name": "Demo Tenant GmbH",
+        "status": "setup",
+        "default_locale": "de-DE",
+        "contact_email": "admin@example.invalid",
+        "contact_phone": null,
+        "contact_website": "https://example.invalid",
+        "memory_area_brain_id": "brain-area-demo-tenant",
+        "shared_promotion_allowed": false,
+        "knowledge_scope_id": "knowledge-demo-tenant",
+        "policy_bundle": [
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access",
+          "fail-closed-unknown-scope"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "skill-scope-compatibility-validator",
+          "tool-scope-compatibility-validator",
+          "memory-scope-validator",
+          "knowledge-scope-validator",
+          "user-permission-validator",
+          "admin-action-validator"
+        ],
+        "created_at": "2026-05-22T00:00:00Z",
+        "updated_at": "2026-05-22T00:00:00Z"
+      }
+    ],
+    "tenant_hostnames": [
+      {
+        "id": "th-demo-tenant-demo-tenant-example-invalid",
+        "tenant_id": "demo-tenant",
+        "hostname": "demo-tenant.example.invalid",
+        "purpose": "primary-ui",
+        "expected_origin": "192.0.2.10",
+        "cloudflare_proxy_expected": true
+      }
+    ],
+    "tenant_memberships": [
+      {
+        "id": "tm-demo-tenant-repository-maintainer",
+        "tenant_id": "demo-tenant",
+        "principal_id": "repository-maintainer",
+        "status": "active",
+        "role_ids": [
+          "demo-tenant-owner"
+        ],
+        "created_at": "2026-05-22T00:00:00Z",
+        "updated_at": "2026-05-22T00:00:00Z"
+      }
+    ],
+    "tenant_role_bundles": [
+      {
+        "id": "demo-tenant-owner",
+        "tenant_id": "demo-tenant",
+        "display_name": "Tenant Owner",
+        "role_type": "system",
+        "assignable_to_users": true,
+        "derived_skills": [],
+        "derived_workflows": [
+          "tenant-admin"
+        ],
+        "derived_tools": [],
+        "derived_policies": [
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "derived_validators": [
+          "tenant-profile-validator",
+          "user-permission-validator",
+          "admin-action-validator"
+        ]
+      },
+      {
+        "id": "demo-tenant-researcher",
+        "tenant_id": "demo-tenant",
+        "display_name": "Researcher",
+        "role_type": "tenant-custom",
+        "assignable_to_users": true,
+        "derived_skills": [
+          "research-context-synthesis"
+        ],
+        "derived_workflows": [
+          "research-intake"
+        ],
+        "derived_tools": [],
+        "derived_policies": [
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "derived_validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator"
+        ]
+      }
+    ],
+    "tenant_data_sources": [
+      {
+        "id": "demo-tenant-website",
+        "tenant_id": "demo-tenant",
+        "source_type": "website",
+        "display_name": "Demo Tenant Website",
+        "access_modes": [
+          "read"
+        ],
+        "status": "planned",
+        "sensitivity": "public"
+      }
+    ],
+    "tenant_role_capability_grants": [
+      {
+        "id": "trcg-demo-tenant-owner-tenant-admin",
+        "tenant_id": "demo-tenant",
+        "role_bundle_id": "demo-tenant-owner",
+        "capability_id": "tenant-admin"
+      },
+      {
+        "id": "trcg-demo-tenant-researcher-research",
+        "tenant_id": "demo-tenant",
+        "role_bundle_id": "demo-tenant-researcher",
+        "capability_id": "research"
+      }
+    ],
+    "tenant_role_data_source_grants": [
+      {
+        "id": "trdsg-demo-tenant-researcher-demo-tenant-website",
+        "tenant_id": "demo-tenant",
+        "role_bundle_id": "demo-tenant-researcher",
+        "data_source_id": "demo-tenant-website",
+        "access_modes": [
+          "read"
+        ]
+      }
+    ],
     "ingestion_jobs": [
       {
         "id": "ij-architecture-doc-import",

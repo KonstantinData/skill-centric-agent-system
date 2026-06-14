@@ -44,6 +44,13 @@ The executable D1 migrations live in `migrations/cloudflare/d1/`.
 
 Initial D1 tables should cover:
 
+- `tenants`
+- `tenant_hostnames`
+- `tenant_memberships`
+- `tenant_role_bundles`
+- `tenant_data_sources`
+- `tenant_role_capability_grants`
+- `tenant_role_data_source_grants`
 - `modules`
 - `module_versions`
 - `module_dependencies`

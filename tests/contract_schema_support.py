@@ -216,6 +216,15 @@ def assert_control_plane_references_are_valid(control_plane: dict[str, Any]) -> 
     memory_records = {
         memory_record["id"]: memory_record for memory_record in records["memory_records"]
     }
+    tenants = {tenant["id"]: tenant for tenant in records["tenants"]}
+    tenant_data_sources = {
+        data_source["id"]: data_source
+        for data_source in records["tenant_data_sources"]
+    }
+    tenant_role_bundles = {
+        role_bundle["id"]: role_bundle
+        for role_bundle in records["tenant_role_bundles"]
+    }
 
     for module in records["modules"]:
         current_version = module_versions.get(module["current_version_id"])
@@ -272,6 +281,45 @@ def assert_control_plane_references_are_valid(control_plane: dict[str, Any]) -> 
             assert policy_binding["target_id"] in memory_records
         elif policy_binding["target_kind"] == "scope":
             assert policy_binding["target_id"] in modules
+
+    for hostname in records["tenant_hostnames"]:
+        assert hostname["tenant_id"] in tenants
+
+    for data_source in records["tenant_data_sources"]:
+        assert data_source["tenant_id"] in tenants
+
+    for role_bundle in records["tenant_role_bundles"]:
+        assert role_bundle["tenant_id"] in tenants
+
+    for membership in records["tenant_memberships"]:
+        assert membership["tenant_id"] in tenants
+        for role_id in membership["role_ids"]:
+            role_bundle = tenant_role_bundles.get(role_id)
+            assert role_bundle, f"missing tenant role bundle: {role_id}"
+            assert role_bundle["tenant_id"] == membership["tenant_id"], (
+                f"membership {membership['id']} crosses tenant boundary for role {role_id}"
+            )
+
+    for grant in records["tenant_role_capability_grants"]:
+        assert grant["tenant_id"] in tenants
+        role_bundle = tenant_role_bundles.get(grant["role_bundle_id"])
+        assert role_bundle, f"missing tenant role bundle: {grant['role_bundle_id']}"
+        assert role_bundle["tenant_id"] == grant["tenant_id"], (
+            f"capability grant {grant['id']} crosses tenant boundary"
+        )
+
+    for grant in records["tenant_role_data_source_grants"]:
+        assert grant["tenant_id"] in tenants
+        role_bundle = tenant_role_bundles.get(grant["role_bundle_id"])
+        data_source = tenant_data_sources.get(grant["data_source_id"])
+        assert role_bundle, f"missing tenant role bundle: {grant['role_bundle_id']}"
+        assert data_source, f"missing tenant data source: {grant['data_source_id']}"
+        assert role_bundle["tenant_id"] == grant["tenant_id"], (
+            f"data source grant {grant['id']} crosses tenant boundary for role"
+        )
+        assert data_source["tenant_id"] == grant["tenant_id"], (
+            f"data source grant {grant['id']} crosses tenant boundary for source"
+        )
 
 
 def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> None:
@@ -358,6 +406,223 @@ def insert_control_plane_fixture(
     control_plane: dict[str, Any],
 ) -> None:
     records = control_plane["records"]
+
+    connection.executemany(
+        """
+        INSERT INTO tenants (
+            id,
+            area_id,
+            display_name,
+            legal_name,
+            status,
+            default_locale,
+            contact_email,
+            contact_phone,
+            contact_website,
+            memory_area_brain_id,
+            shared_promotion_allowed,
+            knowledge_scope_id,
+            policy_bundle_json,
+            validators_json,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            :id,
+            :area_id,
+            :display_name,
+            :legal_name,
+            :status,
+            :default_locale,
+            :contact_email,
+            :contact_phone,
+            :contact_website,
+            :memory_area_brain_id,
+            :shared_promotion_allowed,
+            :knowledge_scope_id,
+            :policy_bundle_json,
+            :validators_json,
+            :created_at,
+            :updated_at
+        )
+        """,
+        [
+            {
+                **tenant,
+                "shared_promotion_allowed": int(tenant["shared_promotion_allowed"]),
+                "policy_bundle_json": json.dumps(tenant["policy_bundle"]),
+                "validators_json": json.dumps(tenant["validators"]),
+            }
+            for tenant in records["tenants"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_hostnames (
+            id,
+            tenant_id,
+            hostname,
+            purpose,
+            expected_origin,
+            cloudflare_proxy_expected
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :hostname,
+            :purpose,
+            :expected_origin,
+            :cloudflare_proxy_expected
+        )
+        """,
+        [
+            {
+                **hostname,
+                "cloudflare_proxy_expected": int(hostname["cloudflare_proxy_expected"]),
+            }
+            for hostname in records["tenant_hostnames"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_data_sources (
+            id,
+            tenant_id,
+            source_type,
+            display_name,
+            access_modes_json,
+            status,
+            sensitivity
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :source_type,
+            :display_name,
+            :access_modes_json,
+            :status,
+            :sensitivity
+        )
+        """,
+        [
+            {
+                **data_source,
+                "access_modes_json": json.dumps(data_source["access_modes"]),
+            }
+            for data_source in records["tenant_data_sources"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_role_bundles (
+            id,
+            tenant_id,
+            display_name,
+            role_type,
+            assignable_to_users,
+            derived_skills_json,
+            derived_workflows_json,
+            derived_tools_json,
+            derived_policies_json,
+            derived_validators_json
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :display_name,
+            :role_type,
+            :assignable_to_users,
+            :derived_skills_json,
+            :derived_workflows_json,
+            :derived_tools_json,
+            :derived_policies_json,
+            :derived_validators_json
+        )
+        """,
+        [
+            {
+                **role_bundle,
+                "assignable_to_users": int(role_bundle["assignable_to_users"]),
+                "derived_skills_json": json.dumps(role_bundle["derived_skills"]),
+                "derived_workflows_json": json.dumps(role_bundle["derived_workflows"]),
+                "derived_tools_json": json.dumps(role_bundle["derived_tools"]),
+                "derived_policies_json": json.dumps(role_bundle["derived_policies"]),
+                "derived_validators_json": json.dumps(role_bundle["derived_validators"]),
+            }
+            for role_bundle in records["tenant_role_bundles"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_memberships (
+            id,
+            tenant_id,
+            principal_id,
+            status,
+            role_ids_json,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :principal_id,
+            :status,
+            :role_ids_json,
+            :created_at,
+            :updated_at
+        )
+        """,
+        [
+            {
+                **membership,
+                "role_ids_json": json.dumps(membership["role_ids"]),
+            }
+            for membership in records["tenant_memberships"]
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_role_capability_grants (
+            id,
+            tenant_id,
+            role_bundle_id,
+            capability_id
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :role_bundle_id,
+            :capability_id
+        )
+        """,
+        records["tenant_role_capability_grants"],
+    )
+    connection.executemany(
+        """
+        INSERT INTO tenant_role_data_source_grants (
+            id,
+            tenant_id,
+            role_bundle_id,
+            data_source_id,
+            access_modes_json
+        )
+        VALUES (
+            :id,
+            :tenant_id,
+            :role_bundle_id,
+            :data_source_id,
+            :access_modes_json
+        )
+        """,
+        [
+            {
+                **grant,
+                "access_modes_json": json.dumps(grant["access_modes"]),
+            }
+            for grant in records["tenant_role_data_source_grants"]
+        ],
+    )
 
     connection.executemany(
         """

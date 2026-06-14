@@ -36,6 +36,20 @@ The registry entry contains:
 Tenant legal and contact metadata describes the company. It does not grant
 runtime authority.
 
+The Cloudflare Control Plane persists the runtime-relevant tenant registry
+projection in D1. The storage contract lives in:
+
+```text
+schemas/cloudflare-control-plane.schema.json
+migrations/cloudflare/d1/0003_tenant_control_plane.sql
+```
+
+The D1 projection stores tenants, hostnames, tenant memberships, tenant role
+bundles, tenant data sources, role capability grants, and role data-source
+grants as separate records. Legal and contact fields are stored for tenant
+administration and audit context only; runtime access still comes exclusively
+from membership and role-derived grants.
+
 ## Admin Surface
 
 The tenant admin UI exposes only these first-class administration areas:
@@ -81,7 +95,9 @@ HubSpot accounts, websites, databases, and other tenant-owned systems.
 
 Every data source belongs to exactly one tenant. A source without explicit
 tenant ownership is unavailable. A user receives access to data sources only
-through tenant roles.
+through tenant roles. D1 enforces tenant-local grants with composite foreign
+keys: a role data-source grant is invalid when the role bundle and data source
+do not share the same `tenant_id`.
 
 ## Runtime Profile Context
 
