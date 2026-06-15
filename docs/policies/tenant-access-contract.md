@@ -88,17 +88,35 @@ assign users to roles; roles contain capability and data-source grants.
 The product must not expose normal tenant-admin pages for assigning individual
 skills, workflows, validators, policies, or data sources directly to users.
 
-The Control API exposes the read-side tenant admin context at:
+The Control API exposes the tenant admin context and first write-capable
+administration contracts at:
 
 ```text
 GET /tenant-admin/tenants/{tenant_id}
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
 ```
 
-The route requires tenant-admin scoped bearer authorization and the
-`x-scas-tenant-hostname` header. It must return only D1-derived tenant admin
-data for the resolved hostname: users, role bundles, role grants, tenant-owned
-data sources, tenant settings, and the fixed admin route list above. Missing or
-mismatched hostname proof fails closed.
+All routes require tenant-admin scoped bearer authorization and the
+`x-scas-tenant-hostname` header. The read route must return only D1-derived
+tenant admin data for the resolved hostname: users, role bundles, role grants,
+tenant-owned data sources, tenant settings, and the fixed admin route list
+above. Missing or mismatched hostname proof fails closed.
+
+Write routes are deliberately narrow:
+
+- `/roles` creates tenant-local role bundles with capability grants,
+  data-source grants, and derived runtime module references.
+- `/memberships` creates or updates tenant memberships using role IDs that are
+  tenant-local and assignable to users.
+- `/data-sources` registers tenant-owned data sources with bounded access modes
+  and sensitivity.
+
+Write routes must reject foreign tenant data-source IDs, non-assignable or
+foreign role IDs, invalid access modes, and malformed identifiers. Every
+successful write emits a bounded `audit_events` row without secrets, raw
+provider tokens, raw runtime traces, or confidential customer data.
 
 ## Role Bundles
 

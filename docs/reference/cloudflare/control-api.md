@@ -47,6 +47,9 @@ POST /memory/ingest
 POST /retrieval/context
 POST /ai-gateway/openai/chat/completions
 GET /tenant-admin/tenants/{tenant_id}
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
 ```
 
 `POST /knowledge/ingest` accepts normalized knowledge source/document content,
@@ -102,7 +105,7 @@ Supported Worker secret bindings:
 | `CONTROL_API_INGESTION_TOKEN` | `POST /knowledge/ingest`, `POST /memory/ingest` |
 | `CONTROL_API_RETRIEVAL_TOKEN` | `POST /retrieval/context` |
 | `CONTROL_API_AI_GATEWAY_TOKEN` | `POST /ai-gateway/openai/chat/completions` |
-| `CONTROL_API_TENANT_ADMIN_TOKEN` | `GET /tenant-admin/tenants/{tenant_id}` |
+| `CONTROL_API_TENANT_ADMIN_TOKEN` | `GET /tenant-admin/tenants/{tenant_id}`, `POST /tenant-admin/tenants/{tenant_id}/roles`, `POST /tenant-admin/tenants/{tenant_id}/memberships`, `POST /tenant-admin/tenants/{tenant_id}/data-sources` |
 
 Use endpoint-scoped tokens where practical. `CONTROL_API_TOKEN` is an admin
 fallback for trusted automation.
@@ -336,6 +339,20 @@ role bundles, role grants, tenant-owned data sources, and tenant settings. A
 missing or mismatched `x-scas-tenant-hostname` fails closed before any admin
 context is emitted.
 
+Tenant admin writes use the same token scope and hostname proof:
+
+```text
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
+```
+
+The write routes accept only bounded JSON contracts. Role creation may grant
+capabilities and tenant-owned data sources, membership upsert may assign only
+tenant-local assignable roles, and data-source registration is scoped to the
+path tenant. Foreign data-source IDs, foreign or non-assignable role IDs, and
+invalid access modes fail closed.
+
 The Worker writes bounded D1 `audit_events` rows for composition and tenant
 admin decisions:
 
@@ -343,6 +360,9 @@ admin decisions:
 - `composition_context_denied`
 - `tenant_admin_context_read`
 - `tenant_admin_hostname_denied`
+- `tenant_admin_role_created`
+- `tenant_admin_membership_upserted`
+- `tenant_admin_data_source_registered`
 
 Smoke-test knowledge ingestion:
 
