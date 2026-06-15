@@ -212,6 +212,9 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
     assert 'wrangler.toml "${wrangler_env_args[@]}"' in workflow
     assert "npx wrangler whoami --config workers/control-api/wrangler.toml" in workflow
+    assert 'if [ "${TARGET_ENVIRONMENT}" = "dev" ]; then' in workflow
+    assert 'npx wrangler deploy --config workers/control-api/wrangler.toml --env ""' in workflow
+    assert "live gates only auto-deploy dev" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow
     assert "python3.12-venv" in workflow

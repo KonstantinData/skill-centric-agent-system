@@ -256,7 +256,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Seed Cloudflare dev Control Plane
+      - name: Seed and deploy Cloudflare dev Control Plane
         if: env.SEED_CONTROL_PLANE_DEV == 'true'
         shell: bash
         run: |
@@ -280,6 +280,11 @@ jobs:
           npx wrangler d1 migrations apply "${control_db}" --remote --config workers/control-api/wrangler.toml "${wrangler_env_args[@]}"
           python scripts/cloudflare/generate_control_plane_seed.py --output "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql"
           npx wrangler d1 execute "${control_db}" --remote --file "examples/control-plane/${TARGET_ENVIRONMENT}-seed.sql" --config workers/control-api/wrangler.toml "${wrangler_env_args[@]}" --yes
+          if [ "${TARGET_ENVIRONMENT}" = "dev" ]; then
+            npx wrangler deploy --config workers/control-api/wrangler.toml --env ""
+          else
+            echo "::notice::Skipping Control API Worker deploy for ${TARGET_ENVIRONMENT}; live gates only auto-deploy dev."
+          fi
 
       - name: Configure SSH
         shell: bash
