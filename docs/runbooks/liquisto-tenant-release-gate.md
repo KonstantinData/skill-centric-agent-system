@@ -71,6 +71,23 @@ Latest recorded evidence:
 This verifies the tenant runtime path on the dev Hetzner runtime with the dev
 Control Plane seeded from the `main` repository snapshot.
 
+## Live UI Runtime Inventory
+
+If `https://liquisto.condata.io/` appears to load an old Streamlit UI, collect a
+read-only production inventory before changing the service:
+
+```bash
+gh workflow run tenant-ui-runtime-inventory.yml \
+  -f target_environment=prod \
+  -f hostname=liquisto.condata.io
+```
+
+The workflow records candidate Streamlit processes, systemd units, reverse-proxy
+references, Git repositories, and app paths from the target Hetzner environment.
+It must not mutate the runtime host. Use the inventory artifact to identify the
+actual service, code path, and deployed Git revision before any deployment or
+restart action.
+
 ## Production Blockers
 
 Do not mark the Liquisto tenant `production-ready` until all of these are

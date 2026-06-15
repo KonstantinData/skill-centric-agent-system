@@ -1,0 +1,246 @@
+name: Tenant UI Runtime Inventory
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Hetzner environment to inspect
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: prod
+      hostname:
+        description: Tenant hostname to inspect
+        required: true
+        type: string
+        default: tenant.example.com
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-ui-runtime-inventory-${{ github.ref }}-${{ inputs.target_environment }}
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    name: Read-only tenant UI runtime inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      TENANT_HOSTNAME: ${{ inputs.hostname }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      SCAS_DEV_HETZNER_HOST: ${{ secrets.SCAS_DEV_HETZNER_HOST }}
+      SCAS_DEV_HETZNER_SSH_KEY: ${{ secrets.SCAS_DEV_HETZNER_SSH_KEY }}
+      SCAS_DEV_HETZNER_USER: ${{ secrets.SCAS_DEV_HETZNER_USER }}
+      SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Resolve target secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${TENANT_HOSTNAME}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::hostname may contain only letters, numbers, dots, and hyphens."
+            exit 1
+          fi
+
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_DEV_HETZNER_HOST:-${HETZNER_HOST:-}}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_DEV_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}" ;;
+                  HETZNER_USER) value="${SCAS_DEV_HETZNER_USER:-${HETZNER_USER:-}}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_STAGING_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_PROD_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
+          }
+
+          TARGET_HETZNER_HOST="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_HOST)"
+          TARGET_HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
+          TARGET_HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
+
+          missing=0
+          for name in TARGET_HETZNER_HOST TARGET_HETZNER_SSH_KEY TARGET_HETZNER_USER
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required ${TARGET_ENVIRONMENT} secret: ${name#TARGET_}"
+              missing=1
+            fi
+          done
+          if [ "${missing}" -ne 0 ]; then
+            exit 1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${TARGET_HETZNER_USER}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${TARGET_HETZNER_SSH_KEY}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 600 "${HOME}/.ssh/hetzner_key"
+
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            exit 1
+          fi
+
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Collect read-only runtime inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p tenant-ui-runtime-inventory
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "TENANT_HOSTNAME='${TENANT_HOSTNAME}' TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' bash -s" \
+            > tenant-ui-runtime-inventory/inventory.md <<'REMOTE'
+          set -euo pipefail
+
+          redact() {
+            sed -E \
+              -e 's/((TOKEN|KEY|SECRET|PASSWORD|PASS|API_KEY|AUTH)[A-Z0-9_]*=)[^[:space:]"]+/\1<redacted>/g' \
+              -e 's/(Bearer )[A-Za-z0-9._~+\/=-]+/\1<redacted>/g'
+          }
+
+          section() {
+            printf '\n## %s\n\n' "$1"
+          }
+
+          printf '# Tenant UI Runtime Inventory\n\n'
+          printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
+          printf -- '- Tenant hostname: `%s`\n' "${TENANT_HOSTNAME}"
+          printf -- '- Remote hostname: `%s`\n' "$(hostname -f 2>/dev/null || hostname)"
+          printf -- '- Collected at: `%s`\n' "$(date -Is)"
+
+          section "Listening ports"
+          if command -v ss >/dev/null 2>&1; then
+            ss -tulpn 2>/dev/null | grep -Ei 'streamlit|python|8501|80|443|nginx|caddy|apache' | redact || true
+          else
+            printf 'ss command not available.\n'
+          fi
+
+          section "Candidate processes"
+          ps -eo pid,user,etime,cmd --sort=cmd \
+            | grep -Ei 'streamlit|tenant|scas|python|gunicorn|uvicorn' \
+            | grep -v grep \
+            | redact || true
+
+          section "Candidate systemd units"
+          if command -v systemctl >/dev/null 2>&1; then
+            systemctl list-units --type=service --all --no-pager \
+              | grep -Ei 'streamlit|tenant|scas|condata' \
+              | redact || true
+          else
+            printf 'systemctl command not available.\n'
+          fi
+
+          section "Candidate systemd definitions"
+          for dir in /etc/systemd/system /lib/systemd/system /usr/lib/systemd/system; do
+            if [ -d "${dir}" ]; then
+              grep -RInE 'streamlit|tenant|condata|apps/streamlit_business_ui|apps/streamlit|SCAS_' "${dir}" 2>/dev/null \
+                | redact || true
+            fi
+          done
+
+          section "Reverse proxy references"
+          for dir in /etc/nginx /etc/caddy /etc/apache2; do
+            if [ -d "${dir}" ]; then
+              grep -RInE "${TENANT_HOSTNAME}|tenant|condata|streamlit|8501|proxy_pass|reverse_proxy" "${dir}" 2>/dev/null \
+                | redact || true
+            fi
+          done
+
+          section "Candidate Git repositories"
+          for root in /opt /srv /var/www /home; do
+            if [ ! -d "${root}" ]; then
+              continue
+            fi
+            find "${root}" -maxdepth 5 -type d -name .git 2>/dev/null | sort | while read -r git_dir; do
+              repo="${git_dir%/.git}"
+              printf '### `%s`\n\n' "${repo}"
+              git -C "${repo}" rev-parse --short=12 HEAD 2>/dev/null | sed 's/^/- HEAD: `/' | sed 's/$/`/' || true
+              git -C "${repo}" branch --show-current 2>/dev/null | sed 's/^/- Branch: `/' | sed 's/$/`/' || true
+              git -C "${repo}" remote -v 2>/dev/null | redact | sed 's/^/- Remote: /' || true
+              if [ -f "${repo}/apps/streamlit_business_ui/app.py" ]; then
+                printf -- '- Contains `apps/streamlit_business_ui/app.py`: yes\n'
+              fi
+              printf '\n'
+            done
+          done
+
+          section "Candidate Streamlit app files"
+          for root in /opt /srv /var/www /home; do
+            if [ ! -d "${root}" ]; then
+              continue
+            fi
+            find "${root}" -maxdepth 7 \( \
+              -path '*/apps/streamlit_business_ui/app.py' -o \
+              -path '*/apps/streamlit_task_intake_ui/app.py' -o \
+              -iname '*streamlit*' \
+            \) 2>/dev/null | sort | redact || true
+          done
+          REMOTE
+
+      - name: Upload inventory artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-ui-runtime-inventory-${{ inputs.target_environment }}
+          path: tenant-ui-runtime-inventory/inventory.md
+          if-no-files-found: error
