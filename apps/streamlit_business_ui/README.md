@@ -32,3 +32,12 @@ streamlit run apps\streamlit_business_ui\app.py
 
 The repository-local Streamlit config in `.streamlit/config.toml` sets
 `server.headless = false` so the browser opens automatically on local start.
+
+## Deployment Status
+
+As of 2026-06-15, this repository does not define a production deployment
+workflow for `apps/streamlit_business_ui` to the service behind
+`https://liquisto.condata.io/`. The public hostname is reachable and serves a
+Streamlit login shell, but deploying this app to that host requires either a
+repository-owned deployment workflow or a documented external deployment owner
+and runbook.
