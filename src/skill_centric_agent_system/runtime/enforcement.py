@@ -278,6 +278,22 @@ class RuntimeProfileEnforcer:
                 "Tenant authority does not match runtime profile area.",
                 code="tenant_authority_area_mismatch",
             )
+        hostname = authority.get("hostname")
+        if not isinstance(hostname, Mapping):
+            raise ProfileEnforcementError(
+                "Tenant authority is missing hostname proof.",
+                code="tenant_hostname_authority_missing",
+            )
+        if hostname.get("tenant_id") != tenant_context.get("tenant_id"):
+            raise ProfileEnforcementError(
+                "Tenant hostname authority crosses tenant boundary.",
+                code="tenant_hostname_authority_tenant_mismatch",
+            )
+        if hostname.get("hostname") != tenant_context.get("hostname"):
+            raise ProfileEnforcementError(
+                "Tenant hostname authority does not match runtime profile host.",
+                code="tenant_hostname_authority_mismatch",
+            )
         if authority.get("status") not in ALLOWED_TENANT_STATUSES:
             raise ProfileEnforcementError(
                 "Tenant is not active for runtime execution.",

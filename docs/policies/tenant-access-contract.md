@@ -50,6 +50,28 @@ grants as separate records. Legal and contact fields are stored for tenant
 administration and audit context only; runtime access still comes exclusively
 from membership and role-derived grants.
 
+## Hostname Authority
+
+Tenant selection starts with the requested hostname. A configured hostname maps
+to exactly one tenant authority record before task analysis or runtime profile
+assembly may grant any tenant-local access.
+
+Hostname resolution is fail-closed:
+
+- hostnames are normalized to lowercase host names without scheme, path, port,
+  or trailing dot before lookup,
+- unknown hostnames are denied,
+- disabled or archived tenants are denied,
+- duplicate hostname configuration across tenants is invalid,
+- prompt text, client UI state, and request body tenant IDs cannot override the
+  tenant selected by the hostname.
+
+The resolver returns only tenant authority metadata needed for the next control
+path step: tenant ID, area ID, normalized hostname, hostname purpose, tenant
+status, expected origin, and Cloudflare proxy expectation. Session authority
+must still prove that the authenticated principal belongs to the resolved
+tenant before runtime profile assembly proceeds.
+
 ## Admin Surface
 
 The tenant admin UI exposes only these first-class administration areas:
@@ -65,6 +87,36 @@ assign users to roles; roles contain capability and data-source grants.
 
 The product must not expose normal tenant-admin pages for assigning individual
 skills, workflows, validators, policies, or data sources directly to users.
+
+The Control API exposes the tenant admin context and first write-capable
+administration contracts at:
+
+```text
+GET /tenant-admin/tenants/{tenant_id}
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
+```
+
+All routes require tenant-admin scoped bearer authorization and the
+`x-scas-tenant-hostname` header. The read route must return only D1-derived
+tenant admin data for the resolved hostname: users, role bundles, role grants,
+tenant-owned data sources, tenant settings, and the fixed admin route list
+above. Missing or mismatched hostname proof fails closed.
+
+Write routes are deliberately narrow:
+
+- `/roles` creates tenant-local role bundles with capability grants,
+  data-source grants, and derived runtime module references.
+- `/memberships` creates or updates tenant memberships using role IDs that are
+  tenant-local and assignable to users.
+- `/data-sources` registers tenant-owned data sources with bounded access modes
+  and sensitivity.
+
+Write routes must reject foreign tenant data-source IDs, non-assignable or
+foreign role IDs, invalid access modes, and malformed identifiers. Every
+successful write emits a bounded `audit_events` row without secrets, raw
+provider tokens, raw runtime traces, or confidential customer data.
 
 ## Role Bundles
 
@@ -98,6 +150,13 @@ tenant ownership is unavailable. A user receives access to data sources only
 through tenant roles. D1 enforces tenant-local grants with composite foreign
 keys: a role data-source grant is invalid when the role bundle and data source
 do not share the same `tenant_id`.
+
+Runtime code must use the tenant data-source connector rather than direct source
+lookups. The connector resolves sources only from the sealed runtime
+`tenant_authority`, requires the source to be listed in
+`tenant_context.allowed_role_data_sources`, checks selected role grants, and
+fails closed for global profiles, cross-tenant sources, unavailable sources, or
+ungranted access modes.
 
 ## Runtime Profile Context
 

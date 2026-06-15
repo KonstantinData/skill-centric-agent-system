@@ -89,6 +89,7 @@ def test_worker_source_exposes_health_and_composition_context_routes() -> None:
 
     assert 'url.pathname === "/health"' in source
     assert 'url.pathname === "/composition/context"' in source
+    assert 'url.pathname.startsWith("/tenant-admin/tenants/")' in source
     assert 'url.pathname === "/retrieval/context"' in source
     assert 'url.pathname === "/ai-gateway/openai/chat/completions"' in source
     assert "loadRegistryModules" in source

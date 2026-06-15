@@ -53,6 +53,16 @@ class TenantAccessValidator:
             raise TenantAccessError("Tenant authority does not match the analyzed tenant.")
         if authority.get("area_id") != expected_area_id:
             raise TenantAccessError("Tenant authority does not match the analyzed area.")
+        hostname = authority.get("hostname")
+        if not isinstance(hostname, Mapping):
+            raise TenantAccessError("Tenant hostname authority is required.")
+        if hostname.get("tenant_id") != expected_tenant_id:
+            raise TenantAccessError("Tenant hostname authority crosses tenant boundary.")
+        expected_hostname = analyzed_task.auth_claims.tenant_hostname
+        if expected_hostname is None:
+            raise TenantAccessError("Tenant hostname is required for tenant-scoped profiles.")
+        if hostname.get("hostname") != expected_hostname:
+            raise TenantAccessError("Tenant hostname authority does not match auth claims.")
         if authority.get("status") not in ALLOWED_TENANT_STATUSES:
             raise TenantAccessError("Tenant is not active for runtime composition.")
         if authority.get("direct_user_grants_allowed") is not False:

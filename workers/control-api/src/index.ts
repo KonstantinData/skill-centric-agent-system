@@ -11,6 +11,7 @@ const SCOPE_KINDS = new Set<ModuleKind>([
   "data_scope",
   "memory_scope",
 ]);
+const TENANT_ADMIN_ROUTES = ["/admin/users", "/admin/roles", "/admin/settings"] as const;
 
 type JsonObject = Record<string, unknown>;
 type EnvironmentName = "dev" | "staging" | "prod";
@@ -30,7 +31,8 @@ type EndpointScope =
   | "composition"
   | "ingestion"
   | "retrieval"
-  | "ai_gateway";
+  | "ai_gateway"
+  | "tenant_admin";
 
 type AuthEnv = Env & {
   CONTROL_API_TOKEN?: string;
@@ -38,6 +40,7 @@ type AuthEnv = Env & {
   CONTROL_API_INGESTION_TOKEN?: string;
   CONTROL_API_RETRIEVAL_TOKEN?: string;
   CONTROL_API_AI_GATEWAY_TOKEN?: string;
+  CONTROL_API_TENANT_ADMIN_TOKEN?: string;
 };
 
 type ErrorResponse = {
@@ -130,6 +133,13 @@ type CompositionContextResponse = {
 type TenantAuthority = {
   tenant_id: string;
   area_id: string;
+  hostname: {
+    tenant_id: string;
+    hostname: string;
+    purpose: string;
+    expected_origin: string;
+    cloudflare_proxy_expected: boolean;
+  };
   status: string;
   direct_user_grants_allowed: false;
   membership: {
@@ -377,6 +387,14 @@ type TenantRow = {
   status: string;
 };
 
+type TenantHostnameRow = {
+  tenant_id: string;
+  hostname: string;
+  purpose: string;
+  expected_origin: string;
+  cloudflare_proxy_expected: number;
+};
+
 type TenantMembershipRow = {
   id: string;
   tenant_id: string;
@@ -401,6 +419,36 @@ type TenantDataSourceRow = {
   status: string;
 };
 
+type TenantAdminTenantRow = {
+  id: string;
+  area_id: string;
+  display_name: string;
+  status: string;
+  default_locale: string;
+  contact_email: string;
+  contact_website: string | null;
+  memory_area_brain_id: string;
+  shared_promotion_allowed: number;
+  knowledge_scope_id: string;
+  policy_bundle_json: string;
+  validators_json: string;
+};
+
+type TenantAdminMembershipRow = TenantMembershipRow;
+
+type TenantAdminRoleBundleRow = TenantRoleBundleRow & {
+  display_name: string;
+  role_type: string;
+  assignable_to_users: number;
+};
+
+type TenantAdminDataSourceRow = TenantDataSourceRow & {
+  source_type: string;
+  display_name: string;
+  access_modes_json: string;
+  sensitivity: string;
+};
+
 type TenantRoleCapabilityGrantRow = {
   role_bundle_id: string;
   capability_id: string;
@@ -410,6 +458,49 @@ type TenantRoleDataSourceGrantRow = {
   role_bundle_id: string;
   data_source_id: string;
   access_modes_json: string;
+};
+
+type TenantAdminRoleCreateRequest = {
+  id: string;
+  display_name: string;
+  role_type: "system" | "tenant-custom";
+  assignable_to_users: boolean;
+  capability_grants: string[];
+  data_source_grants: {
+    data_source_id: string;
+    access_modes: string[];
+  }[];
+  derived_runtime_modules: {
+    skills: string[];
+    workflows: string[];
+    tools: string[];
+    policies: string[];
+    validators: string[];
+  };
+};
+
+type TenantAdminMembershipUpsertRequest = {
+  id: string;
+  principal_id: string;
+  status: "invited" | "active" | "disabled";
+  role_ids: string[];
+};
+
+type TenantAdminDataSourceCreateRequest = {
+  id: string;
+  source_type:
+    | "github_repository"
+    | "notion_page_tree"
+    | "google_drive_folder"
+    | "sharepoint_site"
+    | "hubspot_account"
+    | "website"
+    | "database"
+    | "other";
+  display_name: string;
+  access_modes: string[];
+  status: "planned" | "active" | "disabled" | "archived";
+  sensitivity: "public" | "internal" | "confidential" | "restricted";
 };
 
 type ScoredModule = {
@@ -494,6 +585,7 @@ function configuredAuthTokens(
   pushToken(tokens, env.CONTROL_API_INGESTION_TOKEN, ["ingestion"], allowLocalTestToken);
   pushToken(tokens, env.CONTROL_API_RETRIEVAL_TOKEN, ["retrieval"], allowLocalTestToken);
   pushToken(tokens, env.CONTROL_API_AI_GATEWAY_TOKEN, ["ai_gateway"], allowLocalTestToken);
+  pushToken(tokens, env.CONTROL_API_TENANT_ADMIN_TOKEN, ["tenant_admin"], allowLocalTestToken);
   return tokens;
 }
 
@@ -537,6 +629,27 @@ function isObject(value: unknown): value is JsonObject {
 
 function isId(value: unknown): value is string {
   return typeof value === "string" && /^[a-z][a-z0-9-]*$/.test(value);
+}
+
+function normalizeTenantHostname(value: string): string {
+  let hostname = value.trim().toLowerCase();
+  if (hostname.endsWith(".")) {
+    hostname = hostname.slice(0, -1);
+  }
+  const portMatch = hostname.match(/^(?<host>[a-z0-9.-]+):(?<port>[0-9]+)$/);
+  if (portMatch?.groups?.host !== undefined) {
+    hostname = portMatch.groups.host;
+  }
+  if (
+    hostname.length === 0 ||
+    hostname.includes("/") ||
+    hostname.includes("://") ||
+    !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(hostname) ||
+    hostname.split(".").some((label) => label.length === 0)
+  ) {
+    throw new Error("tenant_hostname_invalid");
+  }
+  return hostname;
 }
 
 function isSemver(value: unknown): value is string {
@@ -592,6 +705,14 @@ function stringArray(value: unknown): value is string[] {
 
 function idArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isId);
+}
+
+function accessModeArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => item === "read" || item === "write" || item === "administer")
+  );
 }
 
 function finiteNumberArray(value: unknown): value is number[] {
@@ -1207,6 +1328,10 @@ async function loadTenantAuthority(
   if (tenantContext.membership_id === null) {
     throw new Error("tenant_membership_required");
   }
+  if (typeof tenantContext.hostname !== "string") {
+    throw new Error("tenant_hostname_required");
+  }
+  const tenantHostname = normalizeTenantHostname(tenantContext.hostname);
 
   const tenant = await env.SCAS_CONTROL_DB.prepare(
     `
@@ -1220,6 +1345,20 @@ async function loadTenantAuthority(
     .first<TenantRow>();
   if (tenant === null) {
     throw new Error("tenant_not_found");
+  }
+
+  const hostname = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected
+    FROM tenant_hostnames
+    WHERE tenant_id = ?
+      AND hostname = ?
+    `,
+  )
+    .bind(tenantContext.tenant_id, tenantHostname)
+    .first<TenantHostnameRow>();
+  if (hostname === null) {
+    throw new Error("tenant_hostname_not_found");
   }
 
   const membership = await env.SCAS_CONTROL_DB.prepare(
@@ -1289,6 +1428,13 @@ async function loadTenantAuthority(
   return {
     tenant_id: tenant.id,
     area_id: tenant.area_id,
+    hostname: {
+      tenant_id: hostname.tenant_id,
+      hostname: hostname.hostname,
+      purpose: hostname.purpose,
+      expected_origin: hostname.expected_origin,
+      cloudflare_proxy_expected: hostname.cloudflare_proxy_expected === 1,
+    },
     status: tenant.status,
     direct_user_grants_allowed: false,
     membership: {
@@ -1422,6 +1568,493 @@ function groupDataSourceGrantsByRole(
     grouped.set(row.role_bundle_id, values);
   }
   return grouped;
+}
+
+async function loadTenantAdminContext(
+  env: Env,
+  tenantId: string,
+  requestedHostname: string,
+): Promise<JsonObject | null> {
+  const tenantHostname = normalizeTenantHostname(requestedHostname);
+  const tenant = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT
+      id,
+      area_id,
+      display_name,
+      status,
+      default_locale,
+      contact_email,
+      contact_website,
+      memory_area_brain_id,
+      shared_promotion_allowed,
+      knowledge_scope_id,
+      policy_bundle_json,
+      validators_json
+    FROM tenants
+    WHERE id = ?
+    `,
+  )
+    .bind(tenantId)
+    .first<TenantAdminTenantRow>();
+  if (tenant === null) {
+    return null;
+  }
+  if (tenant.status !== "setup" && tenant.status !== "active") {
+    throw new Error("tenant_not_active");
+  }
+
+  const hostname = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected
+    FROM tenant_hostnames
+    WHERE tenant_id = ?
+      AND hostname = ?
+    `,
+  )
+    .bind(tenant.id, tenantHostname)
+    .first<TenantHostnameRow>();
+  if (hostname === null) {
+    throw new Error("tenant_hostname_not_found");
+  }
+
+  const [membershipsResult, rolesResult, dataSourcesResult] = await Promise.all([
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT id, tenant_id, principal_id, status, role_ids_json
+      FROM tenant_memberships
+      WHERE tenant_id = ?
+      ORDER BY principal_id ASC, id ASC
+      `,
+    )
+      .bind(tenant.id)
+      .all<TenantAdminMembershipRow>(),
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT
+        id,
+        tenant_id,
+        display_name,
+        role_type,
+        assignable_to_users,
+        derived_skills_json,
+        derived_workflows_json,
+        derived_tools_json,
+        derived_policies_json,
+        derived_validators_json
+      FROM tenant_role_bundles
+      WHERE tenant_id = ?
+      ORDER BY id ASC
+      `,
+    )
+      .bind(tenant.id)
+      .all<TenantAdminRoleBundleRow>(),
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT
+        id,
+        tenant_id,
+        source_type,
+        display_name,
+        access_modes_json,
+        status,
+        sensitivity
+      FROM tenant_data_sources
+      WHERE tenant_id = ?
+      ORDER BY id ASC
+      `,
+    )
+      .bind(tenant.id)
+      .all<TenantAdminDataSourceRow>(),
+  ]);
+
+  const roles = rolesResult.results ?? [];
+  const roleIds = roles.map((role) => role.id);
+  const [capabilityGrantRows, dataSourceGrantRows] =
+    roleIds.length === 0
+      ? [[], []]
+      : await Promise.all([
+          selectTenantRoleCapabilityGrants(env, tenant.id, roleIds),
+          selectTenantRoleDataSourceGrants(env, tenant.id, roleIds),
+        ]);
+  const capabilityGrantsByRole = groupCapabilityGrantsByRole(capabilityGrantRows);
+  const dataSourceGrantsByRole = groupDataSourceGrantsByRole(dataSourceGrantRows);
+
+  return {
+    contract_version: CONTRACT_VERSION,
+    tenant: {
+      tenant_id: tenant.id,
+      area_id: tenant.area_id,
+      display_name: tenant.display_name,
+      status: tenant.status,
+      default_locale: tenant.default_locale,
+      contact_email: tenant.contact_email,
+      contact_website: tenant.contact_website,
+      hostname: {
+        tenant_id: hostname.tenant_id,
+        hostname: hostname.hostname,
+        purpose: hostname.purpose,
+        expected_origin: hostname.expected_origin,
+        cloudflare_proxy_expected: hostname.cloudflare_proxy_expected === 1,
+      },
+    },
+    admin: {
+      admin_routes: [...TENANT_ADMIN_ROUTES],
+      assignment_model: "users-receive-roles-only",
+      direct_user_grants_allowed: false,
+    },
+    users: (membershipsResult.results ?? []).map((membership) => ({
+      membership_id: membership.id,
+      tenant_id: membership.tenant_id,
+      principal_id: membership.principal_id,
+      status: membership.status,
+      role_ids: parseStringArray(membership.role_ids_json, "tenant_memberships.role_ids"),
+    })),
+    roles: roles.map((role) => ({
+      id: role.id,
+      tenant_id: role.tenant_id,
+      display_name: role.display_name,
+      role_type: role.role_type,
+      assignable_to_users: role.assignable_to_users === 1,
+      capability_grants: capabilityGrantsByRole.get(role.id) ?? [],
+      data_source_grants: dataSourceGrantsByRole.get(role.id) ?? [],
+      derived_runtime_modules: {
+        skills: parseStringArray(role.derived_skills_json, "tenant_role_bundles.derived_skills"),
+        workflows: parseStringArray(
+          role.derived_workflows_json,
+          "tenant_role_bundles.derived_workflows",
+        ),
+        tools: parseStringArray(role.derived_tools_json, "tenant_role_bundles.derived_tools"),
+        policies: parseStringArray(
+          role.derived_policies_json,
+          "tenant_role_bundles.derived_policies",
+        ),
+        validators: parseStringArray(
+          role.derived_validators_json,
+          "tenant_role_bundles.derived_validators",
+        ),
+      },
+    })),
+    data_sources: (dataSourcesResult.results ?? []).map((source) => ({
+      id: source.id,
+      tenant_id: source.tenant_id,
+      source_type: source.source_type,
+      display_name: source.display_name,
+      access_modes: parseStringArray(source.access_modes_json, "tenant_data_sources.access_modes"),
+      status: source.status,
+      sensitivity: source.sensitivity,
+    })),
+    settings: {
+      memory_area_brain_id: tenant.memory_area_brain_id,
+      shared_promotion_allowed: tenant.shared_promotion_allowed === 1,
+      knowledge_scope_id: tenant.knowledge_scope_id,
+      policy_bundle: parseStringArray(tenant.policy_bundle_json, "tenants.policy_bundle"),
+      validators: parseStringArray(tenant.validators_json, "tenants.validators"),
+    },
+  };
+}
+
+function validateTenantAdminRoleCreateRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (!isId(body.id)) {
+    return "id must be a valid role id.";
+  }
+  if (typeof body.display_name !== "string" || body.display_name.trim().length === 0) {
+    return "display_name is required.";
+  }
+  if (body.role_type !== "system" && body.role_type !== "tenant-custom") {
+    return "role_type must be system or tenant-custom.";
+  }
+  if (typeof body.assignable_to_users !== "boolean") {
+    return "assignable_to_users must be a boolean.";
+  }
+  if (!idArray(body.capability_grants)) {
+    return "capability_grants must be an array of valid ids.";
+  }
+  if (!Array.isArray(body.data_source_grants)) {
+    return "data_source_grants must be an array.";
+  }
+  for (const grant of body.data_source_grants) {
+    if (!isObject(grant) || !isId(grant.data_source_id)) {
+      return "data_source_grants entries must include a valid data_source_id.";
+    }
+    if (!accessModeArray(grant.access_modes)) {
+      return "data_source_grants entries must include access_modes from read, write, administer.";
+    }
+  }
+  if (!isObject(body.derived_runtime_modules)) {
+    return "derived_runtime_modules is required.";
+  }
+  for (const key of ["skills", "workflows", "tools", "policies", "validators"] as const) {
+    if (!idArray(body.derived_runtime_modules[key])) {
+      return `derived_runtime_modules.${key} must be an array of valid ids.`;
+    }
+  }
+  return null;
+}
+
+function validateTenantAdminMembershipUpsertRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (!isId(body.id)) {
+    return "id must be a valid membership id.";
+  }
+  if (!isId(body.principal_id)) {
+    return "principal_id must be a valid id.";
+  }
+  if (body.status !== "invited" && body.status !== "active" && body.status !== "disabled") {
+    return "status must be invited, active, or disabled.";
+  }
+  if (!idArray(body.role_ids) || body.role_ids.length === 0) {
+    return "role_ids must be a non-empty array of valid role ids.";
+  }
+  return null;
+}
+
+function validateTenantAdminDataSourceCreateRequest(body: unknown): string | null {
+  if (!isObject(body)) {
+    return "Request body must be a JSON object.";
+  }
+  if (!isId(body.id)) {
+    return "id must be a valid data source id.";
+  }
+  if (
+    body.source_type !== "github_repository" &&
+    body.source_type !== "notion_page_tree" &&
+    body.source_type !== "google_drive_folder" &&
+    body.source_type !== "sharepoint_site" &&
+    body.source_type !== "hubspot_account" &&
+    body.source_type !== "website" &&
+    body.source_type !== "database" &&
+    body.source_type !== "other"
+  ) {
+    return "source_type is invalid.";
+  }
+  if (typeof body.display_name !== "string" || body.display_name.trim().length === 0) {
+    return "display_name is required.";
+  }
+  if (!accessModeArray(body.access_modes)) {
+    return "access_modes must use read, write, or administer.";
+  }
+  if (
+    body.status !== "planned" &&
+    body.status !== "active" &&
+    body.status !== "disabled" &&
+    body.status !== "archived"
+  ) {
+    return "status must be planned, active, disabled, or archived.";
+  }
+  if (
+    body.sensitivity !== "public" &&
+    body.sensitivity !== "internal" &&
+    body.sensitivity !== "confidential" &&
+    body.sensitivity !== "restricted"
+  ) {
+    return "sensitivity is invalid.";
+  }
+  return null;
+}
+
+async function requireTenantDataSources(
+  env: Env,
+  tenantId: string,
+  dataSourceIds: string[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(dataSourceIds)];
+  if (uniqueIds.length === 0) {
+    return true;
+  }
+  const placeholders = uniqueIds.map(() => "?").join(", ");
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id
+    FROM tenant_data_sources
+    WHERE tenant_id = ?
+      AND id IN (${placeholders})
+    `,
+  )
+    .bind(tenantId, ...uniqueIds)
+    .all<{ id: string }>();
+  return (result.results ?? []).length === uniqueIds.length;
+}
+
+async function requireAssignableTenantRoles(
+  env: Env,
+  tenantId: string,
+  roleIds: string[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(roleIds)];
+  const placeholders = uniqueIds.map(() => "?").join(", ");
+  const result = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id
+    FROM tenant_role_bundles
+    WHERE tenant_id = ?
+      AND assignable_to_users = 1
+      AND id IN (${placeholders})
+    `,
+  )
+    .bind(tenantId, ...uniqueIds)
+    .all<{ id: string }>();
+  return (result.results ?? []).length === uniqueIds.length;
+}
+
+async function requireTenantMembershipIdAvailable(
+  env: Env,
+  tenantId: string,
+  membershipId: string,
+): Promise<boolean> {
+  const existing = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT tenant_id
+    FROM tenant_memberships
+    WHERE id = ?
+    LIMIT 1
+    `,
+  )
+    .bind(membershipId)
+    .first<{ tenant_id: string }>();
+  return existing === null || existing.tenant_id === tenantId;
+}
+
+async function createTenantAdminRole(
+  env: Env,
+  tenantId: string,
+  body: TenantAdminRoleCreateRequest,
+): Promise<void> {
+  const dataSourceIds = body.data_source_grants.map((grant) => grant.data_source_id);
+  if (!(await requireTenantDataSources(env, tenantId, dataSourceIds))) {
+    throw new Error("tenant_data_source_denied");
+  }
+
+  const timestamp = nowIso();
+  const roleInsert = env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT INTO tenant_role_bundles (
+      id, tenant_id, display_name, role_type, assignable_to_users,
+      derived_skills_json, derived_workflows_json, derived_tools_json,
+      derived_policies_json, derived_validators_json
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+  ).bind(
+    body.id,
+    tenantId,
+    body.display_name,
+    body.role_type,
+    body.assignable_to_users ? 1 : 0,
+    JSON.stringify(body.derived_runtime_modules.skills),
+    JSON.stringify(body.derived_runtime_modules.workflows),
+    JSON.stringify(body.derived_runtime_modules.tools),
+    JSON.stringify(body.derived_runtime_modules.policies),
+    JSON.stringify(body.derived_runtime_modules.validators),
+  );
+  const capabilityInserts = body.capability_grants.map((capabilityId) =>
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+      VALUES (?, ?, ?, ?)
+      `,
+    ).bind(`trcg-${body.id}-${capabilityId}`, tenantId, body.id, capabilityId),
+  );
+  const dataSourceGrantInserts = body.data_source_grants.map((grant) =>
+    env.SCAS_CONTROL_DB.prepare(
+      `
+      INSERT INTO tenant_role_data_source_grants (
+        id, tenant_id, role_bundle_id, data_source_id, access_modes_json
+      )
+      VALUES (?, ?, ?, ?, ?)
+      `,
+    ).bind(
+      `trdsg-${body.id}-${grant.data_source_id}`,
+      tenantId,
+      body.id,
+      grant.data_source_id,
+      JSON.stringify(grant.access_modes),
+    ),
+  );
+  await env.SCAS_CONTROL_DB.batch([roleInsert, ...capabilityInserts, ...dataSourceGrantInserts]);
+  await writeAuditEvent(env, "tenant_admin_role_created", "tenant_role", body.id, timestamp);
+}
+
+async function upsertTenantAdminMembership(
+  env: Env,
+  tenantId: string,
+  body: TenantAdminMembershipUpsertRequest,
+): Promise<void> {
+  if (!(await requireTenantMembershipIdAvailable(env, tenantId, body.id))) {
+    throw new Error("tenant_membership_denied");
+  }
+  if (!(await requireAssignableTenantRoles(env, tenantId, body.role_ids))) {
+    throw new Error("tenant_role_denied");
+  }
+  const timestamp = nowIso();
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT INTO tenant_memberships (
+      id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      principal_id = excluded.principal_id,
+      status = excluded.status,
+      role_ids_json = excluded.role_ids_json,
+      updated_at = excluded.updated_at
+    `,
+  )
+    .bind(
+      body.id,
+      tenantId,
+      body.principal_id,
+      body.status,
+      JSON.stringify(body.role_ids),
+      timestamp,
+      timestamp,
+    )
+    .run();
+  await writeAuditEvent(
+    env,
+    "tenant_admin_membership_upserted",
+    "tenant_membership",
+    body.id,
+    timestamp,
+  );
+}
+
+async function createTenantAdminDataSource(
+  env: Env,
+  tenantId: string,
+  body: TenantAdminDataSourceCreateRequest,
+): Promise<void> {
+  const timestamp = nowIso();
+  await env.SCAS_CONTROL_DB.prepare(
+    `
+    INSERT INTO tenant_data_sources (
+      id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+  )
+    .bind(
+      body.id,
+      tenantId,
+      body.source_type,
+      body.display_name,
+      JSON.stringify(body.access_modes),
+      body.status,
+      body.sensitivity,
+    )
+    .run();
+  await writeAuditEvent(
+    env,
+    "tenant_admin_data_source_registered",
+    "tenant_data_source",
+    body.id,
+    timestamp,
+  );
 }
 
 function allowedScopeNamesByKind(
@@ -1926,9 +2559,149 @@ async function handleCompositionContext(request: Request, env: Env): Promise<Res
   }
 
   try {
-    return jsonResponse(await compositionContextResponse(env, body as CompositionRequest));
+    const responseBody = await compositionContextResponse(env, body as CompositionRequest);
+    await writeAuditEvent(
+      env,
+      responseBody.composition_status === "ready"
+        ? "composition_context_ready"
+        : "composition_context_denied",
+      "composition_context",
+      (body as CompositionRequest).task.id,
+      nowIso(),
+    );
+    return jsonResponse(responseBody);
   } catch {
     return errorResponse(503, "registry_unavailable", "Registry metadata is unavailable.");
+  }
+}
+
+async function handleTenantAdminContext(request: Request, env: Env): Promise<Response> {
+  const authError = authorizeControlApiRequest(request, env, "tenant_admin");
+  if (authError !== null) {
+    return authError;
+  }
+
+  const url = new URL(request.url);
+  const match = url.pathname.match(
+    /^\/tenant-admin\/tenants\/(?<tenantId>[a-z][a-z0-9-]*)(?<subpath>\/[a-z-]+)?$/,
+  );
+  const tenantId = match?.groups?.tenantId;
+  const subpath = match?.groups?.subpath ?? "";
+  if (tenantId === undefined) {
+    return errorResponse(404, "not_found", "Endpoint not found.");
+  }
+
+  const hostname = request.headers.get("x-scas-tenant-hostname");
+  if (hostname === null || hostname.trim().length === 0) {
+    return errorResponse(
+      400,
+      "tenant_hostname_required",
+      "x-scas-tenant-hostname is required for tenant admin context.",
+    );
+  }
+
+  try {
+    const context = await loadTenantAdminContext(env, tenantId, hostname);
+    if (context === null) {
+      return errorResponse(404, "tenant_not_found", "Tenant was not found.");
+    }
+    if (subpath === "") {
+      if (request.method !== "GET") {
+        return errorResponse(405, "method_not_allowed", "Use GET for /tenant-admin/tenants/{id}.");
+      }
+      await writeAuditEvent(
+        env,
+        "tenant_admin_context_read",
+        "tenant",
+        tenantId,
+        nowIso(),
+      );
+      return jsonResponse(context);
+    }
+    if (subpath === "/roles") {
+      const parsed = await readValidatedJson<TenantAdminRoleCreateRequest>(
+        request,
+        validateTenantAdminRoleCreateRequest,
+        "invalid_tenant_admin_role_request",
+      );
+      if ("response" in parsed) {
+        return parsed.response;
+      }
+      await createTenantAdminRole(env, tenantId, parsed.body);
+      return jsonResponse({ status: "succeeded", role_id: parsed.body.id }, { status: 201 });
+    }
+    if (subpath === "/memberships") {
+      const parsed = await readValidatedJson<TenantAdminMembershipUpsertRequest>(
+        request,
+        validateTenantAdminMembershipUpsertRequest,
+        "invalid_tenant_admin_membership_request",
+      );
+      if ("response" in parsed) {
+        return parsed.response;
+      }
+      await upsertTenantAdminMembership(env, tenantId, parsed.body);
+      return jsonResponse(
+        { status: "succeeded", membership_id: parsed.body.id },
+        { status: 201 },
+      );
+    }
+    if (subpath === "/data-sources") {
+      const parsed = await readValidatedJson<TenantAdminDataSourceCreateRequest>(
+        request,
+        validateTenantAdminDataSourceCreateRequest,
+        "invalid_tenant_admin_data_source_request",
+      );
+      if ("response" in parsed) {
+        return parsed.response;
+      }
+      await createTenantAdminDataSource(env, tenantId, parsed.body);
+      return jsonResponse(
+        { status: "succeeded", data_source_id: parsed.body.id },
+        { status: 201 },
+      );
+    }
+    return errorResponse(404, "not_found", "Endpoint not found.");
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "tenant_hostname_invalid") {
+        return errorResponse(400, "tenant_hostname_invalid", "Tenant hostname is invalid.");
+      }
+      if (error.message === "tenant_hostname_not_found") {
+        await writeAuditEvent(
+          env,
+          "tenant_admin_hostname_denied",
+          "tenant",
+          tenantId,
+          nowIso(),
+        );
+        return errorResponse(
+          403,
+          "tenant_hostname_denied",
+          "Tenant hostname does not match this tenant.",
+        );
+      }
+      if (error.message === "tenant_not_active") {
+        return errorResponse(403, "tenant_not_active", "Tenant is not active.");
+      }
+      if (error.message === "tenant_data_source_denied") {
+        return errorResponse(
+          403,
+          "tenant_data_source_denied",
+          "Tenant data source does not belong to this tenant.",
+        );
+      }
+      if (error.message === "tenant_role_denied") {
+        return errorResponse(403, "tenant_role_denied", "Tenant role cannot be assigned.");
+      }
+      if (error.message === "tenant_membership_denied") {
+        return errorResponse(
+          403,
+          "tenant_membership_denied",
+          "Tenant membership does not belong to this tenant.",
+        );
+      }
+    }
+    return errorResponse(500, "tenant_admin_unavailable", "Tenant admin context is unavailable.");
   }
 }
 
@@ -2882,6 +3655,10 @@ export default {
 
     if (url.pathname === "/composition/context") {
       return handleCompositionContext(request, env);
+    }
+
+    if (url.pathname.startsWith("/tenant-admin/tenants/")) {
+      return handleTenantAdminContext(request, env);
     }
 
     if (url.pathname === "/knowledge/ingest") {

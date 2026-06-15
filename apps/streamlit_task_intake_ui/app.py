@@ -13,6 +13,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INTAKE_DIR = Path(".scas-runtime") / "intake"
 DEFAULT_ARTIFACT_ROOT = Path(".scas-runtime")
+TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 
 TASK_TYPE_HINTS = (
     "auto",
@@ -69,6 +70,7 @@ def build_task_envelope(
     repository_path: str | None,
     repository_slug: str | None,
     submitted_at: datetime,
+    tenant_auth: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     clean_request = request.strip()
     if not clean_request:
@@ -107,6 +109,8 @@ def build_task_envelope(
         repository["slug"] = repository_slug
     if repository:
         context["repository"] = repository
+    if tenant_auth is not None:
+        context["auth"].update(tenant_auth)
 
     return {
         "id": task_id.strip(),
@@ -117,6 +121,46 @@ def build_task_envelope(
             "destructive_actions": destructive_actions,
         },
         "context": context,
+    }
+
+
+def load_tenant_registry(tenants_dir: Path = TENANTS_DIR) -> dict[str, dict[str, Any]]:
+    tenants: dict[str, dict[str, Any]] = {}
+    for path in sorted(tenants_dir.glob("*.json")):
+        tenant = json.loads(path.read_text(encoding="utf-8"))
+        if tenant.get("status") in {"setup", "active"}:
+            tenants[str(tenant["tenant_id"])] = tenant
+    return tenants
+
+
+def build_tenant_role_auth(
+    tenant: dict[str, Any],
+    role_id: str,
+    *,
+    principal_id: str = "repository-maintainer",
+) -> dict[str, Any]:
+    role = next(
+        (item for item in tenant.get("role_bundles", []) if item.get("id") == role_id),
+        None,
+    )
+    if role is None:
+        raise ValueError(f"Unknown tenant role: {role_id}.")
+    hostnames = tenant.get("hostnames", [])
+    if not hostnames:
+        raise ValueError(f"Tenant has no configured hostname: {tenant['tenant_id']}.")
+    return {
+        "principal_id": principal_id,
+        "tenant_id": tenant["tenant_id"],
+        "area_id": tenant["area_id"],
+        "tenant_hostname": hostnames[0]["hostname"],
+        "membership_id": f"tm-{tenant['tenant_id']}-{principal_id}",
+        "roles": [role["id"]],
+        "control_plane_principal_kind": "role",
+        "control_plane_principal_id": principal_id,
+        "role_data_sources": [
+            grant["data_source_id"] for grant in role.get("data_source_grants", [])
+        ],
+        "role_capabilities": list(role.get("capability_grants", [])),
     }
 
 
@@ -268,6 +312,13 @@ def main() -> None:
         st.session_state["messages"].append({"role": "user", "content": prompt})
 
     st.sidebar.title("SCAS")
+    tenants = load_tenant_registry()
+    tenant_options = ["global", *sorted(tenants)]
+    selected_tenant_id = st.sidebar.selectbox("Tenant", tenant_options, index=0)
+    selected_role_id: str | None = None
+    if selected_tenant_id != "global":
+        role_options = [role["id"] for role in tenants[selected_tenant_id]["role_bundles"]]
+        selected_role_id = st.sidebar.selectbox("Tenant-Rolle", role_options, index=0)
     environment = st.sidebar.selectbox("Umgebung", ["dev", "staging"], index=0)
     task_type_hint = st.sidebar.selectbox(
         "Task-Typ",
@@ -308,6 +359,11 @@ def main() -> None:
             try:
                 submitted_at = datetime.now().astimezone()
                 task_id = default_task_id(request, submitted_at)
+                tenant_auth = (
+                    build_tenant_role_auth(tenants[selected_tenant_id], selected_role_id)
+                    if selected_tenant_id != "global" and selected_role_id is not None
+                    else None
+                )
                 envelope = build_task_envelope(
                     request=request,
                     task_id=task_id,
@@ -318,6 +374,7 @@ def main() -> None:
                     repository_path=repository_path,
                     repository_slug=repository_slug,
                     submitted_at=submitted_at,
+                    tenant_auth=tenant_auth,
                 )
                 task_file = write_task_envelope(envelope)
             except ValueError as exc:

@@ -129,14 +129,15 @@ guidance text.
 Hard enforcement covers:
 
 - selected skills and their `skill_execution_roles`,
-- `tenant_context`, including tenant ID, area ID, role IDs, and the requirement
-  that capabilities and data sources derive from tenant role bundles rather
-  than direct user grants. For non-global tenants, profile composition must
-  validate the Control Plane `tenant_authority` response before emitting the
-  profile. The emitted profile must then carry the sealed `tenant_authority`
-  snapshot, and runtime profile validation must reject execution if the
-  profile identity, membership, role IDs, selected modules, or selected scopes
-  are not derivable from that snapshot,
+- `tenant_context`, including tenant ID, area ID, hostname, role IDs, and the
+  requirement that capabilities and data sources derive from tenant role bundles
+  rather than direct user grants. For non-global tenants, profile composition
+  must validate the Control Plane `tenant_authority` response before emitting
+  the profile. The emitted profile must then carry the sealed
+  `tenant_authority` snapshot, including hostname proof, and runtime profile
+  validation must reject execution if the profile identity, hostname,
+  membership, role IDs, selected modules, or selected scopes are not derivable
+  from that snapshot,
 - selected tools,
 - selected knowledge scopes,
 - selected data scopes,

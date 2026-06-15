@@ -122,6 +122,13 @@ def test_profile_enforcer_accepts_tenant_authority_sealed_profile() -> None:
             "tenant_authority_tenant_mismatch",
         ),
         (
+            lambda profile: profile["tenant_authority"]["hostname"].__setitem__(
+                "hostname",
+                "other-tenant.example.invalid",
+            ),
+            "tenant_hostname_authority_mismatch",
+        ),
+        (
             lambda profile: profile["tenant_context"]["role_ids"].append(
                 "demo-tenant-admin",
             ),

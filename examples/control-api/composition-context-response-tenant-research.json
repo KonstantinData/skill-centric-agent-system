@@ -179,6 +179,13 @@
   "tenant_authority": {
     "tenant_id": "demo-tenant",
     "area_id": "demo-tenant",
+    "hostname": {
+      "tenant_id": "demo-tenant",
+      "hostname": "demo-tenant.example.invalid",
+      "purpose": "primary-ui",
+      "expected_origin": "192.0.2.10",
+      "cloudflare_proxy_expected": true
+    },
     "status": "active",
     "direct_user_grants_allowed": false,
     "membership": {

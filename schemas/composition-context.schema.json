@@ -227,6 +227,7 @@
       "required": [
         "tenant_id",
         "area_id",
+        "hostname",
         "status",
         "direct_user_grants_allowed",
         "membership",
@@ -242,6 +243,38 @@
         },
         "area_id": {
           "$ref": "#/$defs/id"
+        },
+        "hostname": {
+          "type": "object",
+          "description": "D1-derived hostname authority that proves the request host belongs to the tenant.",
+          "additionalProperties": false,
+          "required": [
+            "tenant_id",
+            "hostname",
+            "purpose",
+            "expected_origin",
+            "cloudflare_proxy_expected"
+          ],
+          "properties": {
+            "tenant_id": {
+              "$ref": "#/$defs/id"
+            },
+            "hostname": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cloudflare_proxy_expected": {
+              "type": "boolean"
+            }
+          }
         },
         "status": {
           "type": "string",

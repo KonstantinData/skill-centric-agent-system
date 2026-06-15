@@ -19,6 +19,20 @@ SKIPPED_PARTS = {
     "venv",
 }
 FORBIDDEN_BRAND = "liqui" + "sto"
+ALLOWED_TENANT_ONBOARDING_PATHS = {
+    "apps/streamlit_business_ui/app.py",
+    "docs/README.md",
+    "docs/runbooks/liquisto-tenant-dns-evidence.md",
+    "docs/runbooks/liquisto-tenant-release-gate.md",
+    "examples/control-plane/dev-seed.sql",
+    "examples/tenants/liquisto.json",
+    "tests/test_control_plane_seed.py",
+    "tests/test_streamlit_business_ui.py",
+    "tests/test_streamlit_task_intake_ui.py",
+    "tests/test_tenant_hostname_resolution.py",
+    "tests/test_tenant_isolation_matrix.py",
+    "tests/test_repository_neutrality.py",
+}
 
 
 def iter_repository_text_files() -> list[Path]:
@@ -45,8 +59,11 @@ def test_repository_content_uses_neutral_naming() -> None:
     offenders: list[str] = []
 
     for path in iter_repository_text_files():
+        relative_path = path.relative_to(REPO_ROOT).as_posix()
+        if relative_path in ALLOWED_TENANT_ONBOARDING_PATHS:
+            continue
         content = path.read_text(encoding="utf-8", errors="ignore")
         if FORBIDDEN_BRAND in content.lower():
-            offenders.append(str(path.relative_to(REPO_ROOT)))
+            offenders.append(relative_path)
 
     assert not offenders

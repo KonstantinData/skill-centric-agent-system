@@ -1,0 +1,187 @@
+{
+  "contract_version": "0.1.0",
+  "tenant_id": "liquisto",
+  "area_id": "liquisto",
+  "display_name": "Liquisto",
+  "legal_profile": {
+    "legal_name": "Liquisto",
+    "registered_address": {
+      "street": "Pending legal bootstrap",
+      "street_number": "0",
+      "postal_code": "00000",
+      "city": "Pending legal bootstrap",
+      "country": "Germany"
+    },
+    "legal_representatives": [
+      {
+        "name": "Pending legal bootstrap",
+        "role": "Tenant Owner"
+      }
+    ],
+    "commercial_register": {
+      "register_court": "Pending legal bootstrap",
+      "registration_number": "Pending legal bootstrap"
+    },
+    "tax": {
+      "tax_number": null,
+      "vat_id": null,
+      "tax_number_sensitivity": "restricted-business-data"
+    }
+  },
+  "contact_profile": {
+    "email": "admin@liquisto.com",
+    "phone": null,
+    "website": "https://liquisto.com"
+  },
+  "hostnames": [
+    {
+      "hostname": "liquisto.condata.io",
+      "purpose": "primary-ui",
+      "expected_origin": "178.105.62.169",
+      "cloudflare_proxy_expected": true
+    }
+  ],
+  "status": "setup",
+  "default_locale": "de-DE",
+  "admin_model": {
+    "admin_routes": [
+      "/admin/users",
+      "/admin/roles",
+      "/admin/settings"
+    ],
+    "assignment_model": "users-receive-roles-only",
+    "initial_owner": null
+  },
+  "memory": {
+    "area_brain_id": "brain-area-liquisto",
+    "shared_promotion_allowed": false
+  },
+  "knowledge": {
+    "scope_id": "knowledge-liquisto",
+    "indexes": [
+      "knowledge-liquisto-docs"
+    ]
+  },
+  "data_sources": [
+    {
+      "id": "liquisto-website",
+      "tenant_id": "liquisto",
+      "type": "website",
+      "display_name": "Liquisto Website",
+      "access_modes": [
+        "read"
+      ],
+      "status": "planned",
+      "sensitivity": "public"
+    }
+  ],
+  "role_bundles": [
+    {
+      "id": "liquisto-owner",
+      "tenant_id": "liquisto",
+      "display_name": "Tenant Owner",
+      "role_type": "system",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research",
+        "tenant-admin"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "liquisto-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake",
+          "tenant-admin"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "admin-action-validator",
+          "knowledge-scope-validator",
+          "no-cross-area-scope-validator",
+          "no-cross-tenant-scope-validator",
+          "research-output-contract",
+          "tenant-profile-validator",
+          "user-permission-validator"
+        ]
+      }
+    },
+    {
+      "id": "liquisto-researcher",
+      "tenant_id": "liquisto",
+      "display_name": "Researcher",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "liquisto-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator",
+          "research-output-contract"
+        ]
+      }
+    }
+  ],
+  "policy_bundle": [
+    "strict-tenant-isolation",
+    "no-cross-area-access",
+    "no-cross-tenant-access",
+    "fail-closed-unknown-scope"
+  ],
+  "validators": [
+    "tenant-profile-validator",
+    "no-cross-tenant-scope-validator",
+    "no-cross-area-scope-validator",
+    "skill-scope-compatibility-validator",
+    "tool-scope-compatibility-validator",
+    "memory-scope-validator",
+    "knowledge-scope-validator",
+    "user-permission-validator",
+    "admin-action-validator"
+  ]
+}

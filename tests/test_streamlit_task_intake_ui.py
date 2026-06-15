@@ -63,6 +63,38 @@ def test_build_task_envelope_keeps_ui_as_thin_intake_surface() -> None:
     assert "validators" not in envelope
 
 
+def test_build_task_envelope_can_scope_task_to_tenant_role() -> None:
+    submitted_at = datetime(2026, 6, 12, 10, 30, 0, tzinfo=UTC)
+    tenants = streamlit_task_intake_ui_app.load_tenant_registry()
+    tenant_auth = streamlit_task_intake_ui_app.build_tenant_role_auth(
+        tenants["liquisto"],
+        "liquisto-owner",
+    )
+
+    envelope = streamlit_task_intake_ui_app.build_task_envelope(
+        request="Prepare a Liquisto tenant admin summary.",
+        task_id="task-ui-liquisto-admin-summary",
+        environment="dev",
+        task_type_hint="research",
+        write_access=False,
+        destructive_actions=False,
+        repository_path=".",
+        repository_slug="KonstantinData/skill-centric-agent-system",
+        submitted_at=submitted_at,
+        tenant_auth=tenant_auth,
+    )
+
+    assert envelope["context"]["auth"]["tenant_id"] == "liquisto"
+    assert envelope["context"]["auth"]["area_id"] == "liquisto"
+    assert envelope["context"]["auth"]["tenant_hostname"] == "liquisto.condata.io"
+    assert envelope["context"]["auth"]["membership_id"] == "tm-liquisto-repository-maintainer"
+    assert envelope["context"]["auth"]["roles"] == ["liquisto-owner"]
+    assert envelope["context"]["auth"]["role_capabilities"] == ["research", "tenant-admin"]
+    assert envelope["context"]["auth"]["role_data_sources"] == ["liquisto-website"]
+    assert "skills" not in envelope
+    assert "tools" not in envelope
+
+
 def test_write_task_envelope_stays_inside_repository(tmp_path: Path) -> None:
     envelope = {
         "id": "task-ui-test",

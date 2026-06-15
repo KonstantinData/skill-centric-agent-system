@@ -5,7 +5,9 @@ Minimal Streamlit interface for submitting task envelopes to the SCAS runtime.
 The app is intentionally a thin intake surface. It does not choose skills,
 tools, policies, scopes, validators, or runtime profiles directly. It captures
 the user request, creates the same task envelope shape used by the runtime CLI,
-and can start a local fixture-backed runtime run for development.
+and can start a local fixture-backed runtime run for development. Tenant mode
+adds only role-derived auth claims from `examples/tenants/*.json`; it still does
+not select runtime modules or bypass Control Plane authority.
 
 ## Run
 

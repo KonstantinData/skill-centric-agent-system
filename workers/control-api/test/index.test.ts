@@ -118,6 +118,7 @@ const COMPOSITION_TOKEN = "test-composition-token";
 const INGESTION_TOKEN = "test-ingestion-token";
 const RETRIEVAL_TOKEN = "test-retrieval-token";
 const AI_GATEWAY_TOKEN = "test-ai-gateway-token";
+const TENANT_ADMIN_TOKEN = "test-tenant-admin-token";
 
 type TestEnv = Env & {
   CONTROL_API_TOKEN?: string;
@@ -125,6 +126,7 @@ type TestEnv = Env & {
   CONTROL_API_INGESTION_TOKEN?: string;
   CONTROL_API_RETRIEVAL_TOKEN?: string;
   CONTROL_API_AI_GATEWAY_TOKEN?: string;
+  CONTROL_API_TENANT_ADMIN_TOKEN?: string;
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   OPENAI_API_KEY?: string;
@@ -139,6 +141,7 @@ function testEnv(overrides: Partial<TestEnv> = {}): TestEnv {
     CONTROL_API_INGESTION_TOKEN: INGESTION_TOKEN,
     CONTROL_API_RETRIEVAL_TOKEN: RETRIEVAL_TOKEN,
     CONTROL_API_AI_GATEWAY_TOKEN: AI_GATEWAY_TOKEN,
+    CONTROL_API_TENANT_ADMIN_TOKEN: TENANT_ADMIN_TOKEN,
     ...overrides,
   } as TestEnv;
 }
@@ -685,6 +688,24 @@ async function seedControlPlane(): Promise<void> {
     ),
     db.prepare(
       `
+      INSERT INTO tenant_hostnames (
+        id,
+        tenant_id,
+        hostname,
+        purpose,
+        expected_origin,
+        cloudflare_proxy_expected
+      )
+      VALUES (?, ?, ?, 'primary-ui', ?, 1)
+      `,
+    ).bind(
+      "th-demo-tenant-demo-tenant-example-invalid",
+      "demo-tenant",
+      "demo-tenant.example.invalid",
+      "192.0.2.10",
+    ),
+    db.prepare(
+      `
       INSERT INTO tenant_memberships (
         id,
         tenant_id,
@@ -928,6 +949,7 @@ describe("control API worker", () => {
         CONTROL_API_INGESTION_TOKEN: undefined,
         CONTROL_API_RETRIEVAL_TOKEN: undefined,
         CONTROL_API_AI_GATEWAY_TOKEN: undefined,
+        CONTROL_API_TENANT_ADMIN_TOKEN: undefined,
       },
     );
     const body = await response.json();
@@ -1049,6 +1071,17 @@ describe("control API worker", () => {
       ],
     });
     expect(body.tenant_authority).toBeUndefined();
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("composition_context_ready", "task-code-review")
+      .first();
+    expect(audit).toEqual({
+      event_type: "composition_context_ready",
+      target_kind: "composition_context",
+      target_id: "task-code-review",
+    });
   });
 
   it("returns tenant authority for tenant-scoped composition context", async () => {
@@ -1066,6 +1099,13 @@ describe("control API worker", () => {
     expect(body.tenant_authority).toEqual({
       tenant_id: "demo-tenant",
       area_id: "demo-tenant",
+      hostname: {
+        tenant_id: "demo-tenant",
+        hostname: "demo-tenant.example.invalid",
+        purpose: "primary-ui",
+        expected_origin: "192.0.2.10",
+        cloudflare_proxy_expected: true,
+      },
       status: "active",
       direct_user_grants_allowed: false,
       membership: {
@@ -1108,6 +1148,349 @@ describe("control API worker", () => {
     });
   });
 
+  it("returns D1-backed tenant admin context for the resolved tenant hostname", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      contract_version: "0.1.0",
+      tenant: {
+        tenant_id: "demo-tenant",
+        area_id: "demo-tenant",
+        display_name: "Demo Tenant",
+        status: "active",
+        default_locale: "de-DE",
+        contact_email: "admin@example.invalid",
+        contact_website: "https://example.invalid",
+        hostname: {
+          tenant_id: "demo-tenant",
+          hostname: "demo-tenant.example.invalid",
+          purpose: "primary-ui",
+          expected_origin: "192.0.2.10",
+          cloudflare_proxy_expected: true,
+        },
+      },
+      admin: {
+        admin_routes: ["/admin/users", "/admin/roles", "/admin/settings"],
+        assignment_model: "users-receive-roles-only",
+        direct_user_grants_allowed: false,
+      },
+      users: [
+        {
+          membership_id: "demo-tenant-membership-user",
+          tenant_id: "demo-tenant",
+          principal_id: "tenant-user",
+          status: "active",
+          role_ids: ["demo-tenant-reviewer"],
+        },
+      ],
+      roles: [
+        {
+          id: "demo-tenant-reviewer",
+          tenant_id: "demo-tenant",
+          display_name: "Demo Tenant Reviewer",
+          role_type: "tenant-custom",
+          assignable_to_users: true,
+          capability_grants: ["code-review"],
+          data_source_grants: [
+            {
+              data_source_id: "demo-tenant-website",
+              access_modes: ["read"],
+            },
+          ],
+          derived_runtime_modules: {
+            skills: ["git-diff-analysis"],
+            workflows: ["code-review"],
+            tools: [],
+            policies: ["no-destructive-commands"],
+            validators: [],
+          },
+        },
+      ],
+      data_sources: [
+        {
+          id: "demo-tenant-website",
+          tenant_id: "demo-tenant",
+          source_type: "website",
+          display_name: "Demo Tenant Website",
+          access_modes: ["read"],
+          status: "active",
+          sensitivity: "public",
+        },
+      ],
+      settings: {
+        memory_area_brain_id: "brain-area-demo-tenant",
+        shared_promotion_allowed: false,
+        knowledge_scope_id: "knowledge-demo-tenant",
+        policy_bundle: ["strict-tenant-isolation", "no-cross-tenant-access"],
+        validators: ["tenant-profile-validator"],
+      },
+    });
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_context_read", "demo-tenant")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_context_read",
+      target_kind: "tenant",
+      target_id: "demo-tenant",
+    });
+  });
+
+  it("denies tenant admin context when the hostname does not belong to the tenant", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "x-scas-tenant-hostname": "other-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("tenant_hostname_denied");
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_hostname_denied", "demo-tenant")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_hostname_denied",
+      target_kind: "tenant",
+      target_id: "demo-tenant",
+    });
+  });
+
+  it("requires tenant-admin scoped bearer authorization for tenant admin context", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${COMPOSITION_TOKEN}`,
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("authorization_scope_denied");
+  });
+
+  it("creates tenant admin roles through role-derived capability and data-source grants", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/roles", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "content-type": "application/json",
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+      body: JSON.stringify({
+        id: "demo-tenant-researcher",
+        display_name: "Demo Tenant Researcher",
+        role_type: "tenant-custom",
+        assignable_to_users: true,
+        capability_grants: ["research"],
+        data_source_grants: [
+          {
+            data_source_id: "demo-tenant-website",
+            access_modes: ["read"],
+          },
+        ],
+        derived_runtime_modules: {
+          skills: ["git-diff-analysis"],
+          workflows: ["research-intake"],
+          tools: [],
+          policies: ["no-destructive-commands"],
+          validators: ["tenant-profile-validator"],
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body).toEqual({
+      status: "succeeded",
+      role_id: "demo-tenant-researcher",
+    });
+
+    const role = await env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT id, tenant_id, display_name
+      FROM tenant_role_bundles
+      WHERE id = ?
+      `,
+    )
+      .bind("demo-tenant-researcher")
+      .first();
+    expect(role).toEqual({
+      id: "demo-tenant-researcher",
+      tenant_id: "demo-tenant",
+      display_name: "Demo Tenant Researcher",
+    });
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_role_created", "demo-tenant-researcher")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_role_created",
+      target_kind: "tenant_role",
+      target_id: "demo-tenant-researcher",
+    });
+  });
+
+  it("denies tenant admin roles that reference foreign data sources", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/roles", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "content-type": "application/json",
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+      body: JSON.stringify({
+        id: "demo-tenant-foreign-source-role",
+        display_name: "Foreign Source Role",
+        role_type: "tenant-custom",
+        assignable_to_users: true,
+        capability_grants: ["research"],
+        data_source_grants: [
+          {
+            data_source_id: "other-tenant-website",
+            access_modes: ["read"],
+          },
+        ],
+        derived_runtime_modules: {
+          skills: ["git-diff-analysis"],
+          workflows: ["research-intake"],
+          tools: [],
+          policies: ["no-destructive-commands"],
+          validators: ["tenant-profile-validator"],
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("tenant_data_source_denied");
+  });
+
+  it("upserts tenant memberships only with assignable roles", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/memberships", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "content-type": "application/json",
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+      body: JSON.stringify({
+        id: "demo-tenant-membership-new-user",
+        principal_id: "tenant-new-user",
+        status: "invited",
+        role_ids: ["demo-tenant-reviewer"],
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body).toEqual({
+      status: "succeeded",
+      membership_id: "demo-tenant-membership-new-user",
+    });
+
+    const membership = await env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT id, tenant_id, principal_id, status, role_ids_json
+      FROM tenant_memberships
+      WHERE id = ?
+      `,
+    )
+      .bind("demo-tenant-membership-new-user")
+      .first<{ role_ids_json: string }>();
+    expect({
+      ...membership,
+      role_ids_json: JSON.parse(membership?.role_ids_json ?? "[]"),
+    }).toEqual({
+      id: "demo-tenant-membership-new-user",
+      tenant_id: "demo-tenant",
+      principal_id: "tenant-new-user",
+      status: "invited",
+      role_ids_json: ["demo-tenant-reviewer"],
+    });
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_membership_upserted", "demo-tenant-membership-new-user")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_membership_upserted",
+      target_kind: "tenant_membership",
+      target_id: "demo-tenant-membership-new-user",
+    });
+  });
+
+  it("registers tenant data sources through the tenant admin API", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/data-sources", {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "content-type": "application/json",
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+      body: JSON.stringify({
+        id: "demo-tenant-docs",
+        source_type: "notion_page_tree",
+        display_name: "Demo Tenant Docs",
+        access_modes: ["read"],
+        status: "planned",
+        sensitivity: "internal",
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body).toEqual({
+      status: "succeeded",
+      data_source_id: "demo-tenant-docs",
+    });
+
+    const dataSource = await env.SCAS_CONTROL_DB.prepare(
+      `
+      SELECT id, tenant_id, source_type, display_name, status, sensitivity
+      FROM tenant_data_sources
+      WHERE id = ?
+      `,
+    )
+      .bind("demo-tenant-docs")
+      .first();
+    expect(dataSource).toEqual({
+      id: "demo-tenant-docs",
+      tenant_id: "demo-tenant",
+      source_type: "notion_page_tree",
+      display_name: "Demo Tenant Docs",
+      status: "planned",
+      sensitivity: "internal",
+    });
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_data_source_registered", "demo-tenant-docs")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_data_source_registered",
+      target_kind: "tenant_data_source",
+      target_id: "demo-tenant-docs",
+    });
+  });
+
   it("denies tenant-scoped composition context without matching membership", async () => {
     const response = await fetchJson("/composition/context", {
       method: "POST",
@@ -1127,6 +1510,38 @@ describe("control API worker", () => {
     expect(response.status).toBe(200);
     expect(body.composition_status).toBe("denied");
     expect(body.tenant_authority).toBeUndefined();
+  });
+
+  it("denies tenant-scoped composition context without matching hostname", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...tenantCompositionRequest,
+        tenant_context: {
+          ...tenantCompositionRequest.tenant_context,
+          hostname: "other-tenant.example.invalid",
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.tenant_authority).toBeUndefined();
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("composition_context_denied", "task-code-review")
+      .first();
+    expect(audit).toEqual({
+      event_type: "composition_context_denied",
+      target_kind: "composition_context",
+      target_id: "task-code-review",
+    });
   });
 
   it("denies candidates when required policies are not allowed", async () => {

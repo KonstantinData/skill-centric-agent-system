@@ -20,17 +20,17 @@ graph-validation summary for the selected context.
 
 For tenant-scoped requests, the composition response must also include
 `tenant_authority`: the tenant, active membership, role bundles, tenant-owned
-data sources, allowed scopes, and proof that direct user grants are disabled.
-The Composer fails closed when this authority snapshot is missing or does not
-derive the selected profile modules and data-source grants from the user's
-tenant roles.
+hostname proof, data sources, allowed scopes, and proof that direct user grants
+are disabled. The Composer fails closed when this authority snapshot is missing
+or does not derive the selected profile modules and data-source grants from the
+user's tenant roles.
 
 Tenant-scoped composition requests include `tenant_context` with tenant ID,
 area ID, hostname, and membership ID. The Worker uses that context plus the
-authenticated principal to read D1 `tenants`, `tenant_memberships`,
-`tenant_role_bundles`, `tenant_data_sources`, and tenant grant tables. Missing
-or mismatched tenant authority returns `composition_status: "denied"` and does
-not emit a partial authority snapshot.
+authenticated principal to read D1 `tenants`, `tenant_hostnames`,
+`tenant_memberships`, `tenant_role_bundles`, `tenant_data_sources`, and tenant
+grant tables. Missing or mismatched tenant authority returns
+`composition_status: "denied"` and does not emit a partial authority snapshot.
 When a tenant-scoped runtime profile is emitted, the Composer seals the
 validated snapshot into `tenant_authority`. The Runtime Profile Enforcer then
 revalidates tenant identity, membership, role-derived modules, and allowed
@@ -46,6 +46,10 @@ POST /knowledge/ingest
 POST /memory/ingest
 POST /retrieval/context
 POST /ai-gateway/openai/chat/completions
+GET /tenant-admin/tenants/{tenant_id}
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
 ```
 
 `POST /knowledge/ingest` accepts normalized knowledge source/document content,
@@ -101,6 +105,7 @@ Supported Worker secret bindings:
 | `CONTROL_API_INGESTION_TOKEN` | `POST /knowledge/ingest`, `POST /memory/ingest` |
 | `CONTROL_API_RETRIEVAL_TOKEN` | `POST /retrieval/context` |
 | `CONTROL_API_AI_GATEWAY_TOKEN` | `POST /ai-gateway/openai/chat/completions` |
+| `CONTROL_API_TENANT_ADMIN_TOKEN` | `GET /tenant-admin/tenants/{tenant_id}`, `POST /tenant-admin/tenants/{tenant_id}/roles`, `POST /tenant-admin/tenants/{tenant_id}/memberships`, `POST /tenant-admin/tenants/{tenant_id}/data-sources` |
 
 Use endpoint-scoped tokens where practical. `CONTROL_API_TOKEN` is an admin
 fallback for trusted automation.
@@ -112,6 +117,7 @@ npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN --config workers/control-a
 npx wrangler secret put CONTROL_API_INGESTION_TOKEN --config workers/control-api/wrangler.toml
 npx wrangler secret put CONTROL_API_RETRIEVAL_TOKEN --config workers/control-api/wrangler.toml
 npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_TENANT_ADMIN_TOKEN --config workers/control-api/wrangler.toml
 ```
 
 Runtime clients use `SCAS_CONTROL_API_TOKEN` or the CLI
@@ -318,6 +324,45 @@ specialized module for the wrong task class.
 `/composition/context` fails closed with `composition_status: "denied"` when
 required policies are missing, graph validation fails, or no module candidate
 matches the task signals.
+
+Smoke-test tenant admin context:
+
+```bash
+curl -s https://scas-control-api-dev.still-butterfly-bbff.workers.dev/tenant-admin/tenants/demo-tenant \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
+  -H "x-scas-tenant-hostname: demo-tenant.example.invalid"
+```
+
+The response must include only D1-derived tenant admin data: the resolved
+hostname proof, `/admin/users`, `/admin/roles`, `/admin/settings`, memberships,
+role bundles, role grants, tenant-owned data sources, and tenant settings. A
+missing or mismatched `x-scas-tenant-hostname` fails closed before any admin
+context is emitted.
+
+Tenant admin writes use the same token scope and hostname proof:
+
+```text
+POST /tenant-admin/tenants/{tenant_id}/roles
+POST /tenant-admin/tenants/{tenant_id}/memberships
+POST /tenant-admin/tenants/{tenant_id}/data-sources
+```
+
+The write routes accept only bounded JSON contracts. Role creation may grant
+capabilities and tenant-owned data sources, membership upsert may assign only
+tenant-local assignable roles, and data-source registration is scoped to the
+path tenant. Foreign data-source IDs, foreign or non-assignable role IDs, and
+invalid access modes fail closed.
+
+The Worker writes bounded D1 `audit_events` rows for composition and tenant
+admin decisions:
+
+- `composition_context_ready`
+- `composition_context_denied`
+- `tenant_admin_context_read`
+- `tenant_admin_hostname_denied`
+- `tenant_admin_role_created`
+- `tenant_admin_membership_upserted`
+- `tenant_admin_data_source_registered`
 
 Smoke-test knowledge ingestion:
 
