@@ -15,7 +15,7 @@
       "authorization_policies": [
         "submitter-can-request-research"
       ],
-      "control_plane_principal_kind": "user",
+      "control_plane_principal_kind": "role",
       "control_plane_principal_id": "repository-maintainer",
       "tenant_id": "demo-tenant",
       "area_id": "demo-tenant",
