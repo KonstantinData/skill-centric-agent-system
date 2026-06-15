@@ -76,8 +76,11 @@ If the dev host does not yet have Python venv support, the workflow installs
 `python3-venv` and `python3.12-venv` before creating the gate environment.
 With `seed_control_plane_dev=true`, the workflow applies D1 migrations and
 reseeds the dev registry from `registry/modules/**/module.json` and neutral
-tenant fixtures under `examples/tenants/` before running the gate. The same
-workflow can run the live Postgres concurrency smoke by setting
+tenant fixtures under `examples/tenants/` before running the gate. Tenant
+fixtures generate tenant-owned knowledge/data scope modules and scope bindings
+for the seeded principal, so the Control Plane can return tenant-local scopes
+instead of falling back to global memory or data grants. The same workflow can
+run the live Postgres concurrency smoke by setting
 `run_live_dev_e2e=false` and `run_postgres_concurrency_smoke=true`, or the live
 retrieval/Vectorize smoke by setting `run_live_retrieval_vectorize_smoke=true`.
 Before packaging and uploading the Hetzner runtime snapshot, the workflow

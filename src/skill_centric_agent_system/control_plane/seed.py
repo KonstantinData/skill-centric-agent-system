@@ -208,11 +208,13 @@ def build_seed_records(
     principal_kind: str = DEFAULT_PRINCIPAL_KIND,
     principal_id: str = DEFAULT_PRINCIPAL_ID,
 ) -> ControlPlaneSeedRecords:
+    tenant_input_paths = tenant_paths or []
     module_inputs = [_load_module(path) for path in sorted(module_paths)]
     actual_modules = [module for _, module, _ in module_inputs]
     dependencies = _module_dependencies(actual_modules)
     stub_modules = _stub_modules(actual_modules, dependencies)
-    all_modules = [*actual_modules, *stub_modules]
+    tenant_scope_modules = _tenant_scope_modules(tenant_input_paths)
+    all_modules = [*actual_modules, *stub_modules, *tenant_scope_modules]
     policy_names = sorted(module["name"] for module in all_modules if module["kind"] == "policy")
     default_policy_name = policy_names[0] if policy_names else None
 
@@ -241,6 +243,18 @@ def build_seed_records(
             _module_version_record(
                 module,
                 source_uri=f"generated://{module['kind']}/{module['name']}",
+                checksum=f"sha256:generated-{module['name']}",
+                created_at=created_at,
+            )
+        )
+        metadata.append(_selection_metadata_record(module))
+
+    for module in tenant_scope_modules:
+        modules.append(_module_record(module, created_at))
+        module_versions.append(
+            _module_version_record(
+                module,
+                source_uri=f"generated://tenant-scope/{module['name']}",
                 checksum=f"sha256:generated-{module['name']}",
                 created_at=created_at,
             )
@@ -299,7 +313,7 @@ def build_seed_records(
             )
 
     tenant_records = _tenant_seed_records(
-        tenant_paths or [],
+        tenant_input_paths,
         created_at=created_at,
         default_principal_id=principal_id,
     )
@@ -318,6 +332,80 @@ def build_seed_records(
         policy_bindings=tuple(sorted(policy_bindings, key=lambda item: item["id"])),
         scope_bindings=tuple(sorted(scope_bindings, key=lambda item: item["id"])),
     )
+
+
+def _tenant_scope_modules(tenant_paths: list[Path]) -> list[dict[str, Any]]:
+    modules: list[dict[str, Any]] = []
+    for tenant_path in sorted(tenant_paths):
+        tenant = json.loads(tenant_path.read_text(encoding="utf-8"))
+        tenant_id = tenant["tenant_id"]
+        for scope_name in tenant["knowledge"]["indexes"]:
+            modules.append(
+                _generated_scope_module(
+                    scope_name,
+                    kind="knowledge_scope",
+                    capability_class="knowledge_access",
+                    tenant_id=tenant_id,
+                    task_types=["research"],
+                    domains=["research", "knowledge-retrieval"],
+                )
+            )
+        for data_source in tenant["data_sources"]:
+            for access_mode in data_source["access_modes"]:
+                scope_name = f"{data_source['id']}-{access_mode}"
+                modules.append(
+                    _generated_scope_module(
+                        scope_name,
+                        kind="data_scope",
+                        capability_class="data_access",
+                        tenant_id=tenant_id,
+                        task_types=["research", "task-execution"],
+                        domains=["research", "task-execution"],
+                    )
+                )
+    return sorted(modules, key=lambda item: item["name"])
+
+
+def _generated_scope_module(
+    name: str,
+    *,
+    kind: str,
+    capability_class: str,
+    tenant_id: str,
+    task_types: list[str],
+    domains: list[str],
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "version": DEFAULT_VERSION,
+        "kind": kind,
+        "description": f"Generated tenant {kind} module for {name}.",
+        "capability_class": capability_class,
+        "domain_tags": ["tenant", tenant_id, *domains],
+        "task_signals": {
+            "task_types": task_types,
+            "risk_levels": ["low", "medium", "high"],
+            "domains": domains,
+            "required_inputs": [],
+            "phrases": [name, tenant_id],
+            "negative_phrases": [],
+        },
+        "triggers": [name],
+        "inputs": [],
+        "outputs": [f"{name}-output"],
+        "required_tools": [],
+        "optional_tools": [],
+        "knowledge_scopes": [],
+        "data_scopes": [],
+        "policies": [],
+        "validators": [],
+        "selection": {
+            "base_score": 0.5,
+            "score_modifiers": [],
+            "requires_all_policies": False,
+        },
+        "tests": [f"{name}-tenant-scope-seed-contract"],
+    }
 
 
 def _tenant_seed_records(

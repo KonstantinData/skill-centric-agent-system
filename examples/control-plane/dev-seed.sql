@@ -87,6 +87,10 @@ VALUES ('mod-coding-guidelines', 'coding-guidelines', 'knowledge_scope', 'active
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-demo-tenant-website-read', 'demo-tenant-website-read', 'data_scope', 'active', 'mv-demo-tenant-website-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-dependency-audit', 'dependency-audit', 'skill', 'active', 'mv-dependency-audit-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
@@ -116,6 +120,18 @@ ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-git-read', 'git-read', 'tool', 'active', 'mv-git-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-inactive-demo-tenant-website-read', 'inactive-demo-tenant-website-read', 'data_scope', 'active', 'mv-inactive-demo-tenant-website-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-knowledge-demo-tenant-docs', 'knowledge-demo-tenant-docs', 'knowledge_scope', 'active', 'mv-knowledge-demo-tenant-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-knowledge-inactive-demo-tenant-docs', 'knowledge-inactive-demo-tenant-docs', 'knowledge_scope', 'active', 'mv-knowledge-inactive-demo-tenant-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -167,6 +183,10 @@ VALUES ('mv-coding-guidelines-0-1-0', 'mod-coding-guidelines', '0.1.0', 'repo://
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-demo-tenant-website-read-0-1-0', 'mod-demo-tenant-website-read', '0.1.0', 'generated://tenant-scope/demo-tenant-website-read', 'sha256:generated-demo-tenant-website-read', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-dependency-audit-0-1-0', 'mod-dependency-audit', '0.1.0', 'repo://registry/modules/skills/dependency-audit/module.json', 'sha256:60acc2e0a0b2c47d3cccd5245259b402a4f87fa583bddf418f5ca680d1245d6c', 0.69, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
@@ -196,6 +216,18 @@ ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-git-read-0-1-0', 'mod-git-read', '0.1.0', 'repo://registry/modules/tools/git-read/module.json', 'sha256:a5a2f5457b68570769ac1b15c99c9441e21f9a00aaf650082c3caf39e239ca46', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-inactive-demo-tenant-website-read-0-1-0', 'mod-inactive-demo-tenant-website-read', '0.1.0', 'generated://tenant-scope/inactive-demo-tenant-website-read', 'sha256:generated-inactive-demo-tenant-website-read', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-knowledge-demo-tenant-docs-0-1-0', 'mod-knowledge-demo-tenant-docs', '0.1.0', 'generated://tenant-scope/knowledge-demo-tenant-docs', 'sha256:generated-knowledge-demo-tenant-docs', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-knowledge-inactive-demo-tenant-docs-0-1-0', 'mod-knowledge-inactive-demo-tenant-docs', '0.1.0', 'generated://tenant-scope/knowledge-inactive-demo-tenant-docs', 'sha256:generated-knowledge-inactive-demo-tenant-docs', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -247,6 +279,10 @@ VALUES ('msm-coding-guidelines-0-1-0', 'mv-coding-guidelines-0-1-0', 'Governed k
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-demo-tenant-website-read-0-1-0', 'mv-demo-tenant-website-read-0-1-0', 'Generated tenant data_scope module for demo-tenant-website-read.', 'data_access', '["demo-tenant","research","task-execution","tenant"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["demo-tenant","demo-tenant-website-read"]', '[]', '["demo-tenant-website-read"]', '[]', '["demo-tenant-website-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-dependency-audit-0-1-0', 'mv-dependency-audit-0-1-0', 'Audit repository dependency manifests for license, risk, and change-impact signals.', 'analysis', '["dependencies","repository","security"]', '["task-execution"]', '["high","low","medium"]', '["repository","security","software-engineering"]', '["repository"]', '["dependency","dependency audit","license"]', '["delete production","destroy","reset production"]', '["dependency","dependency audit","license"]', '["repository"]', '["dependency-audit-summary"]', '[{"reason":"Task execution dependency work benefits from bounded audit planning.","signal":"task_type:task-execution","weight":0.14},{"reason":"Dependency-related language directly matches audit capability.","signal":"phrase:dependency","weight":0.1},{"reason":"Destructive requests must fail closed away from dependency analysis.","signal":"phrase:destroy","weight":-0.35}]', 1)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
@@ -276,6 +312,18 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-git-read-0-1-0', 'mv-git-read-0-1-0', 'Governed tool module for git-read.', 'tool_access', '["git","software-engineering"]', '["code-review"]', '["high","low","medium"]', '["git","software-engineering"]', '[]', '["git-read"]', '[]', '["git-read"]', '[]', '["git-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-inactive-demo-tenant-website-read-0-1-0', 'mv-inactive-demo-tenant-website-read-0-1-0', 'Generated tenant data_scope module for inactive-demo-tenant-website-read.', 'data_access', '["inactive-demo-tenant","research","task-execution","tenant"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["inactive-demo-tenant","inactive-demo-tenant-website-read"]', '[]', '["inactive-demo-tenant-website-read"]', '[]', '["inactive-demo-tenant-website-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-knowledge-demo-tenant-docs-0-1-0', 'mv-knowledge-demo-tenant-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-demo-tenant-docs.', 'knowledge_access', '["demo-tenant","knowledge-retrieval","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["demo-tenant","knowledge-demo-tenant-docs"]', '[]', '["knowledge-demo-tenant-docs"]', '[]', '["knowledge-demo-tenant-docs-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-knowledge-inactive-demo-tenant-docs-0-1-0', 'mv-knowledge-inactive-demo-tenant-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-inactive-demo-tenant-docs.', 'knowledge_access', '["inactive-demo-tenant","knowledge-retrieval","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["inactive-demo-tenant","knowledge-inactive-demo-tenant-docs"]', '[]', '["knowledge-inactive-demo-tenant-docs"]', '[]', '["knowledge-inactive-demo-tenant-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -508,6 +556,22 @@ ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = exclude
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-coding-guidelines', 'mod-coding-guidelines', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-demo-tenant-website-read', 'mod-demo-tenant-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-inactive-demo-tenant-website-read', 'mod-inactive-demo-tenant-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-knowledge-demo-tenant-docs', 'mod-knowledge-demo-tenant-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-knowledge-inactive-demo-tenant-docs', 'mod-knowledge-inactive-demo-tenant-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)

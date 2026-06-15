@@ -70,12 +70,16 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
         "task-execution-output-contract",
         "task-execution-planning",
         "test-runner",
+        "demo-tenant-website-read",
+        "inactive-demo-tenant-website-read",
+        "knowledge-demo-tenant-docs",
+        "knowledge-inactive-demo-tenant-docs",
     }
     assert len(seed.module_versions) == len(seed.modules)
     assert len(seed.module_selection_metadata) == len(seed.modules)
     assert len(seed.module_dependencies) == 38
     assert len(seed.policy_bindings) == 8
-    assert len(seed.scope_bindings) == 4
+    assert len(seed.scope_bindings) == 8
     assert len(seed.tenants) == 2
     assert len(seed.tenant_memberships) == 2
     assert len(seed.tenant_role_bundles) == 3
@@ -172,12 +176,12 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
             """
         ).fetchone()[0]
 
-    assert module_count == 20
-    assert version_count == 20
-    assert metadata_count == 20
+    assert module_count == 24
+    assert version_count == 24
+    assert metadata_count == 24
     assert dependency_count == 38
     assert policy_binding_count == 8
-    assert scope_binding_count == 4
+    assert scope_binding_count == 8
     assert tenant_count == 2
     assert tenant_membership_count == 2
     assert tenant_role_count == 3
