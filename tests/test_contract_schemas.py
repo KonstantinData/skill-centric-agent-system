@@ -157,6 +157,30 @@ def test_runtime_profile_rejects_unselected_version_pin(
             lambda tenant: tenant["memory"].__setitem__("shared_promotion_allowed", True),
             "False was expected",
         ),
+        (
+            lambda tenant: tenant.__setitem__(
+                "ui_profile",
+                {
+                    "logo_path": None,
+                    "landing": {
+                        "type": "internal-operations-dashboard",
+                        "area_presentation": "tiles",
+                    },
+                    "workspace_areas": [
+                        {
+                            "id": "research",
+                            "display_name": "Research",
+                            "description": "Tenant research workspace.",
+                            "route": "/research",
+                            "required_capability": "research",
+                            "admin_only": False,
+                            "status": "demo",
+                        }
+                    ],
+                },
+            ),
+            "'demo' is not one of",
+        ),
     ],
 )
 def test_invalid_tenant_registry_entries_are_rejected(

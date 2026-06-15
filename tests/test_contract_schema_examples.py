@@ -103,3 +103,22 @@ def test_demo_tenant_registry_example_matches_schema(
         "users-receive-roles-only"
     )
     assert tenant_registry_example["legal_profile"]["tax"]["tax_number"] is None
+
+
+def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
+    tenant_registry_schema: dict[str, Any],
+) -> None:
+    liquisto = load_json(REPO_ROOT / "examples" / "tenants" / "liquisto.json")
+
+    assert_valid(tenant_registry_schema, liquisto)
+    assert_tenant_registry_references_are_valid(liquisto)
+    assert liquisto["legal_profile"]["legal_name"] == "Liquisto Technologies GmbH"
+    assert liquisto["ui_profile"]["landing"] == {
+        "type": "internal-operations-dashboard",
+        "area_presentation": "tiles",
+    }
+    assert (REPO_ROOT / liquisto["ui_profile"]["logo_path"]).is_file()
+    assert [area["id"] for area in liquisto["ui_profile"]["workspace_areas"]] == [
+        "research",
+        "tenant-admin",
+    ]

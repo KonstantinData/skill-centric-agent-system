@@ -164,6 +164,9 @@
     },
     "validators": {
       "$ref": "#/$defs/idArray"
+    },
+    "ui_profile": {
+      "$ref": "#/$defs/uiProfile"
     }
   },
   "$defs": {
@@ -506,6 +509,98 @@
               "$ref": "#/$defs/idArray"
             }
           }
+        }
+      }
+    },
+    "uiProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logo_path",
+        "landing",
+        "workspace_areas"
+      ],
+      "properties": {
+        "logo_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "landing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "area_presentation"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "internal-operations-dashboard"
+              ]
+            },
+            "area_presentation": {
+              "type": "string",
+              "enum": [
+                "tiles"
+              ]
+            }
+          }
+        },
+        "workspace_areas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workspaceArea"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "workspaceArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name",
+        "description",
+        "route",
+        "required_capability",
+        "admin_only",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route": {
+          "type": "string",
+          "pattern": "^/[a-z0-9/-]+$"
+        },
+        "required_capability": {
+          "$ref": "#/$defs/id"
+        },
+        "admin_only": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "disabled"
+          ]
         }
       }
     },

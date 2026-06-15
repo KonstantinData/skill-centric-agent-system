@@ -20,12 +20,14 @@ SKIPPED_PARTS = {
 }
 FORBIDDEN_BRAND = "liqui" + "sto"
 ALLOWED_TENANT_ONBOARDING_PATHS = {
+    "apps/streamlit_business_ui/README.md",
     "apps/streamlit_business_ui/app.py",
     "docs/README.md",
     "docs/runbooks/liquisto-tenant-dns-evidence.md",
     "docs/runbooks/liquisto-tenant-release-gate.md",
     "examples/control-plane/dev-seed.sql",
     "examples/tenants/liquisto.json",
+    "tests/test_contract_schema_examples.py",
     "tests/test_control_plane_seed.py",
     "tests/test_streamlit_business_ui.py",
     "tests/test_streamlit_task_intake_ui.py",
