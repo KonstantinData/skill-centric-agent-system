@@ -28,3 +28,21 @@ def test_business_ui_loads_liquisto_tenant_shell() -> None:
     assert shell.role_names == ("Tenant Owner", "Researcher")
     assert shell.data_sources == ("Liquisto Website",)
     assert "keine Cross-Tenant" in shell.isolation_summary
+
+
+def test_business_ui_builds_read_only_tenant_admin_sections() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+
+    admin = streamlit_business_ui_app.build_tenant_admin_section(tenants["liquisto"])
+
+    assert admin.users == (
+        {
+            "user": "Initial owner pending",
+            "status": "pending",
+            "roles": "Tenant Owner",
+        },
+    )
+    assert admin.roles[0]["role_id"] == "liquisto-owner"
+    assert admin.roles[0]["capabilities"] == "research, tenant-admin"
+    assert admin.settings["assignment_model"] == "users-receive-roles-only"
+    assert admin.settings["shared_promotion_allowed"] == "False"

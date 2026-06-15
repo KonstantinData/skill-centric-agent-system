@@ -38,6 +38,13 @@ class TenantShell:
     isolation_summary: str
 
 
+@dataclass(frozen=True)
+class TenantAdminSection:
+    users: tuple[dict[str, Any], ...]
+    roles: tuple[dict[str, Any], ...]
+    settings: dict[str, Any]
+
+
 MONTHS = (
     "Jan",
     "Feb",
@@ -94,6 +101,50 @@ def build_tenant_shell(tenant: dict[str, Any]) -> TenantShell:
             "Server-seitige Hostname-Autorität, Rollen statt Direktrechten, "
             "keine Cross-Tenant- oder Cross-Area-Freigaben."
         ),
+    )
+
+
+def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
+    admin_model = tenant.get("admin_model", {})
+    role_bundles = tuple(
+        {
+            "role": str(role["display_name"]),
+            "role_id": str(role["id"]),
+            "type": str(role["role_type"]),
+            "capabilities": ", ".join(str(item) for item in role.get("capability_grants", [])),
+            "data_sources": ", ".join(
+                str(grant["data_source_id"]) for grant in role.get("data_source_grants", [])
+            ),
+        }
+        for role in tenant.get("role_bundles", [])
+    )
+    initial_owner = admin_model.get("initial_owner")
+    users = (
+        {
+            "user": "Initial owner pending",
+            "status": "pending",
+            "roles": "Tenant Owner",
+        },
+    )
+    if initial_owner is not None:
+        users = (
+            {
+                "user": str(initial_owner["email"]),
+                "status": "planned",
+                "roles": "Tenant Owner",
+            },
+        )
+    return TenantAdminSection(
+        users=users,
+        roles=role_bundles,
+        settings={
+            "assignment_model": str(admin_model.get("assignment_model", "")),
+            "admin_routes": ", ".join(str(route) for route in admin_model.get("admin_routes", [])),
+            "shared_promotion_allowed": str(
+                tenant.get("memory", {}).get("shared_promotion_allowed", False)
+            ),
+            "policy_bundle": ", ".join(str(policy) for policy in tenant.get("policy_bundle", [])),
+        },
     )
 
 
@@ -215,6 +266,7 @@ def main() -> None:
     first = kpis[0]
     months = [row.month for row in kpis]
     tenant_shell = build_tenant_shell(tenants[tenant_id])
+    tenant_admin = build_tenant_admin_section(tenants[tenant_id])
 
     st.title(tenant_shell.display_name)
     shell_cols = st.columns([1.1, 1.1, 1.1, 1.6])
@@ -231,6 +283,16 @@ def main() -> None:
     admin_cols[1].write(", ".join(tenant_shell.role_names))
     admin_cols[2].subheader("Datenquellen")
     admin_cols[2].write(", ".join(tenant_shell.data_sources) or "Keine")
+
+    users_tab, roles_tab, settings_tab = st.tabs(
+        ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen"]
+    )
+    with users_tab:
+        st.table(list(tenant_admin.users))
+    with roles_tab:
+        st.table(list(tenant_admin.roles))
+    with settings_tab:
+        st.json(tenant_admin.settings)
 
     st.markdown(
         f"""

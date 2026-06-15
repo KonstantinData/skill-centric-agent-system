@@ -3,7 +3,9 @@
 Tenant-aware executive dashboard for SCAS business steering. The first screen
 loads tenant shell metadata from `examples/tenants/*.json` and shows hostname,
 status, admin routes, roles, data sources, and isolation posture before the KPI
-views.
+views. The tenant admin area is read-only and separates users, roles, and
+settings so write-capable administration can later be added behind explicit
+authorization, approval, policy, and audit gates.
 
 ## Run
 
