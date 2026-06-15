@@ -51,6 +51,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/first-productive-agent-operation.md`
 - `docs/runbooks/staging-provisioning-checklist.md`
 - `docs/runbooks/liquisto-tenant-dns-evidence.md`
+- `docs/runbooks/liquisto-tenant-release-gate.md`
 - `docs/runbooks/post-merge-lifecycle.md`
 - `docs/runbooks/notion-issue-tracking.md`
 
