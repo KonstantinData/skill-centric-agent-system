@@ -107,6 +107,7 @@
           "filesystem-read"
         ],
         "policies": [
+          "no-destructive-commands",
           "strict-tenant-isolation",
           "no-cross-area-access",
           "no-cross-tenant-access"
@@ -150,6 +151,7 @@
           "filesystem-read"
         ],
         "policies": [
+          "no-destructive-commands",
           "strict-tenant-isolation",
           "no-cross-area-access",
           "no-cross-tenant-access"
