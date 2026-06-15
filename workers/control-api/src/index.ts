@@ -130,6 +130,13 @@ type CompositionContextResponse = {
 type TenantAuthority = {
   tenant_id: string;
   area_id: string;
+  hostname: {
+    tenant_id: string;
+    hostname: string;
+    purpose: string;
+    expected_origin: string;
+    cloudflare_proxy_expected: boolean;
+  };
   status: string;
   direct_user_grants_allowed: false;
   membership: {
@@ -377,6 +384,14 @@ type TenantRow = {
   status: string;
 };
 
+type TenantHostnameRow = {
+  tenant_id: string;
+  hostname: string;
+  purpose: string;
+  expected_origin: string;
+  cloudflare_proxy_expected: number;
+};
+
 type TenantMembershipRow = {
   id: string;
   tenant_id: string;
@@ -537,6 +552,27 @@ function isObject(value: unknown): value is JsonObject {
 
 function isId(value: unknown): value is string {
   return typeof value === "string" && /^[a-z][a-z0-9-]*$/.test(value);
+}
+
+function normalizeTenantHostname(value: string): string {
+  let hostname = value.trim().toLowerCase();
+  if (hostname.endsWith(".")) {
+    hostname = hostname.slice(0, -1);
+  }
+  const portMatch = hostname.match(/^(?<host>[a-z0-9.-]+):(?<port>[0-9]+)$/);
+  if (portMatch?.groups?.host !== undefined) {
+    hostname = portMatch.groups.host;
+  }
+  if (
+    hostname.length === 0 ||
+    hostname.includes("/") ||
+    hostname.includes("://") ||
+    !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(hostname) ||
+    hostname.split(".").some((label) => label.length === 0)
+  ) {
+    throw new Error("tenant_hostname_invalid");
+  }
+  return hostname;
 }
 
 function isSemver(value: unknown): value is string {
@@ -1207,6 +1243,10 @@ async function loadTenantAuthority(
   if (tenantContext.membership_id === null) {
     throw new Error("tenant_membership_required");
   }
+  if (typeof tenantContext.hostname !== "string") {
+    throw new Error("tenant_hostname_required");
+  }
+  const tenantHostname = normalizeTenantHostname(tenantContext.hostname);
 
   const tenant = await env.SCAS_CONTROL_DB.prepare(
     `
@@ -1220,6 +1260,20 @@ async function loadTenantAuthority(
     .first<TenantRow>();
   if (tenant === null) {
     throw new Error("tenant_not_found");
+  }
+
+  const hostname = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected
+    FROM tenant_hostnames
+    WHERE tenant_id = ?
+      AND hostname = ?
+    `,
+  )
+    .bind(tenantContext.tenant_id, tenantHostname)
+    .first<TenantHostnameRow>();
+  if (hostname === null) {
+    throw new Error("tenant_hostname_not_found");
   }
 
   const membership = await env.SCAS_CONTROL_DB.prepare(
@@ -1289,6 +1343,13 @@ async function loadTenantAuthority(
   return {
     tenant_id: tenant.id,
     area_id: tenant.area_id,
+    hostname: {
+      tenant_id: hostname.tenant_id,
+      hostname: hostname.hostname,
+      purpose: hostname.purpose,
+      expected_origin: hostname.expected_origin,
+      cloudflare_proxy_expected: hostname.cloudflare_proxy_expected === 1,
+    },
     status: tenant.status,
     direct_user_grants_allowed: false,
     membership: {

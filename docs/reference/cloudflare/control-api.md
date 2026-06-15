@@ -20,17 +20,17 @@ graph-validation summary for the selected context.
 
 For tenant-scoped requests, the composition response must also include
 `tenant_authority`: the tenant, active membership, role bundles, tenant-owned
-data sources, allowed scopes, and proof that direct user grants are disabled.
-The Composer fails closed when this authority snapshot is missing or does not
-derive the selected profile modules and data-source grants from the user's
-tenant roles.
+hostname proof, data sources, allowed scopes, and proof that direct user grants
+are disabled. The Composer fails closed when this authority snapshot is missing
+or does not derive the selected profile modules and data-source grants from the
+user's tenant roles.
 
 Tenant-scoped composition requests include `tenant_context` with tenant ID,
 area ID, hostname, and membership ID. The Worker uses that context plus the
-authenticated principal to read D1 `tenants`, `tenant_memberships`,
-`tenant_role_bundles`, `tenant_data_sources`, and tenant grant tables. Missing
-or mismatched tenant authority returns `composition_status: "denied"` and does
-not emit a partial authority snapshot.
+authenticated principal to read D1 `tenants`, `tenant_hostnames`,
+`tenant_memberships`, `tenant_role_bundles`, `tenant_data_sources`, and tenant
+grant tables. Missing or mismatched tenant authority returns
+`composition_status: "denied"` and does not emit a partial authority snapshot.
 When a tenant-scoped runtime profile is emitted, the Composer seals the
 validated snapshot into `tenant_authority`. The Runtime Profile Enforcer then
 revalidates tenant identity, membership, role-derived modules, and allowed

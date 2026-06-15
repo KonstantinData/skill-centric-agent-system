@@ -312,6 +312,13 @@ def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None
             "Tenant is not active",
         ),
         (
+            lambda task, response: response["tenant_authority"]["hostname"].__setitem__(
+                "hostname",
+                "other-tenant.example.invalid",
+            ),
+            "hostname authority does not match",
+        ),
+        (
             lambda task, response: response["tenant_authority"].__setitem__(
                 "direct_user_grants_allowed",
                 True,

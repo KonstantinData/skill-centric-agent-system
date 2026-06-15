@@ -98,6 +98,14 @@ class TenantProfileValidator:
                 errors.append("tenant_id_mismatch")
             if tenant_authority.get("area_id") != tenant_context.get("area_id"):
                 errors.append("area_id_mismatch")
+            hostname = tenant_authority.get("hostname")
+            if not isinstance(hostname, Mapping):
+                errors.append("hostname_authority_missing")
+            else:
+                if hostname.get("tenant_id") != tenant_context.get("tenant_id"):
+                    errors.append("hostname_tenant_id_mismatch")
+                if hostname.get("hostname") != tenant_context.get("hostname"):
+                    errors.append("hostname_mismatch")
             if tenant_authority.get("direct_user_grants_allowed") is not False:
                 errors.append("direct_user_grants_enabled")
 

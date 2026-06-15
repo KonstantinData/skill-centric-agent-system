@@ -685,6 +685,24 @@ async function seedControlPlane(): Promise<void> {
     ),
     db.prepare(
       `
+      INSERT INTO tenant_hostnames (
+        id,
+        tenant_id,
+        hostname,
+        purpose,
+        expected_origin,
+        cloudflare_proxy_expected
+      )
+      VALUES (?, ?, ?, 'primary-ui', ?, 1)
+      `,
+    ).bind(
+      "th-demo-tenant-demo-tenant-example-invalid",
+      "demo-tenant",
+      "demo-tenant.example.invalid",
+      "192.0.2.10",
+    ),
+    db.prepare(
+      `
       INSERT INTO tenant_memberships (
         id,
         tenant_id,
@@ -1066,6 +1084,13 @@ describe("control API worker", () => {
     expect(body.tenant_authority).toEqual({
       tenant_id: "demo-tenant",
       area_id: "demo-tenant",
+      hostname: {
+        tenant_id: "demo-tenant",
+        hostname: "demo-tenant.example.invalid",
+        purpose: "primary-ui",
+        expected_origin: "192.0.2.10",
+        cloudflare_proxy_expected: true,
+      },
       status: "active",
       direct_user_grants_allowed: false,
       membership: {
@@ -1119,6 +1144,27 @@ describe("control API worker", () => {
         tenant_context: {
           ...tenantCompositionRequest.tenant_context,
           membership_id: "missing-membership",
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.tenant_authority).toBeUndefined();
+  });
+
+  it("denies tenant-scoped composition context without matching hostname", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...tenantCompositionRequest,
+        tenant_context: {
+          ...tenantCompositionRequest.tenant_context,
+          hostname: "other-tenant.example.invalid",
         },
       }),
     });
