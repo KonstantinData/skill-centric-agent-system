@@ -210,14 +210,7 @@ jobs:
               | while read -r container_id; do
                   printf '\n### Container `%s`\n\n' "${container_id}"
                   docker inspect \
-                    --format='Name={{.Name}}
-Image={{.Config.Image}}
-WorkingDir={{.Config.WorkingDir}}
-Entrypoint={{json .Config.Entrypoint}}
-Cmd={{json .Config.Cmd}}
-Labels={{json .Config.Labels}}
-Mounts={{json .Mounts}}
-Env={{json .Config.Env}}' \
+                    --format='Name={{.Name}}\nImage={{.Config.Image}}\nWorkingDir={{.Config.WorkingDir}}\nEntrypoint={{json .Config.Entrypoint}}\nCmd={{json .Config.Cmd}}\nLabels={{json .Config.Labels}}\nMounts={{json .Mounts}}\nEnv={{json .Config.Env}}' \
                     "${container_id}" 2>/dev/null | redact || true
                 done
           else
