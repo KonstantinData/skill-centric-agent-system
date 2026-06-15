@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from random import Random
 from typing import Any
+from urllib import request as urlrequest
 
 import streamlit as st
 
@@ -43,6 +45,13 @@ class TenantAdminSection:
     users: tuple[dict[str, Any], ...]
     roles: tuple[dict[str, Any], ...]
     settings: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class TenantAdminApiConfig:
+    base_url: str
+    token: str
+    timeout_seconds: float = 8.0
 
 
 MONTHS = (
@@ -145,6 +154,82 @@ def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
             ),
             "policy_bundle": ", ".join(str(policy) for policy in tenant.get("policy_bundle", [])),
         },
+    )
+
+
+def tenant_admin_api_config_from_env() -> TenantAdminApiConfig | None:
+    base_url = os.environ.get("SCAS_CONTROL_API_URL", "").strip()
+    token = os.environ.get("SCAS_TENANT_ADMIN_TOKEN", "").strip()
+    if not base_url or not token:
+        return None
+    return TenantAdminApiConfig(base_url=base_url.rstrip("/"), token=token)
+
+
+def load_tenant_admin_context_from_api(
+    config: TenantAdminApiConfig,
+    tenant_id: str,
+    hostname: str,
+) -> dict[str, Any]:
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-admin/tenants/{tenant_id}",
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "x-scas-tenant-hostname": hostname,
+            "accept": "application/json",
+        },
+        method="GET",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def build_tenant_shell_from_admin_context(context: dict[str, Any]) -> TenantShell:
+    tenant = context["tenant"]
+    admin = context["admin"]
+    return TenantShell(
+        tenant_id=str(tenant["tenant_id"]),
+        area_id=str(tenant["area_id"]),
+        display_name=str(tenant["display_name"]),
+        status=str(tenant["status"]),
+        hostname=str(tenant["hostname"]["hostname"]),
+        admin_routes=tuple(str(route) for route in admin.get("admin_routes", [])),
+        role_names=tuple(str(role["display_name"]) for role in context.get("roles", [])),
+        data_sources=tuple(
+            str(source["display_name"]) for source in context.get("data_sources", [])
+        ),
+        isolation_summary=(
+            "Backend-geprüfte Hostname-Autorität, Rollen statt Direktrechten, "
+            "keine Cross-Tenant- oder Cross-Area-Freigaben."
+        ),
+    )
+
+
+def build_tenant_admin_section_from_context(context: dict[str, Any]) -> TenantAdminSection:
+    users = tuple(
+        {
+            "user": str(user["principal_id"]),
+            "membership_id": str(user["membership_id"]),
+            "status": str(user["status"]),
+            "roles": ", ".join(str(role_id) for role_id in user.get("role_ids", [])),
+        }
+        for user in context.get("users", [])
+    )
+    roles = tuple(
+        {
+            "role": str(role["display_name"]),
+            "role_id": str(role["id"]),
+            "type": str(role["role_type"]),
+            "capabilities": ", ".join(str(item) for item in role.get("capability_grants", [])),
+            "data_sources": ", ".join(
+                str(grant["data_source_id"]) for grant in role.get("data_source_grants", [])
+            ),
+        }
+        for role in context.get("roles", [])
+    )
+    return TenantAdminSection(
+        users=users,
+        roles=roles,
+        settings=dict(context.get("settings", {})),
     )
 
 
@@ -267,6 +352,18 @@ def main() -> None:
     months = [row.month for row in kpis]
     tenant_shell = build_tenant_shell(tenants[tenant_id])
     tenant_admin = build_tenant_admin_section(tenants[tenant_id])
+    api_config = tenant_admin_api_config_from_env()
+    if api_config is not None:
+        try:
+            admin_context = load_tenant_admin_context_from_api(
+                api_config,
+                tenant_shell.tenant_id,
+                tenant_shell.hostname,
+            )
+            tenant_shell = build_tenant_shell_from_admin_context(admin_context)
+            tenant_admin = build_tenant_admin_section_from_context(admin_context)
+        except Exception as error:  # pragma: no cover - defensive Streamlit runtime fallback.
+            st.warning(f"Tenant Admin API nicht erreichbar: {error}")
 
     st.title(tenant_shell.display_name)
     shell_cols = st.columns([1.1, 1.1, 1.1, 1.6])
