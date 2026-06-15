@@ -4,15 +4,21 @@ import argparse
 import json
 import os
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from skill_centric_agent_system.composition import ControlPlaneClient
+from skill_centric_agent_system.composition import (
+    CompositionError,
+    ControlPlaneClient,
+    TaskAnalyzer,
+)
 from skill_centric_agent_system.runtime import (
     JsonArtifactStore,
     MinimalRuntimeLoop,
     RuntimeEntryPoint,
+    RuntimeLoopError,
     open_runtime_store_session,
 )
 
@@ -24,6 +30,7 @@ GENERIC_TASK_SUITE = (
     ("task-execution", "examples/tasks/task-execution-task.json"),
     ("general-task", "examples/tasks/general-task.json"),
 )
+TENANT_TASK_FILE = "examples/tasks/tenant-research-task.json"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -37,11 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--task-suite",
-        choices=("single", "generic"),
+        choices=("single", "generic", "tenant"),
         default="single",
         help=(
-            "Run only --task-file or run the generic suite covering code-review, "
-            "research, task-execution, and general-task."
+            "Run only --task-file, run the generic suite covering code-review, "
+            "research, task-execution, and general-task, or run the tenant suite "
+            "with positive and fail-closed tenant cases."
         ),
     )
     parser.add_argument(
@@ -82,11 +90,6 @@ def main(argv: list[str] | None = None) -> int:
     if not args.control_plane_token:
         raise SystemExit("SCAS_CONTROL_API_TOKEN or --control-plane-token is required.")
 
-    task_cases = (
-        tuple((label, Path(path)) for label, path in GENERIC_TASK_SUITE)
-        if args.task_suite == "generic"
-        else (("single", Path(args.task_file)),)
-    )
     control_plane_client = ControlPlaneClient(
         args.control_plane_url,
         api_token=args.control_plane_token,
@@ -101,63 +104,38 @@ def main(argv: list[str] | None = None) -> int:
         mode="postgres",
         database_url=args.database_url,
     ) as storage:
-        results = []
-        for label, task_path in task_cases:
-            task = _load_json(task_path)
-            runtime = RuntimeEntryPoint(
+        if args.task_suite == "tenant":
+            results = _run_tenant_suite(
                 store=storage.store,
                 artifacts=artifacts,
                 control_plane_client=control_plane_client,
                 environment=args.environment,
-            )
-            start_result = runtime.start(task, run_id=f"run-live-{run_suffix}-{label}")
-            loop_result = MinimalRuntimeLoop(
-                store=storage.store,
-                artifacts=artifacts,
                 repository_root=args.repository_root,
-                control_plane_client=control_plane_client,
-            ).run(start_result)
-            run_record = storage.store.get_runtime_run(start_result.run_id)
-            events = storage.store.events_for_run(start_result.run_id)
-            checkpoints = storage.store.checkpoints_for_run(start_result.run_id)
-            handler_evidence = handler_binding_evidence_from_checkpoints(
-                checkpoints,
                 artifact_root=Path(args.artifact_root),
+                artifact_root_uri=configured_artifact_root_uri,
+                run_suffix=run_suffix,
             )
-            case_status = (
-                "passed"
-                if loop_result.status == "succeeded"
-                and handler_evidence["handler_binding_status"] == "passed"
-                else "failed"
+        else:
+            task_cases = (
+                tuple((label, Path(path)) for label, path in GENERIC_TASK_SUITE)
+                if args.task_suite == "generic"
+                else (("single", Path(args.task_file)),)
             )
-            results.append(
-                {
-                    "case": label,
-                    "environment": args.environment,
-                    "status": case_status,
-                    "run_id": start_result.run_id,
-                    "task_type": start_result.profile["task_type"],
-                    "profile_id": start_result.profile["id"],
-                    "profile_version": start_result.profile["profile_version"],
-                    "handler_binding_status": handler_evidence["handler_binding_status"],
-                    "planner_checkpoint_uri": handler_evidence["planner_checkpoint_uri"],
-                    "skill_handlers": handler_evidence["skill_handlers"],
-                    "run_status": run_record["status"] if run_record else None,
-                    "stop_reason": run_record["stop_reason"] if run_record else None,
-                    "composition_status": start_result.composition_context_response.get(
-                        "composition_status"
-                    ),
-                    "event_count": len(events),
-                    "checkpoint_count": len(checkpoints),
-                    "artifact_root_uri": configured_artifact_root_uri,
-                    "runtime_record_artifact_root_uri": (
-                        run_record["artifact_root_uri"] if run_record else None
-                    ),
-                    "runtime_output_task_type": loop_result.response["runtime_output"][
-                        "task_type"
-                    ],
-                }
-            )
+            results = [
+                _run_positive_case(
+                    label=label,
+                    task=_load_json(task_path),
+                    store=storage.store,
+                    artifacts=artifacts,
+                    control_plane_client=control_plane_client,
+                    environment=args.environment,
+                    repository_root=args.repository_root,
+                    artifact_root=Path(args.artifact_root),
+                    artifact_root_uri=configured_artifact_root_uri,
+                    run_id=f"run-live-{run_suffix}-{label}",
+                )
+                for label, task_path in task_cases
+            ]
 
     print(
         json.dumps(
@@ -184,6 +162,303 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     return 0
+
+
+def _run_tenant_suite(
+    *,
+    store: Any,
+    artifacts: JsonArtifactStore,
+    control_plane_client: ControlPlaneClient,
+    environment: str,
+    repository_root: str,
+    artifact_root: Path,
+    artifact_root_uri: str,
+    run_suffix: str,
+) -> list[dict[str, Any]]:
+    base_task = _load_json(Path(TENANT_TASK_FILE))
+    positive = _run_positive_case(
+        label="tenant-positive",
+        task=base_task,
+        store=store,
+        artifacts=artifacts,
+        control_plane_client=control_plane_client,
+        environment=environment,
+        repository_root=repository_root,
+        artifact_root=artifact_root,
+        artifact_root_uri=artifact_root_uri,
+        run_id=f"run-live-{run_suffix}-tenant-positive",
+    )
+    negative_cases = [
+        _run_denied_start_case(
+            label="tenant-unknown-tenant",
+            task=_tenant_task_variant(
+                base_task,
+                tenant_id="unknown-tenant",
+                role_id="unknown-tenant-owner",
+                membership_id="tm-unknown-tenant-repository-maintainer",
+                hostname="unknown-tenant.example.invalid",
+                role_data_sources=("unknown-tenant-website",),
+            ),
+            store=store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=environment,
+            run_id=f"run-live-{run_suffix}-tenant-unknown-tenant",
+        ),
+        _run_denied_start_case(
+            label="tenant-inactive-tenant",
+            task=_tenant_task_variant(
+                base_task,
+                tenant_id="inactive-demo-tenant",
+                role_id="inactive-demo-tenant-owner",
+                membership_id="tm-inactive-demo-tenant-repository-maintainer",
+                hostname="inactive-demo-tenant.example.invalid",
+                role_data_sources=("inactive-demo-tenant-website",),
+            ),
+            store=store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=environment,
+            run_id=f"run-live-{run_suffix}-tenant-inactive-tenant",
+        ),
+        _run_denied_start_case(
+            label="tenant-missing-membership",
+            task=_tenant_task_variant(
+                base_task,
+                membership_id="tm-demo-tenant-missing-member",
+            ),
+            store=store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=environment,
+            run_id=f"run-live-{run_suffix}-tenant-missing-membership",
+        ),
+        _run_denied_start_case(
+            label="tenant-foreign-data-source",
+            task=_tenant_task_variant(
+                base_task,
+                role_data_sources=("foreign-tenant-website",),
+            ),
+            store=store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=environment,
+            run_id=f"run-live-{run_suffix}-tenant-foreign-data-source",
+        ),
+        _run_tampered_profile_case(
+            task=base_task,
+            store=store,
+            artifacts=artifacts,
+            control_plane_client=control_plane_client,
+            environment=environment,
+            repository_root=repository_root,
+            run_id=f"run-live-{run_suffix}-tenant-tampered-authority",
+        ),
+    ]
+    return [positive, *negative_cases]
+
+
+def _run_positive_case(
+    *,
+    label: str,
+    task: Mapping[str, Any],
+    store: Any,
+    artifacts: JsonArtifactStore,
+    control_plane_client: ControlPlaneClient,
+    environment: str,
+    repository_root: str,
+    artifact_root: Path,
+    artifact_root_uri: str,
+    run_id: str,
+) -> dict[str, Any]:
+    runtime = RuntimeEntryPoint(
+        store=store,
+        artifacts=artifacts,
+        control_plane_client=control_plane_client,
+        environment=environment,  # type: ignore[arg-type]
+    )
+    start_result = runtime.start(task, run_id=run_id)
+    loop_result = MinimalRuntimeLoop(
+        store=store,
+        artifacts=artifacts,
+        repository_root=repository_root,
+        control_plane_client=control_plane_client,
+    ).run(start_result)
+    run_record = store.get_runtime_run(start_result.run_id)
+    events = store.events_for_run(start_result.run_id)
+    checkpoints = store.checkpoints_for_run(start_result.run_id)
+    handler_evidence = handler_binding_evidence_from_checkpoints(
+        checkpoints,
+        artifact_root=artifact_root,
+    )
+    case_status = (
+        "passed"
+        if loop_result.status == "succeeded"
+        and handler_evidence["handler_binding_status"] == "passed"
+        else "failed"
+    )
+    return {
+        "case": label,
+        "environment": environment,
+        "status": case_status,
+        "run_id": start_result.run_id,
+        "task_type": start_result.profile["task_type"],
+        "profile_id": start_result.profile["id"],
+        "profile_version": start_result.profile["profile_version"],
+        "handler_binding_status": handler_evidence["handler_binding_status"],
+        "planner_checkpoint_uri": handler_evidence["planner_checkpoint_uri"],
+        "skill_handlers": handler_evidence["skill_handlers"],
+        "run_status": run_record["status"] if run_record else None,
+        "stop_reason": run_record["stop_reason"] if run_record else None,
+        "composition_status": start_result.composition_context_response.get(
+            "composition_status"
+        ),
+        "event_count": len(events),
+        "checkpoint_count": len(checkpoints),
+        "artifact_root_uri": artifact_root_uri,
+        "runtime_record_artifact_root_uri": (
+            run_record["artifact_root_uri"] if run_record else None
+        ),
+        "runtime_output_task_type": loop_result.response["runtime_output"]["task_type"],
+    }
+
+
+def _run_denied_start_case(
+    *,
+    label: str,
+    task: Mapping[str, Any],
+    store: Any,
+    artifacts: JsonArtifactStore,
+    control_plane_client: ControlPlaneClient,
+    environment: str,
+    run_id: str,
+) -> dict[str, Any]:
+    analyzer = TaskAnalyzer()
+    analyzed = analyzer.analyze(task)
+    context_request = analyzed.to_composition_context_request(
+        environment=environment,  # type: ignore[arg-type]
+    )
+    context_response = control_plane_client.composition_context(context_request)
+    runtime = RuntimeEntryPoint(
+        store=store,
+        artifacts=artifacts,
+        analyzer=analyzer,
+        control_plane_client=control_plane_client,
+        environment=environment,  # type: ignore[arg-type]
+    )
+    try:
+        runtime.start(
+            task,
+            composition_context_response=context_response,
+            run_id=run_id,
+        )
+    except CompositionError as error:
+        return {
+            "case": label,
+            "environment": environment,
+            "status": "passed",
+            "expected_failure_stage": "composition",
+            "composition_status": context_response.get("composition_status"),
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "runtime_started": False,
+        }
+
+    return {
+        "case": label,
+        "environment": environment,
+        "status": "failed",
+        "expected_failure_stage": "composition",
+        "composition_status": context_response.get("composition_status"),
+        "error": "Tenant negative case unexpectedly started a runtime run.",
+        "runtime_started": True,
+    }
+
+
+def _run_tampered_profile_case(
+    *,
+    task: Mapping[str, Any],
+    store: Any,
+    artifacts: JsonArtifactStore,
+    control_plane_client: ControlPlaneClient,
+    environment: str,
+    repository_root: str,
+    run_id: str,
+) -> dict[str, Any]:
+    runtime = RuntimeEntryPoint(
+        store=store,
+        artifacts=artifacts,
+        control_plane_client=control_plane_client,
+        environment=environment,  # type: ignore[arg-type]
+    )
+    start_result = runtime.start(task, run_id=run_id)
+    if isinstance(start_result.profile.get("tenant_authority"), dict):
+        start_result.profile["tenant_authority"]["tenant_id"] = "foreign-tenant"
+
+    try:
+        MinimalRuntimeLoop(
+            store=store,
+            artifacts=artifacts,
+            repository_root=repository_root,
+            control_plane_client=control_plane_client,
+        ).run(start_result)
+    except RuntimeLoopError as error:
+        return {
+            "case": "tenant-tampered-authority",
+            "environment": environment,
+            "status": "passed" if error.stop_reason == "policy_denied" else "failed",
+            "expected_failure_stage": "runtime_profile_enforcement",
+            "composition_status": start_result.composition_context_response.get(
+                "composition_status"
+            ),
+            "run_id": start_result.run_id,
+            "stop_reason": error.stop_reason,
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+
+    return {
+        "case": "tenant-tampered-authority",
+        "environment": environment,
+        "status": "failed",
+        "expected_failure_stage": "runtime_profile_enforcement",
+        "composition_status": start_result.composition_context_response.get(
+            "composition_status"
+        ),
+        "run_id": start_result.run_id,
+        "error": "Tampered tenant authority unexpectedly reached runtime execution.",
+    }
+
+
+def _tenant_task_variant(
+    task: Mapping[str, Any],
+    *,
+    tenant_id: str | None = None,
+    role_id: str | None = None,
+    membership_id: str | None = None,
+    hostname: str | None = None,
+    role_data_sources: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    variant = deepcopy(dict(task))
+    context = variant.setdefault("context", {})
+    if not isinstance(context, dict):
+        raise ValueError("tenant task context must be a JSON object.")
+    auth = context.setdefault("auth", {})
+    if not isinstance(auth, dict):
+        raise ValueError("tenant task auth context must be a JSON object.")
+
+    if tenant_id is not None:
+        auth["tenant_id"] = tenant_id
+        auth["area_id"] = tenant_id
+    if role_id is not None:
+        auth["roles"] = [role_id]
+    if membership_id is not None:
+        auth["membership_id"] = membership_id
+    if hostname is not None:
+        auth["tenant_hostname"] = hostname
+    if role_data_sources is not None:
+        auth["role_data_sources"] = list(role_data_sources)
+    return variant
 
 
 def handler_binding_evidence_from_checkpoints(

@@ -76,12 +76,12 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.module_dependencies) == 38
     assert len(seed.policy_bindings) == 8
     assert len(seed.scope_bindings) == 4
-    assert len(seed.tenants) == 1
-    assert len(seed.tenant_memberships) == 1
-    assert len(seed.tenant_role_bundles) == 2
-    assert len(seed.tenant_data_sources) == 1
-    assert len(seed.tenant_role_capability_grants) == 2
-    assert len(seed.tenant_role_data_source_grants) == 1
+    assert len(seed.tenants) == 2
+    assert len(seed.tenant_memberships) == 2
+    assert len(seed.tenant_role_bundles) == 3
+    assert len(seed.tenant_data_sources) == 2
+    assert len(seed.tenant_role_capability_grants) == 5
+    assert len(seed.tenant_role_data_source_grants) == 3
 
 
 def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
@@ -178,11 +178,11 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
     assert dependency_count == 38
     assert policy_binding_count == 8
     assert scope_binding_count == 4
-    assert tenant_count == 1
-    assert tenant_membership_count == 1
-    assert tenant_role_count == 2
-    assert tenant_data_source_count == 1
-    assert tenant_capability_grant_count == 2
-    assert tenant_data_source_grant_count == 1
+    assert tenant_count == 2
+    assert tenant_membership_count == 2
+    assert tenant_role_count == 3
+    assert tenant_data_source_count == 2
+    assert tenant_capability_grant_count == 5
+    assert tenant_data_source_grant_count == 3
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

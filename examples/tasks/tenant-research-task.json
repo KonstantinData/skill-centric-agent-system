@@ -1,0 +1,32 @@
+{
+  "id": "task-demo-tenant-research",
+  "request": "Research the demo tenant website and summarize the current public context.",
+  "constraints": {
+    "write_access": false,
+    "destructive_actions": false
+  },
+  "context": {
+    "auth": {
+      "principal_id": "repository-maintainer",
+      "principal_type": "user",
+      "roles": [
+        "demo-tenant-owner"
+      ],
+      "authorization_policies": [
+        "submitter-can-request-research"
+      ],
+      "control_plane_principal_kind": "user",
+      "control_plane_principal_id": "repository-maintainer",
+      "tenant_id": "demo-tenant",
+      "area_id": "demo-tenant",
+      "tenant_hostname": "demo-tenant.example.invalid",
+      "membership_id": "tm-demo-tenant-repository-maintainer",
+      "role_data_sources": [
+        "demo-tenant-website"
+      ],
+      "role_capabilities": [
+        "research"
+      ]
+    }
+  }
+}

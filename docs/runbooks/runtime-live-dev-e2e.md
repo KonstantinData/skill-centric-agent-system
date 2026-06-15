@@ -62,7 +62,7 @@ gh workflow run live-runtime-gates.yml \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=true \
-  -f live_task_suite=generic
+  -f live_task_suite=tenant
 ```
 
 For `staging` and `prod`, set `target_environment` accordingly and pass
@@ -75,8 +75,9 @@ artifacts under `/opt/scas/runtime/<target_environment>/live-gates/<github-run-i
 If the dev host does not yet have Python venv support, the workflow installs
 `python3-venv` and `python3.12-venv` before creating the gate environment.
 With `seed_control_plane_dev=true`, the workflow applies D1 migrations and
-reseeds the dev registry from `registry/modules/**/module.json` before running the
-gate. The same workflow can run the live Postgres concurrency smoke by setting
+reseeds the dev registry from `registry/modules/**/module.json` and neutral
+tenant fixtures under `examples/tenants/` before running the gate. The same
+workflow can run the live Postgres concurrency smoke by setting
 `run_live_dev_e2e=false` and `run_postgres_concurrency_smoke=true`, or the live
 retrieval/Vectorize smoke by setting `run_live_retrieval_vectorize_smoke=true`.
 Before packaging and uploading the Hetzner runtime snapshot, the workflow
@@ -92,13 +93,16 @@ Local or direct host command:
 ```bash
 python scripts/runtime/live_dev_e2e.py \
   --environment dev \
-  --task-suite generic
+  --task-suite tenant
 ```
 
 The script uses the Cloudflare Control API for both composition and retrieval,
 opens the Hetzner PostgreSQL runtime store, writes JSON artifacts to the
 configured artifact root, runs the minimal runtime loop, and prints a JSON
 summary. Use `--task-suite single --task-file ...` to run one task fixture.
+Use `--task-suite generic` to run the non-tenant task classes. Use
+`--task-suite tenant` to run the neutral demo-tenant positive case and
+fail-closed tenant isolation cases without real company data.
 For every case, the summary includes the planner checkpoint URI and sanitized
 `skill_handlers` bindings (`name`, `version`, and `handler_id`) so release
 evidence can prove which executable handler ran without copying raw traces.
@@ -124,6 +128,16 @@ The gate passes when the output includes:
 - each case has `handler_binding_status: "passed"`
 - each case has at least one `skill_handlers` binding where
   `handler_id` equals `name@version`
+
+For `--task-suite tenant`, the positive `tenant-positive` case must satisfy the
+same runtime criteria. The negative cases must report `status: "passed"` while
+failing before tenant-boundary execution:
+
+- `tenant-unknown-tenant`
+- `tenant-inactive-tenant`
+- `tenant-missing-membership`
+- `tenant-foreign-data-source`
+- `tenant-tampered-authority`
 
 Any failed composition, retrieval scope expansion, profile enforcement denial,
 tool failure, validator failure, or PostgreSQL persistence error fails the gate.

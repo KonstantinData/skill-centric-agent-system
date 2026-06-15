@@ -43,6 +43,7 @@ on:
         type: choice
         options:
           - generic
+          - tenant
           - single
         default: generic
       live_task_file:

@@ -35,6 +35,13 @@ def test_live_dev_e2e_gate_documents_required_live_surfaces() -> None:
     assert "SCAS_CONTROL_API_TOKEN" in source
     assert "handler_binding_status" in source
     assert "skill_handlers" in source
+    assert '"tenant"' in source
+    assert "examples/tasks/tenant-research-task.json" in source
+    assert "tenant-unknown-tenant" in source
+    assert "tenant-inactive-tenant" in source
+    assert "tenant-missing-membership" in source
+    assert "tenant-foreign-data-source" in source
+    assert "tenant-tampered-authority" in source
 
 
 def test_live_dev_e2e_extracts_handler_binding_evidence(tmp_path: Path) -> None:
