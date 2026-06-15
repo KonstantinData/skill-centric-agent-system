@@ -423,7 +423,31 @@ def _run_tampered_profile_case(
         control_plane_client=control_plane_client,
         environment=environment,  # type: ignore[arg-type]
     )
-    start_result = runtime.start(task, run_id=run_id)
+    analyzed = runtime.analyzer.analyze(task)
+    context_request = analyzed.to_composition_context_request(
+        environment=environment,  # type: ignore[arg-type]
+    )
+    context_response = control_plane_client.composition_context(context_request)
+    try:
+        start_result = runtime.start(
+            task,
+            composition_context_response=context_response,
+            run_id=run_id,
+        )
+    except CompositionError as error:
+        return {
+            "case": "tenant-tampered-authority",
+            "environment": environment,
+            "status": "failed",
+            "expected_failure_stage": "runtime_profile_enforcement",
+            "composition_status": context_response.get("composition_status"),
+            "composition_request": _composition_request_summary(context_request),
+            "composition_response": _composition_response_summary(context_response),
+            "handler_binding_status": "failed",
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "runtime_started": False,
+        }
     if isinstance(start_result.profile.get("tenant_authority"), dict):
         start_result.profile["tenant_authority"]["tenant_id"] = "foreign-tenant"
 
