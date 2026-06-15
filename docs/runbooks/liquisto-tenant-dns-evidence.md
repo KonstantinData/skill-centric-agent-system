@@ -1,6 +1,6 @@
 # Liquisto Tenant DNS Evidence
 
-Last checked: 2026-06-15 12:33 Europe/Berlin
+Last checked: 2026-06-15 22:21 Europe/Berlin
 
 This evidence records public DNS observations for the SCAS Liquisto tenant.
 Public DNS is routing evidence only. It is not an authorization boundary and it
@@ -31,15 +31,21 @@ Observed A records for `liquisto.condata.io`:
 
 | Resolver | TTL | A records |
 | --- | ---: | --- |
-| System resolver | 300 | `172.67.186.195`, `104.21.36.65` |
-| `1.1.1.1` | 300 | `172.67.186.195`, `104.21.36.65` |
-| `8.8.8.8` | 300 | `172.67.186.195`, `104.21.36.65` |
+| System resolver | 299 | `104.21.36.65`, `172.67.186.195` |
+| `1.1.1.1` | 300 | `104.21.36.65`, `172.67.186.195` |
+| `8.8.8.8` | 300 | `104.21.36.65`, `172.67.186.195` |
 
 Observed NS records for `condata.io`:
 
 | Resolver | TTL | NS records |
 | --- | ---: | --- |
-| System resolver | 21600 | `dayana.ns.cloudflare.com`, `coby.ns.cloudflare.com` |
+| System resolver | 42874 | `dayana.ns.cloudflare.com`, `coby.ns.cloudflare.com` |
+
+HTTP route observation:
+
+| URL | Status | Server | Content-Type | Interpretation |
+| --- | ---: | --- | --- | --- |
+| `https://liquisto.condata.io/` | 200 | `cloudflare` | `text/html` | Public route is reachable and serves the Streamlit login shell. Post-login UI state was not verified. |
 
 ## Interpretation
 

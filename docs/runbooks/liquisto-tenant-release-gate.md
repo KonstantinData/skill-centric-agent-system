@@ -1,6 +1,6 @@
 # Liquisto Tenant Release Gate
 
-Last updated: 2026-06-15 12:51 Europe/Berlin
+Last updated: 2026-06-15 22:24 Europe/Berlin
 
 This gate records what is required before the Liquisto tenant can be marked
 ready beyond local fixture-backed development.
@@ -15,7 +15,9 @@ UI shell with role-derived workspace areas, read-only admin UI, role-based task
 intake, tenant data-source connector coverage, and tenant isolation tests.
 
 Production readiness is intentionally blocked until the authoritative live
-infrastructure checks below pass.
+infrastructure checks below pass. The dev tenant runtime gate has passed on
+`main`, but this does not prove the production Streamlit UI deployment behind
+`liquisto.condata.io`.
 
 ## Local Dry Run
 
@@ -60,6 +62,15 @@ gh workflow run live-runtime-gates.yml \
 
 Passing criteria are defined in `docs/runbooks/runtime-live-dev-e2e.md`.
 
+Latest recorded evidence:
+
+| Date | GitHub run | Ref | Result | Evidence |
+| --- | --- | --- | --- | --- |
+| 2026-06-15 22:20 Europe/Berlin | `27573865364` | `main` / `61917d37af90cb1e99cbe1ab7e0a36bd65cbaee9` | passed | `task_suite=tenant`, `case_count=6`, `handler_binding_status=passed` |
+
+This verifies the tenant runtime path on the dev Hetzner runtime with the dev
+Control Plane seeded from the `main` repository snapshot.
+
 ## Production Blockers
 
 Do not mark the Liquisto tenant `production-ready` until all of these are
@@ -71,7 +82,9 @@ resolved:
 - Initial owner identity is bootstrapped and no longer `null`.
 - Legal profile placeholders in `examples/tenants/liquisto.json` are replaced
   with verified allowed business data or moved to a non-public source of truth.
-- Live dev tenant suite passes and produces attached workflow evidence.
+- Repository-owned deployment for `apps/streamlit_business_ui` to the service
+  behind `https://liquisto.condata.io/` is defined and verified, or the external
+  deployment owner/runbook is recorded.
 - Staging gate passes with the same tenant authority and isolation invariants.
 - Production gate passes against production Cloudflare and Hetzner resources.
 
