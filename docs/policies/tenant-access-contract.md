@@ -133,6 +133,13 @@ through tenant roles. D1 enforces tenant-local grants with composite foreign
 keys: a role data-source grant is invalid when the role bundle and data source
 do not share the same `tenant_id`.
 
+Runtime code must use the tenant data-source connector rather than direct source
+lookups. The connector resolves sources only from the sealed runtime
+`tenant_authority`, requires the source to be listed in
+`tenant_context.allowed_role_data_sources`, checks selected role grants, and
+fails closed for global profiles, cross-tenant sources, unavailable sources, or
+ungranted access modes.
+
 ## Runtime Profile Context
 
 Every runtime profile includes `tenant_context` and must conform to:
