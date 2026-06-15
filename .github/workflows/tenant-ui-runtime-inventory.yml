@@ -199,6 +199,50 @@ jobs:
             fi
           done
 
+          section "Container runtime"
+          if command -v docker >/dev/null 2>&1; then
+            docker ps --no-trunc --format 'table {{.ID}}\t{{.Image}}\t{{.Names}}\t{{.Ports}}\t{{.Command}}\t{{.Status}}' 2>/dev/null \
+              | grep -Ei 'streamlit|tenant|scas|8501|python|ui/app.py|IMAGE' \
+              | redact || true
+            docker ps --no-trunc --format '{{.ID}} {{.Names}} {{.Image}} {{.Command}}' 2>/dev/null \
+              | grep -Ei 'streamlit|tenant|scas|8501|python|ui/app.py' \
+              | awk '{print $1}' \
+              | while read -r container_id; do
+                  printf '\n### Container `%s`\n\n' "${container_id}"
+                  docker inspect \
+                    --format='Name={{.Name}}
+Image={{.Config.Image}}
+WorkingDir={{.Config.WorkingDir}}
+Entrypoint={{json .Config.Entrypoint}}
+Cmd={{json .Config.Cmd}}
+Labels={{json .Config.Labels}}
+Mounts={{json .Mounts}}
+Env={{json .Config.Env}}' \
+                    "${container_id}" 2>/dev/null | redact || true
+                done
+          else
+            printf 'docker command not available.\n'
+          fi
+
+          section "Candidate container definitions"
+          for root in /opt /srv /var/www /home; do
+            if [ ! -d "${root}" ]; then
+              continue
+            fi
+            find "${root}" -maxdepth 6 \( \
+              -iname 'docker-compose.yml' -o \
+              -iname 'docker-compose.yaml' -o \
+              -iname 'compose.yml' -o \
+              -iname 'compose.yaml' -o \
+              -iname 'Dockerfile' \
+            \) 2>/dev/null | sort | while read -r container_file; do
+              printf '### `%s`\n\n' "${container_file}"
+              grep -nE 'image:|build:|container_name:|command:|ports:|volumes:|working_dir:|streamlit|ui/app.py|8501|SCAS_' "${container_file}" 2>/dev/null \
+                | redact || true
+              printf '\n'
+            done
+          done
+
           section "Reverse proxy references"
           for dir in /etc/nginx /etc/caddy /etc/apache2; do
             if [ -d "${dir}" ]; then
