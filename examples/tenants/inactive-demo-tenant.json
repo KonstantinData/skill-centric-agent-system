@@ -1,13 +1,13 @@
 {
   "contract_version": "0.1.0",
-  "tenant_id": "demo-tenant",
-  "area_id": "demo-tenant",
-  "display_name": "Demo Tenant",
+  "tenant_id": "inactive-demo-tenant",
+  "area_id": "inactive-demo-tenant",
+  "display_name": "Inactive Demo Tenant",
   "legal_profile": {
-    "legal_name": "Demo Tenant GmbH",
+    "legal_name": "Inactive Demo Tenant GmbH",
     "registered_address": {
       "street": "Example Street",
-      "street_number": "1",
+      "street_number": "2",
       "postal_code": "10115",
       "city": "Example City",
       "country": "Germany"
@@ -20,28 +20,28 @@
     ],
     "commercial_register": {
       "register_court": "Example Register Court",
-      "registration_number": "HRB 000000"
+      "registration_number": "HRB 111111"
     },
     "tax": {
       "tax_number": null,
-      "vat_id": "DE000000000",
+      "vat_id": "DE111111111",
       "tax_number_sensitivity": "restricted-business-data"
     }
   },
   "contact_profile": {
-    "email": "admin@example.invalid",
+    "email": "admin-inactive@example.invalid",
     "phone": null,
-    "website": "https://example.invalid"
+    "website": "https://inactive.example.invalid"
   },
   "hostnames": [
     {
-      "hostname": "demo-tenant.example.invalid",
+      "hostname": "inactive-demo-tenant.example.invalid",
       "purpose": "primary-ui",
-      "expected_origin": "192.0.2.10",
+      "expected_origin": "192.0.2.11",
       "cloudflare_proxy_expected": true
     }
   ],
-  "status": "setup",
+  "status": "disabled",
   "default_locale": "de-DE",
   "admin_model": {
     "admin_routes": [
@@ -53,32 +53,32 @@
     "initial_owner": null
   },
   "memory": {
-    "area_brain_id": "brain-area-demo-tenant",
+    "area_brain_id": "brain-area-inactive-demo-tenant",
     "shared_promotion_allowed": false
   },
   "knowledge": {
-    "scope_id": "knowledge-demo-tenant",
+    "scope_id": "knowledge-inactive-demo-tenant",
     "indexes": [
-      "knowledge-demo-tenant-docs"
+      "knowledge-inactive-demo-tenant-docs"
     ]
   },
   "data_sources": [
     {
-      "id": "demo-tenant-website",
-      "tenant_id": "demo-tenant",
+      "id": "inactive-demo-tenant-website",
+      "tenant_id": "inactive-demo-tenant",
       "type": "website",
-      "display_name": "Demo Tenant Website",
+      "display_name": "Inactive Demo Tenant Website",
       "access_modes": [
         "read"
       ],
-      "status": "planned",
+      "status": "disabled",
       "sensitivity": "public"
     }
   ],
   "role_bundles": [
     {
-      "id": "demo-tenant-owner",
-      "tenant_id": "demo-tenant",
+      "id": "inactive-demo-tenant-owner",
+      "tenant_id": "inactive-demo-tenant",
       "display_name": "Tenant Owner",
       "role_type": "system",
       "assignable_to_users": true,
@@ -88,7 +88,7 @@
       ],
       "data_source_grants": [
         {
-          "data_source_id": "demo-tenant-website",
+          "data_source_id": "inactive-demo-tenant-website",
           "access_modes": [
             "read"
           ]
@@ -102,12 +102,8 @@
           "research-intake",
           "tenant-admin"
         ],
-        "tools": [
-          "filesystem-list",
-          "filesystem-read"
-        ],
+        "tools": [],
         "policies": [
-          "no-destructive-commands",
           "strict-tenant-isolation",
           "no-cross-area-access",
           "no-cross-tenant-access"
@@ -117,59 +113,14 @@
           "knowledge-scope-validator",
           "no-cross-area-scope-validator",
           "no-cross-tenant-scope-validator",
-          "research-output-contract",
           "tenant-profile-validator",
           "user-permission-validator"
-        ]
-      }
-    },
-    {
-      "id": "demo-tenant-researcher",
-      "tenant_id": "demo-tenant",
-      "display_name": "Researcher",
-      "role_type": "tenant-custom",
-      "assignable_to_users": true,
-      "capability_grants": [
-        "research"
-      ],
-      "data_source_grants": [
-        {
-          "data_source_id": "demo-tenant-website",
-          "access_modes": [
-            "read"
-          ]
-        }
-      ],
-      "derived_runtime_modules": {
-        "skills": [
-          "research-context-synthesis"
-        ],
-        "workflows": [
-          "research-intake"
-        ],
-        "tools": [
-          "filesystem-list",
-          "filesystem-read"
-        ],
-        "policies": [
-          "no-destructive-commands",
-          "strict-tenant-isolation",
-          "no-cross-area-access",
-          "no-cross-tenant-access"
-        ],
-        "validators": [
-          "tenant-profile-validator",
-          "no-cross-tenant-scope-validator",
-          "no-cross-area-scope-validator",
-          "knowledge-scope-validator",
-          "research-output-contract"
         ]
       }
     }
   ],
   "policy_bundle": [
     "strict-tenant-isolation",
-    "no-cross-area-access",
     "no-cross-tenant-access",
     "fail-closed-unknown-scope"
   ],

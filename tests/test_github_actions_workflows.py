@@ -179,6 +179,7 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
     assert "run_live_dev_e2e:" in workflow
     assert "run_postgres_concurrency_smoke:" in workflow
     assert "live_task_file:" in workflow
+    assert "- tenant" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
     assert "inputs.run_postgres_concurrency_smoke == true" in workflow
@@ -211,6 +212,9 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
     assert 'wrangler.toml "${wrangler_env_args[@]}"' in workflow
     assert "npx wrangler whoami --config workers/control-api/wrangler.toml" in workflow
+    assert 'if [ "${TARGET_ENVIRONMENT}" = "dev" ]; then' in workflow
+    assert 'npx wrangler deploy --config workers/control-api/wrangler.toml --env ""' in workflow
+    assert "live gates only auto-deploy dev" in workflow
     assert "git archive --format=tar.gz" in workflow
     assert "apt-get install -y" in workflow
     assert "python3.12-venv" in workflow
