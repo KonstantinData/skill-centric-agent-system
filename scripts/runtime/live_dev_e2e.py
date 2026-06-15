@@ -137,22 +137,18 @@ def main(argv: list[str] | None = None) -> int:
                 for label, task_path in task_cases
             ]
 
+    status = "passed" if all(result["status"] == "passed" for result in results) else "failed"
+    handler_binding_status = (
+        "passed"
+        if all(result["handler_binding_status"] == "passed" for result in results)
+        else "failed"
+    )
     print(
         json.dumps(
             {
                 "environment": args.environment,
-                "status": (
-                    "passed"
-                    if all(result["status"] == "passed" for result in results)
-                    else "failed"
-                ),
-                "handler_binding_status": (
-                    "passed"
-                    if all(
-                        result["handler_binding_status"] == "passed" for result in results
-                    )
-                    else "failed"
-                ),
+                "status": status,
+                "handler_binding_status": handler_binding_status,
                 "task_suite": args.task_suite,
                 "case_count": len(results),
                 "results": results,
@@ -161,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             sort_keys=True,
         )
     )
-    return 0
+    return 0 if status == "passed" and handler_binding_status == "passed" else 1
 
 
 def _run_tenant_suite(
@@ -277,7 +273,31 @@ def _run_positive_case(
         control_plane_client=control_plane_client,
         environment=environment,  # type: ignore[arg-type]
     )
-    start_result = runtime.start(task, run_id=run_id)
+    analyzed = runtime.analyzer.analyze(task)
+    context_request = analyzed.to_composition_context_request(
+        environment=environment,  # type: ignore[arg-type]
+    )
+    context_response = control_plane_client.composition_context(context_request)
+    try:
+        start_result = runtime.start(
+            task,
+            composition_context_response=context_response,
+            run_id=run_id,
+        )
+    except CompositionError as error:
+        return {
+            "case": label,
+            "environment": environment,
+            "status": "failed",
+            "handler_binding_status": "failed",
+            "expected_failure_stage": "none",
+            "composition_request": _composition_request_summary(context_request),
+            "composition_response": _composition_response_summary(context_response),
+            "composition_status": context_response.get("composition_status"),
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "runtime_started": False,
+        }
     loop_result = MinimalRuntimeLoop(
         store=store,
         artifacts=artifacts,
@@ -312,6 +332,12 @@ def _run_positive_case(
         "stop_reason": run_record["stop_reason"] if run_record else None,
         "composition_status": start_result.composition_context_response.get(
             "composition_status"
+        ),
+        "composition_request": _composition_request_summary(
+            start_result.composition_context_request
+        ),
+        "composition_response": _composition_response_summary(
+            start_result.composition_context_response
         ),
         "event_count": len(events),
         "checkpoint_count": len(checkpoints),
@@ -359,6 +385,9 @@ def _run_denied_start_case(
             "status": "passed",
             "expected_failure_stage": "composition",
             "composition_status": context_response.get("composition_status"),
+            "composition_request": _composition_request_summary(context_request),
+            "composition_response": _composition_response_summary(context_response),
+            "handler_binding_status": "passed",
             "error_type": type(error).__name__,
             "error": str(error),
             "runtime_started": False,
@@ -370,6 +399,9 @@ def _run_denied_start_case(
         "status": "failed",
         "expected_failure_stage": "composition",
         "composition_status": context_response.get("composition_status"),
+        "composition_request": _composition_request_summary(context_request),
+        "composition_response": _composition_response_summary(context_response),
+        "handler_binding_status": "failed",
         "error": "Tenant negative case unexpectedly started a runtime run.",
         "runtime_started": True,
     }
@@ -411,6 +443,13 @@ def _run_tampered_profile_case(
             "composition_status": start_result.composition_context_response.get(
                 "composition_status"
             ),
+            "composition_request": _composition_request_summary(
+                start_result.composition_context_request
+            ),
+            "composition_response": _composition_response_summary(
+                start_result.composition_context_response
+            ),
+            "handler_binding_status": "passed",
             "run_id": start_result.run_id,
             "stop_reason": error.stop_reason,
             "error_type": type(error).__name__,
@@ -425,9 +464,98 @@ def _run_tampered_profile_case(
         "composition_status": start_result.composition_context_response.get(
             "composition_status"
         ),
+        "composition_request": _composition_request_summary(
+            start_result.composition_context_request
+        ),
+        "composition_response": _composition_response_summary(
+            start_result.composition_context_response
+        ),
+        "handler_binding_status": "failed",
         "run_id": start_result.run_id,
         "error": "Tampered tenant authority unexpectedly reached runtime execution.",
     }
+
+
+def _composition_request_summary(
+    context_request: Mapping[str, Any],
+) -> dict[str, Any]:
+    principal = context_request.get("principal", {})
+    tenant_context = context_request.get("tenant_context")
+    task = context_request.get("task", {})
+    signals = task.get("signals", {}) if isinstance(task, Mapping) else {}
+    return {
+        "principal_kind": (
+            principal.get("kind") if isinstance(principal, Mapping) else None
+        ),
+        "principal_id": principal.get("id") if isinstance(principal, Mapping) else None,
+        "task_type": task.get("type") if isinstance(task, Mapping) else None,
+        "tenant_context_present": isinstance(tenant_context, Mapping),
+        "tenant_id": (
+            tenant_context.get("tenant_id")
+            if isinstance(tenant_context, Mapping)
+            else None
+        ),
+        "area_id": (
+            tenant_context.get("area_id") if isinstance(tenant_context, Mapping) else None
+        ),
+        "membership_id": (
+            tenant_context.get("membership_id")
+            if isinstance(tenant_context, Mapping)
+            else None
+        ),
+        "capability_hints": (
+            signals.get("capability_hints") if isinstance(signals, Mapping) else []
+        ),
+    }
+
+
+def _composition_response_summary(
+    context_response: Mapping[str, Any],
+) -> dict[str, Any]:
+    tenant_authority = context_response.get("tenant_authority")
+    graph_validation = context_response.get("graph_validation", {})
+    return {
+        "composition_status": context_response.get("composition_status"),
+        "tenant_authority_present": isinstance(tenant_authority, Mapping),
+        "tenant_authority_tenant_id": (
+            tenant_authority.get("tenant_id")
+            if isinstance(tenant_authority, Mapping)
+            else None
+        ),
+        "candidate_module_count": _reference_count(context_response, "candidate_modules"),
+        "allowed_knowledge_scope_count": _reference_count(
+            context_response,
+            "allowed_knowledge_scopes",
+        ),
+        "allowed_data_scope_count": _reference_count(
+            context_response,
+            "allowed_data_scopes",
+        ),
+        "allowed_memory_scope_count": _reference_count(
+            context_response,
+            "allowed_memory_scopes",
+        ),
+        "validation_requirement_count": _reference_count(
+            context_response,
+            "validation_requirements",
+        ),
+        "policy_decision_count": _reference_count(context_response, "policy_decisions"),
+        "graph_is_valid": (
+            graph_validation.get("is_valid")
+            if isinstance(graph_validation, Mapping)
+            else None
+        ),
+        "graph_errors": (
+            graph_validation.get("errors", [])
+            if isinstance(graph_validation, Mapping)
+            else []
+        ),
+    }
+
+
+def _reference_count(context_response: Mapping[str, Any], key: str) -> int:
+    value = context_response.get(key, [])
+    return len(value) if isinstance(value, list) else 0
 
 
 def _tenant_task_variant(
