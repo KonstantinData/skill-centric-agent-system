@@ -88,6 +88,18 @@ assign users to roles; roles contain capability and data-source grants.
 The product must not expose normal tenant-admin pages for assigning individual
 skills, workflows, validators, policies, or data sources directly to users.
 
+The Control API exposes the read-side tenant admin context at:
+
+```text
+GET /tenant-admin/tenants/{tenant_id}
+```
+
+The route requires tenant-admin scoped bearer authorization and the
+`x-scas-tenant-hostname` header. It must return only D1-derived tenant admin
+data for the resolved hostname: users, role bundles, role grants, tenant-owned
+data sources, tenant settings, and the fixed admin route list above. Missing or
+mismatched hostname proof fails closed.
+
 ## Role Bundles
 
 A role bundle is tenant-local. A role named `Researcher` in one tenant is a

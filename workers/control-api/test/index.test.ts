@@ -118,6 +118,7 @@ const COMPOSITION_TOKEN = "test-composition-token";
 const INGESTION_TOKEN = "test-ingestion-token";
 const RETRIEVAL_TOKEN = "test-retrieval-token";
 const AI_GATEWAY_TOKEN = "test-ai-gateway-token";
+const TENANT_ADMIN_TOKEN = "test-tenant-admin-token";
 
 type TestEnv = Env & {
   CONTROL_API_TOKEN?: string;
@@ -125,6 +126,7 @@ type TestEnv = Env & {
   CONTROL_API_INGESTION_TOKEN?: string;
   CONTROL_API_RETRIEVAL_TOKEN?: string;
   CONTROL_API_AI_GATEWAY_TOKEN?: string;
+  CONTROL_API_TENANT_ADMIN_TOKEN?: string;
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   OPENAI_API_KEY?: string;
@@ -139,6 +141,7 @@ function testEnv(overrides: Partial<TestEnv> = {}): TestEnv {
     CONTROL_API_INGESTION_TOKEN: INGESTION_TOKEN,
     CONTROL_API_RETRIEVAL_TOKEN: RETRIEVAL_TOKEN,
     CONTROL_API_AI_GATEWAY_TOKEN: AI_GATEWAY_TOKEN,
+    CONTROL_API_TENANT_ADMIN_TOKEN: TENANT_ADMIN_TOKEN,
     ...overrides,
   } as TestEnv;
 }
@@ -946,6 +949,7 @@ describe("control API worker", () => {
         CONTROL_API_INGESTION_TOKEN: undefined,
         CONTROL_API_RETRIEVAL_TOKEN: undefined,
         CONTROL_API_AI_GATEWAY_TOKEN: undefined,
+        CONTROL_API_TENANT_ADMIN_TOKEN: undefined,
       },
     );
     const body = await response.json();
@@ -1131,6 +1135,121 @@ describe("control API worker", () => {
       allowed_data_scopes: [],
       allowed_memory_scopes: [],
     });
+  });
+
+  it("returns D1-backed tenant admin context for the resolved tenant hostname", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      contract_version: "0.1.0",
+      tenant: {
+        tenant_id: "demo-tenant",
+        area_id: "demo-tenant",
+        display_name: "Demo Tenant",
+        status: "active",
+        default_locale: "de-DE",
+        contact_email: "admin@example.invalid",
+        contact_website: "https://example.invalid",
+        hostname: {
+          tenant_id: "demo-tenant",
+          hostname: "demo-tenant.example.invalid",
+          purpose: "primary-ui",
+          expected_origin: "192.0.2.10",
+          cloudflare_proxy_expected: true,
+        },
+      },
+      admin: {
+        admin_routes: ["/admin/users", "/admin/roles", "/admin/settings"],
+        assignment_model: "users-receive-roles-only",
+        direct_user_grants_allowed: false,
+      },
+      users: [
+        {
+          membership_id: "demo-tenant-membership-user",
+          tenant_id: "demo-tenant",
+          principal_id: "tenant-user",
+          status: "active",
+          role_ids: ["demo-tenant-reviewer"],
+        },
+      ],
+      roles: [
+        {
+          id: "demo-tenant-reviewer",
+          tenant_id: "demo-tenant",
+          display_name: "Demo Tenant Reviewer",
+          role_type: "tenant-custom",
+          assignable_to_users: true,
+          capability_grants: ["code-review"],
+          data_source_grants: [
+            {
+              data_source_id: "demo-tenant-website",
+              access_modes: ["read"],
+            },
+          ],
+          derived_runtime_modules: {
+            skills: ["git-diff-analysis"],
+            workflows: ["code-review"],
+            tools: [],
+            policies: ["no-destructive-commands"],
+            validators: [],
+          },
+        },
+      ],
+      data_sources: [
+        {
+          id: "demo-tenant-website",
+          tenant_id: "demo-tenant",
+          source_type: "website",
+          display_name: "Demo Tenant Website",
+          access_modes: ["read"],
+          status: "active",
+          sensitivity: "public",
+        },
+      ],
+      settings: {
+        memory_area_brain_id: "brain-area-demo-tenant",
+        shared_promotion_allowed: false,
+        knowledge_scope_id: "knowledge-demo-tenant",
+        policy_bundle: ["strict-tenant-isolation", "no-cross-tenant-access"],
+        validators: ["tenant-profile-validator"],
+      },
+    });
+  });
+
+  it("denies tenant admin context when the hostname does not belong to the tenant", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "x-scas-tenant-hostname": "other-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("tenant_hostname_denied");
+  });
+
+  it("requires tenant-admin scoped bearer authorization for tenant admin context", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${COMPOSITION_TOKEN}`,
+        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("authorization_scope_denied");
   });
 
   it("denies tenant-scoped composition context without matching membership", async () => {

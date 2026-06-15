@@ -46,6 +46,7 @@ POST /knowledge/ingest
 POST /memory/ingest
 POST /retrieval/context
 POST /ai-gateway/openai/chat/completions
+GET /tenant-admin/tenants/{tenant_id}
 ```
 
 `POST /knowledge/ingest` accepts normalized knowledge source/document content,
@@ -101,6 +102,7 @@ Supported Worker secret bindings:
 | `CONTROL_API_INGESTION_TOKEN` | `POST /knowledge/ingest`, `POST /memory/ingest` |
 | `CONTROL_API_RETRIEVAL_TOKEN` | `POST /retrieval/context` |
 | `CONTROL_API_AI_GATEWAY_TOKEN` | `POST /ai-gateway/openai/chat/completions` |
+| `CONTROL_API_TENANT_ADMIN_TOKEN` | `GET /tenant-admin/tenants/{tenant_id}` |
 
 Use endpoint-scoped tokens where practical. `CONTROL_API_TOKEN` is an admin
 fallback for trusted automation.
@@ -112,6 +114,7 @@ npx wrangler secret put CONTROL_API_COMPOSITION_TOKEN --config workers/control-a
 npx wrangler secret put CONTROL_API_INGESTION_TOKEN --config workers/control-api/wrangler.toml
 npx wrangler secret put CONTROL_API_RETRIEVAL_TOKEN --config workers/control-api/wrangler.toml
 npx wrangler secret put CONTROL_API_AI_GATEWAY_TOKEN --config workers/control-api/wrangler.toml
+npx wrangler secret put CONTROL_API_TENANT_ADMIN_TOKEN --config workers/control-api/wrangler.toml
 ```
 
 Runtime clients use `SCAS_CONTROL_API_TOKEN` or the CLI
@@ -318,6 +321,20 @@ specialized module for the wrong task class.
 `/composition/context` fails closed with `composition_status: "denied"` when
 required policies are missing, graph validation fails, or no module candidate
 matches the task signals.
+
+Smoke-test tenant admin context:
+
+```bash
+curl -s https://scas-control-api-dev.still-butterfly-bbff.workers.dev/tenant-admin/tenants/demo-tenant \
+  -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
+  -H "x-scas-tenant-hostname: demo-tenant.example.invalid"
+```
+
+The response must include only D1-derived tenant admin data: the resolved
+hostname proof, `/admin/users`, `/admin/roles`, `/admin/settings`, memberships,
+role bundles, role grants, tenant-owned data sources, and tenant settings. A
+missing or mismatched `x-scas-tenant-hostname` fails closed before any admin
+context is emitted.
 
 Smoke-test knowledge ingestion:
 
