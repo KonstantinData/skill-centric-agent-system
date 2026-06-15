@@ -82,10 +82,11 @@ gh workflow run tenant-ui-runtime-inventory.yml \
   -f hostname=liquisto.condata.io
 ```
 
-The workflow records candidate Streamlit processes, systemd units, reverse-proxy
-references, Git repositories, and app paths from the target Hetzner environment.
-It must not mutate the runtime host. Use the inventory artifact to identify the
-actual service, code path, and deployed Git revision before any deployment or
+The workflow records candidate Streamlit processes, systemd units, container
+runtime metadata, compose/Dockerfile references, reverse-proxy references, Git
+repositories, and app paths from the target Hetzner environment. It must not
+mutate the runtime host. Use the inventory artifact to identify the actual
+service, image, code path, and deployed Git revision before any deployment or
 restart action.
 
 ## Production Blockers
