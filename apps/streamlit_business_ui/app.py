@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from random import Random
+from typing import Any
 
 import streamlit as st
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 
 
 @dataclass(frozen=True)
@@ -17,6 +23,19 @@ class MonthlyKpi:
     churn_pct: float
     lead_volume: int
     win_rate_pct: float
+
+
+@dataclass(frozen=True)
+class TenantShell:
+    tenant_id: str
+    area_id: str
+    display_name: str
+    status: str
+    hostname: str
+    admin_routes: tuple[str, ...]
+    role_names: tuple[str, ...]
+    data_sources: tuple[str, ...]
+    isolation_summary: str
 
 
 MONTHS = (
@@ -46,6 +65,36 @@ SCENARIO_FACTORS = {
     "Conservative": 0.92,
     "Growth": 1.12,
 }
+
+
+def load_tenant_registry(tenants_dir: Path = TENANTS_DIR) -> dict[str, dict[str, Any]]:
+    tenants: dict[str, dict[str, Any]] = {}
+    for path in sorted(tenants_dir.glob("*.json")):
+        tenant = json.loads(path.read_text(encoding="utf-8"))
+        tenants[str(tenant["tenant_id"])] = tenant
+    return tenants
+
+
+def build_tenant_shell(tenant: dict[str, Any]) -> TenantShell:
+    hostnames = tenant.get("hostnames", [])
+    primary_hostname = hostnames[0]["hostname"] if hostnames else "unknown"
+    admin_model = tenant.get("admin_model", {})
+    role_bundles = tenant.get("role_bundles", [])
+    data_sources = tenant.get("data_sources", [])
+    return TenantShell(
+        tenant_id=str(tenant["tenant_id"]),
+        area_id=str(tenant["area_id"]),
+        display_name=str(tenant["display_name"]),
+        status=str(tenant["status"]),
+        hostname=str(primary_hostname),
+        admin_routes=tuple(str(route) for route in admin_model.get("admin_routes", [])),
+        role_names=tuple(str(role["display_name"]) for role in role_bundles),
+        data_sources=tuple(str(source["display_name"]) for source in data_sources),
+        isolation_summary=(
+            "Server-seitige Hostname-Autorität, Rollen statt Direktrechten, "
+            "keine Cross-Tenant- oder Cross-Area-Freigaben."
+        ),
+    )
 
 
 def generate_kpis(year: int, region_scale: float, scenario_factor: float) -> list[MonthlyKpi]:
@@ -140,7 +189,14 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
+    tenants = load_tenant_registry()
+
     st.sidebar.title("Steuerung")
+    tenant_id = st.sidebar.selectbox(
+        "Tenant",
+        options=sorted(tenants),
+        index=sorted(tenants).index("liquisto") if "liquisto" in tenants else 0,
+    )
     selected_year = st.sidebar.selectbox("Geschäftsjahr", [2026, 2025, 2024], index=0)
     selected_regions = st.sidebar.multiselect(
         "Regionen",
@@ -158,6 +214,23 @@ def main() -> None:
     last = kpis[-1]
     first = kpis[0]
     months = [row.month for row in kpis]
+    tenant_shell = build_tenant_shell(tenants[tenant_id])
+
+    st.title(tenant_shell.display_name)
+    shell_cols = st.columns([1.1, 1.1, 1.1, 1.6])
+    shell_cols[0].metric("Tenant", tenant_shell.tenant_id)
+    shell_cols[1].metric("Status", tenant_shell.status)
+    shell_cols[2].caption("Hostname")
+    shell_cols[2].write(tenant_shell.hostname)
+    shell_cols[3].info(tenant_shell.isolation_summary)
+
+    admin_cols = st.columns(3)
+    admin_cols[0].subheader("Admin")
+    admin_cols[0].write(", ".join(tenant_shell.admin_routes))
+    admin_cols[1].subheader("Rollen")
+    admin_cols[1].write(", ".join(tenant_shell.role_names))
+    admin_cols[2].subheader("Datenquellen")
+    admin_cols[2].write(", ".join(tenant_shell.data_sources) or "Keine")
 
     st.markdown(
         f"""

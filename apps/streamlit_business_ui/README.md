@@ -1,6 +1,9 @@
 # Streamlit Business UI
 
-Professional executive dashboard for SCAS business steering.
+Tenant-aware executive dashboard for SCAS business steering. The first screen
+loads tenant shell metadata from `examples/tenants/*.json` and shows hostname,
+status, admin routes, roles, data sources, and isolation posture before the KPI
+views.
 
 ## Run
 
