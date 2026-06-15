@@ -184,6 +184,15 @@ surfaces are:
 - `docs/runbooks/notion-issue-tracking.md`, `SECURITY.md`, and `AGENTS.md`:
   repository governance, security, and autonomous-agent work rules.
 
+## License
+
+This repository is licensed under the PolyForm Noncommercial License 1.0.0.
+You may clone, use, copy, modify, and distribute the software for
+noncommercial purposes under the terms in `LICENSE`.
+
+Commercial use is not permitted under the noncommercial license. Commercial
+use requires a separate written commercial license from the licensor.
+
 ## Try It Locally
 
 Install development dependencies:
