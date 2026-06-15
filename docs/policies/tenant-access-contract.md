@@ -50,6 +50,28 @@ grants as separate records. Legal and contact fields are stored for tenant
 administration and audit context only; runtime access still comes exclusively
 from membership and role-derived grants.
 
+## Hostname Authority
+
+Tenant selection starts with the requested hostname. A configured hostname maps
+to exactly one tenant authority record before task analysis or runtime profile
+assembly may grant any tenant-local access.
+
+Hostname resolution is fail-closed:
+
+- hostnames are normalized to lowercase host names without scheme, path, port,
+  or trailing dot before lookup,
+- unknown hostnames are denied,
+- disabled or archived tenants are denied,
+- duplicate hostname configuration across tenants is invalid,
+- prompt text, client UI state, and request body tenant IDs cannot override the
+  tenant selected by the hostname.
+
+The resolver returns only tenant authority metadata needed for the next control
+path step: tenant ID, area ID, normalized hostname, hostname purpose, tenant
+status, expected origin, and Cloudflare proxy expectation. Session authority
+must still prove that the authenticated principal belongs to the resolved
+tenant before runtime profile assembly proceeds.
+
 ## Admin Surface
 
 The tenant admin UI exposes only these first-class administration areas:
