@@ -117,6 +117,7 @@
           "knowledge-scope-validator",
           "no-cross-area-scope-validator",
           "no-cross-tenant-scope-validator",
+          "research-output-contract",
           "tenant-profile-validator",
           "user-permission-validator"
         ]
@@ -160,7 +161,8 @@
           "tenant-profile-validator",
           "no-cross-tenant-scope-validator",
           "no-cross-area-scope-validator",
-          "knowledge-scope-validator"
+          "knowledge-scope-validator",
+          "research-output-contract"
         ]
       }
     }
