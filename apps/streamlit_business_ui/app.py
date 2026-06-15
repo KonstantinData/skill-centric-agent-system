@@ -9,8 +9,6 @@ from random import Random
 from typing import Any
 from urllib import request as urlrequest
 
-import streamlit as st
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 
@@ -273,6 +271,8 @@ def build_card(title: str, value: str, delta: str) -> str:
 
 
 def main() -> None:
+    import streamlit as st
+
     st.set_page_config(
         page_title="SCAS Executive Dashboard",
         page_icon=":material/monitoring:",
