@@ -336,6 +336,14 @@ role bundles, role grants, tenant-owned data sources, and tenant settings. A
 missing or mismatched `x-scas-tenant-hostname` fails closed before any admin
 context is emitted.
 
+The Worker writes bounded D1 `audit_events` rows for composition and tenant
+admin decisions:
+
+- `composition_context_ready`
+- `composition_context_denied`
+- `tenant_admin_context_read`
+- `tenant_admin_hostname_denied`
+
 Smoke-test knowledge ingestion:
 
 ```bash

@@ -2205,7 +2205,17 @@ async function handleCompositionContext(request: Request, env: Env): Promise<Res
   }
 
   try {
-    return jsonResponse(await compositionContextResponse(env, body as CompositionRequest));
+    const responseBody = await compositionContextResponse(env, body as CompositionRequest);
+    await writeAuditEvent(
+      env,
+      responseBody.composition_status === "ready"
+        ? "composition_context_ready"
+        : "composition_context_denied",
+      "composition_context",
+      (body as CompositionRequest).task.id,
+      nowIso(),
+    );
+    return jsonResponse(responseBody);
   } catch {
     return errorResponse(503, "registry_unavailable", "Registry metadata is unavailable.");
   }
@@ -2241,6 +2251,13 @@ async function handleTenantAdminContext(request: Request, env: Env): Promise<Res
     if (context === null) {
       return errorResponse(404, "tenant_not_found", "Tenant was not found.");
     }
+    await writeAuditEvent(
+      env,
+      "tenant_admin_context_read",
+      "tenant",
+      tenantId,
+      nowIso(),
+    );
     return jsonResponse(context);
   } catch (error) {
     if (error instanceof Error) {
@@ -2248,6 +2265,13 @@ async function handleTenantAdminContext(request: Request, env: Env): Promise<Res
         return errorResponse(400, "tenant_hostname_invalid", "Tenant hostname is invalid.");
       }
       if (error.message === "tenant_hostname_not_found") {
+        await writeAuditEvent(
+          env,
+          "tenant_admin_hostname_denied",
+          "tenant",
+          tenantId,
+          nowIso(),
+        );
         return errorResponse(
           403,
           "tenant_hostname_denied",

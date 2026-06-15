@@ -1071,6 +1071,17 @@ describe("control API worker", () => {
       ],
     });
     expect(body.tenant_authority).toBeUndefined();
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("composition_context_ready", "task-code-review")
+      .first();
+    expect(audit).toEqual({
+      event_type: "composition_context_ready",
+      target_kind: "composition_context",
+      target_id: "task-code-review",
+    });
   });
 
   it("returns tenant authority for tenant-scoped composition context", async () => {
@@ -1222,6 +1233,17 @@ describe("control API worker", () => {
         validators: ["tenant-profile-validator"],
       },
     });
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_context_read", "demo-tenant")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_context_read",
+      target_kind: "tenant",
+      target_id: "demo-tenant",
+    });
   });
 
   it("denies tenant admin context when the hostname does not belong to the tenant", async () => {
@@ -1236,6 +1258,17 @@ describe("control API worker", () => {
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("tenant_hostname_denied");
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("tenant_admin_hostname_denied", "demo-tenant")
+      .first();
+    expect(audit).toEqual({
+      event_type: "tenant_admin_hostname_denied",
+      target_kind: "tenant",
+      target_id: "demo-tenant",
+    });
   });
 
   it("requires tenant-admin scoped bearer authorization for tenant admin context", async () => {
@@ -1292,6 +1325,17 @@ describe("control API worker", () => {
     expect(response.status).toBe(200);
     expect(body.composition_status).toBe("denied");
     expect(body.tenant_authority).toBeUndefined();
+
+    const audit = await env.SCAS_CONTROL_DB.prepare(
+      "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
+    )
+      .bind("composition_context_denied", "task-code-review")
+      .first();
+    expect(audit).toEqual({
+      event_type: "composition_context_denied",
+      target_kind: "composition_context",
+      target_id: "task-code-review",
+    });
   });
 
   it("denies candidates when required policies are not allowed", async () => {
