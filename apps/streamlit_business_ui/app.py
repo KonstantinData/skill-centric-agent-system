@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from html import escape
 from pathlib import Path
-from random import Random
 from typing import Any
 from urllib import request as urlrequest
 
@@ -14,24 +14,14 @@ TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 
 
 @dataclass(frozen=True)
-class MonthlyKpi:
-    month: str
-    revenue_million_eur: float
-    gross_margin_pct: float
-    operating_cost_million_eur: float
-    nps: int
-    churn_pct: float
-    lead_volume: int
-    win_rate_pct: float
-
-
-@dataclass(frozen=True)
 class TenantShell:
     tenant_id: str
     area_id: str
     display_name: str
+    legal_name: str
     status: str
     hostname: str
+    logo_path: str | None
     admin_routes: tuple[str, ...]
     role_names: tuple[str, ...]
     data_sources: tuple[str, ...]
@@ -52,33 +42,15 @@ class TenantAdminApiConfig:
     timeout_seconds: float = 8.0
 
 
-MONTHS = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
-
-REGION_FACTORS = {
-    "DACH": 1.0,
-    "Nordics": 0.72,
-    "Benelux": 0.61,
-    "UK & Ireland": 1.15,
-}
-
-SCENARIO_FACTORS = {
-    "Base": 1.0,
-    "Conservative": 0.92,
-    "Growth": 1.12,
-}
+@dataclass(frozen=True)
+class TenantWorkspaceArea:
+    area_id: str
+    display_name: str
+    description: str
+    route: str
+    required_capability: str
+    admin_only: bool
+    status: str
 
 
 def load_tenant_registry(tenants_dir: Path = TENANTS_DIR) -> dict[str, dict[str, Any]]:
@@ -95,12 +67,19 @@ def build_tenant_shell(tenant: dict[str, Any]) -> TenantShell:
     admin_model = tenant.get("admin_model", {})
     role_bundles = tenant.get("role_bundles", [])
     data_sources = tenant.get("data_sources", [])
+    ui_profile = tenant.get("ui_profile", {})
     return TenantShell(
         tenant_id=str(tenant["tenant_id"]),
         area_id=str(tenant["area_id"]),
         display_name=str(tenant["display_name"]),
+        legal_name=str(tenant.get("legal_profile", {}).get("legal_name", tenant["display_name"])),
         status=str(tenant["status"]),
         hostname=str(primary_hostname),
+        logo_path=(
+            str(ui_profile["logo_path"])
+            if isinstance(ui_profile, dict) and ui_profile.get("logo_path")
+            else None
+        ),
         admin_routes=tuple(str(route) for route in admin_model.get("admin_routes", [])),
         role_names=tuple(str(role["display_name"]) for role in role_bundles),
         data_sources=tuple(str(source["display_name"]) for source in data_sources),
@@ -155,6 +134,82 @@ def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
     )
 
 
+def default_role_ids(tenant: dict[str, Any]) -> tuple[str, ...]:
+    role_bundles = tenant.get("role_bundles", [])
+    non_admin_roles = tuple(
+        str(role["id"])
+        for role in role_bundles
+        if "tenant-admin" not in role.get("capability_grants", [])
+    )
+    if non_admin_roles:
+        return non_admin_roles
+    return tuple(str(role["id"]) for role in role_bundles[:1])
+
+
+def role_ids_from_env(tenant: dict[str, Any]) -> tuple[str, ...]:
+    configured = os.environ.get("SCAS_UI_ROLE_IDS", "").strip()
+    if not configured:
+        return default_role_ids(tenant)
+    available = {
+        str(role["id"])
+        for role in tenant.get("role_bundles", [])
+        if isinstance(role, dict) and role.get("id")
+    }
+    requested = tuple(
+        role_id.strip()
+        for role_id in configured.split(",")
+        if role_id.strip() in available
+    )
+    return requested or default_role_ids(tenant)
+
+
+def granted_capabilities_for_roles(
+    tenant: dict[str, Any],
+    role_ids: Iterable[str],
+) -> frozenset[str]:
+    selected_role_ids = set(role_ids)
+    capabilities: set[str] = set()
+    for role in tenant.get("role_bundles", []):
+        if str(role.get("id")) not in selected_role_ids:
+            continue
+        capabilities.update(str(item) for item in role.get("capability_grants", []))
+    return frozenset(capabilities)
+
+
+def build_workspace_areas(
+    tenant: dict[str, Any],
+    role_ids: Iterable[str],
+) -> tuple[TenantWorkspaceArea, ...]:
+    ui_profile = tenant.get("ui_profile", {})
+    configured_areas = (
+        ui_profile.get("workspace_areas", [])
+        if isinstance(ui_profile, dict)
+        else []
+    )
+    granted_capabilities = granted_capabilities_for_roles(tenant, role_ids)
+    visible_areas: list[TenantWorkspaceArea] = []
+    for area in configured_areas:
+        if not isinstance(area, dict) or area.get("status") != "active":
+            continue
+        required_capability = str(area["required_capability"])
+        if required_capability not in granted_capabilities:
+            continue
+        if area.get("admin_only") is True and "tenant-admin" not in granted_capabilities:
+            continue
+        visible_areas.append(
+            TenantWorkspaceArea(
+                area_id=str(area["id"]),
+                display_name=str(area["display_name"]),
+                description=str(area["description"]),
+                route=str(area["route"]),
+                required_capability=required_capability,
+                admin_only=bool(area["admin_only"]),
+                status=str(area["status"]),
+            )
+        )
+    return tuple(visible_areas)
+
+
 def tenant_admin_api_config_from_env() -> TenantAdminApiConfig | None:
     base_url = os.environ.get("SCAS_CONTROL_API_URL", "").strip()
     token = os.environ.get("SCAS_TENANT_ADMIN_TOKEN", "").strip()
@@ -188,8 +243,10 @@ def build_tenant_shell_from_admin_context(context: dict[str, Any]) -> TenantShel
         tenant_id=str(tenant["tenant_id"]),
         area_id=str(tenant["area_id"]),
         display_name=str(tenant["display_name"]),
+        legal_name=str(tenant.get("legal_name", tenant["display_name"])),
         status=str(tenant["status"]),
         hostname=str(tenant["hostname"]["hostname"]),
+        logo_path=str(tenant["logo_path"]) if tenant.get("logo_path") else None,
         admin_routes=tuple(str(route) for route in admin.get("admin_routes", [])),
         role_names=tuple(str(role["display_name"]) for role in context.get("roles", [])),
         data_sources=tuple(
@@ -231,50 +288,11 @@ def build_tenant_admin_section_from_context(context: dict[str, Any]) -> TenantAd
     )
 
 
-def generate_kpis(year: int, region_scale: float, scenario_factor: float) -> list[MonthlyKpi]:
-    rng = Random(year * 97)
-    base_revenue = 6.4 * region_scale * scenario_factor
-    base_cost = 2.5 * region_scale
-    records: list[MonthlyKpi] = []
-    for index, month in enumerate(MONTHS):
-        seasonality = 0.92 + (index / 30)
-        revenue = base_revenue * seasonality + rng.uniform(-0.18, 0.18)
-        gross_margin = max(45.0, min(67.0, 53 + index * 0.55 + rng.uniform(-1.2, 1.2)))
-        operating_cost = base_cost * (0.97 + index / 80) + rng.uniform(-0.07, 0.07)
-        nps = int(max(24, min(71, 44 + index + rng.randint(-2, 3))))
-        churn = max(1.6, min(6.2, 4.9 - index * 0.18 + rng.uniform(-0.22, 0.22)))
-        leads = int((1220 + index * 54) * region_scale * scenario_factor + rng.randint(-35, 35))
-        win_rate = max(16.0, min(43.0, 23 + index * 0.75 + rng.uniform(-0.8, 0.8)))
-        records.append(
-            MonthlyKpi(
-                month=month,
-                revenue_million_eur=round(revenue, 2),
-                gross_margin_pct=round(gross_margin, 1),
-                operating_cost_million_eur=round(operating_cost, 2),
-                nps=nps,
-                churn_pct=round(churn, 2),
-                lead_volume=leads,
-                win_rate_pct=round(win_rate, 2),
-            )
-        )
-    return records
-
-
-def build_card(title: str, value: str, delta: str) -> str:
-    return (
-        "<div class='metric-card'>"
-        f"<div class='metric-title'>{title}</div>"
-        f"<div class='metric-value'>{value}</div>"
-        f"<div class='metric-delta'>{delta}</div>"
-        "</div>"
-    )
-
-
 def main() -> None:
     import streamlit as st
 
     st.set_page_config(
-        page_title="SCAS Executive Dashboard",
+        page_title="SCAS Tenant Operations",
         page_icon=":material/monitoring:",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -284,42 +302,44 @@ def main() -> None:
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
         .stApp {
-            background: radial-gradient(
-                1200px 500px at 10% -5%,
-                #dcecff 0%,
-                #f7f9fc 40%,
-                #f4f7fb 100%
-            );
+            background: #f6f8fb;
         }
-        h1, h2, h3, h4 { font-family: "Manrope", sans-serif; letter-spacing: -0.02em; }
+        h1, h2, h3, h4 { font-family: "Manrope", sans-serif; letter-spacing: 0; }
         p, div, span, label { font-family: "Manrope", sans-serif; }
-        [data-testid="stSidebar"] { background: linear-gradient(180deg, #10223f 0%, #1c365e 100%); }
+        [data-testid="stSidebar"] { background: #10223f; }
         [data-testid="stSidebar"] * { color: #eef4ff !important; }
-        .metric-card {
-            border-radius: 14px;
+        .area-tile {
+            min-height: 154px;
+            border-radius: 8px;
             background: #ffffff;
             border: 1px solid #dbe4f0;
-            padding: 14px 16px;
-            box-shadow: 0 8px 22px rgba(28, 54, 94, 0.08);
+            padding: 16px 18px;
         }
-        .metric-title { color: #4d617f; font-size: 0.86rem; font-weight: 700; }
-        .metric-value { color: #0b1b35; font-size: 1.55rem; font-weight: 800; margin-top: 4px; }
-        .metric-delta { color: #21764e; font-size: 0.82rem; font-weight: 700; margin-top: 4px; }
-        .hero-card {
-            border-radius: 18px;
-            background: linear-gradient(110deg, #0f2f52 0%, #15477a 60%, #266199 100%);
-            color: #f5f9ff;
-            padding: 18px 22px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+        .area-title {
+            color: #0b1b35;
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: 6px;
         }
-        .hero-kicker {
+        .area-description {
+            color: #415572;
+            font-size: 0.9rem;
+            min-height: 48px;
+            margin-bottom: 12px;
+        }
+        .area-meta {
+            color: #2f654d;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .tenant-kicker {
+            color: #52657f;
             font-size: 0.82rem;
-            letter-spacing: 0.08em;
+            letter-spacing: 0;
             text-transform: uppercase;
-            opacity: 0.82;
+            font-weight: 800;
         }
-        .hero-title { font-size: 1.7rem; font-weight: 800; margin: 4px 0 2px 0; }
-        .hero-copy { font-size: 0.96rem; opacity: 0.9; max-width: 820px; }
+        .tenant-subtitle { color: #415572; font-size: 0.95rem; margin-top: -8px; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -333,25 +353,22 @@ def main() -> None:
         options=sorted(tenants),
         index=sorted(tenants).index("liquisto") if "liquisto" in tenants else 0,
     )
-    selected_year = st.sidebar.selectbox("Geschäftsjahr", [2026, 2025, 2024], index=0)
-    selected_regions = st.sidebar.multiselect(
-        "Regionen",
-        options=list(REGION_FACTORS.keys()),
-        default=["DACH", "UK & Ireland"],
+    selected_tenant = tenants[tenant_id]
+    available_roles = {
+        str(role["display_name"]): str(role["id"])
+        for role in selected_tenant.get("role_bundles", [])
+    }
+    selected_role_ids = role_ids_from_env(selected_tenant)
+    selected_role_labels = tuple(
+        label for label, role_id in available_roles.items() if role_id in selected_role_ids
     )
-    scenario = st.sidebar.radio("Szenario", options=list(SCENARIO_FACTORS.keys()), index=0)
-    risk_tolerance = st.sidebar.slider("Risiko-Toleranz", 0, 100, 55, 5)
+    st.sidebar.caption("Aktive Rollen")
+    st.sidebar.write(", ".join(selected_role_labels) or "Keine")
 
-    region_scale = sum(REGION_FACTORS[region] for region in selected_regions) / max(
-        len(selected_regions),
-        1,
-    )
-    kpis = generate_kpis(selected_year, region_scale, SCENARIO_FACTORS[scenario])
-    last = kpis[-1]
-    first = kpis[0]
-    months = [row.month for row in kpis]
     tenant_shell = build_tenant_shell(tenants[tenant_id])
     tenant_admin = build_tenant_admin_section(tenants[tenant_id])
+    workspace_areas = build_workspace_areas(selected_tenant, selected_role_ids)
+    granted_capabilities = granted_capabilities_for_roles(selected_tenant, selected_role_ids)
     api_config = tenant_admin_api_config_from_env()
     if api_config is not None:
         try:
@@ -365,7 +382,17 @@ def main() -> None:
         except Exception as error:  # pragma: no cover - defensive Streamlit runtime fallback.
             st.warning(f"Tenant Admin API nicht erreichbar: {error}")
 
+    if tenant_shell.logo_path:
+        logo_path = REPO_ROOT / tenant_shell.logo_path
+        if logo_path.exists():
+            st.image(str(logo_path), width=160)
+
+    st.markdown("<div class='tenant-kicker'>Tenant Operations</div>", unsafe_allow_html=True)
     st.title(tenant_shell.display_name)
+    st.markdown(
+        f"<div class='tenant-subtitle'>{tenant_shell.legal_name}</div>",
+        unsafe_allow_html=True,
+    )
     shell_cols = st.columns([1.1, 1.1, 1.1, 1.6])
     shell_cols[0].metric("Tenant", tenant_shell.tenant_id)
     shell_cols[1].metric("Status", tenant_shell.status)
@@ -381,154 +408,40 @@ def main() -> None:
     admin_cols[2].subheader("Datenquellen")
     admin_cols[2].write(", ".join(tenant_shell.data_sources) or "Keine")
 
-    users_tab, roles_tab, settings_tab = st.tabs(
-        ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen"]
-    )
-    with users_tab:
-        st.table(list(tenant_admin.users))
-    with roles_tab:
-        st.table(list(tenant_admin.roles))
-    with settings_tab:
-        st.json(tenant_admin.settings)
+    st.divider()
+    st.subheader("Freigeschaltete Bereiche")
+    if not workspace_areas:
+        st.error("Keine Bereiche für die aktuelle Tenant-Rolle freigeschaltet.")
+    else:
+        area_columns = st.columns(min(3, len(workspace_areas)))
+        for index, area in enumerate(workspace_areas):
+            with area_columns[index % len(area_columns)]:
+                st.markdown(
+                    f"""
+                    <div class="area-tile">
+                        <div class="area-title">{escape(area.display_name)}</div>
+                        <div class="area-description">{escape(area.description)}</div>
+                        <div class="area-meta">
+                            Route: {escape(area.route)} |
+                            Capability: {escape(area.required_capability)}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-    st.markdown(
-        f"""
-        <div class="hero-card">
-            <div class="hero-kicker">SCAS Business Intelligence</div>
-            <div class="hero-title">Executive Command Center</div>
-            <div class="hero-copy">
-                Stand: {date.today().strftime("%d.%m.%Y")} | Szenario: {scenario} |
-                Fokusregionen:
-                {", ".join(selected_regions) if selected_regions else "Keine Auswahl"}.
-                Diese Ansicht verbindet Umsatz-, Operations- und Risiko-Indikatoren
-                für schnelle Führungsentscheidungen.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.write("")
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.markdown(
-        build_card(
-            "Umsatz YTD",
-            f"{sum(row.revenue_million_eur for row in kpis):.1f} Mio. EUR",
-            f"{((last.revenue_million_eur / first.revenue_million_eur) - 1) * 100:+.1f}% vs Jan",
-        ),
-        unsafe_allow_html=True,
-    )
-    c2.markdown(
-        build_card(
-            "Rohertragsmarge",
-            f"{last.gross_margin_pct:.1f}%",
-            f"{last.gross_margin_pct - first.gross_margin_pct:+.1f} pp YTD",
-        ),
-        unsafe_allow_html=True,
-    )
-    c3.markdown(
-        build_card(
-            "Pipeline Leads",
-            f"{last.lead_volume:,}".replace(",", "."),
-            f"{last.win_rate_pct:.1f}% Win Rate",
-        ),
-        unsafe_allow_html=True,
-    )
-    c4.markdown(
-        build_card(
-            "Churn",
-            f"{last.churn_pct:.2f}%",
-            f"{first.churn_pct - last.churn_pct:+.2f} pp Improvement",
-        ),
-        unsafe_allow_html=True,
-    )
-
-    overview, growth, operations, risk = st.tabs(
-        ["Management Overview", "Growth Engine", "Operations", "Risk & Compliance"]
-    )
-
-    with overview:
-        left, right = st.columns([1.4, 1])
-        left.subheader("Umsatzentwicklung (Mio. EUR)")
-        overview_cost_revenue = {
-            "Month": months,
-            "Umsatz": [row.revenue_million_eur for row in kpis],
-            "Kosten": [row.operating_cost_million_eur for row in kpis],
-        }
-        left.line_chart(
-            overview_cost_revenue,
-            x="Month",
-            y_label="Mio. EUR",
-            color=["#1d4d81", "#c77131"],
+    if "tenant-admin" in granted_capabilities:
+        users_tab, roles_tab, settings_tab = st.tabs(
+            ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen"]
         )
-        right.subheader("Profitabilität")
-        overview_margin = {
-            "Month": months,
-            "Marge %": [row.gross_margin_pct for row in kpis],
-        }
-        right.area_chart(
-            overview_margin,
-            x="Month",
-            y_label="%",
-            color=["#2f7d4f"],
-        )
-
-    with growth:
-        l_col, r_col = st.columns([1, 1])
-        l_col.subheader("Demand Funnel")
-        growth_funnel = {
-            "Month": months,
-            "Leads": [row.lead_volume for row in kpis],
-            "Deals (approx.)": [int(row.lead_volume * row.win_rate_pct / 100) for row in kpis],
-        }
-        l_col.bar_chart(
-            growth_funnel,
-            x="Month",
-            y_label="Volumen",
-            color=["#2c5c94", "#399874"],
-        )
-        r_col.subheader("Customer Experience")
-        growth_experience = {
-            "Month": months,
-            "NPS": [row.nps for row in kpis],
-            "Churn %": [row.churn_pct * 10 for row in kpis],
-        }
-        r_col.line_chart(
-            growth_experience,
-            x="Month",
-            y_label="Index",
-            color=["#164170", "#c14f36"],
-        )
-        st.caption("Hinweis: `Churn %` ist für gemeinsame Skalierung im Chart x10 dargestellt.")
-
-    with operations:
-        st.subheader("Operative Steuerung")
-        op_col1, op_col2, op_col3 = st.columns(3)
-        op_col1.metric("Kosten letzter Monat", f"{last.operating_cost_million_eur:.2f} Mio. EUR")
-        op_col2.metric(
-            "Effizienzquote",
-            f"{(last.revenue_million_eur / last.operating_cost_million_eur):.2f}x",
-        )
-        op_col3.metric("Delivery-Risikoindex", f"{max(8, 100 - risk_tolerance):.0f}/100")
-        st.progress(min(100, int(last.win_rate_pct * 2.2)), text="Go-to-Market Readiness")
-        st.progress(min(100, int(last.gross_margin_pct * 1.4)), text="Margin Resilience")
-
-    with risk:
-        st.subheader("Risikobewertung")
-        risk_score = max(10, min(92, 80 - risk_tolerance + int(last.churn_pct * 3)))
-        control_score = max(8, min(95, risk_tolerance + int(last.gross_margin_pct / 2)))
-        risk_col1, risk_col2 = st.columns(2)
-        risk_col1.metric("Risk Exposure", f"{risk_score}/100", delta="-5 vs Vorquartal")
-        risk_col2.metric("Control Strength", f"{control_score}/100", delta="+7 vs Vorquartal")
-        st.warning(
-            "Empfehlung: Fokus auf Kundenbindung in Regionen mit hoher Wachstumsdynamik,"
-            " wenn Risiko-Toleranz unter 60 gesetzt ist."
-            if risk_tolerance < 60
-            else (
-                "Empfehlung: Kontrollniveau stabil; nächster Hebel liegt in der "
-                "Skalierung des Demand Funnels."
-            )
-        )
+        with users_tab:
+            st.table(list(tenant_admin.users))
+        with roles_tab:
+            st.table(list(tenant_admin.roles))
+        with settings_tab:
+            st.json(tenant_admin.settings)
+    else:
+        st.info("Admin-Bereiche sind für die aktuelle Rolle nicht freigeschaltet.")
 
 
 if __name__ == "__main__":

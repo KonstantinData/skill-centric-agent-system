@@ -24,7 +24,9 @@ def test_business_ui_loads_liquisto_tenant_shell() -> None:
 
     assert shell.tenant_id == "liquisto"
     assert shell.area_id == "liquisto"
+    assert shell.legal_name == "Liquisto Technologies GmbH"
     assert shell.hostname == "liquisto.condata.io"
+    assert shell.logo_path == "assets/images/liquisto/liquisto_logo.png"
     assert shell.admin_routes == ("/admin/users", "/admin/roles", "/admin/settings")
     assert shell.role_names == ("Tenant Owner", "Researcher")
     assert shell.data_sources == ("Liquisto Website",)
@@ -47,6 +49,46 @@ def test_business_ui_builds_read_only_tenant_admin_sections() -> None:
     assert admin.roles[0]["capabilities"] == "research, tenant-admin"
     assert admin.settings["assignment_model"] == "users-receive-roles-only"
     assert admin.settings["shared_promotion_allowed"] == "False"
+
+
+def test_business_ui_builds_research_tiles_for_researcher_role() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+
+    areas = streamlit_business_ui_app.build_workspace_areas(
+        tenants["liquisto"],
+        ("liquisto-researcher",),
+    )
+
+    assert [area.area_id for area in areas] == ["research"]
+    assert areas[0].route == "/research"
+    assert areas[0].required_capability == "research"
+    assert areas[0].admin_only is False
+
+
+def test_business_ui_builds_admin_tiles_only_for_admin_capability() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+
+    owner_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenants["liquisto"],
+        ("liquisto-owner",),
+    )
+    unknown_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenants["liquisto"],
+        ("unknown-role",),
+    )
+
+    assert [area.area_id for area in owner_areas] == ["research", "tenant-admin"]
+    assert owner_areas[1].admin_only is True
+    assert unknown_areas == ()
+
+
+def test_business_ui_role_ids_from_env_does_not_accept_unknown_roles(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv("SCAS_UI_ROLE_IDS", "unknown-role")
+
+    assert streamlit_business_ui_app.role_ids_from_env(tenants["liquisto"]) == (
+        "liquisto-researcher",
+    )
 
 
 def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) -> None:

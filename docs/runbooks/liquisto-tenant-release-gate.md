@@ -10,9 +10,9 @@ ready beyond local fixture-backed development.
 Status: `not-production-ready`
 
 The repository now contains a setup-state Liquisto tenant fixture, hostname
-authority evidence, tenant admin context API coverage, a tenant-aware UI shell,
-read-only admin UI, role-based task intake, tenant data-source connector
-coverage, and tenant isolation tests.
+authority evidence, tenant admin context API coverage, a tenant-aware operations
+UI shell with role-derived workspace areas, read-only admin UI, role-based task
+intake, tenant data-source connector coverage, and tenant isolation tests.
 
 Production readiness is intentionally blocked until the authoritative live
 infrastructure checks below pass.
@@ -40,7 +40,8 @@ The local dry run proves:
 - the Runtime Profile Composer and Runtime Enforcer reject invalid tenant
   authority before execution,
 - tenant data-source access is mediated through role grants,
-- tenant UI surfaces are read-only and fixture-backed,
+- tenant UI surfaces derive visible workspace areas from tenant roles and do not
+  expose demo-only KPI paths,
 - the Control API Worker compiles, tests, and dry-runs.
 
 ## Live Dev Gate

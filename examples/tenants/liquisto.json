@@ -4,12 +4,12 @@
   "area_id": "liquisto",
   "display_name": "Liquisto",
   "legal_profile": {
-    "legal_name": "Liquisto",
+    "legal_name": "Liquisto Technologies GmbH",
     "registered_address": {
-      "street": "Pending legal bootstrap",
-      "street_number": "0",
-      "postal_code": "00000",
-      "city": "Pending legal bootstrap",
+      "street": "Straße",
+      "street_number": "60, 3",
+      "postal_code": "13158",
+      "city": "Berlin",
       "country": "Germany"
     },
     "legal_representatives": [
@@ -183,5 +183,32 @@
     "knowledge-scope-validator",
     "user-permission-validator",
     "admin-action-validator"
-  ]
+  ],
+  "ui_profile": {
+    "logo_path": "assets/images/liquisto/liquisto_logo.png",
+    "landing": {
+      "type": "internal-operations-dashboard",
+      "area_presentation": "tiles"
+    },
+    "workspace_areas": [
+      {
+        "id": "research",
+        "display_name": "Research",
+        "description": "Tenant-scoped research workspace backed by role-derived data-source grants.",
+        "route": "/research",
+        "required_capability": "research",
+        "admin_only": false,
+        "status": "active"
+      },
+      {
+        "id": "tenant-admin",
+        "display_name": "Admin Dashboard",
+        "description": "Tenant administration for users, roles, settings, and launch governance.",
+        "route": "/admin",
+        "required_capability": "tenant-admin",
+        "admin_only": true,
+        "status": "active"
+      }
+    ]
+  }
 }

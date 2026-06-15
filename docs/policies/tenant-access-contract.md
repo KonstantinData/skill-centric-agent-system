@@ -31,10 +31,17 @@ The registry entry contains:
 - tenant-local memory and knowledge scopes,
 - tenant-owned data sources,
 - tenant-local role bundles,
+- optional tenant UI profile metadata,
 - policy bundle and validators.
 
 Tenant legal and contact metadata describes the company. It does not grant
 runtime authority.
+
+Tenant UI profile metadata may define tenant branding and workspace areas such
+as `research` or `tenant-admin`. UI areas are display and navigation metadata
+only. Visibility must be derived from tenant-local role capabilities; the UI
+profile must not grant capabilities, data-source access, skills, tools,
+policies, validators, memory scopes, or knowledge scopes.
 
 The Cloudflare Control Plane persists the runtime-relevant tenant registry
 projection in D1. The storage contract lives in:
