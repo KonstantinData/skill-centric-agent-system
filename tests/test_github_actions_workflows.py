@@ -361,6 +361,7 @@ def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
     assert f"SCAS_STAGING_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_PROD_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert "Owner principal: stored in environment-scoped GitHub secret; not printed" in workflow
+    assert "scas-tenant-admin-bootstrap/1.0" in workflow
     assert "tenant-admin-bootstrap-evidence/bootstrap.md" in workflow
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
     assert "/tenant-admin/tenants/{tenant_id}/memberships" in workflow

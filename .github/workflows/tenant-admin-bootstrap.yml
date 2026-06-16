@@ -149,6 +149,7 @@ jobs:
                   headers={
                       "Authorization": f"Bearer {control_api_token}",
                       "Content-Type": "application/json",
+                      "User-Agent": "scas-tenant-admin-bootstrap/1.0",
                       "x-scas-tenant-hostname": hostname,
                   },
               )

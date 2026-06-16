@@ -241,6 +241,7 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
         captured["url"] = request.full_url
         captured["authorization"] = request.headers["Authorization"]
         captured["hostname"] = request.headers["X-scas-tenant-hostname"]
+        captured["user_agent"] = request.headers["User-agent"]
         captured["timeout"] = timeout
         return FakeResponse()
 
@@ -263,6 +264,7 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
         "url": "https://control-api.example.invalid/tenant-admin/tenants/liquisto",
         "authorization": "Bearer tenant-admin-token",
         "hostname": "liquisto.condata.io",
+        "user_agent": "scas-streamlit-business-ui/1.0",
         "timeout": 3.0,
     }
     assert shell.role_names == ("Tenant Owner",)
