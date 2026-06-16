@@ -376,6 +376,7 @@ def load_tenant_admin_context_from_api(
             "authorization": f"Bearer {config.token}",
             "x-scas-tenant-hostname": hostname,
             "accept": "application/json",
+            "user-agent": "scas-streamlit-business-ui/1.0",
         },
         method="GET",
     )
