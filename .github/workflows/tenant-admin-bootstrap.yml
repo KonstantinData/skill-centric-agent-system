@@ -175,11 +175,11 @@ jobs:
               )
 
           context = request_json(f"/tenant-admin/tenants/{tenant_id}")
-          memberships = context.get("memberships", [])
+          memberships = context.get("users", [])
           matching = [
               membership
               for membership in memberships
-              if membership.get("id") == membership_id
+              if membership.get("membership_id") == membership_id
               and membership.get("status") == "active"
               and role_id in membership.get("role_ids", [])
           ]
