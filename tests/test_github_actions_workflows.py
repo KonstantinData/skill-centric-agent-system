@@ -106,9 +106,13 @@ def test_ci_workflow_runs_repository_validation() -> None:
 def test_ci_workflow_references_required_infrastructure_secrets() -> None:
     workflow = load_ci_workflow()
     required_secrets = {
-        "CLOUDFLARE_ACCOUNT_ID",
-        "CLOUDFLARE_API_TOKEN",
         "CLOUDFLARE_ZONE_ID",
+        "SCAS_DEV_CLOUDFLARE_ACCOUNT_ID",
+        "SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN",
+        "SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID",
+        "SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN",
+        "SCAS_PROD_CLOUDFLARE_ACCOUNT_ID",
+        "SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN",
         "HETZNER_HOST",
         "HETZNER_SSH_KEY",
         "HETZNER_USER",
@@ -119,6 +123,7 @@ def test_ci_workflow_references_required_infrastructure_secrets() -> None:
 
     for secret in required_secrets:
         assert f"secrets.{secret}" in workflow
+    assert "secrets.CLOUDFLARE_API_TOKEN" not in workflow
 
 
 def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
@@ -138,14 +143,17 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
         "SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}"
         in workflow
     )
-    assert "SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}" in workflow
+    assert (
+        "SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN: "
+        "${{ secrets.SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN }}"
+    ) in workflow
     assert (
         "SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: "
         "${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}"
     ) in workflow
     assert (
-        "SCAS_STAGING_CLOUDFLARE_API_TOKEN: "
-        "${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}"
+        "SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN: "
+        "${{ secrets.SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN }}"
     ) in workflow
     assert "LEGACY_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in workflow
     assert "LEGACY_CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}" in workflow
@@ -153,6 +161,9 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
     assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY' in workflow
     assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID' in workflow
     assert 'resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN' in workflow
+    assert "CLOUDFLARE_DEPLOY_TOKEN must allow Worker script writes" in workflow
+    assert "SCAS_DEV_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "LEGACY_CLOUDFLARE_API_TOKEN" not in workflow
     assert "AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}" in workflow
     assert '"AI_GATEWAY_AUTH_TOKEN"' in workflow
     assert "RUN_AI_GATEWAY_LIVE_SMOKE: ${{ inputs.run_ai_gateway_live_smoke }}" in workflow
@@ -211,6 +222,9 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "secrets.SCAS_DEV_OPENAI_API_KEY" in workflow
     assert "secrets.SCAS_STAGING_OPENAI_API_KEY" in workflow
     assert "secrets.SCAS_PROD_OPENAI_API_KEY" in workflow
+    assert "secrets.SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN" in workflow
+    assert "secrets.SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN" in workflow
+    assert "secrets.SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN" in workflow
     assert "secrets.SCAS_DEV_CONTROL_API_TOKEN" in workflow
     assert "secrets.SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "secrets.SCAS_PROD_CONTROL_API_TOKEN" in workflow
@@ -245,6 +259,7 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "/opt/scas/runtime/${TARGET_ENVIRONMENT}/live-gates" in workflow
     assert "live-runtime-handler-binding-evidence" in workflow
     assert "live-runtime-evidence/live-dev-e2e.json" in workflow
+    assert "SCAS_DEV_CLOUDFLARE_API_TOKEN" not in workflow
 
 
 def test_live_runtime_gates_workflow_runs_postgres_concurrency_smoke() -> None:
@@ -262,7 +277,9 @@ def test_control_api_worker_secrets_workflow_syncs_environment_secrets() -> None
 
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
-    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "LEGACY_CLOUDFLARE_API_TOKEN" not in workflow
     assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "SCAS_STAGING_OPENAI_API_KEY" in workflow
     assert "CONTROL_API_COMPOSITION_TOKEN" in workflow
@@ -385,8 +402,11 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
     assert "workflow_dispatch:" in workflow
     assert "require_worker_route:" in workflow
     assert "CLOUDFLARE_ZONE_ID" in workflow
-    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" in workflow
-    assert "SCAS_PROD_CLOUDFLARE_API_TOKEN" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN" in workflow
+    assert "SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "SCAS_PROD_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "Cloudflare evidence token" in workflow
     assert "export CLOUDFLARE_API_TOKEN" in workflow
     assert "/dns_records?type=A&name=" in workflow
     assert "/settings/ssl" in workflow
