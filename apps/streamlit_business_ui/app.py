@@ -32,7 +32,9 @@ class TenantShell:
 class TenantAdminSection:
     users: tuple[dict[str, Any], ...]
     roles: tuple[dict[str, Any], ...]
+    workflows: tuple[dict[str, Any], ...]
     settings: dict[str, Any]
+    audit_summary: str
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,20 @@ class TenantWorkspaceArea:
     required_capability: str
     admin_only: bool
     status: str
+
+
+@dataclass(frozen=True)
+class TenantSession:
+    principal_id: str
+    tenant_id: str
+    membership_id: str
+    role_ids: tuple[str, ...]
+    capabilities: frozenset[str]
+    source: str
+
+
+class TenantSessionError(ValueError):
+    """Raised when the UI cannot establish tenant session authority."""
 
 
 def load_tenant_registry(tenants_dir: Path = TENANTS_DIR) -> dict[str, dict[str, Any]]:
@@ -92,6 +108,7 @@ def build_tenant_shell(tenant: dict[str, Any]) -> TenantShell:
 
 def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
     admin_model = tenant.get("admin_model", {})
+    admin_routes = tuple(str(route) for route in admin_model.get("admin_routes", []))
     role_bundles = tuple(
         {
             "role": str(role["display_name"]),
@@ -123,14 +140,27 @@ def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
     return TenantAdminSection(
         users=users,
         roles=role_bundles,
+        workflows=tuple(
+            {
+                "workflow": route.removeprefix("/admin/").replace("-", " ").title(),
+                "route": route,
+                "authority": "tenant-admin",
+                "mode": "read-only fixture",
+            }
+            for route in admin_routes
+        ),
         settings={
             "assignment_model": str(admin_model.get("assignment_model", "")),
-            "admin_routes": ", ".join(str(route) for route in admin_model.get("admin_routes", [])),
+            "admin_routes": ", ".join(admin_routes),
             "shared_promotion_allowed": str(
                 tenant.get("memory", {}).get("shared_promotion_allowed", False)
             ),
             "policy_bundle": ", ".join(str(policy) for policy in tenant.get("policy_bundle", [])),
         },
+        audit_summary=(
+            "Fixture mode is read-only. Tenant admin writes must go through the "
+            "Control API audit event path."
+        ),
     )
 
 
@@ -174,6 +204,123 @@ def granted_capabilities_for_roles(
             continue
         capabilities.update(str(item) for item in role.get("capability_grants", []))
     return frozenset(capabilities)
+
+
+def build_fixture_session(tenant: dict[str, Any]) -> TenantSession:
+    role_ids = role_ids_from_env(tenant)
+    return TenantSession(
+        principal_id="local-fixture-user",
+        tenant_id=str(tenant["tenant_id"]),
+        membership_id="local-fixture-membership",
+        role_ids=role_ids,
+        capabilities=granted_capabilities_for_roles(tenant, role_ids),
+        source="local-fixture",
+    )
+
+
+def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
+    mode = os.environ.get("SCAS_UI_AUTH_MODE", "fixture").strip().lower()
+    if mode in {"", "fixture", "local"}:
+        return build_fixture_session(tenant)
+    if mode != "required":
+        raise TenantSessionError(f"Unsupported SCAS_UI_AUTH_MODE: {mode}")
+
+    raw_context = os.environ.get("SCAS_UI_SESSION_CONTEXT_JSON", "").strip()
+    if not raw_context:
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is required.")
+    try:
+        context = json.loads(raw_context)
+    except json.JSONDecodeError as error:
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is invalid JSON.") from error
+    if not isinstance(context, dict):
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON must be an object.")
+
+    tenant_id = str(context.get("tenant_id", ""))
+    if tenant_id != str(tenant["tenant_id"]):
+        raise TenantSessionError("Session tenant does not match the selected tenant.")
+    principal_id = str(context.get("principal_id", "")).strip()
+    membership_id = str(context.get("membership_id", "")).strip()
+    if not principal_id or not membership_id:
+        raise TenantSessionError("Session principal_id and membership_id are required.")
+
+    available_roles = {
+        str(role["id"])
+        for role in tenant.get("role_bundles", [])
+        if isinstance(role, dict) and role.get("id")
+    }
+    role_ids = tuple(str(role_id) for role_id in context.get("role_ids", []))
+    if not role_ids:
+        raise TenantSessionError("Session role_ids are required.")
+    unknown_roles = sorted(set(role_ids) - available_roles)
+    if unknown_roles:
+        raise TenantSessionError(
+            "Session references unknown tenant roles: " + ", ".join(unknown_roles)
+        )
+
+    trusted_upstream = (
+        os.environ.get("SCAS_UI_UPSTREAM_AUTH_TRUSTED", "").strip().lower()
+        in {"1", "true", "yes"}
+    )
+    if not trusted_upstream:
+        raise TenantSessionError("Trusted upstream authentication is required.")
+
+    return TenantSession(
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+        membership_id=membership_id,
+        role_ids=role_ids,
+        capabilities=granted_capabilities_for_roles(tenant, role_ids),
+        source="trusted-upstream",
+    )
+
+
+def _session_to_state(session: TenantSession) -> dict[str, Any]:
+    return {
+        "principal_id": session.principal_id,
+        "tenant_id": session.tenant_id,
+        "membership_id": session.membership_id,
+        "role_ids": list(session.role_ids),
+        "capabilities": sorted(session.capabilities),
+        "source": session.source,
+    }
+
+
+def _session_from_state(state: dict[str, Any]) -> TenantSession:
+    return TenantSession(
+        principal_id=str(state["principal_id"]),
+        tenant_id=str(state["tenant_id"]),
+        membership_id=str(state["membership_id"]),
+        role_ids=tuple(str(role_id) for role_id in state.get("role_ids", [])),
+        capabilities=frozenset(str(item) for item in state.get("capabilities", [])),
+        source=str(state["source"]),
+    )
+
+
+def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
+    mode = os.environ.get("SCAS_UI_AUTH_MODE", "fixture").strip().lower()
+    if mode in {"", "fixture", "local"}:
+        return build_fixture_session(tenant)
+
+    stored = st.session_state.get("scas_tenant_session")
+    if isinstance(stored, dict) and stored.get("tenant_id") == tenant.get("tenant_id"):
+        return _session_from_state(stored)
+
+    trusted_upstream = (
+        os.environ.get("SCAS_UI_UPSTREAM_AUTH_TRUSTED", "").strip().lower()
+        in {"1", "true", "yes"}
+    )
+    if trusted_upstream:
+        try:
+            session = authenticated_session_from_env(tenant)
+        except TenantSessionError as error:
+            st.error(f"Tenant-Session nicht verfuegbar: {error}")
+            st.stop()
+        st.session_state["scas_tenant_session"] = _session_to_state(session)
+        return session
+
+    st.error("Tenant-Session nicht verfuegbar: trusted upstream authentication is required.")
+    st.stop()
+    raise RuntimeError("streamlit stop did not halt execution")
 
 
 def build_workspace_areas(
@@ -260,6 +407,9 @@ def build_tenant_shell_from_admin_context(context: dict[str, Any]) -> TenantShel
 
 
 def build_tenant_admin_section_from_context(context: dict[str, Any]) -> TenantAdminSection:
+    admin = context.get("admin", {})
+    admin_routes = tuple(str(route) for route in admin.get("admin_routes", []))
+    audit_events = context.get("audit_events", [])
     users = tuple(
         {
             "user": str(user["principal_id"]),
@@ -284,7 +434,21 @@ def build_tenant_admin_section_from_context(context: dict[str, Any]) -> TenantAd
     return TenantAdminSection(
         users=users,
         roles=roles,
+        workflows=tuple(
+            {
+                "workflow": route.removeprefix("/admin/").replace("-", " ").title(),
+                "route": route,
+                "authority": "tenant-admin",
+                "mode": "Control API",
+            }
+            for route in admin_routes
+        ),
         settings=dict(context.get("settings", {})),
+        audit_summary=(
+            f"{len(audit_events)} audit event(s) returned by the tenant admin context."
+            if isinstance(audit_events, list) and audit_events
+            else "Tenant admin write actions are traceable through Control API audit events."
+        ),
     )
 
 
@@ -358,17 +522,20 @@ def main() -> None:
         str(role["display_name"]): str(role["id"])
         for role in selected_tenant.get("role_bundles", [])
     }
-    selected_role_ids = role_ids_from_env(selected_tenant)
+    tenant_session = render_session_gate(st, selected_tenant)
+    selected_role_ids = tenant_session.role_ids
     selected_role_labels = tuple(
         label for label, role_id in available_roles.items() if role_id in selected_role_ids
     )
+    st.sidebar.caption("Session")
+    st.sidebar.write(tenant_session.principal_id)
     st.sidebar.caption("Aktive Rollen")
     st.sidebar.write(", ".join(selected_role_labels) or "Keine")
 
     tenant_shell = build_tenant_shell(tenants[tenant_id])
     tenant_admin = build_tenant_admin_section(tenants[tenant_id])
     workspace_areas = build_workspace_areas(selected_tenant, selected_role_ids)
-    granted_capabilities = granted_capabilities_for_roles(selected_tenant, selected_role_ids)
+    granted_capabilities = tenant_session.capabilities
     api_config = tenant_admin_api_config_from_env()
     if api_config is not None:
         try:
@@ -431,15 +598,18 @@ def main() -> None:
                 )
 
     if "tenant-admin" in granted_capabilities:
-        users_tab, roles_tab, settings_tab = st.tabs(
-            ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen"]
+        users_tab, roles_tab, settings_tab, audit_tab = st.tabs(
+            ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen", "Audit"]
         )
         with users_tab:
             st.table(list(tenant_admin.users))
         with roles_tab:
             st.table(list(tenant_admin.roles))
         with settings_tab:
+            st.table(list(tenant_admin.workflows))
             st.json(tenant_admin.settings)
+        with audit_tab:
+            st.info(tenant_admin.audit_summary)
     else:
         st.info("Admin-Bereiche sind für die aktuelle Rolle nicht freigeschaltet.")
 

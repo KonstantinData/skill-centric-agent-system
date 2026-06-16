@@ -43,6 +43,13 @@ only. Visibility must be derived from tenant-local role capabilities; the UI
 profile must not grant capabilities, data-source access, skills, tools,
 policies, validators, memory scopes, or knowledge scopes.
 
+Tenant UIs that are reachable outside local development must run in an
+authenticated session mode. The UI may use repository fixtures only for local
+contract verification. In authenticated mode, visible areas and admin access
+derive from server-owned tenant session context containing principal,
+membership, tenant, and role IDs. Local role override variables such as
+`SCAS_UI_ROLE_IDS` are not authority in authenticated mode.
+
 The Cloudflare Control Plane persists the runtime-relevant tenant registry
 projection in D1. The storage contract lives in:
 
