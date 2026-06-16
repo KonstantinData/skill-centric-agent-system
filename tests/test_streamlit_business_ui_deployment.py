@@ -43,7 +43,7 @@ def test_tenant_ui_deploy_workflow_is_manual_and_fail_closed() -> None:
     assert "upstream_auth_evidence_url:" in workflow
     assert "upstream_auth_evidence_url is required when apply_deploy=true" in workflow
     assert "confirm_production must be true for production deploys" in workflow
-    assert "compose paths must stay under /opt" in workflow
+    assert "remote_override_path must stay under /opt" in workflow
 
 
 def test_tenant_ui_deploy_workflow_builds_image_and_uploads_plan_artifact() -> None:
@@ -73,6 +73,11 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
+    assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
+    assert "Deprecated compatibility input; SCAS-managed deploy does not read it" in workflow
+    assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
+    assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
+    assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
@@ -84,6 +89,9 @@ def test_tenant_ui_deploy_workflow_has_rollback_and_evidence_contract() -> None:
     assert "previous_image" in workflow
     assert "Post-deploy health check failed." in workflow
     assert "Rolled back to previous image" in workflow
+    assert '127.0.0.1:${LOCAL_HEALTH_PORT}:8501' in workflow
+    assert "restart: unless-stopped" in workflow
+    assert "legacy compose files and .env are not read" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
     assert "deployment.md" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow

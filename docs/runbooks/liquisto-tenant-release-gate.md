@@ -118,9 +118,10 @@ gh workflow run tenant-ui-deploy.yml \
 Apply mode is manual-only and requires target-environment Hetzner secrets,
 `SCAS_<ENV>_UI_SESSION_CONTEXT_JSON`, `SCAS_<ENV>_TENANT_ADMIN_TOKEN`, and an
 `upstream_auth_evidence_url`. Production apply also requires
-`confirm_production=true`. The workflow writes sanitized deployment evidence and
-rolls back to the previous Compose service image if the post-deploy Streamlit
-health check fails.
+`confirm_production=true`. The workflow writes a complete SCAS-managed Compose
+file and intentionally does not read legacy host Compose files or host `.env`
+files. It writes sanitized deployment evidence and rolls back to the previous
+Compose service image if the post-deploy Streamlit health check fails.
 
 ## Tenant Admin Bootstrap
 
