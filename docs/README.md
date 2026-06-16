@@ -51,7 +51,10 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/first-productive-agent-operation.md`
 - `docs/runbooks/staging-provisioning-checklist.md`
 - `docs/runbooks/liquisto-tenant-dns-evidence.md`
+- `docs/runbooks/liquisto-tenant-admin-bootstrap.md`
 - `docs/runbooks/liquisto-tenant-release-gate.md`
+- `docs/runbooks/liquisto-tenant-rollback-deprovisioning.md`
+- `docs/runbooks/streamlit-business-ui-deployment.md`
 - `docs/runbooks/post-merge-lifecycle.md`
 - `docs/runbooks/notion-issue-tracking.md`
 
@@ -75,7 +78,8 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `apps/streamlit_task_intake_ui/`: thin Streamlit Task Intake surface for
   creating runtime-compatible task envelopes and local fixture-backed runtime
   runs.
-- `apps/streamlit_business_ui/`: standalone executive dashboard prototype.
+- `apps/streamlit_business_ui/`: tenant-aware Streamlit Business UI with a
+  manual deployment path in `.github/workflows/tenant-ui-deploy.yml`.
 
 ## Roadmap
 

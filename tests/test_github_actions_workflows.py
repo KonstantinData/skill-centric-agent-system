@@ -22,6 +22,7 @@ CONTROL_API_WORKER_SECRETS_WORKFLOW_PATH = (
 STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "staging-runtime-bootstrap.yml"
 )
+TENANT_UI_DEPLOY_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "tenant-ui-deploy.yml"
 
 
 def load_ci_workflow() -> str:
@@ -50,6 +51,10 @@ def load_control_api_worker_secrets_workflow() -> str:
 
 def load_staging_runtime_bootstrap_workflow() -> str:
     return STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_tenant_ui_deploy_workflow() -> str:
+    return TENANT_UI_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -285,6 +290,42 @@ def test_staging_runtime_bootstrap_workflow_does_not_rebuild_or_log_secrets() ->
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
     assert "The configured key is missing the expected OpenSSH private key header" in workflow
     assert "Expected first line" not in workflow
+
+
+def test_tenant_ui_deploy_workflow_is_manual_only_and_builds_first() -> None:
+    assert TENANT_UI_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_tenant_ui_deploy_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "apply_deploy:" in workflow
+    assert "default: false" in workflow
+    assert "deploy/streamlit-business-ui/Dockerfile" in workflow
+    assert "docker build" in workflow
+    assert "docker save" in workflow
+    assert "tenant-ui-deploy-plan" in workflow
+
+
+def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None:
+    workflow = load_tenant_ui_deploy_workflow()
+
+    assert "upstream_auth_evidence_url:" in workflow
+    assert "upstream_auth_evidence_url is required when apply_deploy=true" in workflow
+    assert "confirm_production must be true for production deploys" in workflow
+    assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_UI_AUTH_MODE=required" in workflow
+    assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
+
+
+def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
+    workflow = load_tenant_ui_deploy_workflow()
+
+    assert "previous_image" in workflow
+    assert "Post-deploy health check failed." in workflow
+    assert "Rolled back to previous image" in workflow
+    assert "_stcore/health" in workflow
+    assert "tenant-ui-deployment-evidence" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

@@ -1,6 +1,6 @@
 # Liquisto Tenant DNS Evidence
 
-Last checked: 2026-06-15 22:21 Europe/Berlin
+Last checked: 2026-06-16 12:40 Europe/Berlin
 
 This evidence records public DNS observations for the SCAS Liquisto tenant.
 Public DNS is routing evidence only. It is not an authorization boundary and it
@@ -31,7 +31,7 @@ Observed A records for `liquisto.condata.io`:
 
 | Resolver | TTL | A records |
 | --- | ---: | --- |
-| System resolver | 299 | `104.21.36.65`, `172.67.186.195` |
+| System resolver | 300 | `172.67.186.195`, `104.21.36.65` |
 | `1.1.1.1` | 300 | `104.21.36.65`, `172.67.186.195` |
 | `8.8.8.8` | 300 | `104.21.36.65`, `172.67.186.195` |
 

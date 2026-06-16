@@ -14,13 +14,13 @@
     },
     "legal_representatives": [
       {
-        "name": "Pending legal bootstrap",
+        "name": "Not stored in public fixture",
         "role": "Tenant Owner"
       }
     ],
     "commercial_register": {
-      "register_court": "Pending legal bootstrap",
-      "registration_number": "Pending legal bootstrap"
+      "register_court": "Not stored in public fixture",
+      "registration_number": "Not stored in public fixture"
     },
     "tax": {
       "tax_number": null,

@@ -113,6 +113,7 @@ def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
     assert_valid(tenant_registry_schema, liquisto)
     assert_tenant_registry_references_are_valid(liquisto)
     assert liquisto["legal_profile"]["legal_name"] == "Liquisto Technologies GmbH"
+    assert "Pending legal bootstrap" not in json.dumps(liquisto)
     assert liquisto["ui_profile"]["landing"] == {
         "type": "internal-operations-dashboard",
         "area_presentation": "tiles",
