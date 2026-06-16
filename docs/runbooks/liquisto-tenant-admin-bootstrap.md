@@ -21,6 +21,11 @@ Control API or an approved one-time operational bootstrap with equivalent
 server-side authorization and audit behavior. Do not hardcode the owner in
 `examples/tenants/liquisto.json`.
 
+The manual `Tenant Admin Bootstrap` workflow
+(`.github/workflows/tenant-admin-bootstrap.yml`) bootstraps staging and
+production from environment-scoped GitHub Actions secrets. It writes only
+sanitized membership, role, tenant, environment, and workflow evidence.
+
 ## Preconditions
 
 - The approved operational source contains the initial owner identity.

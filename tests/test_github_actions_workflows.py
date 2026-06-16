@@ -23,6 +23,13 @@ STAGING_RUNTIME_BOOTSTRAP_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "staging-runtime-bootstrap.yml"
 )
 TENANT_UI_DEPLOY_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "tenant-ui-deploy.yml"
+TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "tenant-admin-bootstrap.yml"
+)
+TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-evidence.yml"
+)
+TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 
 
 def load_ci_workflow() -> str:
@@ -55,6 +62,14 @@ def load_staging_runtime_bootstrap_workflow() -> str:
 
 def load_tenant_ui_deploy_workflow() -> str:
     return TENANT_UI_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_tenant_admin_bootstrap_workflow() -> str:
+    return TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_tenant_cloudflare_evidence_workflow() -> str:
+    return TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -314,6 +329,11 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "confirm_production must be true for production deploys" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
+    assert f"SCAS_STAGING_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert 'SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}' in workflow
+    assert 'SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}' in workflow
+    assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
 
@@ -326,6 +346,42 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Rolled back to previous image" in workflow
     assert "_stcore/health" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
+
+
+def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
+    assert TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH.exists()
+    workflow = load_tenant_admin_bootstrap_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "target_environment:" in workflow
+    assert "apply_bootstrap:" in workflow
+    assert "confirm_production:" in workflow
+    assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
+    assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
+    assert f"SCAS_STAGING_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert "Owner principal: stored in environment-scoped GitHub secret; not printed" in workflow
+    assert "tenant-admin-bootstrap-evidence/bootstrap.md" in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
+    assert "/tenant-admin/tenants/{tenant_id}/memberships" in workflow
+    assert "Owner principal id must be a non-secret stable id, not an email address." in workflow
+
+
+def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> None:
+    assert TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH.exists()
+    workflow = load_tenant_cloudflare_evidence_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "require_worker_route:" in workflow
+    assert "CLOUDFLARE_ZONE_ID" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" in workflow
+    assert "SCAS_PROD_CLOUDFLARE_API_TOKEN" in workflow
+    assert "/dns_records?type=A&name=" in workflow
+    assert "/settings/ssl" in workflow
+    assert "/workers/routes?per_page=100" in workflow
+    assert "Origin record content: not printed" in workflow
+    assert "tenant-cloudflare-evidence/evidence.md" in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

@@ -22,6 +22,8 @@ FORBIDDEN_BRAND = "liqui" + "sto"
 ALLOWED_TENANT_ONBOARDING_PATHS = {
     "apps/streamlit_business_ui/README.md",
     "apps/streamlit_business_ui/app.py",
+    ".github/workflows/tenant-admin-bootstrap.yml",
+    ".github/workflows/tenant-cloudflare-evidence.yml",
     ".github/workflows/tenant-ui-deploy.yml",
     "docs/README.md",
     "docs/runbooks/liquisto-tenant-admin-bootstrap.md",

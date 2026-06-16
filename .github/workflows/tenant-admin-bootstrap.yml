@@ -1,0 +1,229 @@
+name: Tenant Admin Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target Control API environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+        default: staging
+      tenant_id:
+        description: Tenant ID to bootstrap
+        required: true
+        type: string
+        default: liquisto
+      hostname:
+        description: Tenant hostname used for server-side authority resolution
+        required: true
+        type: string
+        default: liquisto.condata.io
+      apply_bootstrap:
+        description: Apply owner membership bootstrap
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true for target_environment=prod
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-admin-bootstrap-${{ github.ref }}-${{ inputs.target_environment }}-${{ inputs.tenant_id }}
+  cancel-in-progress: false
+
+jobs:
+  tenant-admin-bootstrap:
+    name: Bootstrap tenant admin owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      TENANT_ID: ${{ inputs.tenant_id }}
+      TENANT_HOSTNAME: ${{ inputs.hostname }}
+      APPLY_BOOTSTRAP: ${{ inputs.apply_bootstrap }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
+      SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
+      SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
+      SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
+
+    steps:
+      - name: Validate and resolve inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${TARGET_ENVIRONMENT}" in
+            staging)
+              CONTROL_API_URL="https://scas-control-api-staging.still-butterfly-bbff.workers.dev"
+              CONTROL_API_TOKEN="${SCAS_STAGING_CONTROL_API_TOKEN:-}"
+              OWNER_PRINCIPAL_ID="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            prod)
+              CONTROL_API_URL="https://scas-control-api-prod.still-butterfly-bbff.workers.dev"
+              CONTROL_API_TOKEN="${SCAS_PROD_CONTROL_API_TOKEN:-}"
+              OWNER_PRINCIPAL_ID="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              exit 1
+              ;;
+          esac
+
+          for value_name in TENANT_ID TENANT_HOSTNAME
+          do
+            value="${!value_name}"
+            if [[ ! "${value}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "::error::${value_name} contains unsupported characters."
+              exit 1
+            fi
+          done
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production bootstrap."
+            exit 1
+          fi
+
+          if [ -z "${CONTROL_API_TOKEN}" ]; then
+            echo "::error::Missing ${TARGET_ENVIRONMENT} Control API token."
+            exit 1
+          fi
+
+          if [ -z "${OWNER_PRINCIPAL_ID}" ]; then
+            echo "::error::Missing ${TARGET_ENVIRONMENT} Liquisto owner principal id secret."
+            exit 1
+          fi
+
+          if [[ ! "${OWNER_PRINCIPAL_ID}" =~ ^[a-z][a-z0-9-]*$ ]]; then
+            echo "::error::Owner principal id must be a non-secret stable id, not an email address."
+            exit 1
+          fi
+
+          {
+            printf 'CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"
+            printf 'CONTROL_API_TOKEN_B64=%s\n' "$(printf '%s' "${CONTROL_API_TOKEN}" | base64 -w0)"
+            printf 'OWNER_PRINCIPAL_ID_B64=%s\n' "$(printf '%s' "${OWNER_PRINCIPAL_ID}" | base64 -w0)"
+          } >> "${GITHUB_ENV}"
+
+      - name: Create or verify owner membership
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -d tenant-admin-bootstrap-evidence
+
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          target_environment = os.environ["TARGET_ENVIRONMENT"]
+          tenant_id = os.environ["TENANT_ID"]
+          hostname = os.environ["TENANT_HOSTNAME"]
+          apply_bootstrap = os.environ["APPLY_BOOTSTRAP"].lower() == "true"
+          control_api_url = os.environ["CONTROL_API_URL"].rstrip("/")
+          control_api_token = base64.b64decode(os.environ["CONTROL_API_TOKEN_B64"]).decode()
+          owner_principal_id = base64.b64decode(os.environ["OWNER_PRINCIPAL_ID_B64"]).decode()
+          membership_id = f"tm-{tenant_id}-initial-owner"
+          role_id = f"{tenant_id}-owner"
+
+          def request_json(path: str, method: str = "GET", body: dict | None = None) -> dict:
+              data = None if body is None else json.dumps(body).encode()
+              request = urllib.request.Request(
+                  f"{control_api_url}{path}",
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {control_api_token}",
+                      "Content-Type": "application/json",
+                      "x-scas-tenant-hostname": hostname,
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=12) as response:
+                      return json.loads(response.read().decode())
+              except urllib.error.HTTPError as error:
+                  response_body = error.read().decode(errors="replace")
+                  raise RuntimeError(
+                      f"{method} {path} returned HTTP {error.code}: {response_body}"
+                  ) from error
+
+          if apply_bootstrap:
+              request_json(
+                  f"/tenant-admin/tenants/{tenant_id}/memberships",
+                  method="POST",
+                  body={
+                      "id": membership_id,
+                      "principal_id": owner_principal_id,
+                      "status": "active",
+                      "role_ids": [role_id],
+                  },
+              )
+
+          context = request_json(f"/tenant-admin/tenants/{tenant_id}")
+          memberships = context.get("memberships", [])
+          matching = [
+              membership
+              for membership in memberships
+              if membership.get("id") == membership_id
+              and membership.get("status") == "active"
+              and role_id in membership.get("role_ids", [])
+          ]
+          if not matching:
+              raise RuntimeError("Owner membership was not found after bootstrap verification.")
+
+          collected_at = datetime.now(UTC).isoformat()
+          evidence = "\n".join(
+              [
+                  "# Tenant Admin Bootstrap Evidence",
+                  "",
+                  f"- Target environment: `{target_environment}`",
+                  f"- Tenant ID: `{tenant_id}`",
+                  f"- Hostname: `{hostname}`",
+                  f"- Membership ID: `{membership_id}`",
+                  f"- Role ID: `{role_id}`",
+                  f"- Apply bootstrap: `{str(apply_bootstrap).lower()}`",
+                  "- Owner principal: stored in environment-scoped GitHub secret; not printed",
+                  "- Verification: `passed`",
+                  f"- Collected at: `{collected_at}`",
+                  "",
+              ]
+          )
+          Path("tenant-admin-bootstrap-evidence/bootstrap.md").write_text(
+              evidence,
+              encoding="utf-8",
+          )
+          print(
+              json.dumps(
+                  {
+                      "target_environment": target_environment,
+                      "tenant_id": tenant_id,
+                      "membership_id": membership_id,
+                      "role_id": role_id,
+                      "apply_bootstrap": apply_bootstrap,
+                      "verification": "passed",
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Upload bootstrap evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-admin-bootstrap-${{ inputs.target_environment }}
+          path: tenant-admin-bootstrap-evidence/bootstrap.md
+          if-no-files-found: error

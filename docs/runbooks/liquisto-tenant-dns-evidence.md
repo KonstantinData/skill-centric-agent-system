@@ -74,3 +74,8 @@ authorized Cloudflare API read.
   an authoritative Cloudflare source before marking production routing complete.
 - Confirm TLS mode and Worker route binding for the tenant hostname before
   production release.
+
+The manual `Tenant Cloudflare Evidence` workflow
+(`.github/workflows/tenant-cloudflare-evidence.yml`) records authoritative
+Cloudflare DNS proxy, TLS mode, and Worker route evidence without printing the
+hidden origin record content.

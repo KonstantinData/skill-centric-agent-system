@@ -1,0 +1,173 @@
+name: Tenant Cloudflare Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target Cloudflare environment token
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+        default: prod
+      hostname:
+        description: Tenant hostname to verify
+        required: true
+        type: string
+        default: liquisto.condata.io
+      require_worker_route:
+        description: Require a Cloudflare Worker route for the hostname
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-cloudflare-evidence-${{ github.ref }}-${{ inputs.target_environment }}-${{ inputs.hostname }}
+  cancel-in-progress: false
+
+jobs:
+  tenant-cloudflare-evidence:
+    name: Verify tenant Cloudflare routing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      TENANT_HOSTNAME: ${{ inputs.hostname }}
+      REQUIRE_WORKER_ROUTE: ${{ inputs.require_worker_route }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      SCAS_STAGING_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}
+      SCAS_PROD_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Verify Cloudflare routing without exposing origin
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${TARGET_ENVIRONMENT}" in
+            staging)
+              CLOUDFLARE_API_TOKEN="${SCAS_STAGING_CLOUDFLARE_API_TOKEN:-}"
+              ;;
+            prod)
+              CLOUDFLARE_API_TOKEN="${SCAS_PROD_CLOUDFLARE_API_TOKEN:-}"
+              ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing ${TARGET_ENVIRONMENT} Cloudflare API token."
+            exit 1
+          fi
+          if [ -z "${CLOUDFLARE_ZONE_ID}" ]; then
+            echo "::error::Missing CLOUDFLARE_ZONE_ID."
+            exit 1
+          fi
+          if [[ ! "${TENANT_HOSTNAME}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::hostname contains unsupported characters."
+            exit 1
+          fi
+
+          install -d tenant-cloudflare-evidence
+
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          hostname = os.environ["TENANT_HOSTNAME"]
+          target_environment = os.environ["TARGET_ENVIRONMENT"]
+          require_worker_route = os.environ["REQUIRE_WORKER_ROUTE"].lower() == "true"
+          base_url = "https://api.cloudflare.com/client/v4"
+
+          def cloudflare(path: str) -> dict:
+              request = urllib.request.Request(
+                  f"{base_url}{path}",
+                  headers={"Authorization": f"Bearer {token}"},
+              )
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  payload = json.loads(response.read().decode())
+              if not payload.get("success"):
+                  raise RuntimeError(f"Cloudflare API request failed for {path}.")
+              return payload
+
+          encoded_hostname = urllib.parse.quote(hostname, safe="")
+          dns_payload = cloudflare(
+              f"/zones/{zone_id}/dns_records?type=A&name={encoded_hostname}&per_page=100"
+          )
+          dns_records = dns_payload.get("result", [])
+          proxied_matches = [record for record in dns_records if record.get("proxied") is True]
+          if not proxied_matches:
+              raise RuntimeError("No proxied Cloudflare A record found for tenant hostname.")
+
+          ssl_payload = cloudflare(f"/zones/{zone_id}/settings/ssl")
+          tls_mode = str(ssl_payload.get("result", {}).get("value", "unknown"))
+          if tls_mode in {"off", "unknown"}:
+              raise RuntimeError(f"Unexpected Cloudflare TLS mode: {tls_mode}")
+
+          routes_payload = cloudflare(f"/zones/{zone_id}/workers/routes?per_page=100")
+          routes = routes_payload.get("result", [])
+          route_matches = [
+              route
+              for route in routes
+              if hostname in str(route.get("pattern", ""))
+              or str(route.get("pattern", "")).startswith(f"{hostname}/")
+          ]
+          if require_worker_route and not route_matches:
+              raise RuntimeError("No Cloudflare Worker route found for tenant hostname.")
+
+          collected_at = datetime.now(UTC).isoformat()
+          evidence = "\n".join(
+              [
+                  "# Tenant Cloudflare Evidence",
+                  "",
+                  f"- Target environment: `{target_environment}`",
+                  f"- Hostname: `{hostname}`",
+                  f"- Proxied A record count: `{len(proxied_matches)}`",
+                  f"- TLS mode: `{tls_mode}`",
+                  f"- Worker route count: `{len(route_matches)}`",
+                  f"- Worker route required: `{str(require_worker_route).lower()}`",
+                  "- Origin record content: not printed",
+                  "- Verification: `passed`",
+                  f"- Collected at: `{collected_at}`",
+                  "",
+              ]
+          )
+          Path("tenant-cloudflare-evidence/evidence.md").write_text(
+              evidence,
+              encoding="utf-8",
+          )
+          print(
+              json.dumps(
+                  {
+                      "target_environment": target_environment,
+                      "hostname": hostname,
+                      "proxied_a_record_count": len(proxied_matches),
+                      "tls_mode": tls_mode,
+                      "worker_route_count": len(route_matches),
+                      "worker_route_required": require_worker_route,
+                      "verification": "passed",
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Upload Cloudflare evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-cloudflare-evidence-${{ inputs.target_environment }}
+          path: tenant-cloudflare-evidence/evidence.md
+          if-no-files-found: error

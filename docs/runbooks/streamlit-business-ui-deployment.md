@@ -38,6 +38,7 @@ SCAS_STAGING_HETZNER_USER
 SCAS_STAGING_HETZNER_SSH_KEY
 SCAS_STAGING_UI_SESSION_CONTEXT_JSON
 SCAS_STAGING_TENANT_ADMIN_TOKEN
+SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID
 ```
 
 Production:
@@ -48,11 +49,18 @@ SCAS_PROD_HETZNER_USER
 SCAS_PROD_HETZNER_SSH_KEY
 SCAS_PROD_UI_SESSION_CONTEXT_JSON
 SCAS_PROD_TENANT_ADMIN_TOKEN
+SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID
 ```
 
 `SCAS_*_UI_SESSION_CONTEXT_JSON` must be server-owned session context for the
 tenant and must be valid only behind an approved upstream authentication layer.
 Do not use fixture role IDs or user-supplied tenant IDs for public deployment.
+If an environment-specific session context is not configured, the deploy
+workflow can derive a minimal owner session from
+`SCAS_*_LIQUISTO_OWNER_PRINCIPAL_ID` after the owner membership has been
+bootstrapped through `tenant-admin-bootstrap.yml`. If
+`SCAS_*_TENANT_ADMIN_TOKEN` is absent, the workflow falls back to the
+environment-scoped Control API token, which carries the Control API `all` scope.
 
 ## Build-Only Plan
 
