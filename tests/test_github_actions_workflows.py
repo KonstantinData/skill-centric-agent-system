@@ -387,6 +387,7 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
     assert "CLOUDFLARE_ZONE_ID" in workflow
     assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" in workflow
     assert "SCAS_PROD_CLOUDFLARE_API_TOKEN" in workflow
+    assert "export CLOUDFLARE_API_TOKEN" in workflow
     assert "/dns_records?type=A&name=" in workflow
     assert "/settings/ssl" in workflow
     assert "/workers/routes?per_page=100" in workflow
