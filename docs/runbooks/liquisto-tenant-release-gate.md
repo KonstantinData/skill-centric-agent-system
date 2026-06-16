@@ -11,8 +11,10 @@ Status: `not-production-ready`
 
 The repository now contains a setup-state Liquisto tenant fixture, hostname
 authority evidence, tenant admin context API coverage, a tenant-aware operations
-UI shell with role-derived workspace areas, read-only admin UI, role-based task
-intake, tenant data-source connector coverage, and tenant isolation tests.
+UI shell with role-derived workspace areas, authenticated session gating,
+read-only admin UI for users, roles, settings, admin workflow routes and audit
+traceability, role-based task intake, tenant data-source connector coverage, and
+tenant isolation tests.
 
 Production readiness is intentionally blocked until the authoritative live
 infrastructure checks below pass. The dev tenant runtime gate has passed on
@@ -44,6 +46,11 @@ The local dry run proves:
 - tenant data-source access is mediated through role grants,
 - tenant UI surfaces derive visible workspace areas from tenant roles and do not
   expose demo-only KPI paths,
+- production-style UI mode fails closed without `SCAS_UI_SESSION_CONTEXT_JSON`
+  and derives admin access from session role IDs instead of `SCAS_UI_ROLE_IDS`,
+- UI smoke coverage checks tenant hostname, required labels, workspace routes,
+  admin/non-admin separation, and admin workflow traceability without adding a
+  browser E2E dependency yet,
 - the Control API Worker compiles, tests, and dry-runs.
 
 ## Live Dev Gate
@@ -103,6 +110,9 @@ resolved:
 - Repository-owned deployment for `apps/streamlit_business_ui` to the service
   behind `https://liquisto.condata.io/` is defined and verified, or the external
   deployment owner/runbook is recorded.
+- The production service runs `SCAS_UI_AUTH_MODE=required` with a server-owned
+  tenant session context from the approved upstream authentication layer.
+  Fixture mode must not be used on the public hostname.
 - Staging gate passes with the same tenant authority and isolation invariants.
 - Production gate passes against production Cloudflare and Hetzner resources.
 
