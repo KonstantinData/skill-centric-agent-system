@@ -341,6 +341,7 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "legacy compose files and .env are not read" in workflow
+    assert "Waiting for Streamlit health check (${attempt}/30)" in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
 

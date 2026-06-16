@@ -90,6 +90,8 @@ def test_tenant_ui_deploy_workflow_has_rollback_and_evidence_contract() -> None:
     assert "Post-deploy health check failed." in workflow
     assert "Rolled back to previous image" in workflow
     assert '127.0.0.1:${LOCAL_HEALTH_PORT}:8501' in workflow
+    assert "for attempt in $(seq 1 30)" in workflow
+    assert "Waiting for Streamlit health check (${attempt}/30)" in workflow
     assert "restart: unless-stopped" in workflow
     assert "legacy compose files and .env are not read" in workflow
     assert "tenant-ui-deployment-evidence" in workflow

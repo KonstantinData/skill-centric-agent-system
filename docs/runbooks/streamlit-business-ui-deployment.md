@@ -104,8 +104,8 @@ The workflow validates the SCAS-managed Compose path, validates the SSH key,
 uploads the image archive, writes a root-owned environment file on the target
 host, writes the complete Compose file under `/opt`, starts only that Compose
 file with the configured project and service name, runs the Streamlit health
-check on `127.0.0.1:<local_health_port>`, and uploads sanitized deployment
-evidence.
+check on `127.0.0.1:<local_health_port>` with a bounded 90-second readiness
+wait, and uploads sanitized deployment evidence.
 
 ## Production Deployment
 
