@@ -79,9 +79,17 @@ repository adds a browser E2E or accessibility harness.
 
 ## Deployment Status
 
-As of 2026-06-15, this repository does not define a production deployment
-workflow for `apps/streamlit_business_ui` to the service behind
-`https://liquisto.condata.io/`. The public hostname is reachable and serves a
-Streamlit login shell, but deploying this app to that host requires either a
-repository-owned deployment workflow or a documented external deployment owner
-and runbook.
+As of 2026-06-16, the repository defines a production-safe deployment path for
+the Streamlit Business UI:
+
+- container definition: `deploy/streamlit-business-ui/Dockerfile`
+- manual workflow: `.github/workflows/tenant-ui-deploy.yml`
+- runbook: `docs/runbooks/streamlit-business-ui-deployment.md`
+
+The workflow defaults to build-only plan mode and does not mutate the remote
+host unless `apply_deploy=true`. Production apply also requires
+`confirm_production=true`, target-environment Hetzner secrets, a server-owned
+session context secret, a tenant admin token secret, and an
+`upstream_auth_evidence_url` proving the approved authentication boundary. The
+public hostname remains `not-production-ready` until the live tenant launch
+gates in `docs/runbooks/liquisto-tenant-release-gate.md` pass.

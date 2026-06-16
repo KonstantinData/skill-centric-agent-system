@@ -1,6 +1,6 @@
 # Liquisto Tenant Release Gate
 
-Last updated: 2026-06-15 22:24 Europe/Berlin
+Last updated: 2026-06-16 12:18 Europe/Berlin
 
 This gate records what is required before the Liquisto tenant can be marked
 ready beyond local fixture-backed development.
@@ -13,8 +13,9 @@ The repository now contains a setup-state Liquisto tenant fixture, hostname
 authority evidence, tenant admin context API coverage, a tenant-aware operations
 UI shell with role-derived workspace areas, authenticated session gating,
 read-only admin UI for users, roles, settings, admin workflow routes and audit
-traceability, role-based task intake, tenant data-source connector coverage, and
-tenant isolation tests.
+traceability, role-based task intake, tenant data-source connector coverage,
+tenant isolation tests, and a repository-owned Streamlit Business UI container
+and manual deployment workflow.
 
 Production readiness is intentionally blocked until the authoritative live
 infrastructure checks below pass. The dev tenant runtime gate has passed on
@@ -96,6 +97,45 @@ mutate the runtime host. Use the inventory artifact to identify the actual
 service, image, code path, and deployed Git revision before any deployment or
 restart action.
 
+## Streamlit Business UI Deployment
+
+The repository-owned deployment path is documented in
+`docs/runbooks/streamlit-business-ui-deployment.md` and implemented by
+`.github/workflows/tenant-ui-deploy.yml`.
+
+Build-only plan mode:
+
+```bash
+gh workflow run tenant-ui-deploy.yml \
+  -f target_environment=staging \
+  -f tenant_id=liquisto \
+  -f hostname=liquisto.condata.io \
+  -f control_api_url=https://<staging-control-api-url> \
+  -f apply_deploy=false \
+  -f confirm_production=false
+```
+
+Apply mode is manual-only and requires target-environment Hetzner secrets,
+`SCAS_<ENV>_UI_SESSION_CONTEXT_JSON`, `SCAS_<ENV>_TENANT_ADMIN_TOKEN`, and an
+`upstream_auth_evidence_url`. Production apply also requires
+`confirm_production=true`. The workflow writes sanitized deployment evidence and
+rolls back to the previous Compose service image if the post-deploy Streamlit
+health check fails.
+
+## Tenant Admin Bootstrap
+
+The non-secret bootstrap procedure for the initial Liquisto tenant owner lives
+in `docs/runbooks/liquisto-tenant-admin-bootstrap.md`. The actual owner identity
+must stay in the approved operational source. Repository fixtures must not
+contain private owner data, tokens, or provider IDs.
+
+## Rollback And Deprovisioning
+
+The rollback and deprovisioning dry-run path lives in
+`docs/runbooks/liquisto-tenant-rollback-deprovisioning.md`. Production launch
+readiness requires a dry-run record showing that Liquisto can be suspended or
+rolled back without changing any other tenant.
+
 ## Production Blockers
 
 Do not mark the Liquisto tenant `production-ready` until all of these are
@@ -105,16 +145,20 @@ resolved:
   `liquisto.condata.io`.
 - TLS mode and Worker route binding are confirmed for the tenant hostname.
 - Initial owner identity is bootstrapped and no longer `null`.
-- Legal profile placeholders in `examples/tenants/liquisto.json` are replaced
-  with verified allowed business data or moved to a non-public source of truth.
+- Production legal, register, contact, and owner data is verified in the
+  approved operational source. Public fixtures may contain only non-secret
+  sentinel values that clearly state the real data is not stored there.
 - Repository-owned deployment for `apps/streamlit_business_ui` to the service
-  behind `https://liquisto.condata.io/` is defined and verified, or the external
-  deployment owner/runbook is recorded.
+  behind `https://liquisto.condata.io/` is executed and verified with
+  `.github/workflows/tenant-ui-deploy.yml`, or the external deployment
+  owner/runbook is recorded.
 - The production service runs `SCAS_UI_AUTH_MODE=required` with a server-owned
   tenant session context from the approved upstream authentication layer.
   Fixture mode must not be used on the public hostname.
 - Staging gate passes with the same tenant authority and isolation invariants.
 - Production gate passes against production Cloudflare and Hetzner resources.
+- Rollback/deprovisioning dry-run evidence is linked before the production
+  release decision.
 
 ## Release Decision Rule
 

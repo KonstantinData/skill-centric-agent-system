@@ -1,0 +1,426 @@
+name: Tenant UI Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target Hetzner environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+        default: staging
+      tenant_id:
+        description: Tenant ID to deploy
+        required: true
+        type: string
+        default: liquisto
+      hostname:
+        description: Tenant hostname served by the reverse proxy
+        required: true
+        type: string
+        default: liquisto.condata.io
+      control_api_url:
+        description: Control API base URL for the target environment
+        required: true
+        type: string
+      upstream_auth_evidence_url:
+        description: Evidence URL proving upstream auth/session injection is approved
+        required: false
+        type: string
+        default: ""
+      apply_deploy:
+        description: Apply the deployment on the target host
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true for target_environment=prod
+        required: true
+        type: boolean
+        default: false
+      compose_project:
+        description: Remote Docker Compose project name
+        required: true
+        type: string
+        default: liquisto
+      existing_compose_path:
+        description: Existing remote Docker Compose file to override
+        required: true
+        type: string
+        default: /opt/liquisto/docker-compose.yml
+      remote_override_path:
+        description: Remote compose override path managed by SCAS
+        required: true
+        type: string
+        default: /opt/liquisto/scas-streamlit-business-ui.override.yml
+      service_name:
+        description: Docker Compose service serving Streamlit
+        required: true
+        type: string
+        default: app
+      local_health_port:
+        description: Remote localhost port used by Streamlit health checks
+        required: true
+        type: string
+        default: "8501"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-ui-deploy-${{ github.ref }}-${{ inputs.target_environment }}-${{ inputs.tenant_id }}
+  cancel-in-progress: false
+
+jobs:
+  tenant-ui-deploy:
+    name: Build and optionally deploy tenant UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      TENANT_ID: ${{ inputs.tenant_id }}
+      TENANT_HOSTNAME: ${{ inputs.hostname }}
+      CONTROL_API_URL: ${{ inputs.control_api_url }}
+      UPSTREAM_AUTH_EVIDENCE_URL: ${{ inputs.upstream_auth_evidence_url }}
+      APPLY_DEPLOY: ${{ inputs.apply_deploy }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      COMPOSE_PROJECT: ${{ inputs.compose_project }}
+      EXISTING_COMPOSE_PATH: ${{ inputs.existing_compose_path }}
+      REMOTE_OVERRIDE_PATH: ${{ inputs.remote_override_path }}
+      SERVICE_NAME: ${{ inputs.service_name }}
+      LOCAL_HEALTH_PORT: ${{ inputs.local_health_port }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_STAGING_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_STAGING_UI_SESSION_CONTEXT_JSON }}
+      SCAS_STAGING_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_STAGING_TENANT_ADMIN_TOKEN }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_PROD_UI_SESSION_CONTEXT_JSON }}
+      SCAS_PROD_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_PROD_TENANT_ADMIN_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${TARGET_ENVIRONMENT}" in
+            staging|prod) ;;
+            *) echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}" ; exit 1 ;;
+          esac
+
+          for value_name in TENANT_ID TENANT_HOSTNAME COMPOSE_PROJECT SERVICE_NAME
+          do
+            value="${!value_name}"
+            if [[ ! "${value}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "::error::${value_name} contains unsupported characters."
+              exit 1
+            fi
+          done
+
+          if [[ ! "${LOCAL_HEALTH_PORT}" =~ ^[0-9]+$ ]]; then
+            echo "::error::local_health_port must be numeric."
+            exit 1
+          fi
+
+          if [ "${CONTROL_API_URL}" = "" ]; then
+            echo "::error::control_api_url is required."
+            exit 1
+          fi
+
+          if [[ "${EXISTING_COMPOSE_PATH}" != /opt/* || "${REMOTE_OVERRIDE_PATH}" != /opt/* ]]; then
+            echo "::error::compose paths must stay under /opt."
+            exit 1
+          fi
+
+          if [ "${APPLY_DEPLOY}" = "true" ] && [ "${UPSTREAM_AUTH_EVIDENCE_URL}" = "" ]; then
+            echo "::error::upstream_auth_evidence_url is required when apply_deploy=true."
+            exit 1
+          fi
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production deploys."
+            exit 1
+          fi
+
+      - name: Build Streamlit Business UI image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
+          docker build \
+            --file deploy/streamlit-business-ui/Dockerfile \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.title=SCAS Streamlit Business UI" \
+            --tag "${image_ref}" \
+            .
+          docker save "${image_ref}" | gzip > scas-streamlit-business-ui-image.tar.gz
+          printf 'SCAS_UI_IMAGE=%s\n' "${image_ref}" >> "${GITHUB_ENV}"
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scas-streamlit-business-ui-image-${{ github.sha }}
+          path: scas-streamlit-business-ui-image.tar.gz
+          if-no-files-found: error
+
+      - name: Stop before remote mutation when apply_deploy is false
+        if: env.APPLY_DEPLOY != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tenant-ui-deploy-evidence
+          {
+            printf '# Tenant UI Deploy Plan\n\n'
+            printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
+            printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
+            printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
+            printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- Apply deploy: `false`\n'
+            printf -- '- Result: image built and uploaded as an artifact; no remote host was changed.\n'
+          } > tenant-ui-deploy-evidence/deploy-plan.md
+
+      - name: Upload deploy plan artifact
+        if: env.APPLY_DEPLOY != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-ui-deploy-plan-${{ inputs.target_environment }}
+          path: tenant-ui-deploy-evidence/deploy-plan.md
+          if-no-files-found: error
+
+      - name: Resolve target secrets
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resolve_env_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              staging)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_STAGING_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
+                  UI_SESSION_CONTEXT_JSON) value="${SCAS_STAGING_UI_SESSION_CONTEXT_JSON:-}" ;;
+                  TENANT_ADMIN_TOKEN) value="${SCAS_STAGING_TENANT_ADMIN_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  HETZNER_HOST) value="${SCAS_PROD_HETZNER_HOST:-}" ;;
+                  HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
+                  HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
+                  UI_SESSION_CONTEXT_JSON) value="${SCAS_PROD_UI_SESSION_CONTEXT_JSON:-}" ;;
+                  TENANT_ADMIN_TOKEN) value="${SCAS_PROD_TENANT_ADMIN_TOKEN:-}" ;;
+                  *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
+          }
+
+          TARGET_HETZNER_HOST="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_HOST)"
+          TARGET_HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
+          TARGET_HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
+          UI_SESSION_CONTEXT_JSON="$(resolve_env_secret "${TARGET_ENVIRONMENT}" UI_SESSION_CONTEXT_JSON)"
+          TENANT_ADMIN_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" TENANT_ADMIN_TOKEN)"
+
+          missing=0
+          for name in TARGET_HETZNER_HOST TARGET_HETZNER_SSH_KEY TARGET_HETZNER_USER UI_SESSION_CONTEXT_JSON TENANT_ADMIN_TOKEN
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required ${TARGET_ENVIRONMENT} secret: ${name#TARGET_}"
+              missing=1
+            fi
+          done
+          if [ "${missing}" -ne 0 ]; then
+            exit 1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${TARGET_HETZNER_USER}"
+            printf 'UI_SESSION_CONTEXT_JSON_B64=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON}" | base64 -w0)"
+            printf 'TENANT_ADMIN_TOKEN_B64=%s\n' "$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${TARGET_HETZNER_SSH_KEY}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 600 "${HOME}/.ssh/hetzner_key"
+
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Upload image to target host
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            scas-streamlit-business-ui-image.tar.gz \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Deploy image with rollback guard
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' EXISTING_COMPOSE_PATH='${EXISTING_COMPOSE_PATH}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo "$@"
+            fi
+          }
+
+          remote_dir="$(dirname "${REMOTE_OVERRIDE_PATH}")"
+          evidence_dir="/tmp/scas-tenant-ui-deploy-${GITHUB_RUN_ID}"
+          image_archive="/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
+          env_file="${remote_dir}/scas-streamlit-business-ui.env"
+          previous_image=""
+
+          if [ ! -f "${EXISTING_COMPOSE_PATH}" ]; then
+            echo "Existing compose file does not exist: ${EXISTING_COMPOSE_PATH}" >&2
+            exit 1
+          fi
+
+          install -d -m 700 "${evidence_dir}"
+          if docker compose -p "${COMPOSE_PROJECT}" -f "${EXISTING_COMPOSE_PATH}" ps -q "${SERVICE_NAME}" >/tmp/scas-ui-service-id 2>/dev/null; then
+            service_id="$(cat /tmp/scas-ui-service-id)"
+            if [ -n "${service_id}" ]; then
+              previous_image="$(docker inspect --format '{{.Config.Image}}' "${service_id}" 2>/dev/null || true)"
+            fi
+          fi
+
+          gzip -dc "${image_archive}" | docker load
+
+          install -d -m 750 "${remote_dir}"
+          {
+            printf 'SCAS_UI_AUTH_MODE=required\n'
+            printf 'SCAS_UI_UPSTREAM_AUTH_TRUSTED=true\n'
+            printf 'SCAS_UI_SESSION_CONTEXT_JSON=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON_B64}" | base64 -d)"
+            printf 'SCAS_CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"
+            printf 'SCAS_TENANT_ADMIN_TOKEN=%s\n' "$(printf '%s' "${TENANT_ADMIN_TOKEN_B64}" | base64 -d)"
+          } > "${env_file}"
+          chmod 600 "${env_file}"
+
+          cat > "${REMOTE_OVERRIDE_PATH}" <<EOF
+          services:
+            ${SERVICE_NAME}:
+              image: ${SCAS_UI_IMAGE}
+              command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]
+              env_file:
+                - ${env_file}
+              environment:
+                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+                STREAMLIT_SERVER_HEADLESS: "true"
+                STREAMLIT_SERVER_PORT: "8501"
+          EOF
+
+          docker compose \
+            -p "${COMPOSE_PROJECT}" \
+            -f "${EXISTING_COMPOSE_PATH}" \
+            -f "${REMOTE_OVERRIDE_PATH}" \
+            up -d "${SERVICE_NAME}"
+
+          if ! curl -fsS --max-time 10 "http://127.0.0.1:${LOCAL_HEALTH_PORT}/_stcore/health" >/dev/null; then
+            echo "Post-deploy health check failed." >&2
+            if [ -n "${previous_image}" ]; then
+              sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
+              docker compose \
+                -p "${COMPOSE_PROJECT}" \
+                -f "${EXISTING_COMPOSE_PATH}" \
+                -f "${REMOTE_OVERRIDE_PATH}" \
+                up -d "${SERVICE_NAME}"
+              echo "Rolled back to previous image ${previous_image}." >&2
+            fi
+            exit 1
+          fi
+
+          {
+            printf '# Tenant UI Deployment Evidence\n\n'
+            printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
+            printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
+            printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
+            printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
+            printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
+            printf -- '- Existing compose file: `%s`\n' "${EXISTING_COMPOSE_PATH}"
+            printf -- '- Override file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
+            printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
+            printf -- '- Health check: `passed`\n'
+            printf -- '- Collected at: `%s`\n' "$(date -Is)"
+          } > "${evidence_dir}/deployment.md"
+
+          rm -f "${image_archive}"
+          REMOTE
+
+      - name: Download deployment evidence
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p tenant-ui-deploy-evidence
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-deploy-${GITHUB_RUN_ID}/deployment.md" \
+            tenant-ui-deploy-evidence/deployment.md
+
+      - name: Upload deployment evidence
+        if: env.APPLY_DEPLOY == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-ui-deployment-evidence-${{ inputs.target_environment }}
+          path: tenant-ui-deploy-evidence/deployment.md
+          if-no-files-found: error
