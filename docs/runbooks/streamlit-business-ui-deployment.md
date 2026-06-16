@@ -21,9 +21,11 @@ workflow: .github/workflows/tenant-ui-deploy.yml
 ```
 
 The workflow builds a SCAS-owned image from the repository snapshot and, when
-`apply_deploy=true`, loads it onto the target Hetzner host and applies a Docker
-Compose override for the existing Streamlit service. It does not create DNS
-records, change Cloudflare configuration, or bypass tenant authentication.
+`apply_deploy=true`, loads it onto the target Hetzner host and writes a complete
+SCAS-managed Docker Compose file for the Streamlit service. It intentionally
+does not read the legacy host Compose file, host `.env` files, or legacy Compose
+interpolation state. It does not create DNS records, change Cloudflare
+configuration, or bypass tenant authentication.
 
 ## Required Secrets
 
@@ -98,10 +100,12 @@ gh workflow run tenant-ui-deploy.yml \
   -f confirm_production=false
 ```
 
-The workflow validates input paths, validates the SSH key, uploads the image
-archive, writes a root-owned environment file on the target host, applies a
-Compose override under `/opt`, runs the Streamlit health check, and uploads
-sanitized deployment evidence.
+The workflow validates the SCAS-managed Compose path, validates the SSH key,
+uploads the image archive, writes a root-owned environment file on the target
+host, writes the complete Compose file under `/opt`, starts only that Compose
+file with the configured project and service name, runs the Streamlit health
+check on `127.0.0.1:<local_health_port>`, and uploads sanitized deployment
+evidence.
 
 ## Production Deployment
 
@@ -129,33 +133,33 @@ Do not use production apply when any of these are missing:
 ## Rollback Behavior
 
 During apply, the workflow records the currently running Compose service image
-before starting the new image. If the post-deploy Streamlit health check fails,
-the override is changed back to the previous image and the service is restarted.
+from Docker Compose labels before starting the new image. If the post-deploy
+Streamlit health check fails, the SCAS-managed Compose file is changed back to
+the previous image and the service is restarted.
 
 Manual rollback uses the same override file:
 
 ```bash
 ssh "$SCAS_PROD_HETZNER_USER@$SCAS_PROD_HETZNER_HOST"
-cd /opt/liquisto
 docker compose \
   -p liquisto \
-  -f /opt/liquisto/docker-compose.yml \
   -f /opt/liquisto/scas-streamlit-business-ui.override.yml \
   ps
 ```
 
-Then set the override image to the last-known-good image and run:
+Then set the SCAS-managed Compose image to the last-known-good image and run:
 
 ```bash
 docker compose \
   -p liquisto \
-  -f /opt/liquisto/docker-compose.yml \
   -f /opt/liquisto/scas-streamlit-business-ui.override.yml \
   up -d app
 ```
 
-Do not delete the prior image or old Compose file until the production release
-decision is closed and evidence has been retained.
+Do not delete the prior image or SCAS-managed Compose file until the production
+release decision is closed and evidence has been retained. Legacy host `.env`
+files are not deployment inputs for this workflow and may be removed by the
+runtime owner after confirming no unrelated service depends on them.
 
 ## Launch Gate Mapping
 

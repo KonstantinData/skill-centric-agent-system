@@ -46,7 +46,7 @@ on:
         type: string
         default: liquisto
       existing_compose_path:
-        description: Existing remote Docker Compose file to override
+        description: Deprecated compatibility input; SCAS-managed deploy does not read it
         required: true
         type: string
         default: /opt/liquisto/docker-compose.yml
@@ -88,7 +88,6 @@ jobs:
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       COMPOSE_PROJECT: ${{ inputs.compose_project }}
-      EXISTING_COMPOSE_PATH: ${{ inputs.existing_compose_path }}
       REMOTE_OVERRIDE_PATH: ${{ inputs.remote_override_path }}
       SERVICE_NAME: ${{ inputs.service_name }}
       LOCAL_HEALTH_PORT: ${{ inputs.local_health_port }}
@@ -143,8 +142,8 @@ jobs:
             exit 1
           fi
 
-          if [[ "${EXISTING_COMPOSE_PATH}" != /opt/* || "${REMOTE_OVERRIDE_PATH}" != /opt/* ]]; then
-            echo "::error::compose paths must stay under /opt."
+          if [[ "${REMOTE_OVERRIDE_PATH}" != /opt/* ]]; then
+            echo "::error::remote_override_path must stay under /opt."
             exit 1
           fi
 
@@ -292,11 +291,17 @@ jobs:
             exit 1
           fi
 
+          UI_SESSION_CONTEXT_JSON_B64="$(printf '%s' "${UI_SESSION_CONTEXT_JSON}" | base64 -w0)"
+          TENANT_ADMIN_TOKEN_B64="$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
+          echo "::add-mask::${UI_SESSION_CONTEXT_JSON}"
+          echo "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}"
+          echo "::add-mask::${TENANT_ADMIN_TOKEN_B64}"
+
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
             printf 'TARGET_HETZNER_USER=%s\n' "${TARGET_HETZNER_USER}"
-            printf 'UI_SESSION_CONTEXT_JSON_B64=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON}" | base64 -w0)"
-            printf 'TENANT_ADMIN_TOKEN_B64=%s\n' "$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
+            printf 'UI_SESSION_CONTEXT_JSON_B64=%s\n' "${UI_SESSION_CONTEXT_JSON_B64}"
+            printf 'TENANT_ADMIN_TOKEN_B64=%s\n' "${TENANT_ADMIN_TOKEN_B64}"
             echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
             printf '%s\n' "${TARGET_HETZNER_SSH_KEY}"
             echo '__SCAS_HETZNER_SSH_KEY__'
@@ -344,7 +349,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' EXISTING_COMPOSE_PATH='${EXISTING_COMPOSE_PATH}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -361,17 +366,16 @@ jobs:
           env_file="${remote_dir}/scas-streamlit-business-ui.env"
           previous_image=""
 
-          if [ ! -f "${EXISTING_COMPOSE_PATH}" ]; then
-            echo "Existing compose file does not exist: ${EXISTING_COMPOSE_PATH}" >&2
-            exit 1
-          fi
-
           install -d -m 700 "${evidence_dir}"
-          if docker compose -p "${COMPOSE_PROJECT}" -f "${EXISTING_COMPOSE_PATH}" ps -q "${SERVICE_NAME}" >/tmp/scas-ui-service-id 2>/dev/null; then
-            service_id="$(cat /tmp/scas-ui-service-id)"
-            if [ -n "${service_id}" ]; then
-              previous_image="$(docker inspect --format '{{.Config.Image}}' "${service_id}" 2>/dev/null || true)"
-            fi
+          service_id="$(
+            docker ps \
+              --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" \
+              --filter "label=com.docker.compose.service=${SERVICE_NAME}" \
+              --format '{{.ID}}' \
+              | head -n 1 || true
+          )"
+          if [ -n "${service_id}" ]; then
+            previous_image="$(docker inspect --format '{{.Config.Image}}' "${service_id}" 2>/dev/null || true)"
           fi
 
           gzip -dc "${image_archive}" | docker load
@@ -397,11 +401,13 @@ jobs:
                 STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
                 STREAMLIT_SERVER_HEADLESS: "true"
                 STREAMLIT_SERVER_PORT: "8501"
+              ports:
+                - "127.0.0.1:${LOCAL_HEALTH_PORT}:8501"
+              restart: unless-stopped
           EOF
 
           docker compose \
             -p "${COMPOSE_PROJECT}" \
-            -f "${EXISTING_COMPOSE_PATH}" \
             -f "${REMOTE_OVERRIDE_PATH}" \
             up -d "${SERVICE_NAME}"
 
@@ -411,7 +417,6 @@ jobs:
               sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
               docker compose \
                 -p "${COMPOSE_PROJECT}" \
-                -f "${EXISTING_COMPOSE_PATH}" \
                 -f "${REMOTE_OVERRIDE_PATH}" \
                 up -d "${SERVICE_NAME}"
               echo "Rolled back to previous image ${previous_image}." >&2
@@ -427,8 +432,8 @@ jobs:
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
-            printf -- '- Existing compose file: `%s`\n' "${EXISTING_COMPOSE_PATH}"
-            printf -- '- Override file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
+            printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
+            printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"

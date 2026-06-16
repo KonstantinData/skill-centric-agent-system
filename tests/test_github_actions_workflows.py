@@ -334,6 +334,13 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert 'SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}' in workflow
     assert 'SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}' in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
+    assert "UI_SESSION_CONTEXT_JSON_B64=" in workflow
+    assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
+    assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
+    assert "label=com.docker.compose.service=${SERVICE_NAME}" in workflow
+    assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
+    assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
+    assert "legacy compose files and .env are not read" in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
 
