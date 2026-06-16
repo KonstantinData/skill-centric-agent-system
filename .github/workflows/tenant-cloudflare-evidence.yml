@@ -75,6 +75,8 @@ jobs:
             exit 1
           fi
 
+          export CLOUDFLARE_API_TOKEN
+
           install -d tenant-cloudflare-evidence
 
           python3 - <<'PY'
