@@ -200,19 +200,17 @@ jobs:
     env:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
       SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}
-      SCAS_DEV_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_API_TOKEN }}
+      SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN }}
       SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}
       SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}
       SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}
-      SCAS_STAGING_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}
+      SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN }}
       SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
       SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}
       SCAS_PROD_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_PROD_CLOUDFLARE_ACCOUNT_ID }}
-      SCAS_PROD_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_API_TOKEN }}
+      SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN }}
       SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       SCAS_PROD_OPENAI_API_KEY: ${{ secrets.SCAS_PROD_OPENAI_API_KEY }}
-      LEGACY_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      LEGACY_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       LEGACY_CONTROL_API_TOKEN: ${{ secrets.CONTROL_API_TOKEN }}
       LEGACY_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       AI_GATEWAY_AUTH_TOKEN: ${{ secrets.AI_GATEWAY_AUTH_TOKEN }}
@@ -306,7 +304,7 @@ jobs:
             printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
           } >> "${GITHUB_ENV}"
 
-          echo "::notice::CLOUDFLARE_API_TOKEN must allow Worker script writes because this job deploys Worker code and secrets."
+          echo "::notice::CLOUDFLARE_DEPLOY_TOKEN must allow Worker script writes because this job deploys Worker code and secrets."
           secrets_file="${RUNNER_TEMP}/scas-control-api-${TARGET_ENVIRONMENT}-secrets.json"
           export SCAS_WORKER_SECRETS_FILE="${secrets_file}"
           python3 - <<'PY'
@@ -340,22 +338,22 @@ jobs:
             case "${target_env}" in
               dev)
                 case "${logical_name}" in
-                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_DEV_CLOUDFLARE_ACCOUNT_ID:-${LEGACY_CLOUDFLARE_ACCOUNT_ID:-}}" ;;
-                  CLOUDFLARE_API_TOKEN) value="${SCAS_DEV_CLOUDFLARE_API_TOKEN:-${LEGACY_CLOUDFLARE_API_TOKEN:-}}" ;;
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_DEV_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
               staging)
                 case "${logical_name}" in
                   CLOUDFLARE_ACCOUNT_ID) value="${SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID:-}" ;;
-                  CLOUDFLARE_API_TOKEN) value="${SCAS_STAGING_CLOUDFLARE_API_TOKEN:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
               prod)
                 case "${logical_name}" in
                   CLOUDFLARE_ACCOUNT_ID) value="${SCAS_PROD_CLOUDFLARE_ACCOUNT_ID:-}" ;;
-                  CLOUDFLARE_API_TOKEN) value="${SCAS_PROD_CLOUDFLARE_API_TOKEN:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -377,7 +375,7 @@ jobs:
             exit 1
           fi
           if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CLOUDFLARE_API_TOKEN"
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CLOUDFLARE_DEPLOY_TOKEN"
             exit 1
           fi
           {
@@ -459,8 +457,13 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.run_infra_smoke == true
 
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN }}
+      SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN }}
+      SCAS_PROD_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_PROD_CLOUDFLARE_ACCOUNT_ID }}
+      SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -477,10 +480,48 @@ jobs:
         run: |
           set -euo pipefail
 
+          resolve_cloudflare_secret() {
+            local target_env="$1"
+            local logical_name="$2"
+            local value=""
+            case "${target_env}" in
+              dev)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_DEV_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
+                  *) echo "::error::Unknown Cloudflare secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              staging)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
+                  *) echo "::error::Unknown Cloudflare secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              prod)
+                case "${logical_name}" in
+                  CLOUDFLARE_ACCOUNT_ID) value="${SCAS_PROD_CLOUDFLARE_ACCOUNT_ID:-}" ;;
+                  CLOUDFLARE_API_TOKEN) value="${SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN:-}" ;;
+                  *) echo "::error::Unknown Cloudflare secret mapping for ${logical_name}" ; exit 1 ;;
+                esac
+                ;;
+              *)
+                echo "::error::Unsupported target_environment: ${target_env}"
+                exit 1
+                ;;
+            esac
+            printf '%s' "${value}"
+          }
+
+          CLOUDFLARE_ACCOUNT_ID="$(resolve_cloudflare_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID)"
+          CLOUDFLARE_API_TOKEN="$(resolve_cloudflare_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN)"
+          export CLOUDFLARE_ACCOUNT_ID
+          export CLOUDFLARE_API_TOKEN
+
           missing=0
           for name in \
             CLOUDFLARE_ACCOUNT_ID \
-            CLOUDFLARE_API_TOKEN \
             CLOUDFLARE_ZONE_ID \
             HETZNER_HOST \
             HETZNER_SSH_KEY \
@@ -493,6 +534,10 @@ jobs:
               missing=1
             fi
           done
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: CLOUDFLARE_DEPLOY_TOKEN"
+            missing=1
+          fi
 
           exit "${missing}"
 

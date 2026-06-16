@@ -18,8 +18,8 @@ The system separates stable composition contracts from task-local execution. Tha
 
 GitHub already provides deployment secrets for Cloudflare and OpenAI:
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `SCAS_{ENV}_CLOUDFLARE_ACCOUNT_ID`
+- `SCAS_{ENV}_CLOUDFLARE_DEPLOY_TOKEN`
 - `CLOUDFLARE_ZONE_ID`
 - `OPENAI_API_KEY`
 

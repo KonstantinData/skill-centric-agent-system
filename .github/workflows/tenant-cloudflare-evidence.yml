@@ -40,8 +40,8 @@ jobs:
       TENANT_HOSTNAME: ${{ inputs.hostname }}
       REQUIRE_WORKER_ROUTE: ${{ inputs.require_worker_route }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-      SCAS_STAGING_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_API_TOKEN }}
-      SCAS_PROD_CLOUDFLARE_API_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_API_TOKEN }}
+      SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN }}
+      SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN }}
 
     steps:
       - name: Verify Cloudflare routing without exposing origin
@@ -51,10 +51,10 @@ jobs:
 
           case "${TARGET_ENVIRONMENT}" in
             staging)
-              CLOUDFLARE_API_TOKEN="${SCAS_STAGING_CLOUDFLARE_API_TOKEN:-}"
+              CLOUDFLARE_API_TOKEN="${SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN:-}"
               ;;
             prod)
-              CLOUDFLARE_API_TOKEN="${SCAS_PROD_CLOUDFLARE_API_TOKEN:-}"
+              CLOUDFLARE_API_TOKEN="${SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN:-}"
               ;;
             *)
               echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
@@ -63,7 +63,7 @@ jobs:
           esac
 
           if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::error::Missing ${TARGET_ENVIRONMENT} Cloudflare API token."
+            echo "::error::Missing ${TARGET_ENVIRONMENT} Cloudflare evidence token."
             exit 1
           fi
           if [ -z "${CLOUDFLARE_ZONE_ID}" ]; then

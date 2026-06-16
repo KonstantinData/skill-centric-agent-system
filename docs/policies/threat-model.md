@@ -74,7 +74,9 @@ policies/security/production-security-closure.json
 
 The current closure requires:
 
-- `CLOUDFLARE_API_TOKEN` scoped to the target environment and job purpose.
+- Purpose-scoped Cloudflare management tokens:
+  `SCAS_{ENV}_CLOUDFLARE_DEPLOY_TOKEN` for deploy/provisioning jobs and
+  `SCAS_{STAGING,PROD}_CLOUDFLARE_EVIDENCE_TOKEN` for read-only zone evidence.
 - `CONTROL_API_TOKEN` used only for trusted automation that needs all protected
   endpoints; endpoint-scoped tokens are preferred for runtime clients.
 - `OPENAI_API_KEY` stored only as a provider secret and never copied into

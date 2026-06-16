@@ -259,7 +259,8 @@ gh secret list --repo KonstantinData/skill-centric-agent-system
 Required GitHub secrets for the live gates are environment-prefixed:
 
 - `SCAS_DEV_CLOUDFLARE_ACCOUNT_ID`, `SCAS_STAGING_CLOUDFLARE_ACCOUNT_ID`, `SCAS_PROD_CLOUDFLARE_ACCOUNT_ID`
-- `SCAS_DEV_CLOUDFLARE_API_TOKEN`, `SCAS_STAGING_CLOUDFLARE_API_TOKEN`, `SCAS_PROD_CLOUDFLARE_API_TOKEN`
+- `SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN`, `SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN`, `SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN`
+- `CLOUDFLARE_ZONE_ID`, `SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN`, `SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN`
 - `SCAS_DEV_HETZNER_HOST`, `SCAS_STAGING_HETZNER_HOST`, `SCAS_PROD_HETZNER_HOST`
 - `SCAS_DEV_HETZNER_SSH_KEY`, `SCAS_STAGING_HETZNER_SSH_KEY`, `SCAS_PROD_HETZNER_SSH_KEY`
 - `SCAS_DEV_HETZNER_USER`, `SCAS_STAGING_HETZNER_USER`, `SCAS_PROD_HETZNER_USER`
@@ -267,13 +268,18 @@ Required GitHub secrets for the live gates are environment-prefixed:
 - `SCAS_DEV_CONTROL_API_TOKEN`, `SCAS_STAGING_CONTROL_API_TOKEN`, `SCAS_PROD_CONTROL_API_TOKEN`
 - `AI_GATEWAY_AUTH_TOKEN` when Cloudflare Authenticated Gateway is enabled
 
-`SCAS_DEV_CLOUDFLARE_API_TOKEN` must be scoped to the Cloudflare account and
-must allow Worker script writes for dev rollouts. The manual Control API rollout
-deploys Worker code and uploads Worker secrets through Wrangler; a token that
-only supports read-only connectivity checks will fail before the live LLM smoke
-runs. Legacy `CLOUDFLARE_API_TOKEN` remains a compatibility fallback for older
-dev setups, but production-readiness evidence should use environment-prefixed
-secrets.
+`SCAS_{ENV}_CLOUDFLARE_DEPLOY_TOKEN` must be scoped to the Cloudflare account
+and must allow only the Worker, Worker secret, D1, and provisioning mutations
+used by that environment's workflows. The manual Control API rollout deploys
+Worker code and uploads Worker secrets through Wrangler; a read-only evidence
+token will fail before the live LLM smoke runs. Tenant DNS, TLS, and Worker
+route evidence uses `SCAS_{STAGING,PROD}_CLOUDFLARE_EVIDENCE_TOKEN`, which is
+read-only on the `condata.io` zone. Legacy unprefixed `CLOUDFLARE_API_TOKEN` is
+not an accepted fallback for SCAS deploy, secret sync, live gate, or tenant
+evidence workflows.
+
+The durable Cloudflare token matrix is maintained in
+`docs/runbooks/scas-cloudflare-token-structure.md`.
 
 Cloudflare readiness:
 

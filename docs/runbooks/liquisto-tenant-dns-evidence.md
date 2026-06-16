@@ -78,4 +78,8 @@ authorized Cloudflare API read.
 The manual `Tenant Cloudflare Evidence` workflow
 (`.github/workflows/tenant-cloudflare-evidence.yml`) records authoritative
 Cloudflare DNS proxy, TLS mode, and Worker route evidence without printing the
-hidden origin record content.
+hidden origin record content. It must use
+`SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN` or
+`SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN`, not a deploy token. The token needs
+read-only `Zone DNS`, `Zone Settings`, and `Zone Workers Routes` access on the
+`condata.io` zone.
