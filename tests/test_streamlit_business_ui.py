@@ -36,6 +36,27 @@ def test_business_ui_loads_liquisto_tenant_shell() -> None:
     assert "keine Cross-Tenant" in shell.isolation_summary
 
 
+def test_business_ui_branding_is_loaded_from_selected_tenant_metadata() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+
+    liquisto_branding = streamlit_business_ui_app.build_tenant_branding(
+        tenants["liquisto"]
+    )
+    demo_branding = streamlit_business_ui_app.build_tenant_branding(
+        tenants["demo-tenant"]
+    )
+
+    assert liquisto_branding.display_name == "Liquisto"
+    assert liquisto_branding.hostname == "liquisto.condata.io"
+    assert liquisto_branding.logo_path == "assets/images/liquisto/liquisto_logo.png"
+    assert liquisto_branding.landing_type == "internal-operations-dashboard"
+    assert liquisto_branding.area_presentation == "tiles"
+    assert demo_branding.display_name == "Demo Tenant"
+    assert demo_branding.hostname == "demo-tenant.example.invalid"
+    assert demo_branding.logo_path is None
+    assert "Liquisto" not in demo_branding.display_name
+
+
 def test_business_ui_builds_read_only_tenant_admin_sections() -> None:
     tenants = streamlit_business_ui_app.load_tenant_registry()
 
@@ -90,6 +111,106 @@ def test_business_ui_builds_admin_tiles_only_for_admin_capability() -> None:
     assert [area.area_id for area in owner_areas] == ["research", "tenant-admin"]
     assert owner_areas[1].admin_only is True
     assert unknown_areas == ()
+
+
+def test_business_ui_navigation_is_role_aware() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    tenant = tenants["liquisto"]
+
+    researcher_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("liquisto-researcher",),
+    )
+    owner_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("liquisto-owner",),
+    )
+    researcher_navigation = streamlit_business_ui_app.build_tenant_navigation_items(
+        researcher_areas
+    )
+    owner_navigation = streamlit_business_ui_app.build_tenant_navigation_items(
+        owner_areas
+    )
+
+    assert [item.route for item in researcher_navigation] == ["/", "/research"]
+    assert [item.route for item in owner_navigation] == ["/", "/research", "/admin"]
+    assert researcher_navigation[0].required_capability is None
+    assert owner_navigation[-1].admin_only is True
+    assert owner_navigation[-1].required_capability == "tenant-admin"
+
+
+def test_business_ui_dashboard_cards_are_tenant_scoped_and_role_aware() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    tenant = tenants["liquisto"]
+    shell = streamlit_business_ui_app.build_tenant_shell(tenant)
+    admin = streamlit_business_ui_app.build_tenant_admin_section(tenant)
+    researcher_session = streamlit_business_ui_app.TenantSession(
+        principal_id="researcher",
+        tenant_id="liquisto",
+        membership_id="membership",
+        role_ids=("liquisto-researcher",),
+        capabilities=frozenset({"research"}),
+        source="trusted-upstream",
+    )
+    owner_session = streamlit_business_ui_app.TenantSession(
+        principal_id="owner",
+        tenant_id="liquisto",
+        membership_id="membership",
+        role_ids=("liquisto-owner",),
+        capabilities=frozenset({"research", "tenant-admin"}),
+        source="trusted-upstream",
+    )
+
+    researcher_cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
+        shell,
+        admin,
+        streamlit_business_ui_app.build_workspace_areas(
+            tenant,
+            researcher_session.role_ids,
+        ),
+        researcher_session,
+    )
+    owner_cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
+        shell,
+        admin,
+        streamlit_business_ui_app.build_workspace_areas(tenant, owner_session.role_ids),
+        owner_session,
+    )
+
+    assert researcher_cards[0].value == "liquisto.condata.io"
+    assert researcher_cards[0].detail == "liquisto via trusted-upstream"
+    assert researcher_cards[1].value == "1"
+    assert researcher_cards[3].value == "Gesperrt"
+    assert researcher_cards[3].state == "restricted"
+    assert owner_cards[1].value == "2"
+    assert owner_cards[3].value == "Aktiv"
+    assert "/admin/users" in owner_cards[3].detail
+
+
+def test_business_ui_dashboard_reports_empty_state_for_unmatched_role() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    tenant = tenants["liquisto"]
+    shell = streamlit_business_ui_app.build_tenant_shell(tenant)
+    admin = streamlit_business_ui_app.build_tenant_admin_section(tenant)
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="unknown",
+        tenant_id="liquisto",
+        membership_id="membership",
+        role_ids=("unknown-role",),
+        capabilities=frozenset(),
+        source="local-fixture",
+    )
+
+    cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
+        shell,
+        admin,
+        streamlit_business_ui_app.build_workspace_areas(tenant, session.role_ids),
+        session,
+    )
+
+    assert cards[1].value == "0"
+    assert cards[1].detail == "Keine freigegeben"
+    assert cards[1].state == "empty"
 
 
 def test_business_ui_launch_smoke_contract_covers_accessibility_labels() -> None:

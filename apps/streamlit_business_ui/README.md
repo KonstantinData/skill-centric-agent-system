@@ -1,10 +1,19 @@
 # Streamlit Business UI
 
 Tenant-aware operations dashboard for SCAS business steering. The first screen
-loads tenant shell metadata and role-derived UI areas, then shows only the
-workspace tiles enabled by the current tenant roles. Tenant admins additionally
-see users, roles, launch-critical settings, admin workflow routes, and audit
-traceability status from the tenant context.
+loads tenant shell metadata, branding, landing configuration, role-derived
+navigation, and launch dashboard cards from the selected tenant record. It then
+shows only the workspace tiles enabled by the current tenant roles. Tenant
+admins additionally see users, roles, launch-critical settings, admin workflow
+routes, and audit traceability status from the tenant context.
+
+The Liquisto tenant uses `ui_profile.logo_path`, `ui_profile.landing`, and
+`ui_profile.workspace_areas` from `examples/tenants/liquisto.json` for its
+first screen. Other tenants render their own metadata and do not inherit
+Liquisto-specific logo or copy when their fixture lacks a Liquisto UI profile.
+The landing dashboard summarizes tenant authority, visible workspace routes,
+tenant-scoped data sources, and admin governance state without exposing private
+owner data or legal/tax details.
 
 When `SCAS_CONTROL_API_URL` and `SCAS_TENANT_ADMIN_TOKEN` are set, the UI loads
 the tenant admin context from `GET /tenant-admin/tenants/{tenant_id}` instead of
@@ -73,8 +82,9 @@ python -m pytest tests/test_streamlit_business_ui.py
 ```
 
 The suite verifies tenant hostname selection, role-derived workspace visibility,
-admin/non-admin separation, admin workflow routes, required labels, and the
-authenticated session gate. It is intentionally dependency-free until the
+metadata-derived branding, tenant-specific navigation, landing dashboard
+states, admin/non-admin separation, admin workflow routes, required labels, and
+the authenticated session gate. It is intentionally dependency-free until the
 repository adds a browser E2E or accessibility harness.
 
 ## Deployment Status
