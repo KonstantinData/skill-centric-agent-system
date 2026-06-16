@@ -64,10 +64,15 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_STAGING_HETZNER_SSH_KEY" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_STAGING_TENANT_ADMIN_TOKEN" in workflow
+    assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
+    assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
     assert "SCAS_PROD_HETZNER_HOST" in workflow
     assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_TENANT_ADMIN_TOKEN" in workflow
+    assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
+    assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
+    assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
@@ -92,6 +97,9 @@ def test_streamlit_deployment_runbook_is_linked_from_operational_docs() -> None:
     assert "tenant-ui-deploy.yml" in runbook
     assert "deploy/streamlit-business-ui/Dockerfile" in runbook
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in runbook
+    assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
+    assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
+    assert "tenant-admin-bootstrap.yml" in runbook
     assert "Rollback Behavior" in runbook
     assert "Launch Gate Mapping" in runbook
     assert "docs/runbooks/streamlit-business-ui-deployment.md" in readme

@@ -98,13 +98,17 @@ jobs:
       SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
       SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
       SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
       SCAS_STAGING_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_STAGING_UI_SESSION_CONTEXT_JSON }}
       SCAS_STAGING_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_STAGING_TENANT_ADMIN_TOKEN }}
+      SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
       SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       SCAS_PROD_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_PROD_UI_SESSION_CONTEXT_JSON }}
       SCAS_PROD_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_PROD_TENANT_ADMIN_TOKEN }}
+      SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
 
     steps:
       - name: Check out repository
@@ -218,7 +222,8 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_STAGING_UI_SESSION_CONTEXT_JSON:-}" ;;
-                  TENANT_ADMIN_TOKEN) value="${SCAS_STAGING_TENANT_ADMIN_TOKEN:-}" ;;
+                  OWNER_PRINCIPAL_ID) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                  TENANT_ADMIN_TOKEN) value="${SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -228,7 +233,8 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_PROD_UI_SESSION_CONTEXT_JSON:-}" ;;
-                  TENANT_ADMIN_TOKEN) value="${SCAS_PROD_TENANT_ADMIN_TOKEN:-}" ;;
+                  OWNER_PRINCIPAL_ID) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                  TENANT_ADMIN_TOKEN) value="${SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -244,7 +250,35 @@ jobs:
           TARGET_HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
           TARGET_HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
           UI_SESSION_CONTEXT_JSON="$(resolve_env_secret "${TARGET_ENVIRONMENT}" UI_SESSION_CONTEXT_JSON)"
+          OWNER_PRINCIPAL_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OWNER_PRINCIPAL_ID)"
           TENANT_ADMIN_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" TENANT_ADMIN_TOKEN)"
+
+          if [ -z "${UI_SESSION_CONTEXT_JSON}" ] && [ -n "${OWNER_PRINCIPAL_ID}" ]; then
+            if [[ ! "${OWNER_PRINCIPAL_ID}" =~ ^[a-z][a-z0-9-]*$ ]]; then
+              echo "::error::Owner principal id must be a non-secret stable id, not an email address."
+              exit 1
+            fi
+            UI_SESSION_CONTEXT_JSON="$(
+              TENANT_ID="${TENANT_ID}" OWNER_PRINCIPAL_ID="${OWNER_PRINCIPAL_ID}" python3 - <<'PY'
+          import json
+          import os
+
+          tenant_id = os.environ["TENANT_ID"]
+          owner_principal_id = os.environ["OWNER_PRINCIPAL_ID"]
+          print(
+              json.dumps(
+                  {
+                      "tenant_id": tenant_id,
+                      "principal_id": owner_principal_id,
+                      "membership_id": f"tm-{tenant_id}-initial-owner",
+                      "role_ids": [f"{tenant_id}-owner"],
+                  },
+                  separators=(",", ":"),
+              )
+          )
+          PY
+            )"
+          fi
 
           missing=0
           for name in TARGET_HETZNER_HOST TARGET_HETZNER_SSH_KEY TARGET_HETZNER_USER UI_SESSION_CONTEXT_JSON TENANT_ADMIN_TOKEN
