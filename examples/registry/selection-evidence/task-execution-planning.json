@@ -1,0 +1,80 @@
+{
+  "module": "task-execution-planning",
+  "negative_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "matched_signals_must_include": [],
+      "negative_signals_must_include": [
+        "phrase:delete production"
+      ],
+      "policy_result": "deny_or_lower_ranked",
+      "rejected_modules": [
+        "task-execution-planning"
+      ],
+      "selected_modules": []
+    },
+    "reason": "Negative task language proves task-execution-planning is not a catch-all capability.",
+    "task_signals": {
+      "available_inputs": [
+        "repository"
+      ],
+      "capability_hints": [
+        "planning"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "task-execution",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "implement",
+        "fix",
+        "delete production"
+      ],
+      "risk_level": "low",
+      "task_type": "task-execution"
+    }
+  },
+  "positive_selection": {
+    "expected": {
+      "graph_validation": "valid",
+      "matched_signals_must_include": [
+        "task_type:task-execution"
+      ],
+      "negative_signals": [],
+      "policy_result": "allow",
+      "rejected_modules": [],
+      "selected_modules": [
+        "task-execution-planning"
+      ]
+    },
+    "reason": "Structured task signals match the direct capability boundary for task-execution-planning.",
+    "task_signals": {
+      "available_inputs": [
+        "repository"
+      ],
+      "capability_hints": [
+        "planning"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "task-execution",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "implement",
+        "fix"
+      ],
+      "risk_level": "low",
+      "task_type": "task-execution"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "direct"
+}

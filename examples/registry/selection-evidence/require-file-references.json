@@ -1,0 +1,73 @@
+{
+  "dependency_inclusion": {
+    "direct_module": "git-diff-analysis",
+    "expected": {
+      "graph_validation": "valid",
+      "included_dependencies": [
+        "require-file-references"
+      ],
+      "policy_result": "allow",
+      "selected_modules": [
+        "git-diff-analysis"
+      ]
+    },
+    "reason": "require-file-references is included only when graph validation resolves a consuming direct module.",
+    "task_signals": {
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "git"
+      ],
+      "phrases": [
+        "review",
+        "diff",
+        "require-file-references"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "module": "require-file-references",
+  "no_direct_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "negative_signals_must_include": [
+        "selection_mode:dependency_only"
+      ],
+      "policy_result": "not_evaluated",
+      "rejected_modules": [
+        "require-file-references"
+      ],
+      "selected_modules": []
+    },
+    "reason": "require-file-references is not directly selectable from task analysis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "policy"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering"
+      ],
+      "phrases": [
+        "require-file-references"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "dependency_only"
+}

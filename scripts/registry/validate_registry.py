@@ -146,6 +146,150 @@ def _local_invariant_errors(
             continue
         _resolve_inside_repo(REPO_ROOT / candidate)
 
+    errors.extend(_provenance_errors(module_path, module))
+    errors.extend(_selection_evidence_errors(module_path, module))
+
+    return errors
+
+
+def _provenance_errors(module_path: Path, module: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+    provenance = module.get("provenance")
+    if not isinstance(provenance, Mapping):
+        return [f"{_repo_path(module_path)} provenance is required"]
+
+    source_entries = provenance.get("source_of_truth", [])
+    if not isinstance(source_entries, list):
+        return errors
+
+    has_repo_source = False
+    for source in source_entries:
+        if not isinstance(source, Mapping):
+            continue
+        if source.get("type") != "repo_path":
+            continue
+        has_repo_source = True
+        ref = source.get("ref")
+        if not isinstance(ref, str):
+            continue
+        try:
+            resolved = _resolve_inside_repo(REPO_ROOT / ref)
+        except ValueError:
+            errors.append(
+                f"{_repo_path(module_path)} source_of_truth repo_path escapes repository: {ref}"
+            )
+            continue
+        if not resolved.exists():
+            errors.append(
+                f"{_repo_path(module_path)} source_of_truth repo_path does not exist: {ref}"
+            )
+
+    if (
+        "prod" in set(str(value) for value in module.get("environments", []))
+        and not has_repo_source
+    ):
+        errors.append(f"{_repo_path(module_path)} prod module requires repo_path source_of_truth")
+
+    return errors
+
+
+def _selection_evidence_errors(
+    module_path: Path,
+    module: Mapping[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+    selection = module.get("selection")
+    evidence = module.get("selection_evidence")
+    if not isinstance(selection, Mapping) or not isinstance(evidence, Mapping):
+        return errors
+
+    mode = selection.get("mode")
+    tests = module.get("tests", {})
+    fixture_paths = set()
+    if isinstance(tests, Mapping) and isinstance(tests.get("fixtures"), list):
+        fixture_paths = {str(path) for path in tests["fixtures"]}
+
+    if module.get("status") == "active" and not fixture_paths:
+        errors.append(f"{_repo_path(module_path)} active module requires tests.fixtures")
+
+    if mode == "direct":
+        if not evidence.get("positive_selection"):
+            errors.append(f"{_repo_path(module_path)} direct module requires positive evidence")
+        if not evidence.get("negative_selection"):
+            errors.append(f"{_repo_path(module_path)} direct module requires negative evidence")
+        modifiers = selection.get("score_modifiers", [])
+        if isinstance(modifiers, list) and not any(
+            isinstance(modifier, Mapping) and float(modifier.get("weight", 0)) > 0
+            for modifier in modifiers
+        ):
+            errors.append(f"{_repo_path(module_path)} direct module requires positive scoring")
+        task_signals = module.get("task_signals", {})
+        negative_phrases = (
+            task_signals.get("negative_phrases", [])
+            if isinstance(task_signals, Mapping)
+            else []
+        )
+        has_negative_modifier = isinstance(modifiers, list) and any(
+            isinstance(modifier, Mapping) and float(modifier.get("weight", 0)) < 0
+            for modifier in modifiers
+        )
+        if not negative_phrases and not has_negative_modifier:
+            errors.append(f"{_repo_path(module_path)} direct module requires negative signal")
+    elif mode == "dependency_only":
+        if "base_score" in selection or "score_modifiers" in selection:
+            errors.append(
+                f"{_repo_path(module_path)} dependency_only module must not define direct scoring"
+            )
+        if module.get("triggers"):
+            errors.append(
+                f"{_repo_path(module_path)} dependency_only module must not define triggers"
+            )
+        task_signals = module.get("task_signals", {})
+        if isinstance(task_signals, Mapping):
+            direct_fields = ("task_types", "phrases", "required_inputs")
+            for field in direct_fields:
+                if task_signals.get(field):
+                    errors.append(
+                        f"{_repo_path(module_path)} dependency_only module must not define "
+                        f"task_signals.{field}"
+                    )
+        if not evidence.get("dependency_inclusion"):
+            errors.append(
+                f"{_repo_path(module_path)} dependency_only module requires dependency evidence"
+            )
+        if not evidence.get("no_direct_selection"):
+            errors.append(
+                f"{_repo_path(module_path)} dependency_only module requires no-direct evidence"
+            )
+    else:
+        errors.append(f"{_repo_path(module_path)} selection.mode must fail closed: {mode}")
+
+    for entries in evidence.values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                continue
+            fixture = entry.get("fixture")
+            if not isinstance(fixture, str):
+                continue
+            if fixture not in fixture_paths:
+                errors.append(
+                    f"{_repo_path(module_path)} evidence fixture is not listed in tests.fixtures: "
+                    f"{fixture}"
+                )
+            try:
+                resolved = _resolve_inside_repo(REPO_ROOT / fixture)
+            except ValueError:
+                errors.append(
+                    f"{_repo_path(module_path)} evidence fixture escapes repository: {fixture}"
+                )
+                continue
+            if not resolved.exists():
+                errors.append(
+                    f"{_repo_path(module_path)} evidence fixture does not exist: {fixture}"
+                )
+
     return errors
 
 

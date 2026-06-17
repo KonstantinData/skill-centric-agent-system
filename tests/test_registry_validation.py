@@ -61,6 +61,62 @@ def test_registry_rejects_runtime_role_default_outside_allowed(tmp_path: Path) -
         )
 
 
+def test_registry_rejects_missing_provenance_repo_path(tmp_path: Path) -> None:
+    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir.mkdir(parents=True)
+    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module["provenance"]["source_of_truth"][0]["ref"] = "docs/missing-contract.md"
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+    (module_dir / "SKILL.md").write_text(
+        "---\nname: git-diff-analysis\ndescription: test\n---\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RegistryValidationError, match="source_of_truth repo_path"):
+        validate_registry(
+            registry_root=tmp_path / "modules",
+            schema_path=SCHEMA_PATH,
+            environments_dir=ENVIRONMENTS_DIR,
+            phase="3a",
+        )
+
+
+def test_registry_rejects_unlisted_selection_evidence_fixture(tmp_path: Path) -> None:
+    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir.mkdir(parents=True)
+    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module["tests"]["fixtures"] = []
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+    (module_dir / "SKILL.md").write_text(
+        "---\nname: git-diff-analysis\ndescription: test\n---\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RegistryValidationError, match="tests.fixtures"):
+        validate_registry(
+            registry_root=tmp_path / "modules",
+            schema_path=SCHEMA_PATH,
+            environments_dir=ENVIRONMENTS_DIR,
+            phase="3a",
+        )
+
+
+def test_registry_rejects_dependency_only_direct_scoring(tmp_path: Path) -> None:
+    module_dir = tmp_path / "modules" / "tools" / "git-read"
+    module_dir.mkdir(parents=True)
+    module = load_json(REGISTRY_ROOT / "tools" / "git-read" / "module.json")
+    module["selection"]["base_score"] = 0.5
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+
+    with pytest.raises(RegistryValidationError, match="base_score"):
+        validate_registry(
+            registry_root=tmp_path / "modules",
+            schema_path=SCHEMA_PATH,
+            environments_dir=ENVIRONMENTS_DIR,
+            phase="3a",
+        )
+
+
 def test_registry_rejects_missing_reference(tmp_path: Path) -> None:
     module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)

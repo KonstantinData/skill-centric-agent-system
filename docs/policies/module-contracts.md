@@ -53,7 +53,27 @@ not parse `SKILL.md` for selection metadata.
   "data_scopes": ["scope-name"],
   "policies": ["policy-name"],
   "validators": ["validator-name"],
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "The concrete task or platform problem this module solves.",
+    "acceptance_criteria": [
+      "The module has positive and negative selection evidence."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Defines the governed module contract."
+      }
+    ],
+    "rationale": "Why this module is directly selectable or dependency-only.",
+    "requirement_id": "REQ-SCAS-REGISTRY-EXAMPLE"
+  },
   "selection": {
+    "mode": "direct",
     "base_score": 0.5,
     "score_modifiers": [
       {
@@ -64,10 +84,26 @@ not parse `SKILL.md` for selection metadata.
     ],
     "requires_all_policies": true
   },
+  "selection_evidence": {
+    "positive_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/example-module.json",
+        "expectation": "selected",
+        "reason": "The positive fixture matches this module's task boundary."
+      }
+    ],
+    "negative_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/example-module.json",
+        "expectation": "rejected",
+        "reason": "The negative fixture proves the module is not a catch-all."
+      }
+    ]
+  },
   "tests": {
     "contract": ["tests/contract/module-contract.json"],
     "runtime": ["tests/test_runtime_skill_handlers.py::test_example"],
-    "fixtures": ["examples/runtime/example.json"]
+    "fixtures": ["examples/registry/selection-evidence/example-module.json"]
   }
 }
 ```
@@ -217,14 +253,19 @@ by name; must exist in the validator registry.
 
 ### Selection Scoring
 
-`selection` controls how the Composer scores the module against task signals.
+`selection` controls whether the Composer may score the module against task
+signals.
 
-`selection.base_score` - Starting score between `0.0` and `1.0` before any
-modifiers are applied. Represents the module's general fit absent specific
-evidence.
+`selection.mode` - `direct` modules can be discovered and scored from task
+signals. `dependency_only` modules cannot be directly discovered or scored and
+can only be included through graph validation from another selected module.
 
-`selection.score_modifiers` - Ordered list of signal-weight pairs applied on
-top of the base score. Each modifier has:
+For `direct` modules, `selection.base_score` is the starting score between
+`0.0` and `1.0` before any modifiers are applied. It represents the module's
+general fit absent specific evidence.
+
+For `direct` modules, `selection.score_modifiers` is the ordered list of
+signal-weight pairs applied on top of the base score. Each modifier has:
 
 - `signal` - The condition being evaluated. Format: `type:value`, for example
   `task_type:code-review`, `input:diff`, `phrase:deploy`, `risk_level:critical`.
@@ -238,6 +279,8 @@ top of the base score. Each modifier has:
 every policy in `policies` passes before the module can be selected. When
 `false`, the module may be selected if at least one policy allows it, and
 remaining policies are evaluated at runtime.
+
+`dependency_only` modules must not define `base_score` or `score_modifiers`.
 
 ## SOTA 2026 Provenance And Selection Evidence Contract
 
@@ -501,7 +544,34 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
   "data_scopes": ["repository-readonly"],
   "policies": ["no-destructive-commands", "require-file-references"],
   "validators": ["review-findings-contract"],
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "Code-review tasks need a bounded review skill that reads repository diffs without gaining mutation capability.",
+    "acceptance_criteria": [
+      "The module is selected for code-review tasks with repository and diff inputs.",
+      "The module is rejected or ranked away for deployment and mutation requests.",
+      "Graph validation includes only the declared tools, scopes, policies, and validators."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Defines the governed module contract."
+      },
+      {
+        "type": "repo_path",
+        "ref": "registry/modules/skills/git-diff-analysis/module.json",
+        "reason": "Durable machine-readable module definition."
+      }
+    ],
+    "rationale": "This module is directly selectable because code-review task signals map to its primary capability.",
+    "requirement_id": "REQ-SCAS-REGISTRY-GIT_DIFF_ANALYSIS"
+  },
   "selection": {
+    "mode": "direct",
     "base_score": 0.74,
     "score_modifiers": [
       {
@@ -522,13 +592,29 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
     ],
     "requires_all_policies": true
   },
+  "selection_evidence": {
+    "positive_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+        "expectation": "selected",
+        "reason": "The positive fixture contains code-review task signals with repository and diff inputs."
+      }
+    ],
+    "negative_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+        "expectation": "rejected",
+        "reason": "The negative fixture contains deployment language that should not select review-only capability."
+      }
+    ]
+  },
   "tests": {
     "contract": [],
     "runtime": [
       "detects-risky-diff-fixture",
       "requires-file-line-references"
     ],
-    "fixtures": []
+    "fixtures": ["examples/registry/selection-evidence/git-diff-analysis.json"]
   }
 }
 ```
@@ -550,10 +636,14 @@ schema validation will not be accepted into the registry.
 
 - Define `triggers` only and omit `task_signals` - triggers are weak hints, not
   the scoring surface.
-- Set `base_score` to `1.0` - this bypasses meaningful scoring and forces every
-  Composer to select the module regardless of task fit.
+- Treat support modules as `direct` because they are useful dependencies -
+  tools, scopes, policies, and validators should normally be `dependency_only`.
+- Set `base_score` to `1.0` - this bypasses meaningful scoring and pushes every
+  Composer toward the module regardless of task fit.
 - Omit `negative_phrases` - without them, the module can be selected for tasks
   where it should be denied.
+- Put `base_score` or `score_modifiers` on a `dependency_only` module - this
+  reopens direct selection.
 - List every tool in `required_tools` as a precaution - only list tools the
   module cannot function without.
 - Set `requires_all_policies: false` without a documented reason - this weakens

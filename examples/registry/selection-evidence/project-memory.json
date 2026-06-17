@@ -1,0 +1,74 @@
+{
+  "module": "project-memory",
+  "negative_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "matched_signals_must_include": [],
+      "negative_signals_must_include": [
+        "phrase:customer record"
+      ],
+      "policy_result": "deny_or_lower_ranked",
+      "rejected_modules": [
+        "project-memory"
+      ],
+      "selected_modules": []
+    },
+    "reason": "Negative task language proves project-memory is not a catch-all capability.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "memory_access"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "runtime"
+      ],
+      "phrases": [
+        "procedural lesson",
+        "previous workflow decision",
+        "customer record"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "positive_selection": {
+    "expected": {
+      "graph_validation": "valid",
+      "matched_signals_must_include": [
+        "task_type:code-review"
+      ],
+      "negative_signals": [],
+      "policy_result": "allow",
+      "rejected_modules": [],
+      "selected_modules": [
+        "project-memory"
+      ]
+    },
+    "reason": "Structured task signals match the direct capability boundary for project-memory.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "memory_access"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "runtime"
+      ],
+      "phrases": [
+        "procedural lesson",
+        "previous workflow decision"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "direct"
+}

@@ -591,7 +591,7 @@ def _normalize_module(module: dict[str, Any]) -> dict[str, Any]:
             **modifier,
             "signal": _normalize_signal(modifier["signal"]),
         }
-        for modifier in normalized["selection"]["score_modifiers"]
+        for modifier in normalized["selection"].get("score_modifiers", [])
     ]
     return normalized
 
@@ -683,8 +683,7 @@ def _stub_modules(
                 "policies": [],
                 "validators": [],
                 "selection": {
-                    "base_score": 1.0 if kind == "policy" else 0.5,
-                    "score_modifiers": [],
+                    "mode": "dependency_only",
                     "requires_all_policies": False,
                 },
                 "tests": [f"{dependency['name']}-seed-contract"],
@@ -718,7 +717,7 @@ def _module_version_record(
         "version": module["version"],
         "source_uri": source_uri,
         "checksum": checksum,
-        "selection_base_score": module["selection"]["base_score"],
+        "selection_base_score": module["selection"].get("base_score", 0.0),
         "created_at": created_at,
     }
 
@@ -741,7 +740,7 @@ def _selection_metadata_record(module: dict[str, Any]) -> dict[str, Any]:
         "inputs_json": _json_array(module["inputs"]),
         "outputs_json": _json_array(module["outputs"]),
         "score_modifiers_json": json.dumps(
-            module["selection"]["score_modifiers"],
+            module["selection"].get("score_modifiers", []),
             separators=(",", ":"),
             sort_keys=True,
         ),

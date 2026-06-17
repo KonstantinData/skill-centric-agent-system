@@ -1,54 +1,117 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "project-memory",
-  "version": "0.1.0",
-  "kind": "memory_scope",
-  "status": "active",
-  "description": "Allow access to validated, project-scoped procedural Agent Memory records that have passed runtime memory candidate validation and policy gates. This scope contains reusable process lessons only, not task-subject facts or source data.",
-  "runtime_roles": {
-    "default": "non-runtime",
-    "allowed": [
-      "non-runtime"
-    ]
-  },
   "capability_class": "memory_access",
-  "environments": [
-    "dev",
-    "staging",
-    "prod"
-  ],
-  "runtime_contract": {
-    "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": false
-  },
+  "data_scopes": [],
+  "description": "Allow access to validated, project-scoped procedural Agent Memory records that have passed runtime memory candidate validation and policy gates. This scope contains reusable process lessons only, not task-subject facts or source data.",
   "domain_tags": [
     "software-engineering",
     "runtime",
     "project-memory",
     "procedural-memory"
   ],
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "inputs": [],
+  "kind": "memory_scope",
+  "knowledge_scopes": [],
+  "name": "project-memory",
+  "optional_tools": [],
+  "outputs": [
+    "procedural-memory-records"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "provenance": {
+    "acceptance_criteria": [
+      "project-memory declares an explicit selection mode.",
+      "project-memory has repository-backed source-of-truth evidence.",
+      "project-memory has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "project-memory needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "project-memory is task-facing and can be selected directly from structured task signals.",
+    "requirement_id": "REQ-SCAS-REGISTRY-PROJECT_MEMORY",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/memory-scopes/project-memory/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": false,
+    "requires_version_pin": true
+  },
+  "runtime_roles": {
+    "allowed": [
+      "non-runtime"
+    ],
+    "default": "non-runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "base_score": 0.55,
+    "mode": "direct",
+    "requires_all_policies": true,
+    "score_modifiers": [
+      {
+        "reason": "Project memory is relevant when the task asks for prior procedural project lessons.",
+        "signal": "phrase:project memory",
+        "weight": 0.2
+      },
+      {
+        "reason": "Task-subject facts must use scoped Knowledge Records, not procedural Agent Memory.",
+        "signal": "phrase:task-subject fact",
+        "weight": -0.55
+      },
+      {
+        "reason": "Customer-specific factual content is not eligible for procedural Agent Memory.",
+        "signal": "phrase:customer record",
+        "weight": -0.55
+      },
+      {
+        "reason": "Secret-bearing content must not be loaded through project memory without a stronger policy gate.",
+        "signal": "phrase:secret",
+        "weight": -0.5
+      }
+    ]
+  },
+  "selection_evidence": {
+    "negative_selection": [
+      {
+        "expectation": "rejected",
+        "fixture": "examples/registry/selection-evidence/project-memory.json",
+        "reason": "project-memory must be rejected or ranked away for its negative fixture."
+      }
+    ],
+    "positive_selection": [
+      {
+        "expectation": "selected",
+        "fixture": "examples/registry/selection-evidence/project-memory.json",
+        "reason": "project-memory must be selectable for its positive fixture."
+      }
+    ]
+  },
+  "status": "active",
   "task_signals": {
-    "task_types": [
-      "code-review",
-      "research",
-      "task-execution"
-    ],
-    "risk_levels": [
-      "low",
-      "medium"
-    ],
     "domains": [
       "software-engineering",
       "runtime"
-    ],
-    "required_inputs": [],
-    "phrases": [
-      "procedural lesson",
-      "previous workflow decision",
-      "project memory",
-      "runtime reconstruction"
     ],
     "negative_phrases": [
       "customer record",
@@ -60,6 +123,33 @@
       "secret",
       "credentials",
       "task-subject fact"
+    ],
+    "phrases": [
+      "procedural lesson",
+      "previous workflow decision",
+      "project memory",
+      "runtime reconstruction"
+    ],
+    "required_inputs": [],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "task_types": [
+      "code-review",
+      "research",
+      "task-execution"
+    ]
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/project-memory.json"
+    ],
+    "runtime": [
+      "retrieves-approved-project-memory",
+      "denies-raw-runtime-trace-memory",
+      "denies-task-subject-fact-memory"
     ]
   },
   "triggers": [
@@ -67,53 +157,8 @@
     "project memory",
     "previous workflow decision"
   ],
-  "inputs": [],
-  "outputs": [
-    "procedural-memory-records"
-  ],
-  "required_tools": [],
-  "optional_tools": [],
-  "knowledge_scopes": [],
-  "data_scopes": [],
-  "policies": [
-    "no-destructive-commands"
-  ],
   "validators": [
     "review-findings-contract"
   ],
-  "selection": {
-    "base_score": 0.55,
-    "score_modifiers": [
-      {
-        "signal": "phrase:project memory",
-        "weight": 0.2,
-        "reason": "Project memory is relevant when the task asks for prior procedural project lessons."
-      },
-      {
-        "signal": "phrase:task-subject fact",
-        "weight": -0.55,
-        "reason": "Task-subject facts must use scoped Knowledge Records, not procedural Agent Memory."
-      },
-      {
-        "signal": "phrase:customer record",
-        "weight": -0.55,
-        "reason": "Customer-specific factual content is not eligible for procedural Agent Memory."
-      },
-      {
-        "signal": "phrase:secret",
-        "weight": -0.5,
-        "reason": "Secret-bearing content must not be loaded through project memory without a stronger policy gate."
-      }
-    ],
-    "requires_all_policies": true
-  },
-  "tests": {
-    "contract": [],
-    "runtime": [
-      "retrieves-approved-project-memory",
-      "denies-raw-runtime-trace-memory",
-      "denies-task-subject-fact-memory"
-    ],
-    "fixtures": []
-  }
+  "version": "0.1.0"
 }

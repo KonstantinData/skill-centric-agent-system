@@ -1,0 +1,70 @@
+{
+  "dependency_inclusion": {
+    "direct_module": "project-memory",
+    "expected": {
+      "graph_validation": "valid",
+      "included_dependencies": [
+        "review-findings-contract"
+      ],
+      "policy_result": "allow",
+      "selected_modules": [
+        "project-memory"
+      ]
+    },
+    "reason": "review-findings-contract is included only when graph validation resolves a consuming direct module.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "memory_access"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "runtime"
+      ],
+      "phrases": [
+        "procedural lesson",
+        "previous workflow decision",
+        "review-findings-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "module": "review-findings-contract",
+  "no_direct_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "negative_signals_must_include": [
+        "selection_mode:dependency_only"
+      ],
+      "policy_result": "not_evaluated",
+      "rejected_modules": [
+        "review-findings-contract"
+      ],
+      "selected_modules": []
+    },
+    "reason": "review-findings-contract is not directly selectable from task analysis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "validation"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering"
+      ],
+      "phrases": [
+        "review-findings-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "dependency_only"
+}

@@ -14,6 +14,14 @@ from tests.contract_schema_support import *  # noqa: F403
             "'selection' is a required property",
         ),
         (
+            lambda module: module.pop("provenance"),
+            "'provenance' is a required property",
+        ),
+        (
+            lambda module: module.pop("selection_evidence"),
+            "'selection_evidence' is a required property",
+        ),
+        (
             lambda module: module.__setitem__("kind", "agent"),
             "'agent' is not one of",
         ),
@@ -24,6 +32,18 @@ from tests.contract_schema_support import *  # noqa: F403
         (
             lambda module: module["selection"]["score_modifiers"][0].__setitem__("weight", 2),
             "2 is greater than the maximum of 1",
+        ),
+        (
+            lambda module: module["selection"].__setitem__("mode", "legacy"),
+            "'legacy' is not one of",
+        ),
+        (
+            lambda module: module["provenance"]["owner"].__setitem__("type", "team"),
+            "'person' was expected",
+        ),
+        (
+            lambda module: module["selection_evidence"].pop("positive_selection"),
+            "'positive_selection' is a required property",
         ),
         (
             lambda module: module.pop("task_signals"),
@@ -54,6 +74,32 @@ def test_keyword_only_module_metadata_is_rejected(
     }
 
     assert_invalid(module_schema, keyword_only_module, "'capability_class' is a required property")
+
+
+def test_dependency_only_module_metadata_rejects_direct_scoring(
+    module_schema: dict[str, Any],
+    module_example: dict[str, Any],
+) -> None:
+    dependency_only_module = deepcopy(module_example)
+    dependency_only_module["selection"]["mode"] = "dependency_only"
+    dependency_only_module["selection_evidence"] = {
+        "dependency_inclusion": [
+            {
+                "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+                "expectation": "included_as_dependency",
+                "reason": "test",
+            }
+        ],
+        "no_direct_selection": [
+            {
+                "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+                "expectation": "not_directly_selected",
+                "reason": "test",
+            }
+        ],
+    }
+
+    assert_invalid(module_schema, dependency_only_module, "should not be valid under")
 
 
 @pytest.mark.parametrize(

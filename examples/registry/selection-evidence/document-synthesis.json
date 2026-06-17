@@ -1,0 +1,76 @@
+{
+  "module": "document-synthesis",
+  "negative_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "matched_signals_must_include": [],
+      "negative_signals_must_include": [
+        "phrase:deploy"
+      ],
+      "policy_result": "deny_or_lower_ranked",
+      "rejected_modules": [
+        "document-synthesis"
+      ],
+      "selected_modules": []
+    },
+    "reason": "Negative task language proves document-synthesis is not a catch-all capability.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "documentation",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "summarize docs",
+        "document",
+        "deploy"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "positive_selection": {
+    "expected": {
+      "graph_validation": "valid",
+      "matched_signals_must_include": [
+        "task_type:general-task"
+      ],
+      "negative_signals": [],
+      "policy_result": "allow",
+      "rejected_modules": [],
+      "selected_modules": [
+        "document-synthesis"
+      ]
+    },
+    "reason": "Structured task signals match the direct capability boundary for document-synthesis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "documentation",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "summarize docs",
+        "document"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "direct"
+}

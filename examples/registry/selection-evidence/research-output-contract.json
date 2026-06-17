@@ -1,0 +1,70 @@
+{
+  "dependency_inclusion": {
+    "direct_module": "research-context-synthesis",
+    "expected": {
+      "graph_validation": "valid",
+      "included_dependencies": [
+        "research-output-contract"
+      ],
+      "policy_result": "allow",
+      "selected_modules": [
+        "research-context-synthesis"
+      ]
+    },
+    "reason": "research-output-contract is included only when graph validation resolves a consuming direct module.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "retrieval"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "phrases": [
+        "compare",
+        "error",
+        "research-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "research"
+    }
+  },
+  "module": "research-output-contract",
+  "no_direct_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "negative_signals_must_include": [
+        "selection_mode:dependency_only"
+      ],
+      "policy_result": "not_evaluated",
+      "rejected_modules": [
+        "research-output-contract"
+      ],
+      "selected_modules": []
+    },
+    "reason": "research-output-contract is not directly selectable from task analysis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "validation"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "research"
+      ],
+      "phrases": [
+        "research-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "dependency_only"
+}

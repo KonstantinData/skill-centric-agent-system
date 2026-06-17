@@ -11,8 +11,10 @@ The first implementation is local and deterministic:
 - module metadata is loaded from `registry/modules/**/module.json` records that
   conform to `schemas/module.schema.json`,
 - discovery uses structured fields, not keyword-only matching,
-- scoring applies explicit `selection.base_score` and
+- direct modules are scored with explicit `selection.base_score` and
   `selection.score_modifiers`,
+- dependency-only modules are excluded from direct discovery and can enter a
+  runtime profile only through graph validation,
 - scoring can apply taxonomy feedback penalties from recent F1/F2/R8 outcomes
   through `TaskSignals.error_feedback`,
 - policy filtering fails closed when required policies are missing,
@@ -68,7 +70,8 @@ contains fixtures, generated examples, and API payload samples only.
 Skill modules have two layers:
 
 - `module.json`: machine-readable selection, dependency, policy, version,
-  environment, runtime role, and runtime contract metadata.
+  environment, runtime role, runtime contract, provenance, and fixture evidence
+  metadata.
 - `SKILL.md`: agent-readable execution guidance loaded only after a sealed
   runtime profile selects the skill.
 

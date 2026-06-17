@@ -45,7 +45,8 @@
       "test_evidence": {
         "module_tests": [
           "dependency-audit-positive",
-          "dependency-audit-denies-destructive"
+          "dependency-audit-denies-destructive",
+          "examples/registry/selection-evidence/dependency-audit.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_skill_handlers.py::test_dependency_audit_skill_handler_builds_expected_actions"
@@ -94,7 +95,8 @@
       "test_evidence": {
         "module_tests": [
           "document-synthesis-positive",
-          "document-synthesis-denies-deploy"
+          "document-synthesis-denies-deploy",
+          "examples/registry/selection-evidence/document-synthesis.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_skill_handlers.py::test_document_synthesis_skill_handler_builds_no_tool_actions"
@@ -143,7 +145,8 @@
       "test_evidence": {
         "module_tests": [
           "general-task-summary-positive",
-          "general-task-summary-denies-destructive"
+          "general-task-summary-denies-destructive",
+          "examples/registry/selection-evidence/general-task-summary.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
@@ -199,7 +202,8 @@
       "test_evidence": {
         "module_tests": [
           "detects-risky-diff-fixture",
-          "requires-file-line-references"
+          "requires-file-line-references",
+          "examples/registry/selection-evidence/git-diff-analysis.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_skill_handlers.py::test_builtin_skill_handler_registry_resolves_profile_selected_version",
@@ -250,7 +254,8 @@
       "test_evidence": {
         "module_tests": [
           "research-context-synthesis-positive",
-          "research-context-synthesis-denies-deploy"
+          "research-context-synthesis-denies-deploy",
+          "examples/registry/selection-evidence/research-context-synthesis.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"
@@ -312,7 +317,8 @@
       "test_evidence": {
         "module_tests": [
           "task-execution-planning-positive",
-          "task-execution-planning-denies-destructive"
+          "task-execution-planning-denies-destructive",
+          "examples/registry/selection-evidence/task-execution-planning.json"
         ],
         "runtime_tests": [
           "tests/test_runtime_tool_gateway_and_loop.py::test_minimal_runtime_loop_dispatches_task_type_strategies"

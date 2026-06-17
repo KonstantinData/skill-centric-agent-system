@@ -1,60 +1,151 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "document-synthesis",
-  "version": "0.1.0",
-  "kind": "skill",
-  "status": "active",
-  "description": "Synthesize durable technical documentation updates from profile-authorized context.",
-  "runtime_role": "runtime",
-  "runtime_roles": {
-    "default": "runtime",
-    "allowed": [
-      "runtime"
-    ]
-  },
   "capability_class": "analysis",
+  "data_scopes": [
+    "repository-readonly"
+  ],
+  "description": "Synthesize durable technical documentation updates from profile-authorized context.",
+  "domain_tags": [
+    "documentation",
+    "repository"
+  ],
+  "entrypoint": {
+    "path": "SKILL.md",
+    "type": "skill_folder"
+  },
   "environments": [
     "dev",
     "staging",
     "prod"
   ],
-  "entrypoint": {
-    "type": "skill_folder",
-    "path": "SKILL.md"
+  "inputs": [
+    "retrieval-context"
+  ],
+  "kind": "skill",
+  "knowledge_scopes": [
+    "architecture-docs",
+    "coding-guidelines"
+  ],
+  "name": "document-synthesis",
+  "optional_tools": [],
+  "outputs": [
+    "documentation-summary"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "provenance": {
+    "acceptance_criteria": [
+      "document-synthesis declares an explicit selection mode.",
+      "document-synthesis has repository-backed source-of-truth evidence.",
+      "document-synthesis has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "document-synthesis needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "document-synthesis is task-facing and can be selected directly from structured task signals.",
+    "requirement_id": "REQ-SCAS-REGISTRY-DOCUMENT_SYNTHESIS",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/skills/document-synthesis/module.json",
+        "type": "repo_path"
+      }
+    ]
   },
+  "required_tools": [],
   "runtime_contract": {
     "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": true
+    "requires_handler_binding": true,
+    "requires_version_pin": true
   },
-  "domain_tags": [
-    "documentation",
-    "repository"
-  ],
+  "runtime_role": "runtime",
+  "runtime_roles": {
+    "allowed": [
+      "runtime"
+    ],
+    "default": "runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "base_score": 0.66,
+    "mode": "direct",
+    "requires_all_policies": true,
+    "score_modifiers": [
+      {
+        "reason": "Documentation-focused tasks need synthesis from approved context.",
+        "signal": "domain:documentation",
+        "weight": 0.16
+      },
+      {
+        "reason": "Explicit synthesis language increases module relevance.",
+        "signal": "phrase:synthesize",
+        "weight": 0.08
+      },
+      {
+        "reason": "Deployment requests must not route through documentation synthesis.",
+        "signal": "phrase:deploy",
+        "weight": -0.3
+      }
+    ]
+  },
+  "selection_evidence": {
+    "negative_selection": [
+      {
+        "expectation": "rejected",
+        "fixture": "examples/registry/selection-evidence/document-synthesis.json",
+        "reason": "document-synthesis must be rejected or ranked away for its negative fixture."
+      }
+    ],
+    "positive_selection": [
+      {
+        "expectation": "selected",
+        "fixture": "examples/registry/selection-evidence/document-synthesis.json",
+        "reason": "document-synthesis must be selectable for its positive fixture."
+      }
+    ]
+  },
+  "status": "active",
   "task_signals": {
-    "task_types": [
-      "general-task"
-    ],
-    "risk_levels": [
-      "low",
-      "medium"
-    ],
     "domains": [
       "documentation",
       "software-engineering",
       "repository"
     ],
-    "required_inputs": [],
+    "negative_phrases": [
+      "deploy",
+      "delete",
+      "destroy"
+    ],
     "phrases": [
       "summarize docs",
       "document",
       "synthesize"
     ],
-    "negative_phrases": [
-      "deploy",
-      "delete",
-      "destroy"
+    "required_inputs": [],
+    "risk_levels": [
+      "low",
+      "medium"
+    ],
+    "task_types": [
+      "general-task"
+    ]
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/document-synthesis.json"
+    ],
+    "runtime": [
+      "document-synthesis-positive",
+      "document-synthesis-denies-deploy"
     ]
   },
   "triggers": [
@@ -62,54 +153,8 @@
     "document",
     "synthesize"
   ],
-  "inputs": [
-    "retrieval-context"
-  ],
-  "outputs": [
-    "documentation-summary"
-  ],
-  "required_tools": [],
-  "optional_tools": [],
-  "knowledge_scopes": [
-    "architecture-docs",
-    "coding-guidelines"
-  ],
-  "data_scopes": [
-    "repository-readonly"
-  ],
-  "policies": [
-    "no-destructive-commands"
-  ],
   "validators": [
     "general-output-contract"
   ],
-  "selection": {
-    "base_score": 0.66,
-    "score_modifiers": [
-      {
-        "signal": "domain:documentation",
-        "weight": 0.16,
-        "reason": "Documentation-focused tasks need synthesis from approved context."
-      },
-      {
-        "signal": "phrase:synthesize",
-        "weight": 0.08,
-        "reason": "Explicit synthesis language increases module relevance."
-      },
-      {
-        "signal": "phrase:deploy",
-        "weight": -0.3,
-        "reason": "Deployment requests must not route through documentation synthesis."
-      }
-    ],
-    "requires_all_policies": true
-  },
-  "tests": {
-    "contract": [],
-    "runtime": [
-      "document-synthesis-positive",
-      "document-synthesis-denies-deploy"
-    ],
-    "fixtures": []
-  }
+  "version": "0.1.0"
 }

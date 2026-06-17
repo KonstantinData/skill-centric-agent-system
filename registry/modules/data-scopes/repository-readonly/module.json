@@ -1,73 +1,103 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "repository-readonly",
-  "version": "0.1.0",
-  "kind": "data_scope",
-  "status": "active",
-  "description": "Governed data_scope module for repository-readonly.",
-  "runtime_roles": {
-    "default": "non-runtime",
-    "allowed": [
-      "non-runtime"
-    ]
-  },
   "capability_class": "data_access",
+  "data_scopes": [],
+  "description": "Governed data_scope module for repository-readonly.",
+  "domain_tags": [
+    "software-engineering"
+  ],
   "environments": [
     "dev",
     "staging",
     "prod"
   ],
-  "runtime_contract": {
-    "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": false
-  },
-  "domain_tags": [
-    "software-engineering"
-  ],
-  "task_signals": {
-    "task_types": [
-      "code-review",
-      "task-execution"
-    ],
-    "risk_levels": [
-      "low",
-      "medium",
-      "high"
-    ],
-    "domains": [
-      "software-engineering"
-    ],
-    "required_inputs": [],
-    "phrases": [
-      "repository-readonly"
-    ],
-    "negative_phrases": []
-  },
-  "triggers": [
-    "repository-readonly"
-  ],
   "inputs": [],
+  "kind": "data_scope",
+  "knowledge_scopes": [],
+  "name": "repository-readonly",
+  "optional_tools": [],
   "outputs": [
     "repository-readonly-output"
   ],
-  "required_tools": [],
-  "optional_tools": [],
-  "knowledge_scopes": [],
-  "data_scopes": [],
   "policies": [],
-  "validators": [],
+  "provenance": {
+    "acceptance_criteria": [
+      "repository-readonly declares an explicit selection mode.",
+      "repository-readonly has repository-backed source-of-truth evidence.",
+      "repository-readonly has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "repository-readonly needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "repository-readonly is a support capability that must only enter a profile through graph dependencies from a directly selected module.",
+    "requirement_id": "REQ-SCAS-REGISTRY-REPOSITORY_READONLY",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/data-scopes/repository-readonly/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": false,
+    "requires_version_pin": true
+  },
+  "runtime_roles": {
+    "allowed": [
+      "non-runtime"
+    ],
+    "default": "non-runtime"
+  },
+  "schema_version": "0.1.0",
   "selection": {
-    "base_score": 0.5,
-    "score_modifiers": [],
+    "mode": "dependency_only",
     "requires_all_policies": false
+  },
+  "selection_evidence": {
+    "dependency_inclusion": [
+      {
+        "expectation": "included_as_dependency",
+        "fixture": "examples/registry/selection-evidence/repository-readonly.json",
+        "reason": "repository-readonly must be included through a consuming direct module dependency."
+      }
+    ],
+    "no_direct_selection": [
+      {
+        "expectation": "not_directly_selected",
+        "fixture": "examples/registry/selection-evidence/repository-readonly.json",
+        "reason": "repository-readonly must not be selected directly from task signals."
+      }
+    ]
+  },
+  "status": "active",
+  "task_signals": {
+    "domains": [],
+    "negative_phrases": [],
+    "phrases": [],
+    "required_inputs": [],
+    "risk_levels": [],
+    "task_types": []
   },
   "tests": {
     "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/repository-readonly.json"
+    ],
     "runtime": [
       "repository-readonly-registry-contract"
-    ],
-    "fixtures": []
-  }
+    ]
+  },
+  "triggers": [],
+  "validators": [],
+  "version": "0.1.0"
 }
