@@ -288,6 +288,10 @@ def test_control_api_worker_secrets_workflow_syncs_environment_secrets() -> None
 
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
+    assert "confirm_production:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production Worker secret sync." in workflow
     assert "SCAS_STAGING_CLOUDFLARE_DEPLOY_TOKEN" in workflow
     assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" not in workflow
     assert "LEGACY_CLOUDFLARE_API_TOKEN" not in workflow
@@ -299,6 +303,9 @@ def test_control_api_worker_secrets_workflow_syncs_environment_secrets() -> None
     assert "CONTROL_API_AI_GATEWAY_TOKEN" in workflow
     assert "wrangler secret bulk" in workflow
     assert "wrangler secret list" in workflow
+    assert 'wrangler_env_args=()' in workflow
+    assert 'if [ "${TARGET_ENVIRONMENT}" != "dev" ]; then' in workflow
+    assert 'wrangler_env_args=(--env "${TARGET_ENVIRONMENT}")' in workflow
     assert "SCAS_WORKER_SECRETS_FILE" in workflow
     assert "rm -f" in workflow
 
