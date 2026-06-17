@@ -154,9 +154,32 @@ jobs:
           set -euo pipefail
 
           redact() {
-            sed -E \
-              -e 's/((TOKEN|KEY|SECRET|PASSWORD|PASS|API_KEY|AUTH)[A-Z0-9_]*=)[^[:space:]"]+/\1<redacted>/g' \
-              -e 's/(Bearer )[A-Za-z0-9._~+\/=-]+/\1<redacted>/g'
+            python3 -c '
+          import re
+          import sys
+
+          payload = sys.stdin.read()
+          sensitive = (
+              r"(?:TOKEN|KEY|SECRET|PASSWORD|PASS|API_KEY|AUTH|"
+              r"SESSION|CONTEXT|PRINCIPAL|MEMBERSHIP)"
+          )
+          payload = re.sub(
+              r"(\"[A-Za-z0-9_]*" + sensitive + r"[A-Za-z0-9_]*=)(?:\\\\.|[^\"])*\"",
+              r"\1<redacted>\"",
+              payload,
+          )
+          payload = re.sub(
+              r"([A-Za-z0-9_]*" + sensitive + r"[A-Za-z0-9_]*=)[^\s\"]+",
+              r"\1<redacted>",
+              payload,
+          )
+          payload = re.sub(
+              r"(Bearer )[A-Za-z0-9._~+/=-]+",
+              r"\1<redacted>",
+              payload,
+          )
+          sys.stdout.write(payload)
+          '
           }
 
           section() {
@@ -210,12 +233,22 @@ jobs:
               | while read -r container_id; do
                   printf '\n### Container `%s`\n\n' "${container_id}"
                   docker inspect \
-                    --format='Name={{.Name}}\nImage={{.Config.Image}}\nWorkingDir={{.Config.WorkingDir}}\nEntrypoint={{json .Config.Entrypoint}}\nCmd={{json .Config.Cmd}}\nLabels={{json .Config.Labels}}\nMounts={{json .Mounts}}\nEnv={{json .Config.Env}}' \
+                    --format='Name={{.Name}}\nImage={{.Config.Image}}\nWorkingDir={{.Config.WorkingDir}}\nEntrypoint={{json .Config.Entrypoint}}\nCmd={{json .Config.Cmd}}\nLabels={{json .Config.Labels}}\nMounts={{json .Mounts}}' \
                     "${container_id}" 2>/dev/null | redact || true
                 done
           else
             printf 'docker command not available.\n'
           fi
+
+          section "SCAS-managed runtime configuration keys"
+          for env_file in /opt/liquisto/scas-streamlit-business-ui.env; do
+            if [ -f "${env_file}" ]; then
+              printf '### `%s`\n\n' "${env_file}"
+              grep -nE '^(SCAS_UI_AUTH_MODE|SCAS_UI_UPSTREAM_AUTH_TRUSTED|SCAS_CONTROL_API_URL|SCAS_TENANT_ADMIN_TOKEN|SCAS_UI_SESSION_CONTEXT_JSON)=' "${env_file}" \
+                | sed -E 's/^(.*=).*/\1<redacted>/' || true
+              printf '\n'
+            fi
+          done
 
           section "Candidate container definitions"
           for root in /opt /srv /var/www /home; do

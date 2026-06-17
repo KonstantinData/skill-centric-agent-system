@@ -1,6 +1,6 @@
 # Liquisto Tenant Rollback And Deprovisioning
 
-Last updated: 2026-06-16 12:34 Europe/Berlin
+Last updated: 2026-06-17 23:10 Europe/Berlin
 
 This runbook defines the safe rollback and deprovisioning dry-run path for the
 Liquisto tenant. It is tenant-local: no other tenant data, memory, knowledge,
@@ -35,6 +35,24 @@ deployment must be rolled back.
    `.github/workflows/tenant-ui-deploy.yml` evidence or the remote Compose
    override.
 8. Run tenant isolation tests locally and record the commit SHA.
+
+## Latest UI Rollback Evidence
+
+Production UI apply run `27719099324` recorded the rollback-relevant state for
+the current production deployment:
+
+- target environment: `prod`,
+- compose project: `liquisto`,
+- compose file: `/opt/liquisto/scas-streamlit-business-ui.override.yml`,
+- current image after apply:
+  `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921`,
+- previous image available for rollback:
+  `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`,
+- post-deploy Streamlit health check: passed.
+
+Sanitized inventory run `27719494125` confirmed the current container is
+healthy and running the applied image. The inventory evidence records only
+SCAS-managed configuration keys with redacted values.
 
 ## Local Verification
 

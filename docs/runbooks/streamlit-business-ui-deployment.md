@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-17 15:22 Europe/Berlin
+Last updated: 2026-06-17 23:10 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -30,22 +30,26 @@ configuration, or bypass tenant authentication.
 ## Latest Production Inventory
 
 Read-only runtime inventory run
-`https://github.com/KonstantinData/skill-centric-agent-system/actions/runs/27692078758`
-passed on 2026-06-17. It observed:
+`https://github.com/KonstantinData/skill-centric-agent-system/actions/runs/27719494125`
+passed on 2026-06-17 after production apply. It observed:
 
 - `liquisto.condata.io` is served by Nginx and proxied to `127.0.0.1:8501`.
 - Container `liquisto-app-1` is healthy and runs
   `streamlit run apps/streamlit_business_ui/app.py`.
 - The running image is
-  `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`.
+  `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921`.
 - The deployed source revision is
-  `916b7d87295d685c7ab4c2c8ffc3049297ed9d56`.
+  `655beba1faba6763120198857d1c8aef075d4921`.
+- SCAS-managed runtime config keys are present, but values are redacted from
+  the evidence artifact.
 
-This verifies the repository-owned Streamlit Business UI foundation is deployed
-behind the tenant hostname. It does not certify production launch readiness;
-the release gate still owns Control API environment alignment, upstream
-authentication, Cloudflare evidence, owner bootstrap, staging gate evidence, and
-rollback evidence.
+This verifies the repository-owned Streamlit Business UI is deployed behind the
+tenant hostname with the production launch image. Production launch readiness is
+certified separately by Production Readiness Evidence run `27719854597`.
+
+Intermediate inventory artifacts from runs `27719268407` and `27719390153` were
+deleted because they exposed over-specific server-side session context. Use
+`27719494125` or later inventory evidence for production release records.
 
 ## Required Secrets
 
@@ -144,11 +148,19 @@ gh workflow run tenant-ui-deploy.yml \
 
 Do not use production apply when any of these are missing:
 
-- Cloudflare DNS/TLS/Worker routing evidence for `liquisto.condata.io`.
+- Cloudflare DNS/TLS/proxy evidence for `liquisto.condata.io`; Worker route
+  evidence is required only if the UI hostname is intentionally moved behind a
+  Cloudflare Worker route.
 - Approved upstream authentication/session evidence.
 - Staging tenant launch gate evidence.
 - Rollback/deprovisioning dry-run evidence.
 - Owner-approved production release decision.
+
+Latest production apply evidence:
+
+| Date | GitHub run | Result | Evidence |
+| --- | --- | --- | --- |
+| 2026-06-17 22:56 Europe/Berlin | `27719099324` | passed | Applied `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921` to compose project `liquisto` using `/opt/liquisto/scas-streamlit-business-ui.override.yml`; previous image was `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`; post-deploy health check passed. |
 
 ## Rollback Behavior
 
@@ -187,7 +199,9 @@ This deployment path closes the repository-owned portion of
 `Liquisto Tenant UI 06`. It supports but does not replace the launch gates:
 
 - Launch 01: run the live tenant gate and attach the workflow evidence.
-- Launch 02: verify Cloudflare DNS, TLS, hidden origin, and Worker routing.
+- Launch 02: verify Cloudflare DNS, TLS, hidden origin handling, and the
+  selected routing path. The current UI path is Cloudflare-proxied
+  Hetzner/Nginx/Streamlit with Worker route count `0`.
 - Launch 03: bootstrap tenant owner/admin through
   `docs/runbooks/liquisto-tenant-admin-bootstrap.md`.
 - Launch 04: keep real legal/contact/register data in the approved source of

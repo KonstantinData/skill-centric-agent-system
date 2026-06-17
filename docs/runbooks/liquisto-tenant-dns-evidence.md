@@ -1,6 +1,6 @@
 # Liquisto Tenant DNS Evidence
 
-Last checked: 2026-06-16 12:40 Europe/Berlin
+Last checked: 2026-06-17 22:40 Europe/Berlin
 
 This evidence records public DNS observations for the SCAS Liquisto tenant.
 Public DNS is routing evidence only. It is not an authorization boundary and it
@@ -68,17 +68,45 @@ authorized Cloudflare API read.
 - Runtime profiles must seal the Control Plane tenant authority before any
   tenant-scoped execution starts.
 
+## Authoritative Cloudflare Evidence
+
+Manual `Tenant Cloudflare Evidence` workflow runs on 2026-06-17 collected the
+authoritative Cloudflare evidence for `liquisto.condata.io` without printing
+the hidden origin record value.
+
+| Environment | GitHub run | Result | Proxied A records | TLS mode | Worker routes | Worker route required |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| staging | `27716489830` | passed | 1 | `full` | 0 | `false` |
+| prod | `27716489895` | passed | 1 | `full` | 0 | `false` |
+
+Runs with `require_worker_route=true` failed for both staging and production
+because no Cloudflare Worker route exists for the tenant hostname:
+
+| Environment | GitHub run | Result | Failure |
+| --- | --- | --- | --- |
+| staging | `27716338428` | failed | `No Cloudflare Worker route found for tenant hostname.` |
+| prod | `27716338387` | failed | `No Cloudflare Worker route found for tenant hostname.` |
+
+Current accepted routing state: `liquisto.condata.io` is a Cloudflare-proxied
+DNS route to the Hetzner/Nginx/Streamlit runtime path. It is not a Cloudflare
+Worker route. The tenant Control API remains on Cloudflare Workers, but this UI
+hostname does not require a Worker route unless the deployment architecture is
+changed explicitly.
+
 ## Follow-Up
 
-- Confirm the internal Cloudflare DNS record for `liquisto.condata.io` through
-  an authoritative Cloudflare source before marking production routing complete.
-- Confirm TLS mode and Worker route binding for the tenant hostname before
-  production release.
+- Keep the authoritative Cloudflare evidence workflow artifact URLs linked from
+  the launch gate and Notion launch records.
+- Re-run `Tenant Cloudflare Evidence` after any DNS, TLS, proxy, or routing
+  change.
+- If the UI hostname is moved behind a Cloudflare Worker route in the future,
+  run the evidence workflow with `require_worker_route=true` and update this
+  runbook and the release gate before treating the Worker route as required.
 
 The manual `Tenant Cloudflare Evidence` workflow
 (`.github/workflows/tenant-cloudflare-evidence.yml`) records authoritative
-Cloudflare DNS proxy, TLS mode, and Worker route evidence without printing the
-hidden origin record content. It must use
+Cloudflare DNS proxy, TLS mode, and optional Worker route evidence without
+printing the hidden origin record content. It must use
 `SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN` or
 `SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN`, not a deploy token. The token needs
 read-only `Zone DNS`, `Zone Settings`, and `Zone Workers Routes` access on the

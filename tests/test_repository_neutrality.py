@@ -25,6 +25,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     ".github/workflows/tenant-admin-bootstrap.yml",
     ".github/workflows/tenant-cloudflare-evidence.yml",
     ".github/workflows/tenant-ui-deploy.yml",
+    ".github/workflows/tenant-ui-runtime-inventory.yml",
     "docs/README.md",
     "docs/runbooks/liquisto-tenant-admin-bootstrap.md",
     "docs/runbooks/liquisto-tenant-dns-evidence.md",
