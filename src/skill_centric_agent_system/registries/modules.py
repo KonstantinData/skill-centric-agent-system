@@ -60,6 +60,7 @@ class ModuleMetadata:
     data_scopes: tuple[str, ...]
     policies: tuple[str, ...]
     validators: tuple[str, ...]
+    selection_mode: str
     base_score: float
     score_modifiers: tuple[dict[str, Any], ...]
     requires_all_policies: bool
@@ -93,8 +94,9 @@ class ModuleMetadata:
             data_scopes=tuple(module["data_scopes"]),
             policies=tuple(module["policies"]),
             validators=tuple(module["validators"]),
-            base_score=float(selection["base_score"]),
-            score_modifiers=tuple(selection["score_modifiers"]),
+            selection_mode=str(selection.get("mode", "direct")),
+            base_score=float(selection.get("base_score", 0.0)),
+            score_modifiers=tuple(selection.get("score_modifiers", ())),
             requires_all_policies=bool(selection["requires_all_policies"]),
             tests=frozenset(_module_tests(module)),
             raw=module,
@@ -223,6 +225,15 @@ class InMemoryModuleRegistry:
         return tuple(candidates)
 
     def score(self, module: ModuleMetadata, task_signals: TaskSignals) -> ScoreResult:
+        if module.selection_mode == "dependency_only":
+            return ScoreResult(
+                module=module,
+                score=0.0,
+                matched_signals=(),
+                negative_signals=("selection_mode:dependency_only",),
+                explanation=("dependency_only modules cannot be scored directly",),
+            )
+
         score = module.base_score
         matched_signals = set(self._structured_matches(module, task_signals))
         negative_signals: set[str] = set()
@@ -341,6 +352,8 @@ class InMemoryModuleRegistry:
         )
 
     def _matches_query(self, module: ModuleMetadata, query: RegistryQuery) -> bool:
+        if module.selection_mode == "dependency_only":
+            return False
         if query.kinds and module.kind not in query.kinds:
             return False
         if query.capability_classes and module.capability_class not in query.capability_classes:

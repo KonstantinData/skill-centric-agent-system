@@ -28,7 +28,8 @@ not parse `SKILL.md` for selection metadata.
   "environments": ["dev", "staging", "prod"],
   "entrypoint": {
     "type": "skill_folder",
-    "path": "SKILL.md"
+    "path": "SKILL.md",
+    "guidance": "shared_template"
   },
   "runtime_contract": {
     "profile_sealable": true,
@@ -53,7 +54,27 @@ not parse `SKILL.md` for selection metadata.
   "data_scopes": ["scope-name"],
   "policies": ["policy-name"],
   "validators": ["validator-name"],
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "The concrete task or platform problem this module solves.",
+    "acceptance_criteria": [
+      "The module has positive and negative selection evidence."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Defines the governed module contract."
+      }
+    ],
+    "rationale": "Why this module is directly selectable or dependency-only.",
+    "requirement_id": "REQ-SCAS-REGISTRY-EXAMPLE"
+  },
   "selection": {
+    "mode": "direct",
     "base_score": 0.5,
     "score_modifiers": [
       {
@@ -64,10 +85,26 @@ not parse `SKILL.md` for selection metadata.
     ],
     "requires_all_policies": true
   },
+  "selection_evidence": {
+    "positive_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/example-module.json",
+        "expectation": "selected",
+        "reason": "The positive fixture matches this module's task boundary."
+      }
+    ],
+    "negative_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/example-module.json",
+        "expectation": "rejected",
+        "reason": "The negative fixture proves the module is not a catch-all."
+      }
+    ]
+  },
   "tests": {
     "contract": ["tests/contract/module-contract.json"],
     "runtime": ["tests/test_runtime_skill_handlers.py::test_example"],
-    "fixtures": ["examples/runtime/example.json"]
+    "fixtures": ["examples/registry/selection-evidence/example-module.json"]
   }
 }
 ```
@@ -119,9 +156,17 @@ lists every role the module may take. The final concrete role is stored in the
 runtime profile. This mirrors the distinction between `profile_sealable` as a
 module capability and `sealed` as a profile artifact state.
 
-`entrypoint` - Required for `skill` modules. `entrypoint.path` is relative to the
-module folder and must resolve to the local `SKILL.md`. Non-skill modules do not
-define `entrypoint` in v0.1.0.
+`entrypoint` - Optional for `skill` modules. When present, `entrypoint.path` is
+relative to the module folder and must resolve to the local `SKILL.md`.
+`entrypoint.guidance` is either `shared_template` or `skill_specific`.
+`shared_template` means the file contains only common sealed-profile execution
+guidance documented in `registry/modules/skills/README.md`. `skill_specific`
+means the file adds concrete post-selection execution behavior beyond the
+shared template. Non-skill modules do not define `entrypoint` in v0.1.0.
+
+The Composer must never select a skill by searching `SKILL.md` text. Selection
+metadata belongs in `module.json` and Control Plane composition records.
+Registry validation rejects structured selection metadata inside `SKILL.md`.
 
 `runtime_contract` - Declares whether the module can participate in sealed
 runtime profiles, requires exact version pins, and requires executable handler
@@ -217,14 +262,19 @@ by name; must exist in the validator registry.
 
 ### Selection Scoring
 
-`selection` controls how the Composer scores the module against task signals.
+`selection` controls whether the Composer may score the module against task
+signals.
 
-`selection.base_score` - Starting score between `0.0` and `1.0` before any
-modifiers are applied. Represents the module's general fit absent specific
-evidence.
+`selection.mode` - `direct` modules can be discovered and scored from task
+signals. `dependency_only` modules cannot be directly discovered or scored and
+can only be included through graph validation from another selected module.
 
-`selection.score_modifiers` - Ordered list of signal-weight pairs applied on
-top of the base score. Each modifier has:
+For `direct` modules, `selection.base_score` is the starting score between
+`0.0` and `1.0` before any modifiers are applied. It represents the module's
+general fit absent specific evidence.
+
+For `direct` modules, `selection.score_modifiers` is the ordered list of
+signal-weight pairs applied on top of the base score. Each modifier has:
 
 - `signal` - The condition being evaluated. Format: `type:value`, for example
   `task_type:code-review`, `input:diff`, `phrase:deploy`, `risk_level:critical`.
@@ -238,6 +288,198 @@ top of the base score. Each modifier has:
 every policy in `policies` passes before the module can be selected. When
 `false`, the module may be selected if at least one policy allows it, and
 remaining policies are evaluated at runtime.
+
+`dependency_only` modules must not define `base_score` or `score_modifiers`.
+
+## SOTA 2026 Provenance And Selection Evidence Contract
+
+The SOTA 2026 registry contract makes every production-selectable module answer
+three audit questions before it can participate in composition:
+
+1. Who owns the requirement and why does the module exist?
+2. Can the module be selected directly from task signals, or only as a
+   dependency of another selected module?
+3. Which real fixtures prove the intended positive and negative selection
+   behavior?
+
+This section defines the target contract for registry modules. Existing schema,
+validator, and module records must be migrated to this contract before the
+Composer treats SOTA 2026 registry evidence as complete.
+
+### Provenance
+
+Every active module must define a `provenance` object with explicit requirement
+ownership and source evidence:
+
+```json
+{
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "The concrete task or platform problem this module solves.",
+    "acceptance_criteria": [
+      "A measurable condition that proves the module is needed and works."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Durable policy contract for module selection behavior."
+      }
+    ],
+    "rationale": "Why this module should be directly selectable or dependency-only.",
+    "requirement_id": "REQ-SCAS-REGISTRY-EXAMPLE"
+  }
+}
+```
+
+`owner` identifies a responsible person, not a generic team alias. The owner is
+accountable for changing the requirement and for accepting deprecation,
+merge, or deletion decisions.
+
+`problem_statement` states the task gap or platform risk. It must not repeat the
+module description.
+
+`acceptance_criteria` is a non-empty list of measurable criteria. Criteria must
+be testable by schema validation, registry validation, runtime tests, fixture
+evidence, documentation review, or a named release gate.
+
+`source_of_truth` is a non-empty list of durable references. Production modules
+must include at least one `repo_path` entry. Repository paths are relative to
+the repository root and must resolve to existing files. Notion pages, issues,
+external standards, or vendor docs can provide context, but they cannot be the
+only source of truth for executable registry behavior.
+
+`rationale` explains the module's selection boundary. It must say why the
+module is `direct` or `dependency_only`.
+
+`requirement_id` is optional during early migration and should become stable
+when a module maps to an ADR, policy requirement, tenant requirement, or release
+gate.
+
+### Selection Modes
+
+`selection.mode` is required and is a closed enum:
+
+| Mode | Meaning | Valid when |
+| --- | --- | --- |
+| `direct` | The module can be selected from task analysis and scored against task signals. | The module has a task-facing capability, non-empty provenance, direct scoring metadata, and positive plus negative selection fixtures. |
+| `dependency_only` | The module cannot be selected from task analysis alone. It can only be included because a directly selected module depends on it. | The module represents a required tool, scope, policy, validator, context, or support capability and has dependency-inclusion plus no-direct-selection evidence. |
+
+Unknown modes fail closed. `legacy`, `implicit`, `always_on`, or omitted modes
+are not valid production states. Deprecated, disabled, or postponed modules must
+not use a selection mode to remain selectable.
+
+For `direct` modules, `selection.base_score` and
+`selection.score_modifiers` remain required. A direct module must have at least
+one positive score modifier and one negative or exclusion signal so the Composer
+can prove both selection and rejection behavior.
+
+For `dependency_only` modules, direct scoring fields are not allowed in the
+target schema. The module may keep dependency metadata and policy bindings, but
+it must not define `base_score`, direct scoring modifiers, direct triggers, or
+task phrases that would let the Composer select it from the task envelope
+alone. During migration, validators should treat any non-zero direct score or
+direct-selection fixture on a `dependency_only` module as a contract failure.
+
+### Fixture Evidence
+
+Fixture evidence must use real registry fixtures, not synthetic prose. Every
+fixture path must exist and must be listed under `tests.fixtures` or a typed
+fixture-evidence object introduced by the schema migration.
+
+Direct modules must provide:
+
+- Positive selection evidence: at least one fixture where task signals select
+  the module above threshold after policy filtering.
+- Negative selection evidence: at least one fixture where similar or tempting
+  task signals do not select the module because of missing inputs, excluded
+  domain, risk mismatch, negative phrases, policy denial, or lower-ranked fit.
+
+Dependency-only modules must provide:
+
+- Dependency inclusion evidence: at least one fixture where a valid directly
+  selected module includes the dependency through graph validation.
+- No-direct-selection evidence: at least one fixture where task signals that
+  mention the dependency's capability do not select it directly.
+
+Evidence fixtures must record the selected module set, rejected module set,
+matched signals, negative signals, policy result, graph-validation result, and
+the reason the expectation is correct. Raw runtime traces, provider outputs,
+customer data, and secrets are not acceptable fixture evidence.
+
+### Schema Acceptance Rules
+
+The module schema migration must enforce these acceptance rules:
+
+- `provenance` is required for every `active`, `deprecated`, or production
+  allowlisted module.
+- `provenance.owner.type` must be `person`, and `provenance.owner.name` must be
+  non-empty.
+- `provenance.problem_statement`, `provenance.acceptance_criteria`,
+  `provenance.source_of_truth`, and `provenance.rationale` must be non-empty.
+- `selection.mode` is required and limited to `direct` or `dependency_only`.
+- `direct` selection requires scoring metadata, task-signal evidence, and
+  positive plus negative fixture evidence.
+- `dependency_only` selection forbids direct scoring metadata and requires
+  dependency-inclusion plus no-direct-selection fixture evidence.
+- `tests.fixtures` or the future typed evidence field must be non-empty for
+  active modules.
+- `additionalProperties` must remain closed for new contract objects so
+  unsupported provenance or evidence fields cannot bypass review.
+
+### Validator Acceptance Rules
+
+The registry validator must fail closed when:
+
+- required provenance is missing or incomplete,
+- a `repo_path` source of truth does not resolve under the repository root,
+- a production module has no repository source of truth,
+- a fixture path is missing, points outside the repository, or is not referenced
+  by the module's evidence contract,
+- a `direct` module lacks both positive and negative selection evidence,
+- a `dependency_only` module has direct scoring metadata or lacks
+  dependency-inclusion and no-direct-selection evidence,
+- selected and rejected module sets in fixture evidence do not match the
+  registry scorer, policy filter, and graph validator output,
+- an unknown selection mode, unknown source type, or unknown evidence type is
+  encountered.
+
+The validator may warn during an explicit migration phase, but production
+validation must treat the same conditions as hard failures.
+
+### Classification Rubric
+
+Use this rubric before backfilling or deleting modules:
+
+| Classification | Use when | Required action |
+| --- | --- | --- |
+| Keep active | The module solves a current task-facing requirement and has direct fixture evidence. | Migrate as `direct`, add provenance, and keep scoring metadata. |
+| Dependency-only | The module is needed only because another selected module requires it. | Migrate as `dependency_only`, remove direct scoring, and add dependency evidence. |
+| Postpone | The requirement is plausible but not needed for the current release or lacks evidence. | Keep out of production environments until provenance and fixtures exist. |
+| Delete | No owner, source of truth, acceptance criteria, or consuming dependency exists. | Remove the module and update dependents or fixtures. |
+| Merge | Two modules represent the same requirement or capability boundary. | Keep one owner and source of truth, migrate evidence to the survivor, and remove the duplicate. |
+
+### Implementation Handoff
+
+The parent implementation task must update, at minimum:
+
+- `schemas/module.schema.json` with provenance, `selection.mode`, and evidence
+  constraints.
+- `scripts/registry/validate_registry.py` with source-of-truth path checks,
+  fixture existence checks, mode-specific scoring checks, and fail-closed
+  evidence validation.
+- `registry/modules/**/module.json` records with real provenance and fixture
+  evidence.
+- Registry fixture files with positive, negative, dependency-inclusion, and
+  no-direct-selection cases.
+- CI or local gates so schema validation and registry validation enforce the
+  migrated contract.
+
+Documentation is complete only when this policy, registry reference docs, and
+the implementation tests describe the same contract.
 
 ### Tests
 
@@ -282,7 +524,8 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
   "environments": ["dev", "staging", "prod"],
   "entrypoint": {
     "type": "skill_folder",
-    "path": "SKILL.md"
+    "path": "SKILL.md",
+    "guidance": "shared_template"
   },
   "runtime_contract": {
     "profile_sealable": true,
@@ -311,7 +554,34 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
   "data_scopes": ["repository-readonly"],
   "policies": ["no-destructive-commands", "require-file-references"],
   "validators": ["review-findings-contract"],
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "Code-review tasks need a bounded review skill that reads repository diffs without gaining mutation capability.",
+    "acceptance_criteria": [
+      "The module is selected for code-review tasks with repository and diff inputs.",
+      "The module is rejected or ranked away for deployment and mutation requests.",
+      "Graph validation includes only the declared tools, scopes, policies, and validators."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Defines the governed module contract."
+      },
+      {
+        "type": "repo_path",
+        "ref": "registry/modules/skills/git-diff-analysis/module.json",
+        "reason": "Durable machine-readable module definition."
+      }
+    ],
+    "rationale": "This module is directly selectable because code-review task signals map to its primary capability.",
+    "requirement_id": "REQ-SCAS-REGISTRY-GIT_DIFF_ANALYSIS"
+  },
   "selection": {
+    "mode": "direct",
     "base_score": 0.74,
     "score_modifiers": [
       {
@@ -332,13 +602,29 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
     ],
     "requires_all_policies": true
   },
+  "selection_evidence": {
+    "positive_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+        "expectation": "selected",
+        "reason": "The positive fixture contains code-review task signals with repository and diff inputs."
+      }
+    ],
+    "negative_selection": [
+      {
+        "fixture": "examples/registry/selection-evidence/git-diff-analysis.json",
+        "expectation": "rejected",
+        "reason": "The negative fixture contains deployment language that should not select review-only capability."
+      }
+    ]
+  },
   "tests": {
     "contract": [],
     "runtime": [
       "detects-risky-diff-fixture",
       "requires-file-line-references"
     ],
-    "fixtures": []
+    "fixtures": ["examples/registry/selection-evidence/git-diff-analysis.json"]
   }
 }
 ```
@@ -360,10 +646,14 @@ schema validation will not be accepted into the registry.
 
 - Define `triggers` only and omit `task_signals` - triggers are weak hints, not
   the scoring surface.
-- Set `base_score` to `1.0` - this bypasses meaningful scoring and forces every
-  Composer to select the module regardless of task fit.
+- Treat support modules as `direct` because they are useful dependencies -
+  tools, scopes, policies, and validators should normally be `dependency_only`.
+- Set `base_score` to `1.0` - this bypasses meaningful scoring and pushes every
+  Composer toward the module regardless of task fit.
 - Omit `negative_phrases` - without them, the module can be selected for tasks
   where it should be denied.
+- Put `base_score` or `score_modifiers` on a `dependency_only` module - this
+  reopens direct selection.
 - List every tool in `required_tools` as a precaution - only list tools the
   module cannot function without.
 - Set `requires_all_policies: false` without a documented reason - this weakens

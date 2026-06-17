@@ -131,7 +131,12 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
 
     assert "target_environment:" in workflow
     assert "run_ai_gateway_live_smoke:" in workflow
+    assert "confirm_production:" in workflow
     assert "inputs.run_ai_gateway_live_smoke == true" in workflow
+    assert "environment:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production Control API deploys" in workflow
     assert "SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}" in workflow
     assert "SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}" in workflow
     assert "SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}" in workflow
@@ -206,11 +211,17 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
 
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
+    assert "confirm_production:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production live runtime gates." in workflow
+    assert "Production Control Plane seeding is not allowed from Live Runtime Gates." in workflow
     assert "control_api_url:" in workflow
     assert "run_live_dev_e2e:" in workflow
     assert "run_postgres_concurrency_smoke:" in workflow
     assert "live_task_file:" in workflow
     assert "- tenant" in workflow
+    assert "- single" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
     assert "inputs.run_postgres_concurrency_smoke == true" in workflow
@@ -426,6 +437,11 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
     assert "certification_mode:" in workflow
+    assert "evidence_source_mode:" in workflow
+    assert "consume-existing" in workflow
+    assert "recheck" in workflow
+    assert "ci_run_url:" in workflow
+    assert "security_governance_run_url:" in workflow
     assert "uv sync --frozen --extra dev --extra runtime" in workflow
     assert "uv lock --check" in workflow
     assert "uv run pytest" in workflow
@@ -459,10 +475,37 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "npm run worker:test" in workflow
     assert "npm run worker:check" in workflow
     assert "uv run python scripts/release/build_production_readiness_evidence.py" in workflow
+    assert "--evidence-source-mode" in workflow
+    assert "--ci-run-metadata production-evidence/ci-run.json" in workflow
+    assert (
+        "--security-governance-metadata "
+        "production-evidence/security-governance-run.json"
+    ) in workflow
+    assert (
+        "--security-governance-artifacts-dir "
+        "production-evidence/security-governance"
+    ) in workflow
+    assert "production-evidence/security-governance/*.json" in workflow
     assert "production-readiness-evidence.json" in workflow
     assert "actions/upload-artifact" in workflow
     assert "gh run download" in workflow
     assert "live-runtime-handler-binding-evidence" in workflow
+
+
+def test_production_readiness_workflow_consumes_upstream_evidence_by_default() -> None:
+    workflow = load_production_readiness_workflow()
+
+    assert "default: consume-existing" in workflow
+    assert "EVIDENCE_SOURCE_MODE:" in workflow
+    assert "Collect consumed CI and security evidence metadata" in workflow
+    assert "production-evidence/ci-run.json" in workflow
+    assert "production-evidence/security-governance-run.json" in workflow
+    assert "--name security-evidence" in workflow
+    assert "--dir production-evidence/security-governance" in workflow
+    assert "ci_run_id" in workflow
+    assert "security_run_id" in workflow
+    assert workflow.count("inputs.evidence_source_mode == 'recheck'") >= 10
+    assert "inputs.evidence_source_mode == 'consume-existing'" in workflow
 
 
 def test_production_readiness_certify_mode_requires_live_evidence() -> None:
@@ -496,6 +539,12 @@ def test_runtime_retention_cleanup_workflow_defaults_to_dry_run() -> None:
 
     assert "CLEANUP_MODE: ${{ github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.cleanup_mode || 'dry-run'" in workflow
+    assert "confirm_production:" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ github.event_name == 'workflow_dispatch'" in workflow
+    assert "inputs.confirm_production || false" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "confirm_production must be true for production retention cleanup." in workflow
+    assert "CONFIRM_PRODUCTION='${CONFIRM_PRODUCTION}'" in workflow
     assert "Scheduled retention cleanup must run in dry-run mode." in workflow
     assert 'if [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then' in workflow
     assert "cleanup_args+=(--confirm)" in workflow

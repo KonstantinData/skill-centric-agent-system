@@ -1,64 +1,161 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "dependency-audit",
-  "version": "0.1.0",
-  "kind": "skill",
-  "status": "active",
-  "description": "Audit repository dependency manifests for license, risk, and change-impact signals.",
-  "runtime_role": "runtime",
-  "runtime_roles": {
-    "default": "runtime",
-    "allowed": [
-      "runtime"
-    ]
-  },
   "capability_class": "analysis",
-  "environments": [
-    "dev",
-    "staging",
-    "prod"
+  "data_scopes": [
+    "repository-readonly"
   ],
-  "entrypoint": {
-    "type": "skill_folder",
-    "path": "SKILL.md"
-  },
-  "runtime_contract": {
-    "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": true
-  },
+  "description": "Audit repository dependency manifests for license, risk, and change-impact signals.",
   "domain_tags": [
     "security",
     "dependencies",
     "repository"
   ],
+  "entrypoint": {
+    "guidance": "shared_template",
+    "path": "SKILL.md",
+    "type": "skill_folder"
+  },
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "inputs": [
+    "repository"
+  ],
+  "kind": "skill",
+  "knowledge_scopes": [
+    "coding-guidelines"
+  ],
+  "name": "dependency-audit",
+  "optional_tools": [
+    "git-read",
+    "test-runner"
+  ],
+  "outputs": [
+    "dependency-audit-summary"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "provenance": {
+    "acceptance_criteria": [
+      "dependency-audit declares an explicit selection mode.",
+      "dependency-audit has repository-backed source-of-truth evidence.",
+      "dependency-audit has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "dependency-audit needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "dependency-audit is task-facing and can be selected directly from structured task signals.",
+    "requirement_id": "REQ-SCAS-REGISTRY-DEPENDENCY_AUDIT",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/skills/dependency-audit/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [
+    "filesystem-list",
+    "filesystem-read"
+  ],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": true,
+    "requires_version_pin": true
+  },
+  "runtime_role": "runtime",
+  "runtime_roles": {
+    "allowed": [
+      "runtime"
+    ],
+    "default": "runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "base_score": 0.69,
+    "mode": "direct",
+    "requires_all_policies": true,
+    "score_modifiers": [
+      {
+        "reason": "Task execution dependency work benefits from bounded audit planning.",
+        "signal": "task_type:task-execution",
+        "weight": 0.14
+      },
+      {
+        "reason": "Dependency-related language directly matches audit capability.",
+        "signal": "phrase:dependency",
+        "weight": 0.1
+      },
+      {
+        "reason": "Destructive requests must fail closed away from dependency analysis.",
+        "signal": "phrase:destroy",
+        "weight": -0.35
+      }
+    ]
+  },
+  "selection_evidence": {
+    "negative_selection": [
+      {
+        "expectation": "rejected",
+        "fixture": "examples/registry/selection-evidence/dependency-audit.json",
+        "reason": "dependency-audit must be rejected or ranked away for its negative fixture."
+      }
+    ],
+    "positive_selection": [
+      {
+        "expectation": "selected",
+        "fixture": "examples/registry/selection-evidence/dependency-audit.json",
+        "reason": "dependency-audit must be selectable for its positive fixture."
+      }
+    ]
+  },
+  "status": "active",
   "task_signals": {
-    "task_types": [
-      "task-execution"
-    ],
-    "risk_levels": [
-      "low",
-      "medium",
-      "high"
-    ],
     "domains": [
       "security",
       "software-engineering",
       "repository"
     ],
-    "required_inputs": [
-      "repository"
+    "negative_phrases": [
+      "delete production",
+      "reset production",
+      "destroy"
     ],
     "phrases": [
       "dependency audit",
       "dependency",
       "license"
     ],
-    "negative_phrases": [
-      "delete production",
-      "reset production",
-      "destroy"
+    "required_inputs": [
+      "repository"
+    ],
+    "risk_levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "task_types": [
+      "task-execution"
+    ]
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/dependency-audit.json"
+    ],
+    "runtime": [
+      "dependency-audit-positive",
+      "dependency-audit-denies-destructive"
     ]
   },
   "triggers": [
@@ -66,59 +163,8 @@
     "dependency",
     "license"
   ],
-  "inputs": [
-    "repository"
-  ],
-  "outputs": [
-    "dependency-audit-summary"
-  ],
-  "required_tools": [
-    "filesystem-list",
-    "filesystem-read"
-  ],
-  "optional_tools": [
-    "git-read",
-    "test-runner"
-  ],
-  "knowledge_scopes": [
-    "coding-guidelines"
-  ],
-  "data_scopes": [
-    "repository-readonly"
-  ],
-  "policies": [
-    "no-destructive-commands"
-  ],
   "validators": [
     "task-execution-output-contract"
   ],
-  "selection": {
-    "base_score": 0.69,
-    "score_modifiers": [
-      {
-        "signal": "task_type:task-execution",
-        "weight": 0.14,
-        "reason": "Task execution dependency work benefits from bounded audit planning."
-      },
-      {
-        "signal": "phrase:dependency",
-        "weight": 0.1,
-        "reason": "Dependency-related language directly matches audit capability."
-      },
-      {
-        "signal": "phrase:destroy",
-        "weight": -0.35,
-        "reason": "Destructive requests must fail closed away from dependency analysis."
-      }
-    ],
-    "requires_all_policies": true
-  },
-  "tests": {
-    "contract": [],
-    "runtime": [
-      "dependency-audit-positive",
-      "dependency-audit-denies-destructive"
-    ],
-    "fixtures": []
-  }
+  "version": "0.1.0"
 }

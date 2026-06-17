@@ -60,31 +60,53 @@ The release evidence must record command or workflow references without
 including secret values or raw runtime artifacts.
 
 Run the evidence-only workflow while production resources are still being
-prepared:
+prepared. Use the default `consume-existing` evidence source mode with matching
+successful `CI` and `Security Governance` workflow runs for the same commit:
 
 ```bash
 gh workflow run production-readiness.yml \
   -f target_environment=dev \
   -f release_scope=initial-productive-core \
-  -f certification_mode=evidence-only
+  -f certification_mode=evidence-only \
+  -f evidence_source_mode=consume-existing \
+  -f ci_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  -f security_governance_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
+```
+
+Use `recheck` only when the release owner intentionally wants the production
+readiness workflow to rerun the broad repository governance, Python, safety,
+tracked-JSON, and Worker gates instead of consuming existing CI evidence:
+
+```bash
+gh workflow run production-readiness.yml \
+  -f target_environment=dev \
+  -f release_scope=initial-productive-core \
+  -f certification_mode=evidence-only \
+  -f evidence_source_mode=recheck
 ```
 
 Run certification mode only after the matching live runtime and AI Gateway
-smoke workflow runs have passed on the same repository commit:
+smoke workflow runs, plus matching `CI` and `Security Governance` runs, have
+passed on the same repository commit:
 
 ```bash
 gh workflow run production-readiness.yml \
   -f target_environment=prod \
   -f release_scope=production-runtime \
   -f certification_mode=certify \
+  -f evidence_source_mode=consume-existing \
+  -f ci_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  -f security_governance_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   -f live_runtime_gates_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   -f ai_gateway_smoke_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
 ```
 
-Certification mode validates the referenced GitHub Actions run metadata before
-writing `production-readiness-evidence.json`. The run URLs must be canonical,
-same-repository URLs, the runs must have completed successfully, and their
-`headSha` must match the release commit being evaluated.
+The workflow validates referenced GitHub Actions run metadata before writing
+`production-readiness-evidence.json`. The run URLs must be canonical,
+same-repository URLs, the runs must have completed successfully, their
+`headSha` must match the release commit being evaluated, and consumed upstream
+evidence must not be stale. Security governance JSON artifacts are downloaded
+and recorded by checksum; missing or empty artifact evidence fails closed.
 
 ## Security Closure
 
@@ -353,9 +375,11 @@ when the Worker needs `SCAS_DEV_OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
 
 ```bash
 gh workflow run ci.yml \
+  -f target_environment=dev \
   -f deploy_control_api_dev=false \
   -f run_ai_gateway_live_smoke=true \
-  -f run_infra_smoke=false
+  -f run_infra_smoke=false \
+  -f confirm_production=false
 ```
 
 The workflow passes Worker secrets through a temporary runner-local JSON file
@@ -369,6 +393,9 @@ secrets only for compatibility.
 Gateway. For `run_ai_gateway_live_smoke=true`, `AI_GATEWAY_AUTH_TOKEN` must be
 set as a GitHub Actions secret; setting it only on the Worker is not enough for
 the workflow's fresh deployment.
+For `target_environment=prod`, the workflow also requires
+`confirm_production=true` and enters the protected `production` GitHub
+environment before deploying the Worker or running the live smoke.
 
 ## Smoke Tests
 
@@ -519,7 +546,8 @@ Scheduled retention cleanup:
 gh workflow run runtime-retention-cleanup.yml \
   -f target_environment=dev \
   -f cleanup_mode=dry-run \
-  -f strict_missing=false
+  -f strict_missing=false \
+  -f confirm_production=false
 ```
 
 The scheduled workflow runs daily from `main` in dry-run mode against the dev
@@ -536,11 +564,14 @@ dry-run report is reviewed:
 gh workflow run runtime-retention-cleanup.yml \
   -f target_environment=prod \
   -f cleanup_mode=confirmed-delete \
-  -f strict_missing=true
+  -f strict_missing=true \
+  -f confirm_production=true
 ```
 
 Scheduled runs must never set `cleanup_mode=confirmed-delete`; the workflow
-fails closed if a non-manual event attempts destructive cleanup.
+fails closed if a non-manual event attempts destructive cleanup. Any production
+retention cleanup, including dry-run, also requires `confirm_production=true`
+and the protected `production` GitHub environment.
 
 ## Diagnostics
 

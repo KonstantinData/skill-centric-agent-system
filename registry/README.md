@@ -20,6 +20,13 @@ artifacts.
 Each skill module uses two layers:
 
 - `module.json`: machine-readable selection, dependency, policy, environment,
-  version, and runtime contract metadata.
-- `SKILL.md`: agent-readable execution guidance loaded only after a sealed
-  runtime profile selects the skill.
+  version, runtime contract, provenance, and fixture evidence metadata.
+- Optional `SKILL.md`: agent-readable execution guidance loaded only after a
+  sealed runtime profile selects the skill.
+
+Direct modules must include positive and negative selection evidence. Support
+modules such as tools, scopes, policies, and validators should normally use
+`selection.mode: "dependency_only"` and include dependency-inclusion plus
+no-direct-selection evidence.
+
+Skill entrypoints are governed by `registry/modules/skills/README.md`.

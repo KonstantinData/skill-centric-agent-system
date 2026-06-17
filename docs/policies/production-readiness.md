@@ -92,25 +92,30 @@ does not replace committed release criteria.
 ## Evidence Workflow
 
 The manual `.github/workflows/production-readiness.yml` workflow records
-repository, security governance, and Worker gates in
-`production-readiness-evidence.json`, generates non-secret
-`security-evidence/*.json` artifacts, and uploads those files as workflow
-artifacts. `evidence-only` mode supports implementation progress while staging
-and production infrastructure are still being prepared.
+repository, security governance, and Worker evidence in
+`production-readiness-evidence.json` and uploads non-secret evidence as
+workflow artifacts. By default, `evidence_source_mode = consume-existing`
+consumes matching upstream `CI` and `Security Governance` workflow runs instead
+of rerunning the broad repository gates. Intentional reruns must set
+`evidence_source_mode = recheck`; that mode reruns the repository governance,
+Python, invariant, regression, rollback, tracked-JSON, and Worker gates before
+building the evidence artifact.
+`evidence-only` mode supports implementation progress while staging and
+production infrastructure are still being prepared.
 `certify` mode requires references to matching live runtime and AI Gateway
 smoke workflow runs.
-The workflow also persists `production-evidence/invariant-check.json` and
-fails closed unless the report exists, has `status = "passed"`, `mismatch_count
-= 0`, and a positive `total_cases`.
+In `recheck` mode, the workflow also persists
+`production-evidence/invariant-check.json` and fails closed unless the report
+exists, has `status = "passed"`, `mismatch_count = 0`, and a positive
+`total_cases`.
 It additionally records
-`production-evidence/shadow-regression-threshold-evaluation.json` and
-`production-evidence/pre-canary-safety-gate.json`; certification fails closed
-unless both reports pass.
-The workflow also records `production-evidence/automatic-rollback-evaluation.json`
-and fails closed when rollback is required but the target is not signed and
-verified.
-It additionally records `production-evidence/incident-locked-regressions.json`
-and fails closed on binding violations or replay mismatches.
+`production-evidence/shadow-regression-threshold-evaluation.json`,
+`production-evidence/pre-canary-safety-gate.json`,
+`production-evidence/automatic-rollback-evaluation.json`, and
+`production-evidence/incident-locked-regressions.json`; certification fails
+closed when those reports fail, rollback is required but the target is not
+signed and verified, or incident-locked regressions show binding violations or
+replay mismatches.
 It also validates the HOOKS usage model and fails closed if configured hook
 points can grant capabilities, mutate active profiles, bypass policies or
 validators, access unscoped data, execute unregistered tools, write secrets or
@@ -120,9 +125,22 @@ target-environment cadence, release-decision requirements, waiver limits, or
 mandatory recertification triggers drift from the committed release policy.
 
 The workflow builds the evidence artifact through
-`scripts/release/build_production_readiness_evidence.py`. In `certify` mode it
-uses `gh run view` to collect metadata for the referenced runs and fails closed
-unless each run:
+`scripts/release/build_production_readiness_evidence.py`. In the default
+`consume-existing` evidence mode, the workflow uses `gh run view` to collect
+metadata for the referenced `CI` and `Security Governance` runs, downloads the
+non-secret `security-evidence` artifact from the security run, records SHA-256
+checksums for the downloaded JSON evidence files, and fails closed unless each
+upstream run:
+
+- belongs to the same repository,
+- uses the same release commit SHA as the evidence workflow,
+- completed successfully,
+- matches the expected workflow name (`CI` or `Security Governance`),
+- uses a canonical `https://github.com/OWNER/REPO/actions/runs/RUN_ID` URL, and
+- was created no more than 14 days before the evidence timestamp.
+
+In `certify` mode it also uses `gh run view` to collect metadata for the
+referenced live runs and fails closed unless each run:
 
 - belongs to the same repository,
 - uses the same release commit SHA as the evidence workflow,

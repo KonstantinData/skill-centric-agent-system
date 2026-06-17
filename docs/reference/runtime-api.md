@@ -224,7 +224,10 @@ cleanup slice.
 The same CLI path is scheduled through
 `.github/workflows/runtime-retention-cleanup.yml`. Scheduled runs are dry-run
 only and upload non-secret cleanup evidence. Manual workflow dispatch can run a
-confirmed delete after the dry-run report is reviewed.
+confirmed delete after the dry-run report is reviewed. Production workflow
+dispatches, including dry-runs, require `confirm_production=true` and the
+protected `production` GitHub environment before touching production retention
+paths.
 
 ## Storage Modes
 

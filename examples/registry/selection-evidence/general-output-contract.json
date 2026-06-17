@@ -1,0 +1,71 @@
+{
+  "dependency_inclusion": {
+    "direct_module": "document-synthesis",
+    "expected": {
+      "graph_validation": "valid",
+      "included_dependencies": [
+        "general-output-contract"
+      ],
+      "policy_result": "allow",
+      "selected_modules": [
+        "document-synthesis"
+      ]
+    },
+    "reason": "general-output-contract is included only when graph validation resolves a consuming direct module.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "documentation",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "summarize docs",
+        "document",
+        "general-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "module": "general-output-contract",
+  "no_direct_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "negative_signals_must_include": [
+        "selection_mode:dependency_only"
+      ],
+      "policy_result": "not_evaluated",
+      "rejected_modules": [
+        "general-output-contract"
+      ],
+      "selected_modules": []
+    },
+    "reason": "general-output-contract is not directly selectable from task analysis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "validation"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "general"
+      ],
+      "phrases": [
+        "general-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "dependency_only"
+}

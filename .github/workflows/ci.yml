@@ -31,6 +31,11 @@ on:
         required: true
         type: boolean
         default: false
+      confirm_production:
+        description: Required true when target_environment=prod and a deploy or live smoke is requested
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -193,12 +198,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: worker
+    environment:
+      name: ${{ inputs.target_environment == 'prod' && 'production' || inputs.target_environment }}
     if: |
       github.event_name == 'workflow_dispatch' &&
       (inputs.deploy_control_api_dev == true || inputs.run_ai_gateway_live_smoke == true)
 
     env:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       SCAS_DEV_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_DEV_CLOUDFLARE_ACCOUNT_ID }}
       SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_DEV_CLOUDFLARE_DEPLOY_TOKEN }}
       SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}
@@ -220,6 +228,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate production deployment guard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production Control API deploys and live smokes."
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0

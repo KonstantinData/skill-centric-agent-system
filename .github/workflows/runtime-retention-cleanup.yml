@@ -27,6 +27,11 @@ on:
         required: true
         type: boolean
         default: false
+      confirm_production:
+        description: Required true for target_environment=prod
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,6 +45,8 @@ jobs:
     name: Runtime retention cleanup on Hetzner
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment == 'prod' && 'production' || (github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev') }}
     if: >-
       github.event_name == 'schedule'
       || github.event_name == 'workflow_dispatch'
@@ -60,6 +67,7 @@ jobs:
       TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
       CLEANUP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.cleanup_mode || 'dry-run' }}
       STRICT_MISSING: ${{ github.event_name == 'workflow_dispatch' && inputs.strict_missing || false }}
+      CONFIRM_PRODUCTION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_production || false }}
 
     steps:
       - name: Check out repository
@@ -157,6 +165,11 @@ jobs:
             missing=1
           fi
 
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production retention cleanup."
+            missing=1
+          fi
+
           exit "${missing}"
 
       - name: Configure SSH
@@ -204,7 +217,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' CLEANUP_MODE='${CLEANUP_MODE}' STRICT_MISSING='${STRICT_MISSING}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' GITHUB_EVENT_NAME='${GITHUB_EVENT_NAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' CLEANUP_MODE='${CLEANUP_MODE}' STRICT_MISSING='${STRICT_MISSING}' CONFIRM_PRODUCTION='${CONFIRM_PRODUCTION}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' GITHUB_EVENT_NAME='${GITHUB_EVENT_NAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -236,6 +249,11 @@ jobs:
           if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] \
             && [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then
             echo "Scheduled retention cleanup must run in dry-run mode." >&2
+            exit 1
+          fi
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "confirm_production must be true for production retention cleanup." >&2
             exit 1
           fi
 

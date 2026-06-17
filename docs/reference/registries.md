@@ -11,8 +11,10 @@ The first implementation is local and deterministic:
 - module metadata is loaded from `registry/modules/**/module.json` records that
   conform to `schemas/module.schema.json`,
 - discovery uses structured fields, not keyword-only matching,
-- scoring applies explicit `selection.base_score` and
+- direct modules are scored with explicit `selection.base_score` and
   `selection.score_modifiers`,
+- dependency-only modules are excluded from direct discovery and can enter a
+  runtime profile only through graph validation,
 - scoring can apply taxonomy feedback penalties from recent F1/F2/R8 outcomes
   through `TaskSignals.error_feedback`,
 - policy filtering fails closed when required policies are missing,
@@ -55,7 +57,10 @@ The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.
 
 The detailed module metadata contract is documented in
-`docs/policies/module-contracts.md`.
+`docs/policies/module-contracts.md`. That policy also defines the SOTA 2026
+provenance, selection-mode, and fixture-evidence contract that registry schema
+and validator migrations must enforce before registry evidence is considered
+complete.
 
 ## Source Of Truth
 
@@ -65,9 +70,16 @@ contains fixtures, generated examples, and API payload samples only.
 Skill modules have two layers:
 
 - `module.json`: machine-readable selection, dependency, policy, version,
-  environment, runtime role, and runtime contract metadata.
-- `SKILL.md`: agent-readable execution guidance loaded only after a sealed
-  runtime profile selects the skill.
+  environment, runtime role, runtime contract, provenance, and fixture evidence
+  metadata.
+- Optional `SKILL.md`: agent-readable execution guidance loaded only after a
+  sealed runtime profile selects the skill. If present, it is classified as
+  `shared_template` or `skill_specific` by `entrypoint.guidance`.
+
+The Composer must not search `SKILL.md` text during discovery or scoring.
+Registry validation rejects structured selection metadata inside `SKILL.md`;
+task signals, scores, dependencies, scopes, policies, validators, provenance,
+and evidence stay in `module.json`.
 
 The state flow is one-way:
 

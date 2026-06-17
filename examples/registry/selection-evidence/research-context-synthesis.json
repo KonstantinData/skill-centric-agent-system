@@ -1,0 +1,74 @@
+{
+  "module": "research-context-synthesis",
+  "negative_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "matched_signals_must_include": [],
+      "negative_signals_must_include": [
+        "phrase:deploy"
+      ],
+      "policy_result": "deny_or_lower_ranked",
+      "rejected_modules": [
+        "research-context-synthesis"
+      ],
+      "selected_modules": []
+    },
+    "reason": "Negative task language proves research-context-synthesis is not a catch-all capability.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "retrieval"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "phrases": [
+        "compare",
+        "error",
+        "deploy"
+      ],
+      "risk_level": "low",
+      "task_type": "research"
+    }
+  },
+  "positive_selection": {
+    "expected": {
+      "graph_validation": "valid",
+      "matched_signals_must_include": [
+        "task_type:research"
+      ],
+      "negative_signals": [],
+      "policy_result": "allow",
+      "rejected_modules": [],
+      "selected_modules": [
+        "research-context-synthesis"
+      ]
+    },
+    "reason": "Structured task signals match the direct capability boundary for research-context-synthesis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "retrieval"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "research",
+        "knowledge-retrieval"
+      ],
+      "phrases": [
+        "compare",
+        "error"
+      ],
+      "risk_level": "low",
+      "task_type": "research"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "direct"
+}

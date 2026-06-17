@@ -103,8 +103,8 @@ Stop immediately and keep the operation non-certified when any of these occur:
 
 ## Operational Path
 
-Until a dedicated productive-operation workflow exists, use the existing live
-runtime workflow only for bounded single-task rehearsal:
+Use the existing live runtime workflow for the first approved bounded
+single-task staging operation:
 
 ```bash
 gh workflow run live-runtime-gates.yml \
@@ -115,26 +115,30 @@ gh workflow run live-runtime-gates.yml \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=false \
   -f live_task_suite=single \
-  -f live_task_file=examples/tasks/<approved-task>.json
+  -f live_task_file=examples/tasks/<approved-task>.json \
+  -f confirm_production=false
 ```
 
 The task file must be committed, non-secret, and approved for staging. Do not
 pass private task content through workflow inputs.
+Production use of this workflow is fail-closed unless `confirm_production=true`
+is supplied and the protected `production` GitHub environment approves the run.
+Production Control Plane seeding remains blocked here; use a dedicated
+production migration control path instead.
 
-## Next Technical Slice
+## Dedicated Workflow Decision
 
-The next implementation slice should add a dedicated manual productive
-operation workflow instead of overloading `live-runtime-gates.yml`.
+No dedicated productive-operation workflow is required before the first
+approved staging operation. The existing `live-runtime-gates.yml` path is
+already manual, supports `target_environment=staging`, supports
+`live_task_suite=single`, requires a committed non-secret task file, runs on
+Hetzner, writes staging artifacts under `/opt/scas/runtime/staging`, and
+uploads `live-runtime-handler-binding-evidence`.
 
-Minimum requirements:
-
-- `workflow_dispatch` only,
-- `target_environment` restricted to `staging` until `prod` is separately
-  approved,
-- task file path restricted to committed, non-secret task fixtures,
-- certified commit or fresh certification reference required,
-- `live-runtime-handler-binding-evidence` uploaded for every operation,
-- non-secret operation summary artifact,
-- stop conditions aligned with this runbook,
-- tests in `tests/test_github_actions_workflows.py`,
-- documentation update in this runbook and `docs/runbooks/operations-runbook.md`.
+Create a dedicated manual productive-operation workflow only after a real
+staging operation through the existing path proves a concrete operator,
+evidence, or safety gap. If that happens, the follow-up workflow must remain
+`workflow_dispatch` only, stay restricted to `staging` until `prod` is
+separately approved, require committed non-secret task fixtures, upload
+non-secret operation evidence, preserve the stop conditions in this runbook,
+and update `docs/runbooks/operations-runbook.md`.

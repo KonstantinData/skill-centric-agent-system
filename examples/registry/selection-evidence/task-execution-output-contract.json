@@ -1,0 +1,73 @@
+{
+  "dependency_inclusion": {
+    "direct_module": "dependency-audit",
+    "expected": {
+      "graph_validation": "valid",
+      "included_dependencies": [
+        "task-execution-output-contract"
+      ],
+      "policy_result": "allow",
+      "selected_modules": [
+        "dependency-audit"
+      ]
+    },
+    "reason": "task-execution-output-contract is included only when graph validation resolves a consuming direct module.",
+    "task_signals": {
+      "available_inputs": [
+        "repository"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "security",
+        "software-engineering",
+        "repository"
+      ],
+      "phrases": [
+        "dependency audit",
+        "dependency",
+        "task-execution-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "task-execution"
+    }
+  },
+  "module": "task-execution-output-contract",
+  "no_direct_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "negative_signals_must_include": [
+        "selection_mode:dependency_only"
+      ],
+      "policy_result": "not_evaluated",
+      "rejected_modules": [
+        "task-execution-output-contract"
+      ],
+      "selected_modules": []
+    },
+    "reason": "task-execution-output-contract is not directly selectable from task analysis.",
+    "task_signals": {
+      "available_inputs": [],
+      "capability_hints": [
+        "validation"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering"
+      ],
+      "phrases": [
+        "task-execution-output-contract"
+      ],
+      "risk_level": "low",
+      "task_type": "general-task"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "dependency_only"
+}

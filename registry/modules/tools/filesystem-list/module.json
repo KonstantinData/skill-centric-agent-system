@@ -1,73 +1,103 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "filesystem-list",
-  "version": "0.1.0",
-  "kind": "tool",
-  "status": "active",
-  "description": "Governed tool module for filesystem-list.",
-  "runtime_roles": {
-    "default": "non-runtime",
-    "allowed": [
-      "non-runtime"
-    ]
-  },
   "capability_class": "tool_access",
+  "data_scopes": [],
+  "description": "Governed tool module for filesystem-list.",
+  "domain_tags": [
+    "software-engineering"
+  ],
   "environments": [
     "dev",
     "staging",
     "prod"
   ],
-  "runtime_contract": {
-    "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": false
-  },
-  "domain_tags": [
-    "software-engineering"
-  ],
-  "task_signals": {
-    "task_types": [
-      "research",
-      "general-task"
-    ],
-    "risk_levels": [
-      "low",
-      "medium",
-      "high"
-    ],
-    "domains": [
-      "software-engineering"
-    ],
-    "required_inputs": [],
-    "phrases": [
-      "filesystem-list"
-    ],
-    "negative_phrases": []
-  },
-  "triggers": [
-    "filesystem-list"
-  ],
   "inputs": [],
+  "kind": "tool",
+  "knowledge_scopes": [],
+  "name": "filesystem-list",
+  "optional_tools": [],
   "outputs": [
     "filesystem-list-output"
   ],
-  "required_tools": [],
-  "optional_tools": [],
-  "knowledge_scopes": [],
-  "data_scopes": [],
   "policies": [],
-  "validators": [],
+  "provenance": {
+    "acceptance_criteria": [
+      "filesystem-list declares an explicit selection mode.",
+      "filesystem-list has repository-backed source-of-truth evidence.",
+      "filesystem-list has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "filesystem-list needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "filesystem-list is a support capability that must only enter a profile through graph dependencies from a directly selected module.",
+    "requirement_id": "REQ-SCAS-REGISTRY-FILESYSTEM_LIST",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/tools/filesystem-list/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": false,
+    "requires_version_pin": true
+  },
+  "runtime_roles": {
+    "allowed": [
+      "non-runtime"
+    ],
+    "default": "non-runtime"
+  },
+  "schema_version": "0.1.0",
   "selection": {
-    "base_score": 0.5,
-    "score_modifiers": [],
+    "mode": "dependency_only",
     "requires_all_policies": false
+  },
+  "selection_evidence": {
+    "dependency_inclusion": [
+      {
+        "expectation": "included_as_dependency",
+        "fixture": "examples/registry/selection-evidence/filesystem-list.json",
+        "reason": "filesystem-list must be included through a consuming direct module dependency."
+      }
+    ],
+    "no_direct_selection": [
+      {
+        "expectation": "not_directly_selected",
+        "fixture": "examples/registry/selection-evidence/filesystem-list.json",
+        "reason": "filesystem-list must not be selected directly from task signals."
+      }
+    ]
+  },
+  "status": "active",
+  "task_signals": {
+    "domains": [],
+    "negative_phrases": [],
+    "phrases": [],
+    "required_inputs": [],
+    "risk_levels": [],
+    "task_types": []
   },
   "tests": {
     "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/filesystem-list.json"
+    ],
     "runtime": [
       "filesystem-list-registry-contract"
-    ],
-    "fixtures": []
-  }
+    ]
+  },
+  "triggers": [],
+  "validators": [],
+  "version": "0.1.0"
 }

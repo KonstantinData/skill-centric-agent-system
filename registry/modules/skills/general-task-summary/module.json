@@ -1,58 +1,138 @@
 {
   "$schema": "../../../../schemas/module.schema.json",
-  "schema_version": "0.1.0",
-  "name": "general-task-summary",
-  "version": "0.1.0",
-  "kind": "skill",
-  "status": "active",
-  "description": "Produce a bounded generic runtime summary when no specialized task strategy is selected.",
-  "runtime_role": "runtime",
-  "runtime_roles": {
-    "default": "runtime",
-    "allowed": [
-      "runtime"
-    ]
-  },
   "capability_class": "planning",
+  "data_scopes": [],
+  "description": "Produce a bounded generic runtime summary when no specialized task strategy is selected.",
+  "domain_tags": [
+    "general-task"
+  ],
+  "entrypoint": {
+    "guidance": "shared_template",
+    "path": "SKILL.md",
+    "type": "skill_folder"
+  },
   "environments": [
     "dev",
     "staging",
     "prod"
   ],
-  "entrypoint": {
-    "type": "skill_folder",
-    "path": "SKILL.md"
+  "inputs": [],
+  "kind": "skill",
+  "knowledge_scopes": [],
+  "name": "general-task-summary",
+  "optional_tools": [],
+  "outputs": [
+    "general-task-summary"
+  ],
+  "policies": [
+    "no-destructive-commands"
+  ],
+  "provenance": {
+    "acceptance_criteria": [
+      "general-task-summary declares an explicit selection mode.",
+      "general-task-summary has repository-backed source-of-truth evidence.",
+      "general-task-summary has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "general-task-summary needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "general-task-summary is task-facing and can be selected directly from structured task signals.",
+    "requirement_id": "REQ-SCAS-REGISTRY-GENERAL_TASK_SUMMARY",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/skills/general-task-summary/module.json",
+        "type": "repo_path"
+      }
+    ]
   },
+  "required_tools": [],
   "runtime_contract": {
     "profile_sealable": true,
-    "requires_version_pin": true,
-    "requires_handler_binding": true
+    "requires_handler_binding": true,
+    "requires_version_pin": true
   },
-  "domain_tags": [
-    "general-task"
-  ],
+  "runtime_role": "runtime",
+  "runtime_roles": {
+    "allowed": [
+      "runtime"
+    ],
+    "default": "runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "base_score": 0.62,
+    "mode": "direct",
+    "requires_all_policies": true,
+    "score_modifiers": [
+      {
+        "reason": "General tasks should receive a bounded generic summary strategy.",
+        "signal": "task_type:general-task",
+        "weight": 0.22
+      },
+      {
+        "reason": "Destructive requests should not be handled by a generic summary module.",
+        "signal": "phrase:delete",
+        "weight": -0.3
+      }
+    ]
+  },
+  "selection_evidence": {
+    "negative_selection": [
+      {
+        "expectation": "rejected",
+        "fixture": "examples/registry/selection-evidence/general-task-summary.json",
+        "reason": "general-task-summary must be rejected or ranked away for its negative fixture."
+      }
+    ],
+    "positive_selection": [
+      {
+        "expectation": "selected",
+        "fixture": "examples/registry/selection-evidence/general-task-summary.json",
+        "reason": "general-task-summary must be selectable for its positive fixture."
+      }
+    ]
+  },
+  "status": "active",
   "task_signals": {
-    "task_types": [
-      "general-task"
-    ],
-    "risk_levels": [
-      "low",
-      "medium",
-      "high"
-    ],
     "domains": [
       "general-task"
-    ],
-    "required_inputs": [],
-    "phrases": [
-      "prepare",
-      "outline",
-      "general"
     ],
     "negative_phrases": [
       "deploy",
       "delete",
       "destroy"
+    ],
+    "phrases": [
+      "prepare",
+      "outline",
+      "general"
+    ],
+    "required_inputs": [],
+    "risk_levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "task_types": [
+      "general-task"
+    ]
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/general-task-summary.json"
+    ],
+    "runtime": [
+      "general-task-summary-positive",
+      "general-task-summary-denies-destructive"
     ]
   },
   "triggers": [
@@ -60,42 +140,8 @@
     "outline",
     "general"
   ],
-  "inputs": [],
-  "outputs": [
-    "general-task-summary"
-  ],
-  "required_tools": [],
-  "optional_tools": [],
-  "knowledge_scopes": [],
-  "data_scopes": [],
-  "policies": [
-    "no-destructive-commands"
-  ],
   "validators": [
     "general-output-contract"
   ],
-  "selection": {
-    "base_score": 0.62,
-    "score_modifiers": [
-      {
-        "signal": "task_type:general-task",
-        "weight": 0.22,
-        "reason": "General tasks should receive a bounded generic summary strategy."
-      },
-      {
-        "signal": "phrase:delete",
-        "weight": -0.3,
-        "reason": "Destructive requests should not be handled by a generic summary module."
-      }
-    ],
-    "requires_all_policies": true
-  },
-  "tests": {
-    "contract": [],
-    "runtime": [
-      "general-task-summary-positive",
-      "general-task-summary-denies-destructive"
-    ],
-    "fixtures": []
-  }
+  "version": "0.1.0"
 }

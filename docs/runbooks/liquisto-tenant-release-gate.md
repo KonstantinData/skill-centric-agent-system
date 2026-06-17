@@ -70,7 +70,7 @@ gh workflow run live-runtime-gates.yml \
 
 Passing criteria are defined in `docs/runbooks/runtime-live-dev-e2e.md`.
 
-Latest recorded evidence:
+Latest recorded tenant runtime evidence:
 
 | Date | GitHub run | Ref | Result | Evidence |
 | --- | --- | --- | --- | --- |
@@ -96,6 +96,17 @@ repositories, and app paths from the target Hetzner environment. It must not
 mutate the runtime host. Use the inventory artifact to identify the actual
 service, image, code path, and deployed Git revision before any deployment or
 restart action.
+
+Latest recorded production inventory evidence:
+
+| Date | GitHub run | Ref | Result | Evidence |
+| --- | --- | --- | --- | --- |
+| 2026-06-17 15:22 Europe/Berlin | `27692078758` | `main` | passed | `liquisto.condata.io` routes through Nginx to `127.0.0.1:8501`; Docker container `liquisto-app-1` is healthy and runs `streamlit run apps/streamlit_business_ui/app.py`; image `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`; deployed source revision `916b7d87295d685c7ab4c2c8ffc3049297ed9d56`. |
+
+The 2026-06-17 inventory proves that the repository-owned Streamlit Business UI
+foundation is deployed behind the tenant hostname. It does not by itself
+certify production launch readiness because the runtime still requires the
+remaining blockers below.
 
 ## Streamlit Business UI Deployment
 
@@ -149,10 +160,10 @@ resolved:
 - Production legal, register, contact, and owner data is verified in the
   approved operational source. Public fixtures may contain only non-secret
   sentinel values that clearly state the real data is not stored there.
-- Repository-owned deployment for `apps/streamlit_business_ui` to the service
-  behind `https://liquisto.condata.io/` is executed and verified with
-  `.github/workflows/tenant-ui-deploy.yml`, or the external deployment
-  owner/runbook is recorded.
+- Production runtime configuration points to the production Control API, or any
+  temporary staging Control API dependency is explicitly approved with an owner,
+  expiry, and rollback path. The 2026-06-17 inventory observed a staging
+  Control API URL in the production UI container environment.
 - The production service runs `SCAS_UI_AUTH_MODE=required` with a server-owned
   tenant session context from the approved upstream authentication layer.
   Fixture mode must not be used on the public hostname.

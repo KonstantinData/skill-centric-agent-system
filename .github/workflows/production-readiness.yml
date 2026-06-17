@@ -25,6 +25,24 @@ on:
           - evidence-only
           - certify
         default: evidence-only
+      evidence_source_mode:
+        description: Consume existing CI/security evidence by default; recheck reruns broad repository gates
+        required: true
+        type: choice
+        options:
+          - consume-existing
+          - recheck
+        default: consume-existing
+      ci_run_url:
+        description: URL for the matching CI run, required for consume-existing mode
+        required: false
+        type: string
+        default: ""
+      security_governance_run_url:
+        description: URL for the matching Security Governance run, required for consume-existing mode
+        required: false
+        type: string
+        default: ""
       live_runtime_gates_run_url:
         description: URL for the matching live runtime gates run, required for certify mode
         required: false
@@ -54,6 +72,9 @@ jobs:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
       RELEASE_SCOPE: ${{ inputs.release_scope }}
       CERTIFICATION_MODE: ${{ inputs.certification_mode }}
+      EVIDENCE_SOURCE_MODE: ${{ inputs.evidence_source_mode }}
+      CI_RUN_URL: ${{ inputs.ci_run_url }}
+      SECURITY_GOVERNANCE_RUN_URL: ${{ inputs.security_governance_run_url }}
       LIVE_RUNTIME_GATES_RUN_URL: ${{ inputs.live_runtime_gates_run_url }}
       AI_GATEWAY_SMOKE_RUN_URL: ${{ inputs.ai_gateway_smoke_run_url }}
       GH_TOKEN: ${{ github.token }}
@@ -79,6 +100,7 @@ jobs:
         run: uv lock --check
 
       - name: Run repository governance gates
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           uv run python scripts/security/check_no_dotenv_files.py
           uv run python scripts/security/validate_ruleset_config.py
@@ -91,6 +113,7 @@ jobs:
           uv run python scripts/security/validate_sbom.py security-evidence/release-sbom.json
 
       - name: Run Python repository gates
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           uv run pytest
           uv run ruff check .
@@ -108,6 +131,7 @@ jobs:
           uv run python scripts/runtime/validate_semantic_drift_guard.py --check
 
       - name: Run formal safety invariant gate
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           set -euo pipefail
           PYTHONPATH=src uv run python scripts/runtime/invariant_check.py \
@@ -134,6 +158,7 @@ jobs:
           PY
 
       - name: Run incident-locked regression gate
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           set -euo pipefail
           PYTHONPATH=src uv run python scripts/runtime/run_incident_locked_regressions.py \
@@ -141,6 +166,7 @@ jobs:
             --fail-on-failed
 
       - name: Evaluate shadow regression thresholds
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           set -euo pipefail
           uv run python scripts/operations/evaluate_shadow_regression_thresholds.py \
@@ -150,6 +176,7 @@ jobs:
             --fail-on-failed
 
       - name: Run pre-canary safety gate
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           set -euo pipefail
           uv run python scripts/release/evaluate_pre_canary_gate.py \
@@ -159,6 +186,7 @@ jobs:
             --fail-on-failed
 
       - name: Evaluate automatic rollback rules
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           set -euo pipefail
           uv run python scripts/release/evaluate_automatic_rollback_rules.py \
@@ -169,6 +197,7 @@ jobs:
             --fail-on-failed
 
       - name: Validate tracked JSON files
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           python - <<'PY'
           import json
@@ -184,15 +213,18 @@ jobs:
           PY
 
       - name: Set up Node.js
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           cache: npm
 
       - name: Install Worker dependencies
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: npm ci
 
       - name: Run Worker gates
+        if: ${{ inputs.evidence_source_mode == 'recheck' }}
         run: |
           npm run worker:types
           git diff --exit-code workers/control-api/src/worker-configuration.d.ts
@@ -202,6 +234,37 @@ jobs:
 
       - name: Validate certification inputs
         run: uv run python scripts/release/build_production_readiness_evidence.py --validate-only
+
+      - name: Collect consumed CI and security evidence metadata
+        if: ${{ inputs.evidence_source_mode == 'consume-existing' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p production-evidence/security-governance
+          ci_run_id="$(
+            uv run python scripts/release/build_production_readiness_evidence.py \
+              --print-run-id "${CI_RUN_URL}"
+          )"
+          security_run_id="$(
+            uv run python scripts/release/build_production_readiness_evidence.py \
+              --print-run-id "${SECURITY_GOVERNANCE_RUN_URL}"
+          )"
+
+          gh run view "${ci_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json databaseId,workflowName,status,conclusion,headSha,url,event,displayTitle,createdAt,updatedAt \
+            > production-evidence/ci-run.json
+
+          gh run view "${security_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json databaseId,workflowName,status,conclusion,headSha,url,event,displayTitle,createdAt,updatedAt \
+            > production-evidence/security-governance-run.json
+
+          gh run download "${security_run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name security-evidence \
+            --dir production-evidence/security-governance
 
       - name: Collect external live evidence metadata
         if: ${{ inputs.certification_mode == 'certify' }}
@@ -241,7 +304,15 @@ jobs:
 
           args=(
             --output production-readiness-evidence.json
+            --evidence-source-mode "${EVIDENCE_SOURCE_MODE}"
           )
+          if [ "${EVIDENCE_SOURCE_MODE}" = "consume-existing" ]; then
+            args+=(
+              --ci-run-metadata production-evidence/ci-run.json
+              --security-governance-metadata production-evidence/security-governance-run.json
+              --security-governance-artifacts-dir production-evidence/security-governance
+            )
+          fi
           if [ "${CERTIFICATION_MODE}" = "certify" ]; then
             args+=(
               --live-runtime-gates-metadata production-evidence/live-runtime-gates-run.json
@@ -259,6 +330,7 @@ jobs:
           path: |
             production-readiness-evidence.json
             production-evidence/*.json
+            production-evidence/security-governance/*.json
             production-evidence/live-handler-binding/*.json
             security-evidence/*.json
           if-no-files-found: error

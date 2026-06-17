@@ -62,11 +62,17 @@ gh workflow run live-runtime-gates.yml \
   -f run_postgres_concurrency_smoke=false \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=true \
-  -f live_task_suite=tenant
+  -f live_task_suite=tenant \
+  -f confirm_production=false
 ```
 
 For `staging` and `prod`, set `target_environment` accordingly and pass
 `control_api_url` explicitly.
+For `prod`, also set `confirm_production=true`; the job enters the protected
+`production` GitHub environment before it can run against production secrets
+or hosts. `seed_control_plane_dev=true` is not allowed for `prod`; production
+D1 migrations and seeding must use a dedicated production migration control
+path with separate review and evidence.
 The workflow resolves environment-specific secrets (`SCAS_DEV_*`,
 `SCAS_STAGING_*`, `SCAS_PROD_*`), uploads the checked-out commit to the
 Hetzner host, installs the runtime dependencies there, connects to PostgreSQL

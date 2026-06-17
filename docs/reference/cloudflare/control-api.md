@@ -218,9 +218,11 @@ rollout without committing secrets or account-specific config:
 
 ```bash
 gh workflow run ci.yml \
+  -f target_environment=dev \
   -f deploy_control_api_dev=false \
   -f run_ai_gateway_live_smoke=true \
-  -f run_infra_smoke=false
+  -f run_infra_smoke=false \
+  -f confirm_production=false
 ```
 
 The workflow writes `SCAS_DEV_OPENAI_API_KEY`, optional
@@ -244,6 +246,10 @@ When `run_ai_gateway_live_smoke=true`, the workflow requires
 if it is missing. Setting the secret only on the already-deployed Worker is not
 enough because the workflow performs a fresh deployment with a temporary
 secrets file.
+For `target_environment=prod`, this manual workflow is gated by
+`confirm_production=true` and the protected `production` GitHub environment.
+Do not use production deploy tokens until that guarded path and its workflow
+evidence are green.
 
 Apply D1 migrations locally:
 

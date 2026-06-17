@@ -64,7 +64,21 @@ def module_fixture(
     required_inputs: list[str] | None = None,
     policies: list[str] | None = None,
     validators: list[str] | None = None,
+    selection_mode: str = "direct",
 ) -> ModuleMetadata:
+    selection = (
+        {
+            "mode": "dependency_only",
+            "requires_all_policies": bool(policies),
+        }
+        if selection_mode == "dependency_only"
+        else {
+            "mode": "direct",
+            "base_score": 0.5,
+            "score_modifiers": [],
+            "requires_all_policies": bool(policies),
+        }
+    )
     module = {
         "name": name,
         "version": "0.1.0",
@@ -89,11 +103,7 @@ def module_fixture(
         "data_scopes": [],
         "policies": policies or [],
         "validators": validators or [],
-        "selection": {
-            "base_score": 0.5,
-            "score_modifiers": [],
-            "requires_all_policies": bool(policies),
-        },
+        "selection": selection,
         "tests": [f"{name}-test"],
     }
     return ModuleMetadata.from_mapping(module)
@@ -101,38 +111,59 @@ def module_fixture(
 
 def dependency_modules() -> list[ModuleMetadata]:
     return [
-        module_fixture("git-read", "tool", capability_class="tool_access"),
-        module_fixture("filesystem-read", "tool", capability_class="tool_access"),
-        module_fixture("test-runner", "tool", capability_class="tool_access"),
+        module_fixture(
+            "git-read",
+            "tool",
+            capability_class="tool_access",
+            selection_mode="dependency_only",
+        ),
+        module_fixture(
+            "filesystem-read",
+            "tool",
+            capability_class="tool_access",
+            selection_mode="dependency_only",
+        ),
+        module_fixture(
+            "test-runner",
+            "tool",
+            capability_class="tool_access",
+            selection_mode="dependency_only",
+        ),
         module_fixture(
             "architecture-docs",
             "knowledge_scope",
             capability_class="knowledge_access",
+            selection_mode="dependency_only",
         ),
         module_fixture(
             "coding-guidelines",
             "knowledge_scope",
             capability_class="knowledge_access",
+            selection_mode="dependency_only",
         ),
         module_fixture(
             "repository-readonly",
             "data_scope",
             capability_class="data_access",
+            selection_mode="dependency_only",
         ),
         module_fixture(
             "no-destructive-commands",
             "policy",
             capability_class="policy",
+            selection_mode="dependency_only",
         ),
         module_fixture(
             "require-file-references",
             "policy",
             capability_class="policy",
+            selection_mode="dependency_only",
         ),
         module_fixture(
             "review-findings-contract",
             "validator",
             capability_class="validation",
+            selection_mode="dependency_only",
         ),
     ]
 
@@ -446,6 +477,31 @@ def test_registry_loads_modules_from_paths() -> None:
     registry = InMemoryModuleRegistry.from_paths([GIT_DIFF_MODULE_PATH])
 
     assert registry.resolve("git-diff-analysis").version == "0.1.0"
+
+
+def test_dependency_only_modules_are_not_directly_discoverable_or_scoreable() -> None:
+    registry = InMemoryModuleRegistry(
+        [
+            ModuleMetadata.from_mapping(load_git_diff_module()),
+            *dependency_modules(),
+        ]
+    )
+    dependency = registry.resolve("git-read", "0.1.0")
+
+    discovered = registry.discover(
+        RegistryQuery(
+            kinds=frozenset({"tool"}),
+            capability_classes=frozenset({"tool_access"}),
+            domains=frozenset({"git"}),
+            task_types=frozenset({"code-review"}),
+        )
+    )
+    score = registry.score(dependency, code_review_signals(phrases=["git-read"]))
+
+    assert dependency.selection_mode == "dependency_only"
+    assert discovered == ()
+    assert score.score == 0.0
+    assert score.negative_signals == ("selection_mode:dependency_only",)
 
 
 def test_duplicate_module_versions_are_rejected() -> None:

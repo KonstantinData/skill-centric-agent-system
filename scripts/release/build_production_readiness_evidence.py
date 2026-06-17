@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -21,8 +22,20 @@ from scripts.release.validate_production_recertification_policy import (  # noqa
 
 TARGET_ENVIRONMENTS = {"dev", "staging", "prod"}
 CERTIFICATION_MODES = {"evidence-only", "certify"}
+EVIDENCE_SOURCE_MODES = {"consume-existing", "recheck"}
+MAX_UPSTREAM_EVIDENCE_AGE_DAYS = 14
 
 EXTERNAL_EVIDENCE_SPECS = {
+    "ci": {
+        "argument_name": "ci_run_url",
+        "expected_workflow": "CI",
+        "missing_message": "consume-existing mode requires ci_run_url",
+    },
+    "security_governance": {
+        "argument_name": "security_governance_run_url",
+        "expected_workflow": "Security Governance",
+        "missing_message": "consume-existing mode requires security_governance_run_url",
+    },
     "live_runtime_gates": {
         "argument_name": "live_runtime_gates_run_url",
         "expected_workflow": "Live Runtime Gates",
@@ -173,6 +186,9 @@ def validate_certification_inputs(
     target_environment: str,
     release_scope: str,
     certification_mode: str,
+    evidence_source_mode: str,
+    ci_run_url: str,
+    security_governance_run_url: str,
     live_runtime_gates_run_url: str,
     ai_gateway_smoke_run_url: str,
 ) -> None:
@@ -181,6 +197,23 @@ def validate_certification_inputs(
         certification_mode=certification_mode,
         release_scope=release_scope,
     )
+    if evidence_source_mode not in EVIDENCE_SOURCE_MODES:
+        raise EvidenceError(
+            f"evidence_source_mode must be one of {sorted(EVIDENCE_SOURCE_MODES)}"
+        )
+
+    if evidence_source_mode == "consume-existing":
+        urls = {
+            "ci": ci_run_url,
+            "security_governance": security_governance_run_url,
+        }
+        for evidence_name, url in urls.items():
+            spec = EXTERNAL_EVIDENCE_SPECS[evidence_name]
+            if not url:
+                raise EvidenceError(spec["missing_message"])
+            parse_actions_run_url(url, repository)
+        if ci_run_url == security_governance_run_url:
+            raise EvidenceError("CI and Security Governance evidence must use distinct runs")
 
     if certification_mode != "certify":
         return
@@ -218,6 +251,7 @@ def validate_run_metadata(
     metadata: dict[str, object],
     expected_repository: str,
     expected_commit: str,
+    generated_at: str | None = None,
 ) -> dict[str, object]:
     spec = EXTERNAL_EVIDENCE_SPECS[evidence_name]
     expected_ref = parse_actions_run_url(run_url, expected_repository)
@@ -257,6 +291,14 @@ def validate_run_metadata(
             f"{evidence_name} metadata URL {metadata_url!r} does not match {expected_ref.url!r}"
         )
 
+    created_at = str(metadata.get("createdAt", ""))
+    if generated_at is not None:
+        _validate_run_staleness(
+            evidence_name=evidence_name,
+            created_at=created_at,
+            generated_at=generated_at,
+        )
+
     return {
         "run_id": expected_ref.run_id,
         "run_url": expected_ref.url,
@@ -266,10 +308,30 @@ def validate_run_metadata(
         "head_sha": head_sha,
         "display_title": str(metadata.get("displayTitle", "")),
         "event": str(metadata.get("event", "")),
-        "created_at": str(metadata.get("createdAt", "")),
+        "created_at": created_at,
         "updated_at": str(metadata.get("updatedAt", "")),
         "validation_status": "passed",
     }
+
+
+def _validate_run_staleness(
+    *,
+    evidence_name: str,
+    created_at: str,
+    generated_at: str,
+) -> None:
+    if not created_at:
+        raise EvidenceError(f"{evidence_name} run metadata must include createdAt")
+    created = _parse_iso_datetime(created_at)
+    generated = _parse_iso_datetime(generated_at)
+    max_age = timedelta(days=MAX_UPSTREAM_EVIDENCE_AGE_DAYS)
+    if created > generated + timedelta(minutes=5):
+        raise EvidenceError(f"{evidence_name} run was created after readiness evidence")
+    if generated - created > max_age:
+        raise EvidenceError(
+            f"{evidence_name} run is stale; max age is "
+            f"{MAX_UPSTREAM_EVIDENCE_AGE_DAYS} days"
+        )
 
 
 def validate_environment_separation_for_target(
@@ -386,6 +448,8 @@ def production_status(
 
 def gate_results(
     *,
+    evidence_source_mode: str,
+    consumed_evidence: dict[str, object],
     certification_mode: str,
     external_evidence: dict[str, object],
     gaps: list[dict[str, str]],
@@ -399,6 +463,22 @@ def gate_results(
         }
         for gate, evidence in REPOSITORY_GATE_RESULTS
     ]
+    if evidence_source_mode == "consume-existing":
+        results.append(
+            {
+                "gate": "Consumed CI and security evidence",
+                "status": "passed",
+                "evidence": consumed_evidence,
+            }
+        )
+    else:
+        results.append(
+            {
+                "gate": "Repository gate recheck mode",
+                "status": "passed",
+                "evidence": "Broad repository gates were rerun intentionally by this workflow.",
+            }
+        )
     results.append(
         {
             "gate": "Environment separation",
@@ -519,6 +599,71 @@ def external_evidence(
     }
 
 
+def consumed_repository_evidence(
+    *,
+    repository: str,
+    commit: str,
+    generated_at: str,
+    evidence_source_mode: str,
+    ci_run_url: str,
+    security_governance_run_url: str,
+    ci_run_metadata: dict[str, object] | None,
+    security_governance_metadata: dict[str, object] | None,
+    security_governance_artifacts_dir: Path | None,
+) -> dict[str, object]:
+    if evidence_source_mode == "recheck":
+        return {
+            "mode": "recheck",
+            "validation_status": "passed",
+            "reason": "Production readiness workflow intentionally reran repository gates.",
+        }
+
+    if ci_run_metadata is None:
+        raise EvidenceError("consume-existing mode requires CI run metadata")
+    if security_governance_metadata is None:
+        raise EvidenceError("consume-existing mode requires Security Governance run metadata")
+    if security_governance_artifacts_dir is None:
+        raise EvidenceError("consume-existing mode requires security governance artifacts")
+
+    return {
+        "mode": "consume-existing",
+        "max_age_days": MAX_UPSTREAM_EVIDENCE_AGE_DAYS,
+        "ci": validate_run_metadata(
+            evidence_name="ci",
+            run_url=ci_run_url,
+            metadata=ci_run_metadata,
+            expected_repository=repository,
+            expected_commit=commit,
+            generated_at=generated_at,
+        ),
+        "security_governance": validate_run_metadata(
+            evidence_name="security_governance",
+            run_url=security_governance_run_url,
+            metadata=security_governance_metadata,
+            expected_repository=repository,
+            expected_commit=commit,
+            generated_at=generated_at,
+        ),
+        "security_artifacts": artifact_checksums(security_governance_artifacts_dir),
+        "validation_status": "passed",
+    }
+
+
+def artifact_checksums(artifacts_dir: Path) -> list[dict[str, str]]:
+    if not artifacts_dir.exists():
+        raise EvidenceError(f"security artifact directory does not exist: {artifacts_dir}")
+    artifacts = sorted(path for path in artifacts_dir.rglob("*.json") if path.is_file())
+    if not artifacts:
+        raise EvidenceError("security governance evidence artifact contains no JSON files")
+    return [
+        {
+            "path": path.relative_to(artifacts_dir).as_posix(),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        for path in artifacts
+    ]
+
+
 def build_evidence(
     *,
     repository: str,
@@ -528,8 +673,14 @@ def build_evidence(
     target_environment: str,
     release_scope: str,
     certification_mode: str,
+    evidence_source_mode: str = "consume-existing",
+    ci_run_url: str = "",
+    security_governance_run_url: str = "",
     live_runtime_gates_run_url: str = "",
     ai_gateway_smoke_run_url: str = "",
+    ci_run_metadata: dict[str, object] | None = None,
+    security_governance_metadata: dict[str, object] | None = None,
+    security_governance_artifacts_dir: Path | None = None,
     live_runtime_gates_metadata: dict[str, object] | None = None,
     ai_gateway_smoke_metadata: dict[str, object] | None = None,
     live_handler_binding_evidence: dict[str, object] | None = None,
@@ -541,10 +692,24 @@ def build_evidence(
         target_environment=target_environment,
         release_scope=release_scope,
         certification_mode=certification_mode,
+        evidence_source_mode=evidence_source_mode,
+        ci_run_url=ci_run_url,
+        security_governance_run_url=security_governance_run_url,
         live_runtime_gates_run_url=live_runtime_gates_run_url,
         ai_gateway_smoke_run_url=ai_gateway_smoke_run_url,
     )
 
+    consumed = consumed_repository_evidence(
+        repository=repository,
+        commit=commit,
+        generated_at=generated_timestamp,
+        evidence_source_mode=evidence_source_mode,
+        ci_run_url=ci_run_url,
+        security_governance_run_url=security_governance_run_url,
+        ci_run_metadata=ci_run_metadata,
+        security_governance_metadata=security_governance_metadata,
+        security_governance_artifacts_dir=security_governance_artifacts_dir,
+    )
     environment_separation_validation = validate_environment_separation_for_target(
         target_environment=target_environment,
         certification_mode=certification_mode,
@@ -592,15 +757,19 @@ def build_evidence(
         "target_environment": target_environment,
         "release_scope": release_scope,
         "certification_mode": certification_mode,
+        "evidence_source_mode": evidence_source_mode,
         "status": status,
         "final_decision": final_decision,
         "gate_results": gate_results(
+            evidence_source_mode=evidence_source_mode,
+            consumed_evidence=consumed,
             certification_mode=certification_mode,
             external_evidence=external,
             gaps=gaps,
             environment_separation_validation=environment_separation_validation,
         ),
         "external_evidence": external,
+        "consumed_repository_evidence": consumed,
         "open_release_gaps": gaps,
         "waivers": [],
         "owner": "SCAS release owner",
@@ -725,6 +894,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=env_value("CERTIFICATION_MODE", "evidence-only"),
     )
     parser.add_argument(
+        "--evidence-source-mode",
+        default=env_value("EVIDENCE_SOURCE_MODE", "consume-existing"),
+    )
+    parser.add_argument("--ci-run-url", default=env_value("CI_RUN_URL"))
+    parser.add_argument(
+        "--security-governance-run-url",
+        default=env_value("SECURITY_GOVERNANCE_RUN_URL"),
+    )
+    parser.add_argument(
         "--live-runtime-gates-run-url",
         default=env_value("LIVE_RUNTIME_GATES_RUN_URL"),
     )
@@ -736,6 +914,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=Path("production-readiness-evidence.json"))
     parser.add_argument("--live-runtime-gates-metadata", type=Path)
     parser.add_argument("--ai-gateway-smoke-metadata", type=Path)
+    parser.add_argument("--ci-run-metadata", type=Path)
+    parser.add_argument("--security-governance-metadata", type=Path)
+    parser.add_argument("--security-governance-artifacts-dir", type=Path)
     parser.add_argument("--live-handler-binding-evidence", type=Path)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--print-run-id")
@@ -755,6 +936,9 @@ def main(argv: list[str] | None = None) -> int:
             target_environment=args.target_environment,
             release_scope=args.release_scope,
             certification_mode=args.certification_mode,
+            evidence_source_mode=args.evidence_source_mode,
+            ci_run_url=args.ci_run_url,
+            security_governance_run_url=args.security_governance_run_url,
             live_runtime_gates_run_url=args.live_runtime_gates_run_url,
             ai_gateway_smoke_run_url=args.ai_gateway_smoke_run_url,
         )
@@ -769,6 +953,14 @@ def main(argv: list[str] | None = None) -> int:
             target_environment=args.target_environment,
             release_scope=args.release_scope,
             certification_mode=args.certification_mode,
+            evidence_source_mode=args.evidence_source_mode,
+            ci_run_url=args.ci_run_url,
+            security_governance_run_url=args.security_governance_run_url,
+            ci_run_metadata=metadata_from_path(args.ci_run_metadata),
+            security_governance_metadata=metadata_from_path(
+                args.security_governance_metadata
+            ),
+            security_governance_artifacts_dir=args.security_governance_artifacts_dir,
             live_runtime_gates_run_url=args.live_runtime_gates_run_url,
             ai_gateway_smoke_run_url=args.ai_gateway_smoke_run_url,
             live_runtime_gates_metadata=metadata_from_path(args.live_runtime_gates_metadata),

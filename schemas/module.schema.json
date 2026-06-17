@@ -28,7 +28,9 @@
     "data_scopes",
     "policies",
     "validators",
+    "provenance",
     "selection",
+    "selection_evidence",
     "tests"
   ],
   "properties": {
@@ -138,7 +140,8 @@
       "additionalProperties": false,
       "required": [
         "type",
-        "path"
+        "path",
+        "guidance"
       ],
       "properties": {
         "type": {
@@ -149,6 +152,13 @@
         },
         "path": {
           "$ref": "#/$defs/relativePath"
+        },
+        "guidance": {
+          "type": "string",
+          "enum": [
+            "shared_template",
+            "skill_specific"
+          ]
         }
       }
     },
@@ -238,11 +248,17 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "base_score",
-        "score_modifiers",
+        "mode",
         "requires_all_policies"
       ],
       "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "direct",
+            "dependency_only"
+          ]
+        },
         "base_score": {
           "type": "number",
           "minimum": 0,
@@ -257,7 +273,55 @@
         "requires_all_policies": {
           "type": "boolean"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "direct"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "base_score",
+              "score_modifiers"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "dependency_only"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "base_score"
+                  ]
+                },
+                {
+                  "required": [
+                    "score_modifiers"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
     },
     "tests": {
       "type": "object",
@@ -278,6 +342,83 @@
           "$ref": "#/$defs/relativePathArray"
         }
       }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "problem_statement",
+        "acceptance_criteria",
+        "source_of_truth",
+        "rationale"
+      ],
+      "properties": {
+        "owner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "name"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "person"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "problem_statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "source_of_truth": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourceOfTruth"
+          },
+          "minItems": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "selection_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "positive_selection": {
+          "$ref": "#/$defs/evidenceArray"
+        },
+        "negative_selection": {
+          "$ref": "#/$defs/evidenceArray"
+        },
+        "dependency_inclusion": {
+          "$ref": "#/$defs/evidenceArray"
+        },
+        "no_direct_selection": {
+          "$ref": "#/$defs/evidenceArray"
+        }
+      }
     }
   },
   "allOf": [
@@ -294,7 +435,6 @@
       },
       "then": {
         "required": [
-          "entrypoint",
           "runtime_role"
         ]
       },
@@ -303,6 +443,64 @@
           "required": [
             "entrypoint"
           ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "selection": {
+            "properties": {
+              "mode": {
+                "const": "direct"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      },
+      "then": {
+        "properties": {
+          "selection_evidence": {
+            "required": [
+              "positive_selection",
+              "negative_selection"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "selection": {
+            "properties": {
+              "mode": {
+                "const": "dependency_only"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      },
+      "then": {
+        "properties": {
+          "selection_evidence": {
+            "required": [
+              "dependency_inclusion",
+              "no_direct_selection"
+            ]
+          }
         }
       }
     }
@@ -378,6 +576,68 @@
           "type": "number",
           "minimum": -1,
           "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "sourceOfTruth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "ref",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "repo_path",
+            "adr",
+            "notion_issue",
+            "external_standard"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidenceArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/selectionEvidence"
+      },
+      "minItems": 1
+    },
+    "selectionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture",
+        "expectation",
+        "reason"
+      ],
+      "properties": {
+        "fixture": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "expectation": {
+          "type": "string",
+          "enum": [
+            "selected",
+            "rejected",
+            "included_as_dependency",
+            "not_directly_selected"
+          ]
         },
         "reason": {
           "type": "string",

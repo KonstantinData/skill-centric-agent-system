@@ -4,7 +4,7 @@
   "title": "SCAS Memory Candidate Classification Envelope",
   "description": "Classified Hetzner Runtime Plane candidate envelope before any Cloudflare memory or knowledge ingestion.",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
     "contract_version",
     "candidate_class",
@@ -69,6 +69,24 @@
         "$ref": "#/$defs/uri"
       },
       "minItems": 1
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/uri"
+      },
+      "uniqueItems": true
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": [
+        "redacted",
+        "not_required"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "authoritative": {
       "type": "boolean"

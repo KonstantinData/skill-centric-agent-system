@@ -1,0 +1,80 @@
+{
+  "module": "git-diff-analysis",
+  "negative_selection": {
+    "expected": {
+      "graph_validation": "not_evaluated",
+      "matched_signals_must_include": [],
+      "negative_signals_must_include": [
+        "phrase:deploy"
+      ],
+      "policy_result": "deny_or_lower_ranked",
+      "rejected_modules": [
+        "git-diff-analysis"
+      ],
+      "selected_modules": []
+    },
+    "reason": "Negative task language proves git-diff-analysis is not a catch-all capability.",
+    "task_signals": {
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "git"
+      ],
+      "phrases": [
+        "review",
+        "diff",
+        "deploy"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "positive_selection": {
+    "expected": {
+      "graph_validation": "valid",
+      "matched_signals_must_include": [
+        "task_type:code-review"
+      ],
+      "negative_signals": [],
+      "policy_result": "allow",
+      "rejected_modules": [],
+      "selected_modules": [
+        "git-diff-analysis"
+      ]
+    },
+    "reason": "Structured task signals match the direct capability boundary for git-diff-analysis.",
+    "task_signals": {
+      "available_inputs": [
+        "repository",
+        "diff"
+      ],
+      "capability_hints": [
+        "analysis"
+      ],
+      "constraints": [
+        "least privilege"
+      ],
+      "domains": [
+        "software-engineering",
+        "git"
+      ],
+      "phrases": [
+        "review",
+        "diff"
+      ],
+      "risk_level": "low",
+      "task_type": "code-review"
+    }
+  },
+  "schema_version": "0.1.0",
+  "selection_mode": "direct"
+}
