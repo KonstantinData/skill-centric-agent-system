@@ -353,9 +353,11 @@ when the Worker needs `SCAS_DEV_OPENAI_API_KEY`, `AI_GATEWAY_AUTH_TOKEN`,
 
 ```bash
 gh workflow run ci.yml \
+  -f target_environment=dev \
   -f deploy_control_api_dev=false \
   -f run_ai_gateway_live_smoke=true \
-  -f run_infra_smoke=false
+  -f run_infra_smoke=false \
+  -f confirm_production=false
 ```
 
 The workflow passes Worker secrets through a temporary runner-local JSON file
@@ -369,6 +371,9 @@ secrets only for compatibility.
 Gateway. For `run_ai_gateway_live_smoke=true`, `AI_GATEWAY_AUTH_TOKEN` must be
 set as a GitHub Actions secret; setting it only on the Worker is not enough for
 the workflow's fresh deployment.
+For `target_environment=prod`, the workflow also requires
+`confirm_production=true` and enters the protected `production` GitHub
+environment before deploying the Worker or running the live smoke.
 
 ## Smoke Tests
 
@@ -519,7 +524,8 @@ Scheduled retention cleanup:
 gh workflow run runtime-retention-cleanup.yml \
   -f target_environment=dev \
   -f cleanup_mode=dry-run \
-  -f strict_missing=false
+  -f strict_missing=false \
+  -f confirm_production=false
 ```
 
 The scheduled workflow runs daily from `main` in dry-run mode against the dev
@@ -536,11 +542,14 @@ dry-run report is reviewed:
 gh workflow run runtime-retention-cleanup.yml \
   -f target_environment=prod \
   -f cleanup_mode=confirmed-delete \
-  -f strict_missing=true
+  -f strict_missing=true \
+  -f confirm_production=true
 ```
 
 Scheduled runs must never set `cleanup_mode=confirmed-delete`; the workflow
-fails closed if a non-manual event attempts destructive cleanup.
+fails closed if a non-manual event attempts destructive cleanup. Any production
+retention cleanup, including dry-run, also requires `confirm_production=true`
+and the protected `production` GitHub environment.
 
 ## Diagnostics
 

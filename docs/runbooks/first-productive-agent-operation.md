@@ -115,11 +115,16 @@ gh workflow run live-runtime-gates.yml \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=false \
   -f live_task_suite=single \
-  -f live_task_file=examples/tasks/<approved-task>.json
+  -f live_task_file=examples/tasks/<approved-task>.json \
+  -f confirm_production=false
 ```
 
 The task file must be committed, non-secret, and approved for staging. Do not
 pass private task content through workflow inputs.
+Production use of this workflow is fail-closed unless `confirm_production=true`
+is supplied and the protected `production` GitHub environment approves the run.
+Production Control Plane seeding remains blocked here; use a dedicated
+production migration control path instead.
 
 ## Next Technical Slice
 

@@ -51,6 +51,11 @@ on:
         required: false
         type: string
         default: examples/tasks/general-task.json
+      confirm_production:
+        description: Required true for target_environment=prod
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -64,6 +69,8 @@ jobs:
     name: Live runtime gates on Hetzner
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment:
+      name: ${{ inputs.target_environment == 'prod' && 'production' || inputs.target_environment }}
     if: >-
       github.event_name == 'workflow_dispatch'
       && (inputs.run_live_dev_e2e == true
@@ -105,6 +112,7 @@ jobs:
       SEED_CONTROL_PLANE_DEV: ${{ inputs.seed_control_plane_dev }}
       LIVE_TASK_SUITE: ${{ inputs.live_task_suite }}
       LIVE_TASK_FILE: ${{ inputs.live_task_file }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
 
     steps:
       - name: Check out repository
@@ -171,6 +179,17 @@ jobs:
           OPENAI_API_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY)"
           CLOUDFLARE_ACCOUNT_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID)"
           CLOUDFLARE_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN)"
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production live runtime gates."
+            exit 1
+          fi
+
+          if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${SEED_CONTROL_PLANE_DEV}" = "true" ]; then
+            echo "::error::Production Control Plane seeding is not allowed from Live Runtime Gates."
+            echo "::error::Use a dedicated production migration control path with separate review and evidence."
+            exit 1
+          fi
 
           if [ -n "${CONTROL_API_URL_OVERRIDE}" ]; then
             SCAS_CONTROL_API_URL="${CONTROL_API_URL_OVERRIDE}"

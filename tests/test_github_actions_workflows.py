@@ -131,7 +131,12 @@ def test_ci_workflow_can_deploy_ai_gateway_live_smoke() -> None:
 
     assert "target_environment:" in workflow
     assert "run_ai_gateway_live_smoke:" in workflow
+    assert "confirm_production:" in workflow
     assert "inputs.run_ai_gateway_live_smoke == true" in workflow
+    assert "environment:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production Control API deploys" in workflow
     assert "SCAS_DEV_OPENAI_API_KEY: ${{ secrets.SCAS_DEV_OPENAI_API_KEY }}" in workflow
     assert "SCAS_DEV_CONTROL_API_TOKEN: ${{ secrets.SCAS_DEV_CONTROL_API_TOKEN }}" in workflow
     assert "SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}" in workflow
@@ -206,6 +211,11 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
 
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
+    assert "confirm_production:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production live runtime gates." in workflow
+    assert "Production Control Plane seeding is not allowed from Live Runtime Gates." in workflow
     assert "control_api_url:" in workflow
     assert "run_live_dev_e2e:" in workflow
     assert "run_postgres_concurrency_smoke:" in workflow
@@ -496,6 +506,12 @@ def test_runtime_retention_cleanup_workflow_defaults_to_dry_run() -> None:
 
     assert "CLEANUP_MODE: ${{ github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.cleanup_mode || 'dry-run'" in workflow
+    assert "confirm_production:" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ github.event_name == 'workflow_dispatch'" in workflow
+    assert "inputs.confirm_production || false" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "confirm_production must be true for production retention cleanup." in workflow
+    assert "CONFIRM_PRODUCTION='${CONFIRM_PRODUCTION}'" in workflow
     assert "Scheduled retention cleanup must run in dry-run mode." in workflow
     assert 'if [ "${CLEANUP_MODE}" = "confirmed-delete" ]; then' in workflow
     assert "cleanup_args+=(--confirm)" in workflow
