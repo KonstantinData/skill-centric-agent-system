@@ -26,6 +26,7 @@ REPOSITORY = "KonstantinData/skill-centric-agent-system"
 COMMIT = "a" * 40
 LIVE_RUN_URL = f"https://github.com/{REPOSITORY}/actions/runs/123456789"
 AI_GATEWAY_RUN_URL = f"https://github.com/{REPOSITORY}/actions/runs/987654321"
+SECURITY_RUN_URL = f"https://github.com/{REPOSITORY}/actions/runs/555555555"
 
 
 def run_metadata(
@@ -84,6 +85,13 @@ def live_handler_binding_evidence(environment: str = "prod") -> dict[str, object
     }
 
 
+def security_artifacts_dir(tmp_path: Path) -> Path:
+    artifacts_dir = tmp_path / "security-artifacts"
+    artifacts_dir.mkdir()
+    (artifacts_dir / "actions-bom.json").write_text('{"status":"passed"}', encoding="utf-8")
+    return artifacts_dir
+
+
 def test_parse_actions_run_url_requires_same_repository() -> None:
     parsed = evidence.parse_actions_run_url(LIVE_RUN_URL, REPOSITORY)
 
@@ -107,6 +115,7 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
         target_environment="dev",
         release_scope="initial-productive-core",
         certification_mode="evidence-only",
+        evidence_source_mode="recheck",
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
@@ -154,6 +163,9 @@ def test_certify_mode_requires_both_external_run_urls() -> None:
             target_environment="prod",
             release_scope="production-runtime",
             certification_mode="certify",
+            evidence_source_mode="recheck",
+            ci_run_url="",
+            security_governance_run_url="",
             live_runtime_gates_run_url="",
             ai_gateway_smoke_run_url=AI_GATEWAY_RUN_URL,
         )
@@ -164,6 +176,9 @@ def test_certify_mode_requires_both_external_run_urls() -> None:
             target_environment="prod",
             release_scope="production-runtime",
             certification_mode="certify",
+            evidence_source_mode="recheck",
+            ci_run_url="",
+            security_governance_run_url="",
             live_runtime_gates_run_url=LIVE_RUN_URL,
             ai_gateway_smoke_run_url="",
         )
@@ -178,6 +193,7 @@ def test_certify_mode_validates_external_run_metadata_against_commit_and_workflo
         target_environment="prod",
         release_scope="production-runtime",
         certification_mode="certify",
+        evidence_source_mode="recheck",
         live_runtime_gates_run_url=LIVE_RUN_URL,
         ai_gateway_smoke_run_url=AI_GATEWAY_RUN_URL,
         live_runtime_gates_metadata=run_metadata(
@@ -230,6 +246,7 @@ def test_write_release_scope_uses_controlled_write_gate_without_open_p5_05_gap()
         target_environment="dev",
         release_scope="controlled-write-runtime",
         certification_mode="evidence-only",
+        evidence_source_mode="recheck",
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
@@ -250,6 +267,7 @@ def test_certify_mode_rejects_wrong_external_workflow() -> None:
             target_environment="prod",
             release_scope="production-runtime",
             certification_mode="certify",
+            evidence_source_mode="recheck",
             live_runtime_gates_run_url=LIVE_RUN_URL,
             ai_gateway_smoke_run_url=AI_GATEWAY_RUN_URL,
             live_runtime_gates_metadata=run_metadata(
@@ -276,6 +294,7 @@ def test_certify_mode_requires_live_handler_binding_evidence() -> None:
             target_environment="prod",
             release_scope="production-runtime",
             certification_mode="certify",
+            evidence_source_mode="recheck",
             live_runtime_gates_run_url=LIVE_RUN_URL,
             ai_gateway_smoke_run_url=AI_GATEWAY_RUN_URL,
             live_runtime_gates_metadata=run_metadata(
@@ -312,9 +331,134 @@ def test_staging_evidence_only_keeps_p5_02_open() -> None:
         target_environment="staging",
         release_scope="production-runtime",
         certification_mode="evidence-only",
+        evidence_source_mode="recheck",
         generated_at="2026-05-24T13:00:00+00:00",
     )
 
     assert payload["status"] == "not-production-ready"
     assert payload["final_decision"] == "not-certified"
     assert any(gap["id"] == "P5.02" for gap in payload["open_release_gaps"])
+
+
+def test_consume_existing_validates_ci_and_security_runs(tmp_path: Path) -> None:
+    payload = evidence.build_evidence(
+        repository=REPOSITORY,
+        commit=COMMIT,
+        workflow_run_id="111",
+        workflow_run_attempt="1",
+        target_environment="dev",
+        release_scope="initial-productive-core",
+        certification_mode="evidence-only",
+        evidence_source_mode="consume-existing",
+        ci_run_url=LIVE_RUN_URL,
+        security_governance_run_url=SECURITY_RUN_URL,
+        ci_run_metadata=run_metadata(
+            run_id=123456789,
+            workflow_name="CI",
+            url=LIVE_RUN_URL,
+        ),
+        security_governance_metadata=run_metadata(
+            run_id=555555555,
+            workflow_name="Security Governance",
+            url=SECURITY_RUN_URL,
+        ),
+        security_governance_artifacts_dir=security_artifacts_dir(tmp_path),
+        generated_at="2026-05-24T13:00:00+00:00",
+    )
+
+    consumed = payload["consumed_repository_evidence"]
+    assert consumed["mode"] == "consume-existing"
+    assert consumed["ci"]["validation_status"] == "passed"
+    assert consumed["security_governance"]["validation_status"] == "passed"
+    assert consumed["security_artifacts"][0]["path"] == "actions-bom.json"
+    assert any(
+        result["gate"] == "Consumed CI and security evidence"
+        for result in payload["gate_results"]
+    )
+
+
+def test_consume_existing_rejects_stale_upstream_runs(tmp_path: Path) -> None:
+    with pytest.raises(evidence.EvidenceError, match="stale"):
+        evidence.build_evidence(
+            repository=REPOSITORY,
+            commit=COMMIT,
+            workflow_run_id="111",
+            workflow_run_attempt="1",
+            target_environment="dev",
+            release_scope="initial-productive-core",
+            certification_mode="evidence-only",
+            evidence_source_mode="consume-existing",
+            ci_run_url=LIVE_RUN_URL,
+            security_governance_run_url=SECURITY_RUN_URL,
+            ci_run_metadata=run_metadata(
+                run_id=123456789,
+                workflow_name="CI",
+                url=LIVE_RUN_URL,
+            ),
+            security_governance_metadata=run_metadata(
+                run_id=555555555,
+                workflow_name="Security Governance",
+                url=SECURITY_RUN_URL,
+            ),
+            security_governance_artifacts_dir=security_artifacts_dir(tmp_path),
+            generated_at="2026-06-24T13:00:00+00:00",
+        )
+
+
+def test_consume_existing_rejects_wrong_security_workflow(tmp_path: Path) -> None:
+    with pytest.raises(evidence.EvidenceError, match="Security Governance"):
+        evidence.build_evidence(
+            repository=REPOSITORY,
+            commit=COMMIT,
+            workflow_run_id="111",
+            workflow_run_attempt="1",
+            target_environment="dev",
+            release_scope="initial-productive-core",
+            certification_mode="evidence-only",
+            evidence_source_mode="consume-existing",
+            ci_run_url=LIVE_RUN_URL,
+            security_governance_run_url=SECURITY_RUN_URL,
+            ci_run_metadata=run_metadata(
+                run_id=123456789,
+                workflow_name="CI",
+                url=LIVE_RUN_URL,
+            ),
+            security_governance_metadata=run_metadata(
+                run_id=555555555,
+                workflow_name="CI",
+                url=SECURITY_RUN_URL,
+            ),
+            security_governance_artifacts_dir=security_artifacts_dir(tmp_path),
+            generated_at="2026-05-24T13:00:00+00:00",
+        )
+
+
+def test_consume_existing_rejects_empty_security_artifacts(tmp_path: Path) -> None:
+    empty_artifacts = tmp_path / "empty-security-artifacts"
+    empty_artifacts.mkdir()
+
+    with pytest.raises(evidence.EvidenceError, match="contains no JSON files"):
+        evidence.build_evidence(
+            repository=REPOSITORY,
+            commit=COMMIT,
+            workflow_run_id="111",
+            workflow_run_attempt="1",
+            target_environment="dev",
+            release_scope="initial-productive-core",
+            certification_mode="evidence-only",
+            evidence_source_mode="consume-existing",
+            ci_run_url=LIVE_RUN_URL,
+            security_governance_run_url=SECURITY_RUN_URL,
+            ci_run_metadata=run_metadata(
+                run_id=123456789,
+                workflow_name="CI",
+                url=LIVE_RUN_URL,
+            ),
+            security_governance_metadata=run_metadata(
+                run_id=555555555,
+                workflow_name="Security Governance",
+                url=SECURITY_RUN_URL,
+            ),
+            security_governance_artifacts_dir=empty_artifacts,
+            generated_at="2026-05-24T13:00:00+00:00",
+        )

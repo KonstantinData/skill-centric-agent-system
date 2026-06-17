@@ -39,7 +39,9 @@ The cross-phase execution order is tracked in
    profiles.
 10. `P5.10 Production Readiness Certification Run`
     Maintain certification against the configured target environment and record
-    the release decision with non-secret evidence.
+    the release decision with non-secret evidence. Prefer consumed matching CI
+    and security governance evidence for the release commit; use explicit
+    recheck mode only when the release owner needs fresh broad gate execution.
 11. `P5.11 Expand Production Skill Handler Coverage`
     Expand production-required skill handler coverage beyond the first slices.
 12. `Post-P5: Define and govern HOOKS usage model`

@@ -436,6 +436,11 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "workflow_dispatch:" in workflow
     assert "target_environment:" in workflow
     assert "certification_mode:" in workflow
+    assert "evidence_source_mode:" in workflow
+    assert "consume-existing" in workflow
+    assert "recheck" in workflow
+    assert "ci_run_url:" in workflow
+    assert "security_governance_run_url:" in workflow
     assert "uv sync --frozen --extra dev --extra runtime" in workflow
     assert "uv lock --check" in workflow
     assert "uv run pytest" in workflow
@@ -469,10 +474,37 @@ def test_production_readiness_workflow_builds_non_secret_evidence() -> None:
     assert "npm run worker:test" in workflow
     assert "npm run worker:check" in workflow
     assert "uv run python scripts/release/build_production_readiness_evidence.py" in workflow
+    assert "--evidence-source-mode" in workflow
+    assert "--ci-run-metadata production-evidence/ci-run.json" in workflow
+    assert (
+        "--security-governance-metadata "
+        "production-evidence/security-governance-run.json"
+    ) in workflow
+    assert (
+        "--security-governance-artifacts-dir "
+        "production-evidence/security-governance"
+    ) in workflow
+    assert "production-evidence/security-governance/*.json" in workflow
     assert "production-readiness-evidence.json" in workflow
     assert "actions/upload-artifact" in workflow
     assert "gh run download" in workflow
     assert "live-runtime-handler-binding-evidence" in workflow
+
+
+def test_production_readiness_workflow_consumes_upstream_evidence_by_default() -> None:
+    workflow = load_production_readiness_workflow()
+
+    assert "default: consume-existing" in workflow
+    assert "EVIDENCE_SOURCE_MODE:" in workflow
+    assert "Collect consumed CI and security evidence metadata" in workflow
+    assert "production-evidence/ci-run.json" in workflow
+    assert "production-evidence/security-governance-run.json" in workflow
+    assert "--name security-evidence" in workflow
+    assert "--dir production-evidence/security-governance" in workflow
+    assert "ci_run_id" in workflow
+    assert "security_run_id" in workflow
+    assert workflow.count("inputs.evidence_source_mode == 'recheck'") >= 10
+    assert "inputs.evidence_source_mode == 'consume-existing'" in workflow
 
 
 def test_production_readiness_certify_mode_requires_live_evidence() -> None:

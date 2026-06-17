@@ -60,31 +60,53 @@ The release evidence must record command or workflow references without
 including secret values or raw runtime artifacts.
 
 Run the evidence-only workflow while production resources are still being
-prepared:
+prepared. Use the default `consume-existing` evidence source mode with matching
+successful `CI` and `Security Governance` workflow runs for the same commit:
 
 ```bash
 gh workflow run production-readiness.yml \
   -f target_environment=dev \
   -f release_scope=initial-productive-core \
-  -f certification_mode=evidence-only
+  -f certification_mode=evidence-only \
+  -f evidence_source_mode=consume-existing \
+  -f ci_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  -f security_governance_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
+```
+
+Use `recheck` only when the release owner intentionally wants the production
+readiness workflow to rerun the broad repository governance, Python, safety,
+tracked-JSON, and Worker gates instead of consuming existing CI evidence:
+
+```bash
+gh workflow run production-readiness.yml \
+  -f target_environment=dev \
+  -f release_scope=initial-productive-core \
+  -f certification_mode=evidence-only \
+  -f evidence_source_mode=recheck
 ```
 
 Run certification mode only after the matching live runtime and AI Gateway
-smoke workflow runs have passed on the same repository commit:
+smoke workflow runs, plus matching `CI` and `Security Governance` runs, have
+passed on the same repository commit:
 
 ```bash
 gh workflow run production-readiness.yml \
   -f target_environment=prod \
   -f release_scope=production-runtime \
   -f certification_mode=certify \
+  -f evidence_source_mode=consume-existing \
+  -f ci_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  -f security_governance_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   -f live_runtime_gates_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   -f ai_gateway_smoke_run_url=https://github.com/OWNER/REPO/actions/runs/RUN_ID
 ```
 
-Certification mode validates the referenced GitHub Actions run metadata before
-writing `production-readiness-evidence.json`. The run URLs must be canonical,
-same-repository URLs, the runs must have completed successfully, and their
-`headSha` must match the release commit being evaluated.
+The workflow validates referenced GitHub Actions run metadata before writing
+`production-readiness-evidence.json`. The run URLs must be canonical,
+same-repository URLs, the runs must have completed successfully, their
+`headSha` must match the release commit being evaluated, and consumed upstream
+evidence must not be stale. Security governance JSON artifacts are downloaded
+and recorded by checksum; missing or empty artifact evidence fails closed.
 
 ## Security Closure
 

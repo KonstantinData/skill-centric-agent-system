@@ -50,6 +50,18 @@ def test_production_readiness_gate_defines_required_release_evidence() -> None:
         assert required_gate in gate
 
 
+def test_production_readiness_gate_defines_consumed_evidence_mode() -> None:
+    gate = PRODUCTION_READINESS_PATH.read_text(encoding="utf-8")
+
+    assert "evidence_source_mode = consume-existing" in gate
+    assert "evidence_source_mode = recheck" in gate
+    assert "CI" in gate
+    assert "Security Governance" in gate
+    assert "SHA-256" in gate
+    assert "checksums" in gate
+    assert "no more than 14 days" in gate
+
+
 def test_readme_links_production_readiness_gate() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
