@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-16 12:18 Europe/Berlin
+Last updated: 2026-06-17 15:22 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -26,6 +26,26 @@ SCAS-managed Docker Compose file for the Streamlit service. It intentionally
 does not read the legacy host Compose file, host `.env` files, or legacy Compose
 interpolation state. It does not create DNS records, change Cloudflare
 configuration, or bypass tenant authentication.
+
+## Latest Production Inventory
+
+Read-only runtime inventory run
+`https://github.com/KonstantinData/skill-centric-agent-system/actions/runs/27692078758`
+passed on 2026-06-17. It observed:
+
+- `liquisto.condata.io` is served by Nginx and proxied to `127.0.0.1:8501`.
+- Container `liquisto-app-1` is healthy and runs
+  `streamlit run apps/streamlit_business_ui/app.py`.
+- The running image is
+  `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`.
+- The deployed source revision is
+  `916b7d87295d685c7ab4c2c8ffc3049297ed9d56`.
+
+This verifies the repository-owned Streamlit Business UI foundation is deployed
+behind the tenant hostname. It does not certify production launch readiness;
+the release gate still owns Control API environment alignment, upstream
+authentication, Cloudflare evidence, owner bootstrap, staging gate evidence, and
+rollback evidence.
 
 ## Required Secrets
 
