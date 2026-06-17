@@ -239,6 +239,196 @@ every policy in `policies` passes before the module can be selected. When
 `false`, the module may be selected if at least one policy allows it, and
 remaining policies are evaluated at runtime.
 
+## SOTA 2026 Provenance And Selection Evidence Contract
+
+The SOTA 2026 registry contract makes every production-selectable module answer
+three audit questions before it can participate in composition:
+
+1. Who owns the requirement and why does the module exist?
+2. Can the module be selected directly from task signals, or only as a
+   dependency of another selected module?
+3. Which real fixtures prove the intended positive and negative selection
+   behavior?
+
+This section defines the target contract for registry modules. Existing schema,
+validator, and module records must be migrated to this contract before the
+Composer treats SOTA 2026 registry evidence as complete.
+
+### Provenance
+
+Every active module must define a `provenance` object with explicit requirement
+ownership and source evidence:
+
+```json
+{
+  "provenance": {
+    "owner": {
+      "type": "person",
+      "name": "Module Owner"
+    },
+    "problem_statement": "The concrete task or platform problem this module solves.",
+    "acceptance_criteria": [
+      "A measurable condition that proves the module is needed and works."
+    ],
+    "source_of_truth": [
+      {
+        "type": "repo_path",
+        "ref": "docs/policies/module-contracts.md",
+        "reason": "Durable policy contract for module selection behavior."
+      }
+    ],
+    "rationale": "Why this module should be directly selectable or dependency-only.",
+    "requirement_id": "REQ-SCAS-REGISTRY-EXAMPLE"
+  }
+}
+```
+
+`owner` identifies a responsible person, not a generic team alias. The owner is
+accountable for changing the requirement and for accepting deprecation,
+merge, or deletion decisions.
+
+`problem_statement` states the task gap or platform risk. It must not repeat the
+module description.
+
+`acceptance_criteria` is a non-empty list of measurable criteria. Criteria must
+be testable by schema validation, registry validation, runtime tests, fixture
+evidence, documentation review, or a named release gate.
+
+`source_of_truth` is a non-empty list of durable references. Production modules
+must include at least one `repo_path` entry. Repository paths are relative to
+the repository root and must resolve to existing files. Notion pages, issues,
+external standards, or vendor docs can provide context, but they cannot be the
+only source of truth for executable registry behavior.
+
+`rationale` explains the module's selection boundary. It must say why the
+module is `direct` or `dependency_only`.
+
+`requirement_id` is optional during early migration and should become stable
+when a module maps to an ADR, policy requirement, tenant requirement, or release
+gate.
+
+### Selection Modes
+
+`selection.mode` is required and is a closed enum:
+
+| Mode | Meaning | Valid when |
+| --- | --- | --- |
+| `direct` | The module can be selected from task analysis and scored against task signals. | The module has a task-facing capability, non-empty provenance, direct scoring metadata, and positive plus negative selection fixtures. |
+| `dependency_only` | The module cannot be selected from task analysis alone. It can only be included because a directly selected module depends on it. | The module represents a required tool, scope, policy, validator, context, or support capability and has dependency-inclusion plus no-direct-selection evidence. |
+
+Unknown modes fail closed. `legacy`, `implicit`, `always_on`, or omitted modes
+are not valid production states. Deprecated, disabled, or postponed modules must
+not use a selection mode to remain selectable.
+
+For `direct` modules, `selection.base_score` and
+`selection.score_modifiers` remain required. A direct module must have at least
+one positive score modifier and one negative or exclusion signal so the Composer
+can prove both selection and rejection behavior.
+
+For `dependency_only` modules, direct scoring fields are not allowed in the
+target schema. The module may keep dependency metadata and policy bindings, but
+it must not define `base_score`, direct scoring modifiers, direct triggers, or
+task phrases that would let the Composer select it from the task envelope
+alone. During migration, validators should treat any non-zero direct score or
+direct-selection fixture on a `dependency_only` module as a contract failure.
+
+### Fixture Evidence
+
+Fixture evidence must use real registry fixtures, not synthetic prose. Every
+fixture path must exist and must be listed under `tests.fixtures` or a typed
+fixture-evidence object introduced by the schema migration.
+
+Direct modules must provide:
+
+- Positive selection evidence: at least one fixture where task signals select
+  the module above threshold after policy filtering.
+- Negative selection evidence: at least one fixture where similar or tempting
+  task signals do not select the module because of missing inputs, excluded
+  domain, risk mismatch, negative phrases, policy denial, or lower-ranked fit.
+
+Dependency-only modules must provide:
+
+- Dependency inclusion evidence: at least one fixture where a valid directly
+  selected module includes the dependency through graph validation.
+- No-direct-selection evidence: at least one fixture where task signals that
+  mention the dependency's capability do not select it directly.
+
+Evidence fixtures must record the selected module set, rejected module set,
+matched signals, negative signals, policy result, graph-validation result, and
+the reason the expectation is correct. Raw runtime traces, provider outputs,
+customer data, and secrets are not acceptable fixture evidence.
+
+### Schema Acceptance Rules
+
+The module schema migration must enforce these acceptance rules:
+
+- `provenance` is required for every `active`, `deprecated`, or production
+  allowlisted module.
+- `provenance.owner.type` must be `person`, and `provenance.owner.name` must be
+  non-empty.
+- `provenance.problem_statement`, `provenance.acceptance_criteria`,
+  `provenance.source_of_truth`, and `provenance.rationale` must be non-empty.
+- `selection.mode` is required and limited to `direct` or `dependency_only`.
+- `direct` selection requires scoring metadata, task-signal evidence, and
+  positive plus negative fixture evidence.
+- `dependency_only` selection forbids direct scoring metadata and requires
+  dependency-inclusion plus no-direct-selection fixture evidence.
+- `tests.fixtures` or the future typed evidence field must be non-empty for
+  active modules.
+- `additionalProperties` must remain closed for new contract objects so
+  unsupported provenance or evidence fields cannot bypass review.
+
+### Validator Acceptance Rules
+
+The registry validator must fail closed when:
+
+- required provenance is missing or incomplete,
+- a `repo_path` source of truth does not resolve under the repository root,
+- a production module has no repository source of truth,
+- a fixture path is missing, points outside the repository, or is not referenced
+  by the module's evidence contract,
+- a `direct` module lacks both positive and negative selection evidence,
+- a `dependency_only` module has direct scoring metadata or lacks
+  dependency-inclusion and no-direct-selection evidence,
+- selected and rejected module sets in fixture evidence do not match the
+  registry scorer, policy filter, and graph validator output,
+- an unknown selection mode, unknown source type, or unknown evidence type is
+  encountered.
+
+The validator may warn during an explicit migration phase, but production
+validation must treat the same conditions as hard failures.
+
+### Classification Rubric
+
+Use this rubric before backfilling or deleting modules:
+
+| Classification | Use when | Required action |
+| --- | --- | --- |
+| Keep active | The module solves a current task-facing requirement and has direct fixture evidence. | Migrate as `direct`, add provenance, and keep scoring metadata. |
+| Dependency-only | The module is needed only because another selected module requires it. | Migrate as `dependency_only`, remove direct scoring, and add dependency evidence. |
+| Postpone | The requirement is plausible but not needed for the current release or lacks evidence. | Keep out of production environments until provenance and fixtures exist. |
+| Delete | No owner, source of truth, acceptance criteria, or consuming dependency exists. | Remove the module and update dependents or fixtures. |
+| Merge | Two modules represent the same requirement or capability boundary. | Keep one owner and source of truth, migrate evidence to the survivor, and remove the duplicate. |
+
+### Implementation Handoff
+
+The parent implementation task must update, at minimum:
+
+- `schemas/module.schema.json` with provenance, `selection.mode`, and evidence
+  constraints.
+- `scripts/registry/validate_registry.py` with source-of-truth path checks,
+  fixture existence checks, mode-specific scoring checks, and fail-closed
+  evidence validation.
+- `registry/modules/**/module.json` records with real provenance and fixture
+  evidence.
+- Registry fixture files with positive, negative, dependency-inclusion, and
+  no-direct-selection cases.
+- CI or local gates so schema validation and registry validation enforce the
+  migrated contract.
+
+Documentation is complete only when this policy, registry reference docs, and
+the implementation tests describe the same contract.
+
 ### Tests
 
 `tests` - Typed test references. `contract` contains schema-backed contract test

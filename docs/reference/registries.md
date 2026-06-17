@@ -55,7 +55,10 @@ The local registry is still useful now because it locks the semantics and test
 behavior before storage-specific query code is added.
 
 The detailed module metadata contract is documented in
-`docs/policies/module-contracts.md`.
+`docs/policies/module-contracts.md`. That policy also defines the SOTA 2026
+provenance, selection-mode, and fixture-evidence contract that registry schema
+and validator migrations must enforce before registry evidence is considered
+complete.
 
 ## Source Of Truth
 
