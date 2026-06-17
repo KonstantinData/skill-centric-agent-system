@@ -81,3 +81,16 @@ def test_first_productive_operation_runbook_defines_staging_boundary() -> None:
     assert "workflow_dispatch" in runbook
     assert "live-runtime-handler-binding-evidence" in runbook
 
+
+def test_first_productive_operation_runbook_defers_dedicated_workflow() -> None:
+    runbook = FIRST_PRODUCTIVE_OPERATION_PATH.read_text(encoding="utf-8")
+
+    assert "No dedicated productive-operation workflow is required" in runbook
+    assert "live_task_suite=single" in runbook
+    assert "committed non-secret task file" in runbook
+    assert "Create a dedicated manual productive-operation workflow only after" in runbook
+    assert "staging operation through the existing path" in runbook
+    assert "proves a concrete operator" in runbook
+    assert "evidence, or safety gap" in runbook
+    assert "The next implementation slice should add" not in runbook
+

@@ -221,6 +221,7 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
     assert "run_postgres_concurrency_smoke:" in workflow
     assert "live_task_file:" in workflow
     assert "- tenant" in workflow
+    assert "- single" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
     assert "inputs.run_postgres_concurrency_smoke == true" in workflow
