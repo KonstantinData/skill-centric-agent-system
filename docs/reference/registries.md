@@ -72,8 +72,14 @@ Skill modules have two layers:
 - `module.json`: machine-readable selection, dependency, policy, version,
   environment, runtime role, runtime contract, provenance, and fixture evidence
   metadata.
-- `SKILL.md`: agent-readable execution guidance loaded only after a sealed
-  runtime profile selects the skill.
+- Optional `SKILL.md`: agent-readable execution guidance loaded only after a
+  sealed runtime profile selects the skill. If present, it is classified as
+  `shared_template` or `skill_specific` by `entrypoint.guidance`.
+
+The Composer must not search `SKILL.md` text during discovery or scoring.
+Registry validation rejects structured selection metadata inside `SKILL.md`;
+task signals, scores, dependencies, scopes, policies, validators, provenance,
+and evidence stay in `module.json`.
 
 The state flow is one-way:
 

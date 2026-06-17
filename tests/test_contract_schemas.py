@@ -42,6 +42,14 @@ from tests.contract_schema_support import *  # noqa: F403
             "'person' was expected",
         ),
         (
+            lambda module: module["entrypoint"].pop("guidance"),
+            "'guidance' is a required property",
+        ),
+        (
+            lambda module: module["entrypoint"].__setitem__("guidance", "selection_metadata"),
+            "'selection_metadata' is not one of",
+        ),
+        (
             lambda module: module["selection_evidence"].pop("positive_selection"),
             "'positive_selection' is a required property",
         ),

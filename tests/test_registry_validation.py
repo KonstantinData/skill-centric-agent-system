@@ -117,6 +117,47 @@ def test_registry_rejects_dependency_only_direct_scoring(tmp_path: Path) -> None
         )
 
 
+def test_registry_rejects_skill_md_selection_metadata(tmp_path: Path) -> None:
+    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir.mkdir(parents=True)
+    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+    (module_dir / "SKILL.md").write_text(
+        "---\nname: git-diff-analysis\ndescription: test\n---\n"
+        "# git-diff-analysis\n\ntask_signals:\n  task_types: [code-review]\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RegistryValidationError, match="selection metadata marker"):
+        validate_registry(
+            registry_root=tmp_path / "modules",
+            schema_path=SCHEMA_PATH,
+            environments_dir=ENVIRONMENTS_DIR,
+            phase="3a",
+        )
+
+
+def test_registry_rejects_boilerplate_only_skill_specific_entrypoint(tmp_path: Path) -> None:
+    source_dir = REGISTRY_ROOT / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir.mkdir(parents=True)
+    module = load_json(source_dir / "module.json")
+    module["entrypoint"]["guidance"] = "skill_specific"
+    (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
+    (module_dir / "SKILL.md").write_text(
+        (source_dir / "SKILL.md").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RegistryValidationError, match="beyond the shared"):
+        validate_registry(
+            registry_root=tmp_path / "modules",
+            schema_path=SCHEMA_PATH,
+            environments_dir=ENVIRONMENTS_DIR,
+            phase="3a",
+        )
+
+
 def test_registry_rejects_missing_reference(tmp_path: Path) -> None:
     module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)

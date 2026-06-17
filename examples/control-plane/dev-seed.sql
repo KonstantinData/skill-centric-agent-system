@@ -239,11 +239,11 @@ VALUES ('mv-demo-tenant-website-read-0-1-0', 'mod-demo-tenant-website-read', '0.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-dependency-audit-0-1-0', 'mod-dependency-audit', '0.1.0', 'repo://registry/modules/skills/dependency-audit/module.json', 'sha256:b5cee8674a2e6be93d2061fc122d9b618f0458837b68b5353bef063de73fc68a', 0.69, '2026-05-22T00:00:00Z')
+VALUES ('mv-dependency-audit-0-1-0', 'mod-dependency-audit', '0.1.0', 'repo://registry/modules/skills/dependency-audit/module.json', 'sha256:7b565cd6830c53d1e32efa8de5dc2ab2e6f123e9df2a7e7d374943fe53612ca4', 0.69, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-document-synthesis-0-1-0', 'mod-document-synthesis', '0.1.0', 'repo://registry/modules/skills/document-synthesis/module.json', 'sha256:c0efb0a5772df1510b68b65bda4d1086871fac9d38a09ae057021e14aae9ce86', 0.66, '2026-05-22T00:00:00Z')
+VALUES ('mv-document-synthesis-0-1-0', 'mod-document-synthesis', '0.1.0', 'repo://registry/modules/skills/document-synthesis/module.json', 'sha256:f0ef3804578333a91e3ce23a54173fc4659fa063d8555b36c31526266151b85e', 0.66, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -259,11 +259,11 @@ VALUES ('mv-general-output-contract-0-1-0', 'mod-general-output-contract', '0.1.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-general-task-summary-0-1-0', 'mod-general-task-summary', '0.1.0', 'repo://registry/modules/skills/general-task-summary/module.json', 'sha256:4397b845ec21f571e258947c46c3db9e0224b2e80f77802a735ac42fbd20858c', 0.62, '2026-05-22T00:00:00Z')
+VALUES ('mv-general-task-summary-0-1-0', 'mod-general-task-summary', '0.1.0', 'repo://registry/modules/skills/general-task-summary/module.json', 'sha256:fdb03a0d32776d73273027a0999ae1cb64e207467b062ddfc36bce0599d0bb82', 0.62, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-git-diff-analysis-0-1-0', 'mod-git-diff-analysis', '0.1.0', 'repo://registry/modules/skills/git-diff-analysis/module.json', 'sha256:af47ede1ca02702dbd21fcb038c57027cd1da652480287badb5ce36b47984dfd', 0.74, '2026-05-22T00:00:00Z')
+VALUES ('mv-git-diff-analysis-0-1-0', 'mod-git-diff-analysis', '0.1.0', 'repo://registry/modules/skills/git-diff-analysis/module.json', 'sha256:889d4c754450cbf47b8c5c2288b85697923bdb675bf0d11ffc42fe4ae5a1fcae', 0.74, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -307,7 +307,7 @@ VALUES ('mv-require-file-references-0-1-0', 'mod-require-file-references', '0.1.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-research-context-synthesis-0-1-0', 'mod-research-context-synthesis', '0.1.0', 'repo://registry/modules/skills/research-context-synthesis/module.json', 'sha256:060696130b51386d877f2bbcc571c1d2071644823ae7d48b26753565e9bb1fbf', 0.68, '2026-05-22T00:00:00Z')
+VALUES ('mv-research-context-synthesis-0-1-0', 'mod-research-context-synthesis', '0.1.0', 'repo://registry/modules/skills/research-context-synthesis/module.json', 'sha256:bbfad155b815e9d72df7cab1d49b55af9cb753d745a675ce843db8595fabad5d', 0.68, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -323,7 +323,7 @@ VALUES ('mv-task-execution-output-contract-0-1-0', 'mod-task-execution-output-co
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-task-execution-planning-0-1-0', 'mod-task-execution-planning', '0.1.0', 'repo://registry/modules/skills/task-execution-planning/module.json', 'sha256:013fab79be147ed9fad8af156529513da14e4f8caf95c817e0af26cb2bd8d7d2', 0.7, '2026-05-22T00:00:00Z')
+VALUES ('mv-task-execution-planning-0-1-0', 'mod-task-execution-planning', '0.1.0', 'repo://registry/modules/skills/task-execution-planning/module.json', 'sha256:795ce0c5dccd5000feec10c720de1ddefdb4f3aadc4ed0f8ec0960e68c0890e5', 0.7, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)

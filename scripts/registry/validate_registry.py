@@ -32,6 +32,26 @@ REFERENCE_FIELDS = {
     "policies": "policy",
     "validators": "validator",
 }
+SKILL_SELECTION_METADATA_MARKERS = (
+    "base_score",
+    "score_modifiers",
+    "task_signals",
+    "required_tools:",
+    "optional_tools:",
+    "knowledge_scopes:",
+    "data_scopes:",
+    "policies:",
+    "validators:",
+)
+SHARED_TEMPLATE_GUIDANCE_LINES = {
+    "Use this skill only when it is selected through a sealed SCAS runtime profile. "
+    "Do not use this SKILL.md as selection metadata; selection comes from module.json "
+    "and Control Plane composition records.",
+    "Preserve the profile-selected tools, policies, validators, and scopes declared in "
+    "module.json.",
+    "Keep outputs aligned with the module validators and runtime skill handler coverage.",
+    "Fail closed when required inputs, tools, handler bindings, or validators are missing.",
+}
 
 
 class RegistryValidationError(ValueError):
@@ -137,7 +157,7 @@ def _local_invariant_errors(
                 elif not resolved.exists():
                     errors.append(f"{_repo_path(module_path)} missing SKILL.md entrypoint")
                 else:
-                    errors.extend(_skill_frontmatter_errors(resolved, module))
+                    errors.extend(_skill_entrypoint_errors(resolved, module, entrypoint))
 
     for path_value in _path_values(module):
         candidate = Path(path_value)
@@ -293,7 +313,11 @@ def _selection_evidence_errors(
     return errors
 
 
-def _skill_frontmatter_errors(skill_path: Path, module: Mapping[str, Any]) -> list[str]:
+def _skill_entrypoint_errors(
+    skill_path: Path,
+    module: Mapping[str, Any],
+    entrypoint: Mapping[str, Any],
+) -> list[str]:
     errors: list[str] = []
     text = skill_path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
@@ -312,7 +336,34 @@ def _skill_frontmatter_errors(skill_path: Path, module: Mapping[str, Any]) -> li
         errors.append(f"{_repo_path(skill_path)} frontmatter name must match module name")
     if not values.get("description"):
         errors.append(f"{_repo_path(skill_path)} frontmatter description is required")
+
+    body = text[end + len("\n---") :]
+    body_lower = body.casefold()
+    for marker in SKILL_SELECTION_METADATA_MARKERS:
+        if marker in body_lower:
+            errors.append(
+                f"{_repo_path(skill_path)} must not contain selection metadata marker: {marker}"
+            )
+
+    guidance = entrypoint.get("guidance")
+    if guidance == "skill_specific" and not _has_skill_specific_guidance(body):
+        errors.append(
+            f"{_repo_path(skill_path)} skill_specific entrypoint requires execution guidance "
+            "beyond the shared sealed-profile template"
+        )
     return errors
+
+
+def _has_skill_specific_guidance(body: str) -> bool:
+    content_lines = []
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("- "):
+            line = line[2:].strip()
+        content_lines.append(line)
+    return any(line not in SHARED_TEMPLATE_GUIDANCE_LINES for line in content_lines)
 
 
 def _graph_errors(modules: Iterable[tuple[Path, Mapping[str, Any]]]) -> list[str]:

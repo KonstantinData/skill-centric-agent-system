@@ -10,6 +10,7 @@
     "repository"
   ],
   "entrypoint": {
+    "guidance": "shared_template",
     "path": "SKILL.md",
     "type": "skill_folder"
   },

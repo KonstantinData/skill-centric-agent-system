@@ -28,7 +28,8 @@ not parse `SKILL.md` for selection metadata.
   "environments": ["dev", "staging", "prod"],
   "entrypoint": {
     "type": "skill_folder",
-    "path": "SKILL.md"
+    "path": "SKILL.md",
+    "guidance": "shared_template"
   },
   "runtime_contract": {
     "profile_sealable": true,
@@ -155,9 +156,17 @@ lists every role the module may take. The final concrete role is stored in the
 runtime profile. This mirrors the distinction between `profile_sealable` as a
 module capability and `sealed` as a profile artifact state.
 
-`entrypoint` - Required for `skill` modules. `entrypoint.path` is relative to the
-module folder and must resolve to the local `SKILL.md`. Non-skill modules do not
-define `entrypoint` in v0.1.0.
+`entrypoint` - Optional for `skill` modules. When present, `entrypoint.path` is
+relative to the module folder and must resolve to the local `SKILL.md`.
+`entrypoint.guidance` is either `shared_template` or `skill_specific`.
+`shared_template` means the file contains only common sealed-profile execution
+guidance documented in `registry/modules/skills/README.md`. `skill_specific`
+means the file adds concrete post-selection execution behavior beyond the
+shared template. Non-skill modules do not define `entrypoint` in v0.1.0.
+
+The Composer must never select a skill by searching `SKILL.md` text. Selection
+metadata belongs in `module.json` and Control Plane composition records.
+Registry validation rejects structured selection metadata inside `SKILL.md`.
 
 `runtime_contract` - Declares whether the module can participate in sealed
 runtime profiles, requires exact version pins, and requires executable handler
@@ -515,7 +524,8 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
   "environments": ["dev", "staging", "prod"],
   "entrypoint": {
     "type": "skill_folder",
-    "path": "SKILL.md"
+    "path": "SKILL.md",
+    "guidance": "shared_template"
   },
   "runtime_contract": {
     "profile_sealable": true,

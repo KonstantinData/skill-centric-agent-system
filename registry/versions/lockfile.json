@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "generated_at": "2026-06-17T13:10:21+00:00",
+  "generated_at": "2026-06-17T13:17:00+00:00",
   "lockfile_version": "0.1.0",
   "module_count": 20,
   "modules": [
@@ -63,7 +63,7 @@
       "name": "dependency-audit",
       "path": "registry/modules/skills/dependency-audit",
       "schema_version": "0.1.0",
-      "sha256": "d791f76a84b11ccfc04f6f20ac9ba35d0e1536b600f1d41ae5a46ab5b55a3980",
+      "sha256": "02c3974fbeb26974c60dde8af57a96c2eaaa8fb9adeb83a20c89a8e876e0158d",
       "status": "active",
       "version": "0.1.0"
     },
@@ -72,7 +72,7 @@
       "name": "document-synthesis",
       "path": "registry/modules/skills/document-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "b34d01f4614b2bbb5908fafd5142b59521fd37be4cad928061aa65bb95340e8b",
+      "sha256": "4d559be6db27d6144712fd362a31805a67edacde59acd4f448b2cbe6863904eb",
       "status": "active",
       "version": "0.1.0"
     },
@@ -81,7 +81,7 @@
       "name": "general-task-summary",
       "path": "registry/modules/skills/general-task-summary",
       "schema_version": "0.1.0",
-      "sha256": "8f94421a5f603b62662b531f7036ad211447da169bd6a6749f375d714dbbca9c",
+      "sha256": "bcf67280d96315671a9b9079499064171cce6e43c069bd99493d496d15a3a5e2",
       "status": "active",
       "version": "0.1.0"
     },
@@ -90,7 +90,7 @@
       "name": "git-diff-analysis",
       "path": "registry/modules/skills/git-diff-analysis",
       "schema_version": "0.1.0",
-      "sha256": "48c8507e6e95b4e827f743d879eab32efe874a8554742180b53c88d247e3cba3",
+      "sha256": "43ad9bce35b44608196513b2022d158d2e40ebf0fe9e685b0a458fa99ecee8b0",
       "status": "active",
       "version": "0.1.0"
     },
@@ -99,7 +99,7 @@
       "name": "research-context-synthesis",
       "path": "registry/modules/skills/research-context-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "40f402dd72ca99d1e28c8ae26bbcb21224cf47d33e609f713e6a86731f06b77a",
+      "sha256": "bae3eb7ae8d09f6699243af49224b0b955742534fa7bd54550f41166f626e664",
       "status": "active",
       "version": "0.1.0"
     },
@@ -108,7 +108,7 @@
       "name": "task-execution-planning",
       "path": "registry/modules/skills/task-execution-planning",
       "schema_version": "0.1.0",
-      "sha256": "27211fc92fcc50157fcadd5f1a395c66ad117abcc6de70cdd1c438cfba29f8b7",
+      "sha256": "b73225bfceb7785734faaeed3c2ce73bd611e1b9241ff82ebd2ec78878974675",
       "status": "active",
       "version": "0.1.0"
     },
