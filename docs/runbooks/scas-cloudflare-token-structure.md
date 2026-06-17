@@ -43,6 +43,11 @@ The internal `CLOUDFLARE_API_TOKEN` environment variable is still used where
 Wrangler or the Cloudflare REST client expects that name. It must be populated
 only from purpose-scoped SCAS secrets in SCAS workflows.
 
+Production Worker secret syncs are production mutations. The
+`control-api-worker-secrets.yml` workflow must bind `target_environment=prod`
+to the protected `production` GitHub Environment and requires
+`confirm_production=true` before it writes Worker secrets.
+
 ## Permission Targets
 
 Deploy tokens:
