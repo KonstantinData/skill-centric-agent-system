@@ -189,6 +189,8 @@ Rules:
 - Raw tool outputs do not cross into Cloudflare.
 - A memory candidate must identify its source run and profile.
 - A memory candidate must declare target memory scope, sensitivity, retention, and policy result.
+- The memory candidate classification envelope is closed; unknown top-level
+  fields and unsupported direct extraction content fail before promotion.
 - A validator must approve the candidate before ingestion.
 - Validation and policy decisions are stored on the candidate as status fields
   and reason text before the feedback client can submit it.

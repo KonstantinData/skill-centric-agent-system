@@ -146,6 +146,15 @@ Every envelope must include:
 - `candidate_class`, `classification_reason`, and `promotion_route`,
 - `sensitivity`, `retention_policy`, `target_memory_scope_id`, `policy_id`,
   and `validator_id`.
+- `summary` and explicit non-authoritative procedural metadata when the
+  candidate is a procedural lesson.
+
+The classification envelope is a closed schema. It may contain only the
+declared provenance, policy, retention, sensitivity, redaction, evidence, and
+procedural influence fields. Unknown top-level fields fail validation. Direct
+memory candidate extraction also rejects unsupported content fields before
+writing an artifact, so raw runtime traces, raw tool outputs, customer records,
+and ad hoc generalization flags cannot ride along as extension data.
 
 Reflection rejects or reroutes unsafe content before validation:
 

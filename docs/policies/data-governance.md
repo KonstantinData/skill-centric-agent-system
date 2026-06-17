@@ -32,7 +32,9 @@ Model outputs are not durable truth until they pass the selected validators and
 the relevant policy gates. Durable memory promotion must go through memory
 candidates with source run, source profile, sensitivity, retention policy,
 candidate class, classification reason, validator status, policy status, and
-recorded reasons.
+recorded reasons. The memory candidate classification envelope is a closed
+schema; unknown fields, raw traces, raw tool outputs, and customer-specific
+extension payloads must fail before Cloudflare memory or knowledge ingestion.
 
 ## Audit Minimization
 

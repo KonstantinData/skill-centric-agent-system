@@ -314,11 +314,14 @@ Agent Memory is reserved for procedural lessons about how to perform tasks.
 Memory candidates must be classified before promotion. Each candidate record
 must declare `candidate_class` and `classification_reason`; each candidate
 envelope must conform to
-`schemas/memory-candidate-classification.schema.json`. Only
-`procedural_lesson` candidates with provenance, allowed memory scope,
-acceptable sensitivity, retention policy, validator approval, policy approval,
-`authoritative=false`, and a non-authoritative influence class may be submitted
-to Cloudflare memory ingestion.
+`schemas/memory-candidate-classification.schema.json`. The envelope schema is
+closed: unknown top-level fields are invalid, and direct candidate extraction
+must reject unsupported content fields before artifact persistence. Only
+`procedural_lesson` candidates with provenance, Hetzner evidence URIs,
+redaction status, allowed memory scope, acceptable sensitivity, retention
+policy, validator approval, policy approval, `authoritative=false`, and a
+non-authoritative influence class may be submitted to Cloudflare memory
+ingestion.
 
 Learned procedural memory may guide retrieval ranking, planner hints, analyzer
 priors, or composer candidate bias. It must not grant tools, widen knowledge,

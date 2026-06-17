@@ -64,6 +64,19 @@ PROCEDURAL_REQUIRED_FORBIDDEN_EFFECTS = frozenset(
         "runtime_authority",
     }
 )
+CLASSIFICATION_ENVELOPE_CONTENT_KEYS = frozenset(
+    {
+        "summary",
+        "evidence_uris",
+        "artifact_refs",
+        "redaction_status",
+        "authoritative",
+        "influence_class",
+        "allowed_effects",
+        "forbidden_effects",
+        "applicability",
+    }
+)
 TASK_SUBJECT_CONTENT_KEYS = frozenset(
     {
         "task_subject_fact",
@@ -158,6 +171,12 @@ class MemoryCandidateExtractor:
             raise MemoryCandidateError("Memory candidate sensitivity is invalid.")
         if candidate_class not in CANDIDATE_CLASSES:
             raise MemoryCandidateError("Memory candidate class is invalid.")
+        unsupported_content_keys = set(content) - CLASSIFICATION_ENVELOPE_CONTENT_KEYS
+        if unsupported_content_keys:
+            raise MemoryCandidateError(
+                "Memory candidate content includes unsupported envelope fields: "
+                + ", ".join(sorted(str(key) for key in unsupported_content_keys))
+            )
         resolved_classification_reason = (
             classification_reason
             or f"Candidate classified as {candidate_class} by extraction contract."
@@ -169,11 +188,15 @@ class MemoryCandidateExtractor:
             f"{run['id']}-{source_step['id']}-{target_memory_scope_id}",
             prefix="mc",
         )
+        envelope_content = _classification_envelope_content(
+            content,
+            redact_sensitive_data=redact_sensitive_data,
+        )
         content_uri = self.artifacts.write_json(
             ("artifacts", str(run["id"]), "memory-candidates", identifier),
             {
                 "contract_version": "0.1.0",
-                **dict(content),
+                **envelope_content,
                 "source_run_id": run["id"],
                 "source_profile_id": run["profile_id"],
                 "source_step_id": source_step["id"],
@@ -272,9 +295,13 @@ class PostRunReflectionExtractor:
             f"{run['id']}-{source_step['id']}-{target_memory_scope_id}-reflection",
             prefix="mce",
         )
+        envelope_content = _classification_envelope_content(
+            content,
+            redact_sensitive_data=redact_sensitive_data,
+        )
         envelope = {
             "contract_version": "0.1.0",
-            **dict(content),
+            **envelope_content,
             "source_run_id": run["id"],
             "source_profile_id": run["profile_id"],
             "source_step_id": source_step["id"],
@@ -533,6 +560,23 @@ def _procedural_content_errors(content: Mapping[str, Any]) -> list[str]:
     if str(content.get("generalization_scope", "")).lower() in {"global", "all"}:
         errors.append("procedural lessons must not use unsafe generalization scope")
     return errors
+
+
+def _classification_envelope_content(
+    content: Mapping[str, Any],
+    *,
+    redact_sensitive_data: bool,
+) -> dict[str, Any]:
+    envelope_content = {
+        key: value
+        for key, value in content.items()
+        if key in CLASSIFICATION_ENVELOPE_CONTENT_KEYS
+    }
+    envelope_content.setdefault(
+        "redaction_status",
+        "redacted" if redact_sensitive_data else "not_required",
+    )
+    return envelope_content
 
 
 def _non_empty_string_list(value: Any) -> tuple[str, ...]:
