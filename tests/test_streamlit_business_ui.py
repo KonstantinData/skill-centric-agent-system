@@ -101,6 +101,9 @@ class FakeStreamlit:
     def error(self, text: str) -> None:
         self.events.append(("error", text))
 
+    def warning(self, text: str) -> None:
+        self.events.append(("warning", text))
+
     def link_button(self, label: str, url: str) -> None:
         self.events.append(("link_button", label, url))
 
@@ -735,6 +738,34 @@ def test_business_ui_main_hides_internal_tenant_metadata_after_login(
         "Route:",
     ):
         assert hidden_text not in rendered_text
+
+
+def test_business_ui_main_hides_optional_admin_api_failures(
+    monkeypatch,
+) -> None:
+    fake_st = FakeStreamlit()
+    monkeypatch.setitem(sys.modules, "streamlit", fake_st)
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
+    monkeypatch.setenv("SCAS_CONTROL_API_URL", "https://control-api.example.invalid")
+    monkeypatch.setenv("SCAS_TENANT_ADMIN_TOKEN", "test-token")
+    fake_st.session_state["scas_tenant_session"] = {
+        "principal_id": "daskuechenhaus-owner-principal",
+        "tenant_id": "daskuechenhaus",
+        "membership_id": "tm-daskuechenhaus-owner-01",
+        "role_ids": ["daskuechenhaus-owner"],
+        "capabilities": ["research", "tenant-admin"],
+        "source": "local-login",
+    }
+
+    def failing_urlopen(*_args: Any, **_kwargs: Any) -> None:
+        raise OSError("HTTP Error 404: Not Found")
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", failing_urlopen)
+
+    streamlit_business_ui_app.main()
+
+    assert not [event for event in fake_st.events if event[0] == "warning"]
 
 
 def test_business_ui_local_login_renders_password_reset_fallback(monkeypatch) -> None:
