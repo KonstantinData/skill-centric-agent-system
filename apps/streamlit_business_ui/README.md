@@ -1,22 +1,21 @@
 # Streamlit Business UI
 
-Tenant-aware operations dashboard for SCAS business steering. The first screen
-loads tenant shell metadata, branding, landing configuration, role-derived
-navigation, and launch dashboard cards from the active tenant record. It then
-shows only the workspace tiles enabled by the current tenant roles. Tenant
-admins additionally see users, roles, launch-critical settings, admin workflow
-routes, and audit traceability status from the tenant context.
+Tenant-aware operations dashboard for SCAS business steering. After
+authentication, the first screen loads tenant branding and role-derived
+navigation from the active tenant record, then shows only the workspace tiles
+enabled by the current tenant roles. Internal tenant identifiers, setup status,
+hostnames, role names, data-source names, admin routes, and audit/settings
+diagnostics are not rendered on the user-facing landing page.
 
-Tenants use `ui_profile.logo_path`, `ui_profile.landing`,
-`ui_profile.theme`, and `ui_profile.workspace_areas` from their tenant registry
-fixture for the first screen. The Daskuechenhaus tenant uses its tenant-local
-logo at `assets/images/daskuechenhaus/logo_daskuechenhaus.png` and the
-corporate colors `#fff`, `#111`, `#333`, and `#76b726`. Other tenants render
-their own metadata and do not inherit tenant-specific logo, color, or copy when
-their fixture lacks those UI profile fields.
-The landing dashboard summarizes tenant authority, visible workspace routes,
-tenant-scoped data sources, and admin governance state without exposing private
-owner data or legal/tax details.
+Tenants use `ui_profile.logo_path`, `ui_profile.theme`, and
+`ui_profile.workspace_areas` from their tenant registry fixture for the first
+screen. The Daskuechenhaus tenant uses its tenant-local logo at
+`assets/images/daskuechenhaus/logo_daskuechenhaus.png` and the corporate colors
+`#fff`, `#111`, `#333`, and `#76b726`. The theme CSS also pins Streamlit's
+header menu button to tenant foreground/background colors so it remains visible
+in light and dark browser modes. Other tenants render their own metadata and do
+not inherit tenant-specific logo, color, or copy when their fixture lacks those
+UI profile fields.
 
 When `SCAS_CONTROL_API_URL` and `SCAS_TENANT_ADMIN_TOKEN` are set, the UI loads
 the tenant admin context from `GET /tenant-admin/tenants/{tenant_id}` instead of
@@ -134,10 +133,9 @@ python -m pytest tests/test_streamlit_business_ui.py
 
 The suite verifies tenant hostname selection, tenant-bound production mode,
 role-derived workspace visibility, metadata-derived branding and theme CSS,
-tenant-specific navigation, landing dashboard states, admin/non-admin
-separation, admin workflow routes, required labels, and the authenticated
-session gate. It is intentionally dependency-free until the repository adds a
-browser E2E or accessibility harness.
+tenant-specific navigation, hidden internal landing-page metadata, required
+labels, and the authenticated session gate. It is intentionally dependency-free
+until the repository adds a browser E2E or accessibility harness.
 
 ## Deployment Status
 
