@@ -158,6 +158,11 @@ def login_url_from_env() -> str | None:
     return configured or None
 
 
+def password_reset_url_from_env() -> str | None:
+    configured = os.environ.get("SCAS_UI_PASSWORD_RESET_URL", "").strip()
+    return configured or None
+
+
 def resolve_runtime_tenant_id(tenants: dict[str, dict[str, Any]]) -> str | None:
     configured_tenant_id = configured_tenant_id_from_env()
     if configured_tenant_id:
@@ -708,11 +713,23 @@ def render_local_login_area(st: Any, tenant: dict[str, Any]) -> TenantSession | 
     login_view = build_tenant_login_view(tenant)
     st.markdown(f"### Login {login_view.display_name}")
     st.caption(login_view.hostname)
-    st.info("Bitte mit dem freigegebenen Tenant-Benutzer anmelden.")
+    st.info("Bitte mit Ihrem Benutzernamen anmelden")
     with st.form("scas-local-login"):
         username = st.text_input("Benutzername")
         password = st.text_input("Passwort", type="password")
         submitted = st.form_submit_button("Einloggen")
+    reset_url = password_reset_url_from_env()
+    if reset_url:
+        if hasattr(st, "link_button"):
+            st.link_button("Passwort vergessen?", reset_url)
+        else:  # pragma: no cover - compatibility for older Streamlit runtimes.
+            st.markdown(f"[Passwort vergessen?]({reset_url})")
+    else:
+        with st.expander("Passwort vergessen?"):
+            st.info(
+                "Bitte wenden Sie sich an Ihren Administrator. "
+                "Ein automatischer Passwort-Reset ist noch nicht eingerichtet."
+            )
     if not submitted:
         return None
     try:

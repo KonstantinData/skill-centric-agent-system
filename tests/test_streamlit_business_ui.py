@@ -70,6 +70,10 @@ class FakeStreamlit:
         self.events.append(("form", key))
         return self
 
+    def expander(self, label: str) -> FakeStreamlit:
+        self.events.append(("expander", label))
+        return self
+
     def markdown(self, *args: Any, **kwargs: Any) -> None:
         self.events.append(("markdown", args, kwargs))
 
@@ -715,6 +719,43 @@ def test_business_ui_local_login_main_renders_standalone_page_before_sidebar(
 
     assert ("form", "scas-local-login") in fake_st.events
     assert not [event for event in fake_st.events if event[0].startswith("sidebar_")]
+
+
+def test_business_ui_local_login_renders_password_reset_fallback(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    fake_st = FakeStreamlit()
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.delenv("SCAS_UI_PASSWORD_RESET_URL", raising=False)
+
+    with pytest.raises(StreamlitStop):
+        streamlit_business_ui_app.render_session_gate(fake_st, tenants["daskuechenhaus"])
+
+    assert ("info", "Bitte mit Ihrem Benutzernamen anmelden") in fake_st.events
+    assert ("expander", "Passwort vergessen?") in fake_st.events
+    assert any(
+        event == (
+            "info",
+            "Bitte wenden Sie sich an Ihren Administrator. "
+            "Ein automatischer Passwort-Reset ist noch nicht eingerichtet.",
+        )
+        for event in fake_st.events
+    )
+
+
+def test_business_ui_local_login_renders_configured_password_reset_link(
+    monkeypatch,
+) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    fake_st = FakeStreamlit()
+    reset_url = "https://identity.example.invalid/reset-password/daskuechenhaus"
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_PASSWORD_RESET_URL", reset_url)
+
+    with pytest.raises(StreamlitStop):
+        streamlit_business_ui_app.render_session_gate(fake_st, tenants["daskuechenhaus"])
+
+    assert ("link_button", "Passwort vergessen?", reset_url) in fake_st.events
+    assert ("expander", "Passwort vergessen?") not in fake_st.events
 
 
 def test_business_ui_builds_login_view_from_tenant_and_upstream_url(monkeypatch) -> None:
