@@ -79,6 +79,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "SCAS_UI_AUTH_MODE=required" in workflow
+    assert "SCAS_UI_TENANT_ID=%s" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
 
@@ -106,6 +107,7 @@ def test_streamlit_deployment_runbook_is_linked_from_operational_docs() -> None:
 
     assert "tenant-ui-deploy.yml" in runbook
     assert "deploy/streamlit-business-ui/Dockerfile" in runbook
+    assert "SCAS_UI_TENANT_ID=liquisto" in runbook
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in runbook
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook

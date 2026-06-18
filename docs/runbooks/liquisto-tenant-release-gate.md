@@ -156,9 +156,12 @@ Apply mode is manual-only and requires target-environment Hetzner secrets,
 `SCAS_<ENV>_UI_SESSION_CONTEXT_JSON`, `SCAS_<ENV>_TENANT_ADMIN_TOKEN`, and an
 `upstream_auth_evidence_url`. Production apply also requires
 `confirm_production=true`. The workflow writes a complete SCAS-managed Compose
-file and intentionally does not read legacy host Compose files or host `.env`
-files. It writes sanitized deployment evidence and rolls back to the previous
-Compose service image if the post-deploy Streamlit health check fails.
+file, sets `SCAS_UI_TENANT_ID=liquisto`, and intentionally does not read legacy
+host Compose files or host `.env` files. The fixed tenant binding means
+`liquisto.condata.io` cannot expose a tenant selector or switch to another
+tenant through UI state. The workflow writes sanitized deployment evidence and
+rolls back to the previous Compose service image if the post-deploy Streamlit
+health check fails.
 
 ## Tenant Admin Bootstrap
 
