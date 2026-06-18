@@ -104,7 +104,9 @@ Stop immediately and keep the operation non-certified when any of these occur:
 ## Operational Path
 
 Use the existing live runtime workflow for the first approved bounded
-single-task staging operation:
+single-task staging operation. The first real approved SCAS operation task is
+versioned at
+`operations/staging-tasks/first-productive-scas-operations-review.json`.
 
 ```bash
 gh workflow run live-runtime-gates.yml \
@@ -115,12 +117,14 @@ gh workflow run live-runtime-gates.yml \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=false \
   -f live_task_suite=single \
-  -f live_task_file=examples/tasks/<approved-task>.json \
+  -f live_task_file=operations/staging-tasks/first-productive-scas-operations-review.json \
   -f confirm_production=false
 ```
 
-The task file must be committed, non-secret, and approved for staging. Do not
-pass private task content through workflow inputs.
+The task file must be committed, non-secret, and approved for staging. Real
+productive-operation task files should live under `operations/staging-tasks/`.
+`examples/tasks/` remains available for tests, demonstrations, and generic
+fixtures. Do not pass private task content through workflow inputs.
 Production use of this workflow is fail-closed unless `confirm_production=true`
 is supplied and the protected `production` GitHub environment approves the run.
 Production Control Plane seeding remains blocked here; use a dedicated

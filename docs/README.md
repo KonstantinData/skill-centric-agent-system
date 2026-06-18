@@ -9,6 +9,8 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/reference/`: technical orientation material and implementation-facing reference docs.
 - `docs/roadmap/`: execution sequencing and prioritized delivery queues.
 - `docs/adr/`: architecture decision records (durable decision history).
+- `operations/staging-tasks/`: committed, non-secret real task files approved for
+  supervised productive staging operations.
 
 ## Policies
 

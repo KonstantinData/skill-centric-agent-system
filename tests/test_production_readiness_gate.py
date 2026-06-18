@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+from skill_centric_agent_system.composition.task_analyzer import TaskAnalyzer
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_READINESS_PATH = REPO_ROOT / "docs" / "policies" / "production-readiness.md"
 README_PATH = REPO_ROOT / "README.md"
 FIRST_PRODUCTIVE_OPERATION_PATH = (
     REPO_ROOT / "docs" / "runbooks" / "first-productive-agent-operation.md"
+)
+FIRST_PRODUCTIVE_TASK_PATH = (
+    REPO_ROOT / "operations" / "staging-tasks" / "first-productive-scas-operations-review.json"
 )
 
 
@@ -93,4 +99,24 @@ def test_first_productive_operation_runbook_defers_dedicated_workflow() -> None:
     assert "proves a concrete operator" in runbook
     assert "evidence, or safety gap" in runbook
     assert "The next implementation slice should add" not in runbook
+
+
+def test_first_productive_operation_uses_real_staging_task_file() -> None:
+    runbook = FIRST_PRODUCTIVE_OPERATION_PATH.read_text(encoding="utf-8")
+
+    assert str(FIRST_PRODUCTIVE_TASK_PATH.relative_to(REPO_ROOT)).replace("\\", "/") in runbook
+    assert "examples/tasks/<approved-task>.json" not in runbook
+    assert FIRST_PRODUCTIVE_TASK_PATH.is_file()
+
+    task = json.loads(FIRST_PRODUCTIVE_TASK_PATH.read_text(encoding="utf-8"))
+    assert task["constraints"]["write_access"] is False
+    assert task["constraints"]["destructive_actions"] is False
+    assert task["constraints"]["target_environment"] == "staging"
+    assert task["constraints"]["production_data"] is False
+    assert task["constraints"]["secret_access"] is False
+
+    analysis = TaskAnalyzer().analyze(task)
+    assert analysis.task_type == "research"
+    assert analysis.risk_level == "low"
+    assert analysis.requires_human_review is False
 
