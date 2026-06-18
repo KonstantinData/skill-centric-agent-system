@@ -66,6 +66,10 @@ and validates passwords against PBKDF2 hashes stored in
 `SCAS_UI_LOGIN_USERS_JSON`. The login form is a standalone unauthenticated page:
 the tenant operations sidebar and navigation are not rendered until a session is
 created, and the login page is hidden again until the user logs out.
+When `SCAS_UI_PASSWORD_RESET_URL` is configured, the login page shows a
+`Passwort vergessen?` link to the approved reset flow. Without that URL, it
+shows an administrator-contact fallback instead of pretending that self-service
+reset is available.
 
 ```powershell
 $env:SCAS_UI_AUTH_MODE="local-login"
@@ -73,6 +77,8 @@ $env:SCAS_UI_TENANT_ID="daskuechenhaus"
 $env:SCAS_UI_LOGIN_USERS_JSON='[{"username":"<login-name>","tenant_id":"daskuechenhaus","principal_id":"<principal-id>","membership_id":"tm-daskuechenhaus-admin-01","role_ids":["daskuechenhaus-admin"],"password_hash":"pbkdf2_sha256$600000$<salt>$<hash>"}]'
 streamlit run apps\streamlit_business_ui\app.py
 ```
+
+Optionally set `SCAS_UI_PASSWORD_RESET_URL` to an approved HTTPS reset page.
 
 Generate a password hash locally without storing the password in repository
 files:
@@ -86,6 +92,9 @@ print(encode_login_password_hash("replace-with-one-time-password"))
 
 Store `SCAS_UI_LOGIN_USERS_JSON` only in the environment-specific secret store.
 Do not commit login names, password hashes, raw passwords, or provider user IDs.
+Automated self-service password reset requires a trusted delivery path, usually
+an identity provider or mail provider that can send one-time reset links. Manual
+administrator password resets do not require SMTP access.
 
 When `SCAS_UI_AUTH_MODE=required` and no trusted session is available, the UI
 can render a tenant-branded login entry by setting `SCAS_UI_LOGIN_URL` to the
