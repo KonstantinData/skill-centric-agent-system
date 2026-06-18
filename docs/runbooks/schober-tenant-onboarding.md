@@ -102,7 +102,7 @@ The checks verify that:
 - the tenant fixture matches the tenant registry schema,
 - `schober-daskuechenhaus.de` resolves to exactly one setup tenant authority,
 - seeded data-source and role grants do not cross tenant boundaries,
-- Schober website and knowledge scopes are distinct from Liquisto and demo
+- Schober website and knowledge scopes are distinct from existing and demo
   tenant scopes,
 - the tenant UI shell loads Schober tenant metadata from the registry.
 
