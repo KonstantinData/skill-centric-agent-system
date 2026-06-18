@@ -63,7 +63,9 @@ only server-controlled session context.
 
 Local login mode renders an actual username/password form in the Streamlit UI
 and validates passwords against PBKDF2 hashes stored in
-`SCAS_UI_LOGIN_USERS_JSON`:
+`SCAS_UI_LOGIN_USERS_JSON`. The login form is a standalone unauthenticated page:
+the tenant operations sidebar and navigation are not rendered until a session is
+created, and the login page is hidden again until the user logs out.
 
 ```powershell
 $env:SCAS_UI_AUTH_MODE="local-login"
