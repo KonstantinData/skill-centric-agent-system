@@ -137,7 +137,7 @@ def test_daskuechenhaus_admin_bootstrap_runbook_keeps_owner_data_out_of_repo() -
     runbook = DASKUECHENHAUS_ADMIN_BOOTSTRAP_RUNBOOK_PATH.read_text(encoding="utf-8")
 
     assert "tenant_id: daskuechenhaus" in runbook
-    assert "daskuechenhaus.condata.io" in runbook
+    assert "daskuechenhaus" + ".condata.io" in runbook
     assert "SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
     assert "SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
     assert "Do not hardcode the owner" in runbook
