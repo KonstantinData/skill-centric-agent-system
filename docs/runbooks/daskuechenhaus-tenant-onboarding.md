@@ -77,6 +77,15 @@ Before activation, bootstrap must define:
 Admin rights remain tenant-local. Email domain knowledge or public website
 knowledge must not grant access.
 
+The non-secret bootstrap contract is documented in
+`docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md`. The required
+tenant-specific owner principal secrets are:
+
+```text
+SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+```
+
 ## DNS And Routing Evidence
 
 Public DNS and Cloudflare evidence were observed on 2026-06-18:
@@ -112,6 +121,13 @@ present. Before activation, the tenant must run through a dedicated
 Daskuechenhaus UI binding or equivalent server-side hostname resolution that
 fails closed for mismatched hosts.
 
+The routing fix was deployed after PR #139. Runtime inventory run `27766020716`
+observed `daskuechenhaus-app-1` bound separately on `127.0.0.1:8502` and an
+Nginx server block for `daskuechenhaus.condata.io` proxying to that port. A
+live UI check on 2026-06-18 showed Daskuechenhaus-specific tenant content at
+`https://daskuechenhaus.condata.io/` while `https://liquisto.condata.io/`
+continued to serve Liquisto content.
+
 ## Isolation Evidence
 
 Static tenant isolation is covered by focused tests:
@@ -137,8 +153,7 @@ tenant path execution and an isolation audit before marking the tenant active.
 The following items must be completed before changing the tenant status from
 `setup` to `active`:
 
-1. Isolated UI routing for `daskuechenhaus.condata.io`.
-2. Initial tenant owner bootstrap with tenant-local membership and audit event.
-3. Tenant isolation audit across UI, Control API, Composer, runtime profile,
+1. Initial tenant owner bootstrap with tenant-local membership and audit event.
+2. Tenant isolation audit across UI, Control API, Composer, runtime profile,
    data-source grants, knowledge retrieval, memory scope, and admin routes.
-4. Live tenant path gate against the selected environment.
+3. Live tenant path gate against the selected environment.
