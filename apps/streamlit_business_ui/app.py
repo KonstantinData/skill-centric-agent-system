@@ -735,6 +735,9 @@ def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
         session = render_local_login_area(st, tenant)
         if session is not None:
             st.session_state["scas_tenant_session"] = _session_to_state(session)
+            if hasattr(st, "rerun"):
+                st.rerun()
+                st.stop()
             return session
         st.stop()
         raise RuntimeError("streamlit stop did not halt execution")
@@ -981,7 +984,6 @@ def main() -> None:
 
     tenants = load_tenant_registry()
 
-    st.sidebar.title("Steuerung")
     try:
         runtime_tenant_id = resolve_runtime_tenant_id(tenants)
     except TenantSessionError as error:
@@ -990,6 +992,7 @@ def main() -> None:
         raise RuntimeError("streamlit stop did not halt execution") from error
 
     if runtime_tenant_id is None:
+        st.sidebar.title("Steuerung")
         tenant_id = st.sidebar.selectbox(
             "Tenant",
             options=sorted(tenants),
@@ -997,8 +1000,6 @@ def main() -> None:
         )
     else:
         tenant_id = runtime_tenant_id
-        st.sidebar.caption("Tenant")
-        st.sidebar.write(tenant_id)
 
     selected_tenant = tenants[tenant_id]
     available_roles = {
@@ -1006,6 +1007,10 @@ def main() -> None:
         for role in selected_tenant.get("role_bundles", [])
     }
     tenant_session = render_session_gate(st, selected_tenant)
+    if runtime_tenant_id is not None:
+        st.sidebar.title("Steuerung")
+        st.sidebar.caption("Tenant")
+        st.sidebar.write(tenant_id)
     selected_role_ids = tenant_session.role_ids
     selected_role_labels = tuple(
         label for label, role_id in available_roles.items() if role_id in selected_role_ids

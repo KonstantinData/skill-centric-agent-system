@@ -24,12 +24,41 @@ class StreamlitStop(Exception):
     pass
 
 
+class FakeSidebar:
+    def __init__(self, streamlit: FakeStreamlit) -> None:
+        self._streamlit = streamlit
+
+    def title(self, text: str) -> None:
+        self._streamlit.events.append(("sidebar_title", text))
+
+    def caption(self, text: str) -> None:
+        self._streamlit.events.append(("sidebar_caption", text))
+
+    def write(self, value: Any) -> None:
+        self._streamlit.events.append(("sidebar_write", value))
+
+    def selectbox(self, label: str, *, options: list[str], index: int) -> str:
+        self._streamlit.events.append(("sidebar_selectbox", label, tuple(options), index))
+        return options[index]
+
+    def button(self, label: str) -> bool:
+        self._streamlit.events.append(("sidebar_button", label))
+        return False
+
+    def markdown(self, *args: Any, **kwargs: Any) -> None:
+        self._streamlit.events.append(("sidebar_markdown", args, kwargs))
+
+
 class FakeStreamlit:
     def __init__(self) -> None:
         self.session_state: dict[str, Any] = {}
         self.events: list[tuple[Any, ...]] = []
         self.text_input_values: dict[str, str] = {}
         self.form_submitted = False
+        self.sidebar = FakeSidebar(self)
+
+    def set_page_config(self, **kwargs: Any) -> None:
+        self.events.append(("set_page_config", kwargs))
 
     def __enter__(self) -> FakeStreamlit:
         return self
@@ -63,6 +92,9 @@ class FakeStreamlit:
     def form_submit_button(self, label: str) -> bool:
         self.events.append(("form_submit_button", label))
         return self.form_submitted
+
+    def rerun(self) -> None:
+        self.events.append(("rerun",))
 
     def stop(self) -> None:
         raise StreamlitStop
@@ -640,14 +672,49 @@ def test_business_ui_local_login_gate_accepts_submitted_credentials(monkeypatch)
         ),
     )
 
-    session = streamlit_business_ui_app.render_session_gate(
-        fake_st,
-        tenants["daskuechenhaus"],
-    )
+    with pytest.raises(StreamlitStop):
+        streamlit_business_ui_app.render_session_gate(
+            fake_st,
+            tenants["daskuechenhaus"],
+        )
 
-    assert session.source == "local-login"
     assert fake_st.session_state["scas_tenant_session"]["source"] == "local-login"
     assert ("form_submit_button", "Einloggen") in fake_st.events
+    assert ("rerun",) in fake_st.events
+
+
+def test_business_ui_local_login_main_renders_standalone_page_before_sidebar(
+    monkeypatch,
+) -> None:
+    fake_st = FakeStreamlit()
+    password_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "tenant-password",
+        salt=b"stable-test-salt!",
+    )
+    monkeypatch.setitem(sys.modules, "streamlit", fake_st)
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_USERS_JSON",
+        json.dumps(
+            [
+                {
+                    "username": "daskuechenhaus-admin",
+                    "tenant_id": "daskuechenhaus",
+                    "principal_id": "daskuechenhaus-admin-principal",
+                    "membership_id": "tm-daskuechenhaus-admin-01",
+                    "role_ids": ["daskuechenhaus-admin"],
+                    "password_hash": password_hash,
+                }
+            ]
+        ),
+    )
+
+    with pytest.raises(StreamlitStop):
+        streamlit_business_ui_app.main()
+
+    assert ("form", "scas-local-login") in fake_st.events
+    assert not [event for event in fake_st.events if event[0].startswith("sidebar_")]
 
 
 def test_business_ui_builds_login_view_from_tenant_and_upstream_url(monkeypatch) -> None:
