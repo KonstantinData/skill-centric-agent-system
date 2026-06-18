@@ -123,3 +123,32 @@ def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
         "research",
         "tenant-admin",
     ]
+
+
+def test_schober_tenant_registry_example_matches_schema_and_public_identity(
+    tenant_registry_schema: dict[str, Any],
+) -> None:
+    schober = load_json(
+        REPO_ROOT / "examples" / "tenants" / "schober-daskuechenhaus.json"
+    )
+
+    assert_valid(tenant_registry_schema, schober)
+    assert_tenant_registry_references_are_valid(schober)
+    assert schober["tenant_id"] == "schober-daskuechenhaus"
+    assert schober["area_id"] == "schober-daskuechenhaus"
+    assert schober["status"] == "setup"
+    assert schober["legal_profile"]["legal_name"] == (
+        "das küchenhaus ralph schober GmbH"
+    )
+    assert schober["legal_profile"]["commercial_register"] == {
+        "register_court": "Amtsgericht Stuttgart",
+        "registration_number": "HR 730338",
+    }
+    assert schober["legal_profile"]["tax"]["vat_id"] == "DE265715198"
+    assert schober["contact_profile"]["email"] == "info@schober-daskuechenhaus.de"
+    assert schober["admin_model"]["initial_owner"] is None
+    assert schober["memory"]["shared_promotion_allowed"] is False
+    assert [area["id"] for area in schober["ui_profile"]["workspace_areas"]] == [
+        "research",
+        "tenant-admin",
+    ]

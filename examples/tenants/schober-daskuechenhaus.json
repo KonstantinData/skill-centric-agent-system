@@ -1,0 +1,214 @@
+{
+  "contract_version": "0.1.0",
+  "tenant_id": "schober-daskuechenhaus",
+  "area_id": "schober-daskuechenhaus",
+  "display_name": "das küchenhaus ralph schober",
+  "legal_profile": {
+    "legal_name": "das küchenhaus ralph schober GmbH",
+    "registered_address": {
+      "street": "Blumenstraße",
+      "street_number": "17",
+      "postal_code": "73728",
+      "city": "Esslingen",
+      "country": "Germany"
+    },
+    "legal_representatives": [
+      {
+        "name": "Ralph Schober",
+        "role": "Managing Director"
+      }
+    ],
+    "commercial_register": {
+      "register_court": "Amtsgericht Stuttgart",
+      "registration_number": "HR 730338"
+    },
+    "tax": {
+      "tax_number": null,
+      "vat_id": "DE265715198",
+      "tax_number_sensitivity": "restricted-business-data"
+    }
+  },
+  "contact_profile": {
+    "email": "info@schober-daskuechenhaus.de",
+    "phone": "0711/36550747",
+    "website": "https://www.schober-daskuechenhaus.de"
+  },
+  "hostnames": [
+    {
+      "hostname": "schober-daskuechenhaus.de",
+      "purpose": "primary-ui",
+      "expected_origin": "188.40.16.199",
+      "cloudflare_proxy_expected": false
+    }
+  ],
+  "status": "setup",
+  "default_locale": "de-DE",
+  "admin_model": {
+    "admin_routes": [
+      "/admin/users",
+      "/admin/roles",
+      "/admin/settings"
+    ],
+    "assignment_model": "users-receive-roles-only",
+    "initial_owner": null
+  },
+  "memory": {
+    "area_brain_id": "brain-area-schober-daskuechenhaus",
+    "shared_promotion_allowed": false
+  },
+  "knowledge": {
+    "scope_id": "knowledge-schober-daskuechenhaus",
+    "indexes": [
+      "knowledge-schober-daskuechenhaus-docs"
+    ]
+  },
+  "data_sources": [
+    {
+      "id": "schober-daskuechenhaus-website",
+      "tenant_id": "schober-daskuechenhaus",
+      "type": "website",
+      "display_name": "Schober Website",
+      "access_modes": [
+        "read"
+      ],
+      "status": "planned",
+      "sensitivity": "public"
+    }
+  ],
+  "role_bundles": [
+    {
+      "id": "schober-daskuechenhaus-owner",
+      "tenant_id": "schober-daskuechenhaus",
+      "display_name": "Tenant Owner",
+      "role_type": "system",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research",
+        "tenant-admin"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "schober-daskuechenhaus-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake",
+          "tenant-admin"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "admin-action-validator",
+          "knowledge-scope-validator",
+          "no-cross-area-scope-validator",
+          "no-cross-tenant-scope-validator",
+          "research-output-contract",
+          "tenant-profile-validator",
+          "user-permission-validator"
+        ]
+      }
+    },
+    {
+      "id": "schober-daskuechenhaus-researcher",
+      "tenant_id": "schober-daskuechenhaus",
+      "display_name": "Researcher",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "schober-daskuechenhaus-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator",
+          "research-output-contract"
+        ]
+      }
+    }
+  ],
+  "policy_bundle": [
+    "strict-tenant-isolation",
+    "no-cross-area-access",
+    "no-cross-tenant-access",
+    "fail-closed-unknown-scope"
+  ],
+  "validators": [
+    "tenant-profile-validator",
+    "no-cross-tenant-scope-validator",
+    "no-cross-area-scope-validator",
+    "skill-scope-compatibility-validator",
+    "tool-scope-compatibility-validator",
+    "memory-scope-validator",
+    "knowledge-scope-validator",
+    "user-permission-validator",
+    "admin-action-validator"
+  ],
+  "ui_profile": {
+    "logo_path": null,
+    "landing": {
+      "type": "internal-operations-dashboard",
+      "area_presentation": "tiles"
+    },
+    "workspace_areas": [
+      {
+        "id": "research",
+        "display_name": "Research",
+        "description": "Tenant-scoped research workspace backed by role-derived data-source grants.",
+        "route": "/research",
+        "required_capability": "research",
+        "admin_only": false,
+        "status": "active"
+      },
+      {
+        "id": "tenant-admin",
+        "display_name": "Admin Dashboard",
+        "description": "Tenant administration for users, roles, settings, and launch governance.",
+        "route": "/admin",
+        "required_capability": "tenant-admin",
+        "admin_only": true,
+        "status": "active"
+      }
+    ]
+  }
+}

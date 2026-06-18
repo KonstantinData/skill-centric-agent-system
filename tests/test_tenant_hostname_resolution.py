@@ -53,6 +53,20 @@ def test_tenant_hostname_resolver_returns_liquisto_authority() -> None:
     assert authority.cloudflare_proxy_expected is True
 
 
+def test_tenant_hostname_resolver_returns_schober_setup_authority() -> None:
+    resolver = TenantHostnameResolver.from_paths(tenant_paths())
+
+    authority = resolver.resolve("schober-daskuechenhaus.de")
+
+    assert authority.tenant_id == "schober-daskuechenhaus"
+    assert authority.area_id == "schober-daskuechenhaus"
+    assert authority.hostname == "schober-daskuechenhaus.de"
+    assert authority.purpose == "primary-ui"
+    assert authority.status == "setup"
+    assert authority.expected_origin == "188.40.16.199"
+    assert authority.cloudflare_proxy_expected is False
+
+
 def test_tenant_hostname_resolver_rejects_unknown_hostname() -> None:
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 

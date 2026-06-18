@@ -54,6 +54,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/staging-provisioning-checklist.md`
 - `docs/runbooks/scas-cloudflare-token-structure.md`
 - `docs/runbooks/liquisto-tenant-dns-evidence.md`
+- `docs/runbooks/schober-tenant-onboarding.md`
 - `docs/runbooks/liquisto-tenant-admin-bootstrap.md`
 - `docs/runbooks/liquisto-tenant-release-gate.md`
 - `docs/runbooks/liquisto-tenant-rollback-deprovisioning.md`
