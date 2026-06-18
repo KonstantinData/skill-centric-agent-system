@@ -167,10 +167,11 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
     admin_role = next(
         role for role in daskuechenhaus["role_bundles"] if role["id"] == "daskuechenhaus-admin"
     )
-    assert admin_role["capability_grants"] == ["tenant-admin"]
+    assert admin_role["capability_grants"] == ["tenant-admin", "customer-cases"]
     assert admin_role["data_source_grants"] == []
     assert admin_role["derived_runtime_modules"]["tools"] == []
     assert [area["id"] for area in daskuechenhaus["ui_profile"]["workspace_areas"]] == [
+        "customer-cases",
         "research",
         "tenant-admin",
     ]
