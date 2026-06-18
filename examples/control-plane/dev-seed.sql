@@ -3,6 +3,10 @@
 -- Source: registry/modules/**/module.json.
 
 INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_locale, contact_email, contact_phone, contact_website, memory_area_brain_id, shared_promotion_allowed, knowledge_scope_id, policy_bundle_json, validators_json, created_at, updated_at)
+VALUES ('daskuechenhaus', 'daskuechenhaus', 'das küchenhaus', 'das küchenhaus ralph schober GmbH', 'setup', 'de-DE', 'info@schober-daskuechenhaus.de', '0711/36550747', 'https://www.schober-daskuechenhaus.de', 'brain-area-daskuechenhaus', 0, 'knowledge-daskuechenhaus', '["fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_locale, contact_email, contact_phone, contact_website, memory_area_brain_id, shared_promotion_allowed, knowledge_scope_id, policy_bundle_json, validators_json, created_at, updated_at)
 VALUES ('demo-tenant', 'demo-tenant', 'Demo Tenant', 'Demo Tenant GmbH', 'setup', 'de-DE', 'admin@example.invalid', NULL, 'https://example.invalid', 'brain-area-demo-tenant', 0, 'knowledge-demo-tenant', '["fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
@@ -14,9 +18,9 @@ INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_loca
 VALUES ('liquisto', 'liquisto', 'Liquisto', 'Liquisto Technologies GmbH', 'setup', 'de-DE', 'admin@liquisto.com', NULL, 'https://liquisto.com', 'brain-area-liquisto', 0, 'knowledge-liquisto', '["fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
-INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_locale, contact_email, contact_phone, contact_website, memory_area_brain_id, shared_promotion_allowed, knowledge_scope_id, policy_bundle_json, validators_json, created_at, updated_at)
-VALUES ('schober-daskuechenhaus', 'schober-daskuechenhaus', 'das küchenhaus ralph schober', 'das küchenhaus ralph schober GmbH', 'setup', 'de-DE', 'info@schober-daskuechenhaus.de', '0711/36550747', 'https://www.schober-daskuechenhaus.de', 'brain-area-schober-daskuechenhaus', 0, 'knowledge-schober-daskuechenhaus', '["fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
+INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
+VALUES ('th-daskuechenhaus-daskuechenhaus-condata-io', 'daskuechenhaus', 'daskuechenhaus.condata.io', 'primary-ui', '178.105.62.169', 1)
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
 
 INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
 VALUES ('th-demo-tenant-demo-tenant-example-invalid', 'demo-tenant', 'demo-tenant.example.invalid', 'primary-ui', '192.0.2.10', 1)
@@ -30,9 +34,9 @@ INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin,
 VALUES ('th-liquisto-liquisto-condata-io', 'liquisto', 'liquisto.condata.io', 'primary-ui', '178.105.62.169', 1)
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
 
-INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
-VALUES ('th-schober-daskuechenhaus-schober-daskuechenhaus-de', 'schober-daskuechenhaus', 'schober-daskuechenhaus.de', 'primary-ui', '188.40.16.199', 0)
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
+INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
+VALUES ('daskuechenhaus-website', 'daskuechenhaus', 'website', 'Daskuechenhaus Website', '["read"]', 'planned', 'public')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
 
 INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
 VALUES ('demo-tenant-website', 'demo-tenant', 'website', 'Demo Tenant Website', '["read"]', 'planned', 'public')
@@ -46,9 +50,13 @@ INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, acces
 VALUES ('liquisto-website', 'liquisto', 'website', 'Liquisto Website', '["read"]', 'planned', 'public')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
 
-INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
-VALUES ('schober-daskuechenhaus-website', 'schober-daskuechenhaus', 'website', 'Schober Website', '["read"]', 'planned', 'public')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
+INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
+VALUES ('daskuechenhaus-owner', 'daskuechenhaus', 'Tenant Owner', 'system', 1, '["research-context-synthesis"]', '["research-intake","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator","user-permission-validator"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
+
+INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
+VALUES ('daskuechenhaus-researcher', 'daskuechenhaus', 'Researcher', 'tenant-custom', 1, '["research-context-synthesis"]', '["research-intake"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
 INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
 VALUES ('demo-tenant-owner', 'demo-tenant', 'Tenant Owner', 'system', 1, '["research-context-synthesis"]', '["research-intake","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator","user-permission-validator"]')
@@ -70,13 +78,9 @@ INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assigna
 VALUES ('liquisto-researcher', 'liquisto', 'Researcher', 'tenant-custom', 1, '["research-context-synthesis"]', '["research-intake"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
-INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
-VALUES ('schober-daskuechenhaus-owner', 'schober-daskuechenhaus', 'Tenant Owner', 'system', 1, '["research-context-synthesis"]', '["research-intake","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator","user-permission-validator"]')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
-
-INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
-VALUES ('schober-daskuechenhaus-researcher', 'schober-daskuechenhaus', 'Researcher', 'tenant-custom', 1, '["research-context-synthesis"]', '["research-intake"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator"]')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
+INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
+VALUES ('tm-daskuechenhaus-repository-maintainer', 'daskuechenhaus', 'repository-maintainer', 'active', '["daskuechenhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
 VALUES ('tm-demo-tenant-repository-maintainer', 'demo-tenant', 'repository-maintainer', 'active', '["demo-tenant-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
@@ -90,9 +94,17 @@ INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_js
 VALUES ('tm-liquisto-repository-maintainer', 'liquisto', 'repository-maintainer', 'active', '["liquisto-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
-INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
-VALUES ('tm-schober-daskuechenhaus-repository-maintainer', 'schober-daskuechenhaus', 'repository-maintainer', 'active', '["schober-daskuechenhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-daskuechenhaus-owner-research', 'daskuechenhaus', 'daskuechenhaus-owner', 'research')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-daskuechenhaus-owner-tenant-admin', 'daskuechenhaus', 'daskuechenhaus-owner', 'tenant-admin')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-daskuechenhaus-researcher-research', 'daskuechenhaus', 'daskuechenhaus-researcher', 'research')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
 
 INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
 VALUES ('trcg-demo-tenant-owner-research', 'demo-tenant', 'demo-tenant-owner', 'research')
@@ -126,17 +138,13 @@ INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capabi
 VALUES ('trcg-liquisto-researcher-research', 'liquisto', 'liquisto-researcher', 'research')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
 
-INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
-VALUES ('trcg-schober-daskuechenhaus-owner-research', 'schober-daskuechenhaus', 'schober-daskuechenhaus-owner', 'research')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-daskuechenhaus-owner-daskuechenhaus-website', 'daskuechenhaus', 'daskuechenhaus-owner', 'daskuechenhaus-website', '["read"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
 
-INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
-VALUES ('trcg-schober-daskuechenhaus-owner-tenant-admin', 'schober-daskuechenhaus', 'schober-daskuechenhaus-owner', 'tenant-admin')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
-
-INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
-VALUES ('trcg-schober-daskuechenhaus-researcher-research', 'schober-daskuechenhaus', 'schober-daskuechenhaus-researcher', 'research')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-daskuechenhaus-researcher-daskuechenhaus-website', 'daskuechenhaus', 'daskuechenhaus-researcher', 'daskuechenhaus-website', '["read"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
 
 INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
 VALUES ('trdsg-demo-tenant-owner-demo-tenant-website', 'demo-tenant', 'demo-tenant-owner', 'demo-tenant-website', '["read"]')
@@ -158,20 +166,16 @@ INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_
 VALUES ('trdsg-liquisto-researcher-liquisto-website', 'liquisto', 'liquisto-researcher', 'liquisto-website', '["read"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
 
-INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
-VALUES ('trdsg-schober-daskuechenhaus-owner-schober-daskuechenhaus-website', 'schober-daskuechenhaus', 'schober-daskuechenhaus-owner', 'schober-daskuechenhaus-website', '["read"]')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
-
-INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
-VALUES ('trdsg-schober-daskuechenhaus-researcher-schober-daskuechenhaus-website', 'schober-daskuechenhaus', 'schober-daskuechenhaus-researcher', 'schober-daskuechenhaus-website', '["read"]')
-ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
-
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-architecture-docs', 'architecture-docs', 'knowledge_scope', 'active', 'mv-architecture-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-coding-guidelines', 'coding-guidelines', 'knowledge_scope', 'active', 'mv-coding-guidelines-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-daskuechenhaus-website-read', 'daskuechenhaus-website-read', 'data_scope', 'active', 'mv-daskuechenhaus-website-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -215,6 +219,10 @@ VALUES ('mod-inactive-demo-tenant-website-read', 'inactive-demo-tenant-website-r
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-knowledge-daskuechenhaus-docs', 'knowledge-daskuechenhaus-docs', 'knowledge_scope', 'active', 'mv-knowledge-daskuechenhaus-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-knowledge-demo-tenant-docs', 'knowledge-demo-tenant-docs', 'knowledge_scope', 'active', 'mv-knowledge-demo-tenant-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
@@ -224,10 +232,6 @@ ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-knowledge-liquisto-docs', 'knowledge-liquisto-docs', 'knowledge_scope', 'active', 'mv-knowledge-liquisto-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
-
-INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
-VALUES ('mod-knowledge-schober-daskuechenhaus-docs', 'knowledge-schober-daskuechenhaus-docs', 'knowledge_scope', 'active', 'mv-knowledge-schober-daskuechenhaus-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -263,10 +267,6 @@ VALUES ('mod-review-findings-contract', 'review-findings-contract', 'validator',
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
-VALUES ('mod-schober-daskuechenhaus-website-read', 'schober-daskuechenhaus-website-read', 'data_scope', 'active', 'mv-schober-daskuechenhaus-website-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
-
-INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-task-execution-output-contract', 'task-execution-output-contract', 'validator', 'active', 'mv-task-execution-output-contract-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
@@ -284,6 +284,10 @@ ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-coding-guidelines-0-1-0', 'mod-coding-guidelines', '0.1.0', 'repo://registry/modules/knowledge-scopes/coding-guidelines/module.json', 'sha256:7bcb5daac1a9f4a914e1e0bcb9df4be4ffef2b9d70d2338baa613d4bc90ef47c', 0.0, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-daskuechenhaus-website-read-0-1-0', 'mod-daskuechenhaus-website-read', '0.1.0', 'generated://tenant-scope/daskuechenhaus-website-read', 'sha256:generated-daskuechenhaus-website-read', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -327,6 +331,10 @@ VALUES ('mv-inactive-demo-tenant-website-read-0-1-0', 'mod-inactive-demo-tenant-
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-knowledge-daskuechenhaus-docs-0-1-0', 'mod-knowledge-daskuechenhaus-docs', '0.1.0', 'generated://tenant-scope/knowledge-daskuechenhaus-docs', 'sha256:generated-knowledge-daskuechenhaus-docs', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-knowledge-demo-tenant-docs-0-1-0', 'mod-knowledge-demo-tenant-docs', '0.1.0', 'generated://tenant-scope/knowledge-demo-tenant-docs', 'sha256:generated-knowledge-demo-tenant-docs', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
@@ -336,10 +344,6 @@ ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-knowledge-liquisto-docs-0-1-0', 'mod-knowledge-liquisto-docs', '0.1.0', 'generated://tenant-scope/knowledge-liquisto-docs', 'sha256:generated-knowledge-liquisto-docs', 0.5, '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
-
-INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-knowledge-schober-daskuechenhaus-docs-0-1-0', 'mod-knowledge-schober-daskuechenhaus-docs', '0.1.0', 'generated://tenant-scope/knowledge-schober-daskuechenhaus-docs', 'sha256:generated-knowledge-schober-daskuechenhaus-docs', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -375,10 +379,6 @@ VALUES ('mv-review-findings-contract-0-1-0', 'mod-review-findings-contract', '0.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-schober-daskuechenhaus-website-read-0-1-0', 'mod-schober-daskuechenhaus-website-read', '0.1.0', 'generated://tenant-scope/schober-daskuechenhaus-website-read', 'sha256:generated-schober-daskuechenhaus-website-read', 0.5, '2026-05-22T00:00:00Z')
-ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
-
-INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-task-execution-output-contract-0-1-0', 'mod-task-execution-output-contract', '0.1.0', 'repo://registry/modules/validators/task-execution-output-contract/module.json', 'sha256:f927be4e023f96b4447129ee0495195008e5563e32948ffe5ea23699c773575c', 0.0, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
@@ -396,6 +396,10 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-coding-guidelines-0-1-0', 'mv-coding-guidelines-0-1-0', 'Governed knowledge_scope module for coding-guidelines.', 'knowledge_access', '["software-engineering"]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '["coding-guidelines-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-daskuechenhaus-website-read-0-1-0', 'mv-daskuechenhaus-website-read-0-1-0', 'Generated tenant data_scope module for daskuechenhaus-website-read.', 'data_access', '["daskuechenhaus","research","task-execution","tenant"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["daskuechenhaus","daskuechenhaus-website-read"]', '[]', '["daskuechenhaus-website-read"]', '[]', '["daskuechenhaus-website-read-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -439,6 +443,10 @@ VALUES ('msm-inactive-demo-tenant-website-read-0-1-0', 'mv-inactive-demo-tenant-
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-knowledge-daskuechenhaus-docs-0-1-0', 'mv-knowledge-daskuechenhaus-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-daskuechenhaus-docs.', 'knowledge_access', '["daskuechenhaus","knowledge-retrieval","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["daskuechenhaus","knowledge-daskuechenhaus-docs"]', '[]', '["knowledge-daskuechenhaus-docs"]', '[]', '["knowledge-daskuechenhaus-docs-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-knowledge-demo-tenant-docs-0-1-0', 'mv-knowledge-demo-tenant-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-demo-tenant-docs.', 'knowledge_access', '["demo-tenant","knowledge-retrieval","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["demo-tenant","knowledge-demo-tenant-docs"]', '[]', '["knowledge-demo-tenant-docs"]', '[]', '["knowledge-demo-tenant-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
@@ -448,10 +456,6 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-knowledge-liquisto-docs-0-1-0', 'mv-knowledge-liquisto-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-liquisto-docs.', 'knowledge_access', '["knowledge-retrieval","liquisto","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["knowledge-liquisto-docs","liquisto"]', '[]', '["knowledge-liquisto-docs"]', '[]', '["knowledge-liquisto-docs-output"]', '[]', 0)
-ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
-
-INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
-VALUES ('msm-knowledge-schober-daskuechenhaus-docs-0-1-0', 'mv-knowledge-schober-daskuechenhaus-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-schober-daskuechenhaus-docs.', 'knowledge_access', '["knowledge-retrieval","research","schober-daskuechenhaus","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["knowledge-schober-daskuechenhaus-docs","schober-daskuechenhaus"]', '[]', '["knowledge-schober-daskuechenhaus-docs"]', '[]', '["knowledge-schober-daskuechenhaus-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -484,10 +488,6 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-review-findings-contract-0-1-0', 'mv-review-findings-contract-0-1-0', 'Governed validator module for review-findings-contract.', 'validation', '["software-engineering"]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '["review-findings-contract-output"]', '[]', 0)
-ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
-
-INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
-VALUES ('msm-schober-daskuechenhaus-website-read-0-1-0', 'mv-schober-daskuechenhaus-website-read-0-1-0', 'Generated tenant data_scope module for schober-daskuechenhaus-website-read.', 'data_access', '["research","schober-daskuechenhaus","task-execution","tenant"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["schober-daskuechenhaus","schober-daskuechenhaus-website-read"]', '[]', '["schober-daskuechenhaus-website-read"]', '[]', '["schober-daskuechenhaus-website-read-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -695,11 +695,19 @@ VALUES ('sb-repository-maintainer-coding-guidelines', 'mod-coding-guidelines', '
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-daskuechenhaus-website-read', 'mod-daskuechenhaus-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-demo-tenant-website-read', 'mod-demo-tenant-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-inactive-demo-tenant-website-read', 'mod-inactive-demo-tenant-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-knowledge-daskuechenhaus-docs', 'mod-knowledge-daskuechenhaus-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
@@ -715,10 +723,6 @@ VALUES ('sb-repository-maintainer-knowledge-liquisto-docs', 'mod-knowledge-liqui
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
-VALUES ('sb-repository-maintainer-knowledge-schober-daskuechenhaus-docs', 'mod-knowledge-schober-daskuechenhaus-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
-ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
-
-INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-liquisto-website-read', 'mod-liquisto-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
@@ -728,8 +732,4 @@ ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = exclude
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-repository-readonly', 'mod-repository-readonly', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
-ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
-
-INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
-VALUES ('sb-repository-maintainer-schober-daskuechenhaus-website-read', 'mod-schober-daskuechenhaus-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;

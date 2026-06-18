@@ -73,11 +73,11 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
         "demo-tenant-website-read",
         "inactive-demo-tenant-website-read",
         "liquisto-website-read",
-        "schober-daskuechenhaus-website-read",
+        "daskuechenhaus-website-read",
         "knowledge-demo-tenant-docs",
         "knowledge-inactive-demo-tenant-docs",
         "knowledge-liquisto-docs",
-        "knowledge-schober-daskuechenhaus-docs",
+        "knowledge-daskuechenhaus-docs",
     }
     assert len(seed.module_versions) == len(seed.modules)
     assert len(seed.module_selection_metadata) == len(seed.modules)

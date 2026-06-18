@@ -1,8 +1,8 @@
 {
   "contract_version": "0.1.0",
-  "tenant_id": "schober-daskuechenhaus",
-  "area_id": "schober-daskuechenhaus",
-  "display_name": "das küchenhaus ralph schober",
+  "tenant_id": "daskuechenhaus",
+  "area_id": "daskuechenhaus",
+  "display_name": "das küchenhaus",
   "legal_profile": {
     "legal_name": "das küchenhaus ralph schober GmbH",
     "registered_address": {
@@ -35,10 +35,10 @@
   },
   "hostnames": [
     {
-      "hostname": "schober-daskuechenhaus.de",
+      "hostname": "daskuechenhaus.condata.io",
       "purpose": "primary-ui",
-      "expected_origin": "188.40.16.199",
-      "cloudflare_proxy_expected": false
+      "expected_origin": "178.105.62.169",
+      "cloudflare_proxy_expected": true
     }
   ],
   "status": "setup",
@@ -53,21 +53,21 @@
     "initial_owner": null
   },
   "memory": {
-    "area_brain_id": "brain-area-schober-daskuechenhaus",
+    "area_brain_id": "brain-area-daskuechenhaus",
     "shared_promotion_allowed": false
   },
   "knowledge": {
-    "scope_id": "knowledge-schober-daskuechenhaus",
+    "scope_id": "knowledge-daskuechenhaus",
     "indexes": [
-      "knowledge-schober-daskuechenhaus-docs"
+      "knowledge-daskuechenhaus-docs"
     ]
   },
   "data_sources": [
     {
-      "id": "schober-daskuechenhaus-website",
-      "tenant_id": "schober-daskuechenhaus",
+      "id": "daskuechenhaus-website",
+      "tenant_id": "daskuechenhaus",
       "type": "website",
-      "display_name": "Schober Website",
+      "display_name": "Daskuechenhaus Website",
       "access_modes": [
         "read"
       ],
@@ -77,8 +77,8 @@
   ],
   "role_bundles": [
     {
-      "id": "schober-daskuechenhaus-owner",
-      "tenant_id": "schober-daskuechenhaus",
+      "id": "daskuechenhaus-owner",
+      "tenant_id": "daskuechenhaus",
       "display_name": "Tenant Owner",
       "role_type": "system",
       "assignable_to_users": true,
@@ -88,7 +88,7 @@
       ],
       "data_source_grants": [
         {
-          "data_source_id": "schober-daskuechenhaus-website",
+          "data_source_id": "daskuechenhaus-website",
           "access_modes": [
             "read"
           ]
@@ -124,8 +124,8 @@
       }
     },
     {
-      "id": "schober-daskuechenhaus-researcher",
-      "tenant_id": "schober-daskuechenhaus",
+      "id": "daskuechenhaus-researcher",
+      "tenant_id": "daskuechenhaus",
       "display_name": "Researcher",
       "role_type": "tenant-custom",
       "assignable_to_users": true,
@@ -134,7 +134,7 @@
       ],
       "data_source_grants": [
         {
-          "data_source_id": "schober-daskuechenhaus-website",
+          "data_source_id": "daskuechenhaus-website",
           "access_modes": [
             "read"
           ]
