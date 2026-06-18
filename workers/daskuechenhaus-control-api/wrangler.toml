@@ -9,7 +9,7 @@ database_name = "daskuechenhaus-cases"
 # Run: wrangler d1 create daskuechenhaus-cases
 # Then replace the placeholder below with the returned database_id.
 # Do not merge without a real ID; deploy will fail.
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "f8a68292-d734-4ecf-88c3-67486aebbc32"
 
 [vars]
 TENANT_ID = "daskuechenhaus"
