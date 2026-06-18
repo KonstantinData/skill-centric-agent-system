@@ -45,6 +45,9 @@ def test_tenant_ui_deploy_workflow_is_manual_and_fail_closed() -> None:
     assert "confirm_production:" in workflow
     assert "upstream_auth_evidence_url:" in workflow
     assert "upstream_auth_evidence_url is required when apply_deploy=true" in workflow
+    assert "auth_mode:" in workflow
+    assert "- local-login" in workflow
+    assert "Unsupported auth_mode" in workflow
     assert "confirm_production must be true for production deploys" in workflow
     assert "remote_override_path must stay under /opt" in workflow
 
@@ -66,6 +69,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_STAGING_HETZNER_HOST" in workflow
     assert "SCAS_STAGING_HETZNER_SSH_KEY" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_STAGING_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_STAGING_TENANT_ADMIN_TOKEN" in workflow
     assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
@@ -73,6 +77,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_PROD_HETZNER_HOST" in workflow
     assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_PROD_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_PROD_TENANT_ADMIN_TOKEN" in workflow
     assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
@@ -81,14 +86,16 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "Unsupported owner principal mapping for prod tenant ${TENANT_ID}" in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
+    assert "::add-mask::${UI_LOGIN_USERS_JSON_B64}" in workflow
     assert "Deprecated compatibility input; SCAS-managed deploy does not read it" in workflow
     assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
-    assert "SCAS_UI_AUTH_MODE=required" in workflow
+    assert "SCAS_UI_AUTH_MODE=%s" in workflow
     assert "SCAS_UI_TENANT_ID=%s" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_UI_LOGIN_URL" in workflow
 
 
@@ -117,6 +124,9 @@ def test_streamlit_deployment_runbook_is_linked_from_operational_docs() -> None:
     assert "deploy/streamlit-business-ui/Dockerfile" in runbook
     assert "SCAS_UI_TENANT_ID=liquisto" in runbook
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in runbook
+    assert "SCAS_STAGING_UI_LOGIN_USERS_JSON" in runbook
+    assert "SCAS_PROD_UI_LOGIN_USERS_JSON" in runbook
+    assert "auth_mode=local-login" in runbook
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
     assert "tenant-admin-bootstrap.yml" in runbook

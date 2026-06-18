@@ -370,6 +370,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "confirm_production must be true for production deploys" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_STAGING_UI_LOGIN_USERS_JSON" in workflow
+    assert "SCAS_PROD_UI_LOGIN_USERS_JSON" in workflow
     assert f"SCAS_STAGING_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_STAGING_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
@@ -382,14 +384,17 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert 'SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}' in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "UI_SESSION_CONTEXT_JSON_B64=" in workflow
+    assert "UI_LOGIN_USERS_JSON_B64=" in workflow
     assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
+    assert "::add-mask::${UI_LOGIN_USERS_JSON_B64}" in workflow
     assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
     assert "label=com.docker.compose.service=${SERVICE_NAME}" in workflow
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "legacy compose files and .env are not read" in workflow
     assert "Waiting for Streamlit health check (${attempt}/30)" in workflow
-    assert "SCAS_UI_AUTH_MODE=required" in workflow
+    assert "SCAS_UI_AUTH_MODE=%s" in workflow
+    assert "SCAS_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
 
 

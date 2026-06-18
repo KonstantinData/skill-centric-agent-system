@@ -61,6 +61,30 @@ boundary, set `SCAS_UI_UPSTREAM_AUTH_TRUSTED=true` and provide the same
 service unless the upstream layer blocks unauthenticated requests and injects
 only server-controlled session context.
 
+Local login mode renders an actual username/password form in the Streamlit UI
+and validates passwords against PBKDF2 hashes stored in
+`SCAS_UI_LOGIN_USERS_JSON`:
+
+```powershell
+$env:SCAS_UI_AUTH_MODE="local-login"
+$env:SCAS_UI_TENANT_ID="daskuechenhaus"
+$env:SCAS_UI_LOGIN_USERS_JSON='[{"username":"<login-name>","tenant_id":"daskuechenhaus","principal_id":"<principal-id>","membership_id":"tm-daskuechenhaus-admin-01","role_ids":["daskuechenhaus-admin"],"password_hash":"pbkdf2_sha256$600000$<salt>$<hash>"}]'
+streamlit run apps\streamlit_business_ui\app.py
+```
+
+Generate a password hash locally without storing the password in repository
+files:
+
+```powershell
+@'
+from apps.streamlit_business_ui.app import encode_login_password_hash
+print(encode_login_password_hash("replace-with-one-time-password"))
+'@ | python -
+```
+
+Store `SCAS_UI_LOGIN_USERS_JSON` only in the environment-specific secret store.
+Do not commit login names, password hashes, raw passwords, or provider user IDs.
+
 When `SCAS_UI_AUTH_MODE=required` and no trusted session is available, the UI
 can render a tenant-branded login entry by setting `SCAS_UI_LOGIN_URL` to the
 approved upstream identity URL. Streamlit still does not authenticate users or

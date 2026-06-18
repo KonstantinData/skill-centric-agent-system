@@ -35,6 +35,14 @@ on:
         required: false
         type: string
         default: ""
+      auth_mode:
+        description: UI authentication mode
+        required: true
+        type: choice
+        options:
+          - required
+          - local-login
+        default: required
       apply_deploy:
         description: Apply the deployment on the target host
         required: true
@@ -111,6 +119,7 @@ jobs:
       CONTROL_API_URL: ${{ inputs.control_api_url }}
       UPSTREAM_AUTH_EVIDENCE_URL: ${{ inputs.upstream_auth_evidence_url }}
       SCAS_UI_LOGIN_URL: ${{ inputs.login_url }}
+      SCAS_UI_AUTH_MODE_TARGET: ${{ inputs.auth_mode }}
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       COMPOSE_PROJECT: ${{ inputs.compose_project }}
@@ -129,6 +138,7 @@ jobs:
       SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
       SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
       SCAS_STAGING_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_STAGING_UI_SESSION_CONTEXT_JSON }}
+      SCAS_STAGING_UI_LOGIN_USERS_JSON: ${{ secrets.SCAS_STAGING_UI_LOGIN_USERS_JSON }}
       SCAS_STAGING_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_STAGING_TENANT_ADMIN_TOKEN }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
@@ -137,6 +147,7 @@ jobs:
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
       SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       SCAS_PROD_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_PROD_UI_SESSION_CONTEXT_JSON }}
+      SCAS_PROD_UI_LOGIN_USERS_JSON: ${{ secrets.SCAS_PROD_UI_LOGIN_USERS_JSON }}
       SCAS_PROD_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_PROD_TENANT_ADMIN_TOKEN }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
@@ -153,6 +164,11 @@ jobs:
           case "${TARGET_ENVIRONMENT}" in
             staging|prod) ;;
             *) echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}" ; exit 1 ;;
+          esac
+
+          case "${SCAS_UI_AUTH_MODE_TARGET}" in
+            required|local-login) ;;
+            *) echo "::error::Unsupported auth_mode: ${SCAS_UI_AUTH_MODE_TARGET}" ; exit 1 ;;
           esac
 
           for value_name in TENANT_ID TENANT_HOSTNAME COMPOSE_PROJECT SERVICE_NAME
@@ -206,7 +222,9 @@ jobs:
             fi
           fi
 
-          if [ "${APPLY_DEPLOY}" = "true" ] && [ "${UPSTREAM_AUTH_EVIDENCE_URL}" = "" ]; then
+          if [ "${APPLY_DEPLOY}" = "true" ] \
+            && [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ] \
+            && [ "${UPSTREAM_AUTH_EVIDENCE_URL}" = "" ]; then
             echo "::error::upstream_auth_evidence_url is required when apply_deploy=true."
             exit 1
           fi
@@ -280,6 +298,7 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_STAGING_UI_SESSION_CONTEXT_JSON:-}" ;;
+                  UI_LOGIN_USERS_JSON) value="${SCAS_STAGING_UI_LOGIN_USERS_JSON:-}" ;;
                   OWNER_PRINCIPAL_ID)
                     case "${TENANT_ID}" in
                       liquisto) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
@@ -297,6 +316,7 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_PROD_UI_SESSION_CONTEXT_JSON:-}" ;;
+                  UI_LOGIN_USERS_JSON) value="${SCAS_PROD_UI_LOGIN_USERS_JSON:-}" ;;
                   OWNER_PRINCIPAL_ID)
                     case "${TENANT_ID}" in
                       liquisto) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
@@ -320,6 +340,7 @@ jobs:
           TARGET_HETZNER_SSH_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_SSH_KEY)"
           TARGET_HETZNER_USER="$(resolve_env_secret "${TARGET_ENVIRONMENT}" HETZNER_USER)"
           UI_SESSION_CONTEXT_JSON="$(resolve_env_secret "${TARGET_ENVIRONMENT}" UI_SESSION_CONTEXT_JSON)"
+          UI_LOGIN_USERS_JSON="$(resolve_env_secret "${TARGET_ENVIRONMENT}" UI_LOGIN_USERS_JSON)"
           OWNER_PRINCIPAL_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OWNER_PRINCIPAL_ID)"
           TENANT_ADMIN_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" TENANT_ADMIN_TOKEN)"
 
@@ -328,7 +349,9 @@ jobs:
             UI_SESSION_CONTEXT_JSON=""
           fi
 
-          if [ -z "${UI_SESSION_CONTEXT_JSON}" ] && [ -n "${OWNER_PRINCIPAL_ID}" ]; then
+          if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ] \
+            && [ -z "${UI_SESSION_CONTEXT_JSON}" ] \
+            && [ -n "${OWNER_PRINCIPAL_ID}" ]; then
             if [[ ! "${OWNER_PRINCIPAL_ID}" =~ ^[a-z][a-z0-9-]*$ ]]; then
               echo "::error::Owner principal id must be a non-secret stable id, not an email address."
               exit 1
@@ -356,7 +379,13 @@ jobs:
           fi
 
           missing=0
-          for name in TARGET_HETZNER_HOST TARGET_HETZNER_SSH_KEY TARGET_HETZNER_USER UI_SESSION_CONTEXT_JSON TENANT_ADMIN_TOKEN
+          required_names=(TARGET_HETZNER_HOST TARGET_HETZNER_SSH_KEY TARGET_HETZNER_USER TENANT_ADMIN_TOKEN)
+          if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then
+            required_names+=(UI_SESSION_CONTEXT_JSON)
+          else
+            required_names+=(UI_LOGIN_USERS_JSON)
+          fi
+          for name in "${required_names[@]}"
           do
             if [ -z "${!name:-}" ]; then
               echo "::error::Missing required ${TARGET_ENVIRONMENT} secret: ${name#TARGET_}"
@@ -368,15 +397,19 @@ jobs:
           fi
 
           UI_SESSION_CONTEXT_JSON_B64="$(printf '%s' "${UI_SESSION_CONTEXT_JSON}" | base64 -w0)"
+          UI_LOGIN_USERS_JSON_B64="$(printf '%s' "${UI_LOGIN_USERS_JSON}" | base64 -w0)"
           TENANT_ADMIN_TOKEN_B64="$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
           echo "::add-mask::${UI_SESSION_CONTEXT_JSON}"
           echo "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}"
+          echo "::add-mask::${UI_LOGIN_USERS_JSON}"
+          echo "::add-mask::${UI_LOGIN_USERS_JSON_B64}"
           echo "::add-mask::${TENANT_ADMIN_TOKEN_B64}"
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
             printf 'TARGET_HETZNER_USER=%s\n' "${TARGET_HETZNER_USER}"
             printf 'UI_SESSION_CONTEXT_JSON_B64=%s\n' "${UI_SESSION_CONTEXT_JSON_B64}"
+            printf 'UI_LOGIN_USERS_JSON_B64=%s\n' "${UI_LOGIN_USERS_JSON_B64}"
             printf 'TENANT_ADMIN_TOKEN_B64=%s\n' "${TENANT_ADMIN_TOKEN_B64}"
             echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
             printf '%s\n' "${TARGET_HETZNER_SSH_KEY}"
@@ -425,7 +458,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -458,10 +491,14 @@ jobs:
 
           install -d -m 750 "${remote_dir}"
           {
-            printf 'SCAS_UI_AUTH_MODE=required\n'
+            printf 'SCAS_UI_AUTH_MODE=%s\n' "${SCAS_UI_AUTH_MODE_TARGET}"
             printf 'SCAS_UI_TENANT_ID=%s\n' "${TENANT_ID}"
-            printf 'SCAS_UI_UPSTREAM_AUTH_TRUSTED=true\n'
-            printf 'SCAS_UI_SESSION_CONTEXT_JSON=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON_B64}" | base64 -d)"
+            if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then
+              printf 'SCAS_UI_UPSTREAM_AUTH_TRUSTED=true\n'
+              printf 'SCAS_UI_SESSION_CONTEXT_JSON=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON_B64}" | base64 -d)"
+            else
+              printf 'SCAS_UI_LOGIN_USERS_JSON=%s\n' "$(printf '%s' "${UI_LOGIN_USERS_JSON_B64}" | base64 -d)"
+            fi
             if [ -n "${SCAS_UI_LOGIN_URL}" ]; then
               printf 'SCAS_UI_LOGIN_URL=%s\n' "${SCAS_UI_LOGIN_URL}"
             fi
@@ -594,6 +631,7 @@ jobs:
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
+            printf -- '- Auth mode: `%s`\n' "${SCAS_UI_AUTH_MODE_TARGET}"
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"

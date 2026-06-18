@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-18 18:10 Europe/Berlin
+Last updated: 2026-06-18 18:35 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -69,6 +69,7 @@ SCAS_STAGING_HETZNER_HOST
 SCAS_STAGING_HETZNER_USER
 SCAS_STAGING_HETZNER_SSH_KEY
 SCAS_STAGING_UI_SESSION_CONTEXT_JSON
+SCAS_STAGING_UI_LOGIN_USERS_JSON
 SCAS_STAGING_TENANT_ADMIN_TOKEN
 SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID
 SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
@@ -81,6 +82,7 @@ SCAS_PROD_HETZNER_HOST
 SCAS_PROD_HETZNER_USER
 SCAS_PROD_HETZNER_SSH_KEY
 SCAS_PROD_UI_SESSION_CONTEXT_JSON
+SCAS_PROD_UI_LOGIN_USERS_JSON
 SCAS_PROD_TENANT_ADMIN_TOKEN
 SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID
 SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
@@ -96,6 +98,13 @@ principal secret, for example `SCAS_*_LIQUISTO_OWNER_PRINCIPAL_ID` or
 bootstrapped through `tenant-admin-bootstrap.yml`. If
 `SCAS_*_TENANT_ADMIN_TOKEN` is absent, the workflow falls back to the
 environment-scoped Control API token, which carries the Control API `all` scope.
+
+For Streamlit-local login, set workflow input `auth_mode=local-login` and
+configure `SCAS_*_UI_LOGIN_USERS_JSON` in the selected GitHub environment. The
+secret is a JSON array of login records containing username, tenant ID,
+principal ID, membership ID, role IDs, and a PBKDF2 password hash. It must not
+contain raw passwords. This mode renders an actual Login form in the UI and
+creates the tenant session after password validation.
 
 The optional `login_url` workflow input writes `SCAS_UI_LOGIN_URL` into the
 service environment. This renders a tenant-branded login entry when no trusted
@@ -113,6 +122,7 @@ gh workflow run tenant-ui-deploy.yml \
   -f tenant_id=liquisto \
   -f hostname=liquisto.condata.io \
   -f control_api_url=https://<staging-control-api-url> \
+  -f auth_mode=required \
   -f apply_deploy=false \
   -f confirm_production=false
 ```
@@ -136,6 +146,7 @@ gh workflow run tenant-ui-deploy.yml \
   -f hostname=liquisto.condata.io \
   -f control_api_url=https://<staging-control-api-url> \
   -f upstream_auth_evidence_url=https://github.com/<owner>/<repo>/actions/runs/<run-id> \
+  -f auth_mode=required \
   -f apply_deploy=true \
   -f confirm_production=false
 ```
@@ -149,6 +160,23 @@ wait, and uploads sanitized deployment evidence. The environment file includes
 `SCAS_UI_TENANT_ID=liquisto`, so the deployed hostname cannot switch to another
 tenant through UI state.
 
+For Daskuechenhaus Streamlit-local login staging, use:
+
+```bash
+gh workflow run tenant-ui-deploy.yml \
+  -f target_environment=staging \
+  -f tenant_id=daskuechenhaus \
+  -f hostname=daskuechenhaus.condata.io \
+  -f control_api_url=https://<staging-control-api-url> \
+  -f auth_mode=local-login \
+  -f apply_deploy=true \
+  -f confirm_production=false
+```
+
+This requires `SCAS_STAGING_UI_LOGIN_USERS_JSON` and writes
+`SCAS_UI_AUTH_MODE=local-login` plus `SCAS_UI_LOGIN_USERS_JSON` into the
+root-owned service environment file.
+
 ## Production Deployment
 
 Production deploys require all staging and launch gates to pass first. Then run:
@@ -160,6 +188,7 @@ gh workflow run tenant-ui-deploy.yml \
   -f hostname=liquisto.condata.io \
   -f control_api_url=https://<prod-control-api-url> \
   -f upstream_auth_evidence_url=https://github.com/<owner>/<repo>/actions/runs/<run-id> \
+  -f auth_mode=required \
   -f apply_deploy=true \
   -f confirm_production=true
 ```
