@@ -1,0 +1,25 @@
+{
+  "name": "daskuechenhaus-control-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit",
+    "d1:local": "wrangler d1 execute daskuechenhaus-cases --local --file=schema_v1.sql",
+    "d1:remote": "wrangler d1 execute daskuechenhaus-cases --remote --file=schema_v1.sql",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "hono": "^4.4.0",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260617.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "wrangler": "^4.102.0"
+  }
+}
