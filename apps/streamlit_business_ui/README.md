@@ -23,6 +23,12 @@ inventing local permissions. Repository fixtures are only a local contract
 verification source; production must use the Control API path and authenticated
 tenant session context.
 
+For Daskuechenhaus customer case management, set
+`SCAS_CUSTOMER_CASES_API_URL` to the Daskuechenhaus case Worker base URL and
+`SCAS_CUSTOMER_CASES_API_SECRET` to the matching Worker bearer token. The UI
+uses `GET /tenant-cases` for the case list and `POST /tenant-cases` with
+`X-Actor` derived from the tenant session when creating a new case.
+
 `SCAS_UI_ROLE_IDS` can provide comma-separated tenant role IDs for local contract
 verification. Unknown role IDs are ignored and the UI falls back to the
 tenant's non-admin role set. In authenticated mode, `SCAS_UI_ROLE_IDS` is ignored
@@ -113,6 +119,8 @@ Optional backend-backed mode:
 ```powershell
 $env:SCAS_CONTROL_API_URL="https://<control-api-worker>"
 $env:SCAS_TENANT_ADMIN_TOKEN="<tenant-admin-token>"
+$env:SCAS_CUSTOMER_CASES_API_URL="https://daskuechenhaus-control-api.<account>.workers.dev"
+$env:SCAS_CUSTOMER_CASES_API_SECRET="<customer-cases-api-secret>"
 $env:SCAS_UI_AUTH_MODE="required"
 $env:SCAS_UI_TENANT_ID="liquisto"
 $env:SCAS_UI_SESSION_CONTEXT_JSON='{"tenant_id":"liquisto","principal_id":"<principal-id>","membership_id":"<membership-id>","role_ids":["liquisto-researcher"]}'

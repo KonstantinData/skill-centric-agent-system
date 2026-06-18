@@ -35,6 +35,11 @@ on:
         required: false
         type: string
         default: ""
+      customer_cases_api_url:
+        description: Optional customer cases API base URL for tenant case management
+        required: false
+        type: string
+        default: ""
       auth_mode:
         description: UI authentication mode
         required: true
@@ -119,6 +124,7 @@ jobs:
       CONTROL_API_URL: ${{ inputs.control_api_url }}
       UPSTREAM_AUTH_EVIDENCE_URL: ${{ inputs.upstream_auth_evidence_url }}
       SCAS_UI_LOGIN_URL: ${{ inputs.login_url }}
+      CUSTOMER_CASES_API_URL: ${{ inputs.customer_cases_api_url }}
       SCAS_UI_AUTH_MODE_TARGET: ${{ inputs.auth_mode }}
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
@@ -140,6 +146,7 @@ jobs:
       SCAS_STAGING_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_STAGING_UI_SESSION_CONTEXT_JSON }}
       SCAS_STAGING_UI_LOGIN_USERS_JSON: ${{ secrets.SCAS_STAGING_UI_LOGIN_USERS_JSON }}
       SCAS_STAGING_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_STAGING_TENANT_ADMIN_TOKEN }}
+      SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
@@ -149,6 +156,7 @@ jobs:
       SCAS_PROD_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_PROD_UI_SESSION_CONTEXT_JSON }}
       SCAS_PROD_UI_LOGIN_USERS_JSON: ${{ secrets.SCAS_PROD_UI_LOGIN_USERS_JSON }}
       SCAS_PROD_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_PROD_TENANT_ADMIN_TOKEN }}
+      SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
 
@@ -197,6 +205,16 @@ jobs:
 
           if [[ "${SCAS_UI_LOGIN_URL}" == *"'"* ]]; then
             echo "::error::login_url contains unsupported characters."
+            exit 1
+          fi
+
+          if [ -n "${CUSTOMER_CASES_API_URL}" ] && [[ ! "${CUSTOMER_CASES_API_URL}" =~ ^https:// ]]; then
+            echo "::error::customer_cases_api_url must be an https URL when provided."
+            exit 1
+          fi
+
+          if [[ "${CUSTOMER_CASES_API_URL}" == *"'"* ]]; then
+            echo "::error::customer_cases_api_url contains unsupported characters."
             exit 1
           fi
 
@@ -306,6 +324,12 @@ jobs:
                       *) echo "::error::Unsupported owner principal mapping for staging tenant ${TENANT_ID}" ; exit 1 ;;
                     esac
                     ;;
+                  CUSTOMER_CASES_API_SECRET)
+                    case "${TENANT_ID}" in
+                      daskuechenhaus) value="${SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET:-}" ;;
+                      *) value="" ;;
+                    esac
+                    ;;
                   TENANT_ADMIN_TOKEN) value="${SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
@@ -322,6 +346,12 @@ jobs:
                       liquisto) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
                       daskuechenhaus) value="${SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}" ;;
                       *) echo "::error::Unsupported owner principal mapping for prod tenant ${TENANT_ID}" ; exit 1 ;;
+                    esac
+                    ;;
+                  CUSTOMER_CASES_API_SECRET)
+                    case "${TENANT_ID}" in
+                      daskuechenhaus) value="${SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET:-}" ;;
+                      *) value="" ;;
                     esac
                     ;;
                   TENANT_ADMIN_TOKEN) value="${SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}}" ;;
@@ -343,6 +373,7 @@ jobs:
           UI_LOGIN_USERS_JSON="$(resolve_env_secret "${TARGET_ENVIRONMENT}" UI_LOGIN_USERS_JSON)"
           OWNER_PRINCIPAL_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OWNER_PRINCIPAL_ID)"
           TENANT_ADMIN_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" TENANT_ADMIN_TOKEN)"
+          CUSTOMER_CASES_API_SECRET="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CUSTOMER_CASES_API_SECRET)"
 
           if [ -n "${OWNER_PRINCIPAL_ID_INPUT}" ]; then
             OWNER_PRINCIPAL_ID="${OWNER_PRINCIPAL_ID_INPUT}"
@@ -385,6 +416,13 @@ jobs:
           else
             required_names+=(UI_LOGIN_USERS_JSON)
           fi
+          if [ "${TENANT_ID}" = "daskuechenhaus" ]; then
+            required_names+=(CUSTOMER_CASES_API_SECRET)
+            if [ -z "${CUSTOMER_CASES_API_URL}" ]; then
+              echo "::error::customer_cases_api_url is required for daskuechenhaus deploys."
+              missing=1
+            fi
+          fi
           for name in "${required_names[@]}"
           do
             if [ -z "${!name:-}" ]; then
@@ -399,11 +437,13 @@ jobs:
           UI_SESSION_CONTEXT_JSON_B64="$(printf '%s' "${UI_SESSION_CONTEXT_JSON}" | base64 -w0)"
           UI_LOGIN_USERS_JSON_B64="$(printf '%s' "${UI_LOGIN_USERS_JSON}" | base64 -w0)"
           TENANT_ADMIN_TOKEN_B64="$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
+          CUSTOMER_CASES_API_SECRET_B64="$(printf '%s' "${CUSTOMER_CASES_API_SECRET}" | base64 -w0)"
           echo "::add-mask::${UI_SESSION_CONTEXT_JSON}"
           echo "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}"
           echo "::add-mask::${UI_LOGIN_USERS_JSON}"
           echo "::add-mask::${UI_LOGIN_USERS_JSON_B64}"
           echo "::add-mask::${TENANT_ADMIN_TOKEN_B64}"
+          echo "::add-mask::${CUSTOMER_CASES_API_SECRET_B64}"
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
@@ -411,6 +451,7 @@ jobs:
             printf 'UI_SESSION_CONTEXT_JSON_B64=%s\n' "${UI_SESSION_CONTEXT_JSON_B64}"
             printf 'UI_LOGIN_USERS_JSON_B64=%s\n' "${UI_LOGIN_USERS_JSON_B64}"
             printf 'TENANT_ADMIN_TOKEN_B64=%s\n' "${TENANT_ADMIN_TOKEN_B64}"
+            printf 'CUSTOMER_CASES_API_SECRET_B64=%s\n' "${CUSTOMER_CASES_API_SECRET_B64}"
             echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
             printf '%s\n' "${TARGET_HETZNER_SSH_KEY}"
             echo '__SCAS_HETZNER_SSH_KEY__'
@@ -458,7 +499,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -504,6 +545,10 @@ jobs:
             fi
             printf 'SCAS_CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"
             printf 'SCAS_TENANT_ADMIN_TOKEN=%s\n' "$(printf '%s' "${TENANT_ADMIN_TOKEN_B64}" | base64 -d)"
+            if [ -n "${CUSTOMER_CASES_API_URL}" ]; then
+              printf 'SCAS_CUSTOMER_CASES_API_URL=%s\n' "${CUSTOMER_CASES_API_URL}"
+              printf 'SCAS_CUSTOMER_CASES_API_SECRET=%s\n' "$(printf '%s' "${CUSTOMER_CASES_API_SECRET_B64}" | base64 -d)"
+            fi
           } > "${env_file}"
           chmod 600 "${env_file}"
 
@@ -632,6 +677,7 @@ jobs:
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
             printf -- '- Auth mode: `%s`\n' "${SCAS_UI_AUTH_MODE_TARGET}"
+            printf -- '- Customer cases API: `%s`\n' "$([ -n "${CUSTOMER_CASES_API_URL}" ] && printf configured || printf not-configured)"
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"

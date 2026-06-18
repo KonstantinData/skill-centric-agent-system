@@ -84,7 +84,8 @@
       "assignable_to_users": true,
       "capability_grants": [
         "research",
-        "tenant-admin"
+        "tenant-admin",
+        "customer-cases"
       ],
       "data_source_grants": [
         {
@@ -100,7 +101,8 @@
         ],
         "workflows": [
           "research-intake",
-          "tenant-admin"
+          "tenant-admin",
+          "customer-cases"
         ],
         "tools": [
           "filesystem-list",
@@ -130,13 +132,15 @@
       "role_type": "tenant-custom",
       "assignable_to_users": true,
       "capability_grants": [
-        "tenant-admin"
+        "tenant-admin",
+        "customer-cases"
       ],
       "data_source_grants": [],
       "derived_runtime_modules": {
         "skills": [],
         "workflows": [
-          "tenant-admin"
+          "tenant-admin",
+          "customer-cases"
         ],
         "tools": [],
         "policies": [
@@ -230,6 +234,15 @@
       "border": "#76b726"
     },
     "workspace_areas": [
+      {
+        "id": "customer-cases",
+        "display_name": "Kunden-Vorgänge",
+        "description": "Kundenprozesse vom ersten Kontakt bis Aftersales.",
+        "route": "/customer-cases",
+        "required_capability": "customer-cases",
+        "admin_only": false,
+        "status": "active"
+      },
       {
         "id": "research",
         "display_name": "Research",

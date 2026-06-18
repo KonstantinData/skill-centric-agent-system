@@ -71,6 +71,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_STAGING_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_STAGING_TENANT_ADMIN_TOKEN" in workflow
+    assert "SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET" in workflow
     assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
     assert "SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in workflow
@@ -79,6 +80,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_PROD_TENANT_ADMIN_TOKEN" in workflow
+    assert "SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET" in workflow
     assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
     assert "SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in workflow
@@ -97,6 +99,11 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_UI_LOGIN_URL" in workflow
+    assert "CUSTOMER_CASES_API_URL" in workflow
+    assert "CUSTOMER_CASES_API_SECRET_B64" in workflow
+    assert "SCAS_CUSTOMER_CASES_API_URL" in workflow
+    assert "SCAS_CUSTOMER_CASES_API_SECRET" in workflow
+    assert "customer_cases_api_url is required for daskuechenhaus deploys" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_and_evidence_contract() -> None:
@@ -126,7 +133,9 @@ def test_streamlit_deployment_runbook_is_linked_from_operational_docs() -> None:
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in runbook
     assert "SCAS_STAGING_UI_LOGIN_USERS_JSON" in runbook
     assert "SCAS_PROD_UI_LOGIN_USERS_JSON" in runbook
+    assert "SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET" in runbook
     assert "auth_mode=local-login" in runbook
+    assert "customer_cases_api_url" in runbook
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in runbook
     assert "tenant-admin-bootstrap.yml" in runbook

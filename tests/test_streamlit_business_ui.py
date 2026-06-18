@@ -63,13 +63,18 @@ class FakeColumn:
     def markdown(self, *args: Any, **kwargs: Any) -> None:
         self._streamlit.events.append(("column_markdown", self._index, args, kwargs))
 
+    def metric(self, label: str, value: Any) -> None:
+        self._streamlit.events.append(("column_metric", self._index, label, value))
+
 
 class FakeStreamlit:
     def __init__(self) -> None:
         self.session_state: dict[str, Any] = {}
         self.events: list[tuple[Any, ...]] = []
         self.text_input_values: dict[str, str] = {}
+        self.selectbox_values: dict[str, str] = {}
         self.form_submitted = False
+        self.query_params: dict[str, str] = {}
         self.sidebar = FakeSidebar(self)
 
     def set_page_config(self, **kwargs: Any) -> None:
@@ -98,6 +103,9 @@ class FakeStreamlit:
     def info(self, text: str) -> None:
         self.events.append(("info", text))
 
+    def success(self, text: str) -> None:
+        self.events.append(("success", text))
+
     def error(self, text: str) -> None:
         self.events.append(("error", text))
 
@@ -124,9 +132,19 @@ class FakeStreamlit:
         self.events.append(("columns", spec))
         return [FakeColumn(self, index) for index in range(count)]
 
+    def dataframe(self, *args: Any, **kwargs: Any) -> None:
+        self.events.append(("dataframe", args, kwargs))
+
+    def table(self, value: Any) -> None:
+        self.events.append(("table", value))
+
     def text_input(self, label: str, **kwargs: Any) -> str:
         self.events.append(("text_input", label, kwargs))
         return self.text_input_values.get(label, "")
+
+    def selectbox(self, label: str, *, options: list[str], index: int) -> str:
+        self.events.append(("selectbox", label, tuple(options), index))
+        return self.selectbox_values.get(label, options[index])
 
     def form_submit_button(self, label: str) -> bool:
         self.events.append(("form_submit_button", label))
@@ -299,10 +317,39 @@ def test_business_ui_daskuechenhaus_admin_role_has_no_research_or_filesystem_gra
         ("daskuechenhaus-admin",),
     )
 
-    assert admin_role["capability_grants"] == ["tenant-admin"]
+    assert admin_role["capability_grants"] == ["tenant-admin", "customer-cases"]
     assert admin_role["data_source_grants"] == []
     assert admin_role["derived_runtime_modules"]["tools"] == []
-    assert [area.area_id for area in admin_areas] == ["tenant-admin"]
+    assert [area.area_id for area in admin_areas] == ["customer-cases", "tenant-admin"]
+
+
+def test_business_ui_daskuechenhaus_customer_cases_area_is_role_gated() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    tenant = tenants["daskuechenhaus"]
+
+    owner_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("daskuechenhaus-owner",),
+    )
+    admin_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("daskuechenhaus-admin",),
+    )
+    researcher_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("daskuechenhaus-researcher",),
+    )
+
+    assert [area.area_id for area in owner_areas] == [
+        "customer-cases",
+        "research",
+        "tenant-admin",
+    ]
+    assert [area.area_id for area in admin_areas] == ["customer-cases", "tenant-admin"]
+    assert [area.area_id for area in researcher_areas] == ["research"]
+    assert owner_areas[0].display_name == "Kunden-Vorgänge"
+    assert owner_areas[0].route == "/customer-cases"
+    assert owner_areas[0].required_capability == "customer-cases"
 
 
 def test_business_ui_navigation_is_role_aware() -> None:
@@ -329,6 +376,20 @@ def test_business_ui_navigation_is_role_aware() -> None:
     assert researcher_navigation[0].required_capability is None
     assert owner_navigation[-1].admin_only is True
     assert owner_navigation[-1].required_capability == "tenant-admin"
+
+
+def test_business_ui_navigation_href_uses_query_route() -> None:
+    assert (
+        streamlit_business_ui_app.navigation_href("/customer-cases")
+        == "?route=%2Fcustomer-cases"
+    )
+
+
+def test_business_ui_current_route_rejects_invalid_query_route() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.query_params = {"route": "https://example.invalid"}
+
+    assert streamlit_business_ui_app.current_route_from_query_params(fake_st) == "/"
 
 
 def test_business_ui_launch_smoke_contract_covers_accessibility_labels() -> None:
@@ -548,7 +609,7 @@ def test_business_ui_local_login_builds_tenant_session(monkeypatch) -> None:
     assert session.source == "local-login"
     assert session.principal_id == "daskuechenhaus-admin-principal"
     assert session.role_ids == ("daskuechenhaus-admin",)
-    assert session.capabilities == frozenset({"tenant-admin"})
+    assert session.capabilities == frozenset({"tenant-admin", "customer-cases"})
 
 
 def test_business_ui_local_login_rejects_wrong_password(monkeypatch) -> None:
@@ -720,6 +781,7 @@ def test_business_ui_main_hides_internal_tenant_metadata_after_login(
         item for event in fake_st.events for item in iter_strings(event)
     )
     assert "das küchenhaus" in rendered_text
+    assert "Kunden-Vorgänge" in rendered_text
     for hidden_text in (
         "Tenant Authority",
         "Tenant\n\ndaskuechenhaus",
@@ -903,3 +965,152 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
     assert admin.roles[0]["capabilities"] == "research, tenant-admin"
     assert admin.workflows[0]["mode"] == "Control API"
     assert "Control API audit events" in admin.audit_summary
+
+
+def test_business_ui_customer_cases_api_config_from_env(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "SCAS_CUSTOMER_CASES_API_URL",
+        "https://cases.example.invalid",
+    )
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+
+    config = streamlit_business_ui_app.customer_cases_api_config_from_env()
+
+    assert config == streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+    )
+
+
+def test_business_ui_loads_customer_cases_from_api(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return (
+                b'{"data":[{"case_number":"KH-2026-0001",'
+                b'"customer_full_name":"Maria Hoffmann",'
+                b'"phase_label":"Neuer Kontakt","priority":"normal",'
+                b'"status":"active"}],"count":1}'
+            )
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["authorization"] = request.headers["Authorization"]
+        captured["user_agent"] = request.headers["User-agent"]
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.load_customer_cases_from_api(config)
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases",
+        "authorization": "Bearer token",
+        "user_agent": "scas-streamlit-business-ui/1.0",
+        "timeout": 2.0,
+    }
+    assert payload["count"] == 1
+
+
+def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"data":{"id":"case-001"}}'
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["authorization"] = request.headers["Authorization"]
+        captured["content_type"] = request.headers["Content-type"]
+        captured["actor"] = request.headers["X-actor"]
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.create_customer_case_in_api(
+        config,
+        actor="daskuechenhaus-owner-principal",
+        customer_full_name="Neue Kundin",
+        priority="high",
+    )
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases",
+        "authorization": "Bearer token",
+        "content_type": "application/json",
+        "actor": "daskuechenhaus-owner-principal",
+        "body": {"customer_full_name": "Neue Kundin", "priority": "high"},
+        "timeout": 2.0,
+    }
+    assert payload["data"]["id"] == "case-001"
+
+
+def test_business_ui_main_renders_customer_cases_route(
+    monkeypatch,
+) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.query_params = {"route": "/customer-cases"}
+    monkeypatch.setitem(sys.modules, "streamlit", fake_st)
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+    fake_st.session_state["scas_tenant_session"] = {
+        "principal_id": "daskuechenhaus-owner-principal",
+        "tenant_id": "daskuechenhaus",
+        "membership_id": "tm-daskuechenhaus-owner-01",
+        "role_ids": ["daskuechenhaus-owner"],
+        "capabilities": ["research", "tenant-admin", "customer-cases"],
+        "source": "local-login",
+    }
+
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "load_customer_cases_from_api",
+        lambda _config: {
+            "data": [
+                {
+                    "case_number": "KH-2026-0001",
+                    "customer_full_name": "Maria Hoffmann",
+                    "phase_label": "Neuer Kontakt",
+                    "priority": "normal",
+                    "status": "active",
+                    "assigned_to": None,
+                }
+            ],
+            "count": 1,
+        },
+    )
+
+    streamlit_business_ui_app.main()
+
+    assert ("subheader", "Kunden-Vorgänge") in fake_st.events
+    assert ("column_metric", 0, "Vorgänge", 1) in fake_st.events
+    assert [event for event in fake_st.events if event[0] == "dataframe"]
