@@ -360,7 +360,9 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     workflow = load_tenant_ui_deploy_workflow()
 
     assert "upstream_auth_evidence_url:" in workflow
+    assert "owner_principal_id:" in workflow
     assert "upstream_auth_evidence_url is required when apply_deploy=true" in workflow
+    assert "owner_principal_id must be a non-secret stable id" in workflow
     assert "confirm_production must be true for production deploys" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
@@ -389,6 +391,12 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Rolled back to previous image" in workflow
     assert "_stcore/health" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
+    assert "manage_reverse_proxy:" in workflow
+    assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow
+    assert "nginx -t" in workflow
+    assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
+    assert "systemctl reload nginx" in workflow
+    assert "Reverse proxy:" in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:

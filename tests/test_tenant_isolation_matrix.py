@@ -34,7 +34,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
     expected = {
         "demo-tenant.example.invalid": "demo-tenant",
         "liquisto.condata.io": "liquisto",
-        "schober-daskuechenhaus.de": "schober-daskuechenhaus",
+        "daskuechenhaus.condata.io": "daskuechenhaus",
     }
     for hostname, tenant_id in expected.items():
         authority = resolver.resolve(hostname)
@@ -77,13 +77,13 @@ def test_seeded_tenant_scopes_are_disjoint() -> None:
 
     assert "liquisto-website-read" in module_names
     assert "demo-tenant-website-read" in module_names
-    assert "schober-daskuechenhaus-website-read" in module_names
+    assert "daskuechenhaus-website-read" in module_names
     assert "knowledge-liquisto-docs" in module_names
     assert "knowledge-demo-tenant-docs" in module_names
-    assert "knowledge-schober-daskuechenhaus-docs" in module_names
+    assert "knowledge-daskuechenhaus-docs" in module_names
     assert "liquisto-website-read" != "demo-tenant-website-read"
-    assert "liquisto-website-read" != "schober-daskuechenhaus-website-read"
-    assert "demo-tenant-website-read" != "schober-daskuechenhaus-website-read"
+    assert "liquisto-website-read" != "daskuechenhaus-website-read"
+    assert "demo-tenant-website-read" != "daskuechenhaus-website-read"
     assert "knowledge-liquisto-docs" != "knowledge-demo-tenant-docs"
-    assert "knowledge-liquisto-docs" != "knowledge-schober-daskuechenhaus-docs"
-    assert "knowledge-demo-tenant-docs" != "knowledge-schober-daskuechenhaus-docs"
+    assert "knowledge-liquisto-docs" != "knowledge-daskuechenhaus-docs"
+    assert "knowledge-demo-tenant-docs" != "knowledge-daskuechenhaus-docs"

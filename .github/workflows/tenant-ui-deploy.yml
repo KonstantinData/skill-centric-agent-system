@@ -65,6 +65,26 @@ on:
         required: true
         type: string
         default: "8501"
+      owner_principal_id:
+        description: Non-secret owner principal id used to build tenant-local session context
+        required: false
+        type: string
+        default: ""
+      manage_reverse_proxy:
+        description: Write and enable a tenant-specific Nginx server block
+        required: true
+        type: boolean
+        default: false
+      reverse_proxy_config_path:
+        description: Remote Nginx sites-available path managed by SCAS
+        required: true
+        type: string
+        default: /etc/nginx/sites-available/liquisto
+      reverse_proxy_cert_hostname:
+        description: Existing origin certificate hostname used by the Nginx server block
+        required: true
+        type: string
+        default: liquisto.condata.io
 
 permissions:
   contents: read
@@ -91,6 +111,10 @@ jobs:
       REMOTE_OVERRIDE_PATH: ${{ inputs.remote_override_path }}
       SERVICE_NAME: ${{ inputs.service_name }}
       LOCAL_HEALTH_PORT: ${{ inputs.local_health_port }}
+      OWNER_PRINCIPAL_ID_INPUT: ${{ inputs.owner_principal_id }}
+      MANAGE_REVERSE_PROXY: ${{ inputs.manage_reverse_proxy }}
+      REVERSE_PROXY_CONFIG_PATH: ${{ inputs.reverse_proxy_config_path }}
+      REVERSE_PROXY_CERT_HOSTNAME: ${{ inputs.reverse_proxy_cert_hostname }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -145,6 +169,23 @@ jobs:
           if [[ "${REMOTE_OVERRIDE_PATH}" != /opt/* ]]; then
             echo "::error::remote_override_path must stay under /opt."
             exit 1
+          fi
+
+          if [ -n "${OWNER_PRINCIPAL_ID_INPUT}" ] \
+            && [[ ! "${OWNER_PRINCIPAL_ID_INPUT}" =~ ^[a-z][a-z0-9-]*$ ]]; then
+            echo "::error::owner_principal_id must be a non-secret stable id, not an email address."
+            exit 1
+          fi
+
+          if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
+            if [[ "${REVERSE_PROXY_CONFIG_PATH}" != /etc/nginx/sites-available/* ]]; then
+              echo "::error::reverse_proxy_config_path must stay under /etc/nginx/sites-available."
+              exit 1
+            fi
+            if [[ ! "${REVERSE_PROXY_CERT_HOSTNAME}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+              echo "::error::reverse_proxy_cert_hostname contains unsupported characters."
+              exit 1
+            fi
           fi
 
           if [ "${APPLY_DEPLOY}" = "true" ] && [ "${UPSTREAM_AUTH_EVIDENCE_URL}" = "" ]; then
@@ -252,6 +293,11 @@ jobs:
           OWNER_PRINCIPAL_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OWNER_PRINCIPAL_ID)"
           TENANT_ADMIN_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" TENANT_ADMIN_TOKEN)"
 
+          if [ -n "${OWNER_PRINCIPAL_ID_INPUT}" ]; then
+            OWNER_PRINCIPAL_ID="${OWNER_PRINCIPAL_ID_INPUT}"
+            UI_SESSION_CONTEXT_JSON=""
+          fi
+
           if [ -z "${UI_SESSION_CONTEXT_JSON}" ] && [ -n "${OWNER_PRINCIPAL_ID}" ]; then
             if [[ ! "${OWNER_PRINCIPAL_ID}" =~ ^[a-z][a-z0-9-]*$ ]]; then
               echo "::error::Owner principal id must be a non-secret stable id, not an email address."
@@ -349,7 +395,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -436,6 +482,77 @@ jobs:
             exit 1
           fi
 
+          reverse_proxy_status="not managed"
+          if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
+            nginx_site="${REVERSE_PROXY_CONFIG_PATH}"
+            nginx_enabled="/etc/nginx/sites-enabled/$(basename "${nginx_site}")"
+            cert_dir="/etc/letsencrypt/live/${REVERSE_PROXY_CERT_HOSTNAME}"
+            nginx_candidate="${evidence_dir}/nginx-site.conf"
+            nginx_backup="${evidence_dir}/nginx-site.previous"
+
+            if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
+              echo "Origin certificate files are missing for ${REVERSE_PROXY_CERT_HOSTNAME}." >&2
+              exit 1
+            fi
+
+            cat > "${nginx_candidate}" <<EOF
+          server {
+              listen 80;
+              server_name ${TENANT_HOSTNAME};
+
+              return 301 https://\$host\$request_uri;
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name ${TENANT_HOSTNAME};
+
+              ssl_certificate ${cert_dir}/fullchain.pem;
+              ssl_certificate_key ${cert_dir}/privkey.pem;
+
+              location / {
+                  proxy_pass http://127.0.0.1:${LOCAL_HEALTH_PORT};
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_read_timeout 86400;
+              }
+          }
+          EOF
+
+            if [ -f "${nginx_site}" ]; then
+              sudo_if_needed cp "${nginx_site}" "${nginx_backup}"
+            fi
+
+            sudo_if_needed install -m 644 "${nginx_candidate}" "${nginx_site}"
+            sudo_if_needed ln -sfn "${nginx_site}" "${nginx_enabled}"
+
+            if ! sudo_if_needed nginx -t; then
+              if [ -f "${nginx_backup}" ]; then
+                sudo_if_needed install -m 644 "${nginx_backup}" "${nginx_site}"
+              else
+                sudo_if_needed rm -f "${nginx_site}"
+                if [ -L "${nginx_enabled}" ]; then
+                  sudo_if_needed rm -f "${nginx_enabled}"
+                fi
+              fi
+              sudo_if_needed nginx -t || true
+              echo "Nginx configuration failed validation; restored previous state." >&2
+              exit 1
+            fi
+
+            sudo_if_needed systemctl reload nginx
+            curl -kfsS \
+              --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
+              --max-time 10 \
+              "https://${TENANT_HOSTNAME}/_stcore/health" >/dev/null
+            reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
+          fi
+
           {
             printf '# Tenant UI Deployment Evidence\n\n'
             printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
@@ -446,6 +563,7 @@ jobs:
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
+            printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"

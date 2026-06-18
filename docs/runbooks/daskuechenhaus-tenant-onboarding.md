@@ -1,17 +1,17 @@
-# Schober Tenant Onboarding
+# Daskuechenhaus Tenant Onboarding
 
 ## Tenant Identity
 
-- Tenant ID: `schober-daskuechenhaus`
-- Area ID: `schober-daskuechenhaus`
-- Display name: `das küchenhaus ralph schober`
+- Tenant ID: `daskuechenhaus`
+- Area ID: `daskuechenhaus`
+- Display name: `das küchenhaus`
 - Legal name: `das küchenhaus ralph schober GmbH`
 - Registry fixture:
-  `examples/tenants/schober-daskuechenhaus.json`
+  `examples/tenants/daskuechenhaus.json`
 - Status: `setup`
 
-The tenant is not ready for production traffic until DNS/routing, admin
-bootstrap, and isolation evidence have passed.
+The tenant is not ready for production traffic until isolated UI routing,
+admin bootstrap, and isolation evidence have passed.
 
 ## Public Source Verification
 
@@ -34,12 +34,12 @@ Verified public details:
 
 The initial tenant registry entry is deliberately minimal:
 
-- website data source: `schober-daskuechenhaus-website`
+- website data source: `daskuechenhaus-website`
 - access mode: `read`
 - data sensitivity: `public`
 - default locale: `de-DE`
-- tenant memory: `brain-area-schober-daskuechenhaus`
-- tenant knowledge scope: `knowledge-schober-daskuechenhaus`
+- tenant memory: `brain-area-daskuechenhaus`
+- tenant knowledge scope: `knowledge-daskuechenhaus`
 - shared memory promotion: disabled
 
 No cross-tenant or cross-area access is configured.
@@ -51,8 +51,8 @@ user identity and owner email are approved.
 
 Default roles are present but not assigned:
 
-- `schober-daskuechenhaus-owner`
-- `schober-daskuechenhaus-researcher`
+- `daskuechenhaus-owner`
+- `daskuechenhaus-researcher`
 
 Before activation, bootstrap must define:
 
@@ -66,28 +66,38 @@ knowledge must not grant access.
 
 ## DNS And Routing Evidence
 
-Public DNS was observed on 2026-06-18:
+Public DNS and Cloudflare evidence were observed on 2026-06-18:
 
 ```powershell
-Resolve-DnsName schober-daskuechenhaus.de -Type A
-Resolve-DnsName www.schober-daskuechenhaus.de -Type A
+Resolve-DnsName daskuechenhaus.condata.io -Type A
+Resolve-DnsName daskuechenhaus.condata.io -Type A -Server 1.1.1.1
+Resolve-DnsName daskuechenhaus.condata.io -Type A -Server 8.8.8.8
 ```
 
 Observed A records:
 
 | Hostname | TTL | A record |
 | --- | ---: | --- |
-| `schober-daskuechenhaus.de` | 1800 | `188.40.16.199` |
-| `www.schober-daskuechenhaus.de` | 1620 | `188.40.16.199` |
+| `daskuechenhaus.condata.io` | 300 | `104.21.36.65` |
+| `daskuechenhaus.condata.io` | 300 | `172.67.186.195` |
 
-The tenant fixture records `schober-daskuechenhaus.de` as the setup
-`primary-ui` hostname with `expected_origin = "188.40.16.199"` and
-`cloudflare_proxy_expected = false`.
+The tenant fixture records `daskuechenhaus.condata.io` as the setup
+`primary-ui` hostname with `expected_origin = "178.105.62.169"` and
+`cloudflare_proxy_expected = true`.
 
-This records the current public website routing. It does not prove that the
-hostname is routed to SCAS UI infrastructure. Before activation, decide whether
-SCAS should use the existing customer domain, a delegated subdomain, or a
-separate `condata.io` tenant hostname, then re-run DNS/routing evidence.
+Authoritative Cloudflare evidence passed with `require_worker_route=false`:
+
+| Environment | GitHub run | Result | Worker route required |
+| --- | --- | --- | --- |
+| staging | `27763474317` | passed | `false` |
+| prod | `27763474282` | passed | `false` |
+
+Runtime inventory run `27763766446` showed a blocking pre-fix condition:
+`daskuechenhaus.condata.io` fell through to an existing Streamlit runtime
+because no dedicated Daskuechenhaus Nginx server block or UI binding was
+present. Before activation, the tenant must run through a dedicated
+Daskuechenhaus UI binding or equivalent server-side hostname resolution that
+fails closed for mismatched hosts.
 
 ## Isolation Evidence
 
@@ -100,11 +110,11 @@ python -m pytest tests/test_contract_schema_examples.py tests/test_tenant_hostna
 The checks verify that:
 
 - the tenant fixture matches the tenant registry schema,
-- `schober-daskuechenhaus.de` resolves to exactly one setup tenant authority,
+- `daskuechenhaus.condata.io` resolves to exactly one setup tenant authority,
 - seeded data-source and role grants do not cross tenant boundaries,
-- Schober website and knowledge scopes are distinct from existing and demo
+- Daskuechenhaus website and knowledge scopes are distinct from existing and demo
   tenant scopes,
-- the tenant UI shell loads Schober tenant metadata from the registry.
+- the tenant UI shell loads Daskuechenhaus tenant metadata from the registry.
 
 This is static setup evidence only. Runtime readiness still requires live
 tenant path execution and an isolation audit before marking the tenant active.
@@ -114,7 +124,7 @@ tenant path execution and an isolation audit before marking the tenant active.
 The following items must be completed before changing the tenant status from
 `setup` to `active`:
 
-1. DNS/routing decision and evidence for the chosen SCAS tenant hostname.
+1. Isolated UI routing for `daskuechenhaus.condata.io`.
 2. Initial tenant owner bootstrap with tenant-local membership and audit event.
 3. Tenant isolation audit across UI, Control API, Composer, runtime profile,
    data-source grants, knowledge retrieval, memory scope, and admin routes.
