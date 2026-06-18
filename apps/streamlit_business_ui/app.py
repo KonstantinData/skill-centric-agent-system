@@ -132,14 +132,6 @@ class LocalLoginUser:
     password_hash: str
 
 
-@dataclass(frozen=True)
-class TenantDashboardCard:
-    title: str
-    value: str
-    detail: str
-    state: str
-
-
 class TenantSessionError(ValueError):
     """Raised when the UI cannot establish tenant session authority."""
 
@@ -299,6 +291,15 @@ def render_tenant_theme_css(theme: TenantTheme) -> str:
             border-right: 4px solid var(--tenant-accent);
         }}
         [data-testid="stSidebar"] * {{ color: var(--tenant-text) !important; }}
+        [data-testid="stMainMenuButton"] {{
+            color: var(--tenant-text) !important;
+            background: var(--tenant-surface) !important;
+            border: 1px solid var(--tenant-border) !important;
+            border-radius: 8px !important;
+        }}
+        [data-testid="stMainMenuButton"]:hover {{
+            color: var(--tenant-accent) !important;
+        }}
         .area-tile {{
             min-height: 154px;
             border-radius: 8px;
@@ -322,45 +323,6 @@ def render_tenant_theme_css(theme: TenantTheme) -> str:
             color: var(--tenant-accent);
             font-size: 0.78rem;
             font-weight: 700;
-        }}
-        .dashboard-card {{
-            min-height: 132px;
-            border-radius: 8px;
-            background: var(--tenant-surface);
-            border: 1px solid var(--tenant-border);
-            padding: 14px 16px;
-        }}
-        .dashboard-card-title {{
-            color: var(--tenant-secondary-text);
-            font-size: 0.78rem;
-            font-weight: 800;
-            text-transform: uppercase;
-        }}
-        .dashboard-card-value {{
-            color: var(--tenant-text);
-            font-size: 1.35rem;
-            font-weight: 800;
-            margin-top: 8px;
-            overflow-wrap: anywhere;
-        }}
-        .dashboard-card-detail {{
-            color: var(--tenant-secondary-text);
-            font-size: 0.86rem;
-            margin-top: 8px;
-        }}
-        .dashboard-card-state {{
-            color: var(--tenant-accent);
-            font-size: 0.76rem;
-            font-weight: 800;
-            margin-top: 10px;
-            text-transform: uppercase;
-        }}
-        .tenant-kicker {{
-            color: var(--tenant-accent);
-            font-size: 0.82rem;
-            letter-spacing: 0;
-            text-transform: uppercase;
-            font-weight: 800;
         }}
         .tenant-subtitle {{
             color: var(--tenant-secondary-text);
@@ -844,55 +806,6 @@ def build_tenant_navigation_items(
     return tuple(navigation_items)
 
 
-def build_tenant_dashboard_cards(
-    shell: TenantShell,
-    admin: TenantAdminSection,
-    workspace_areas: Iterable[TenantWorkspaceArea],
-    session: TenantSession,
-) -> tuple[TenantDashboardCard, ...]:
-    workspace_area_list = tuple(workspace_areas)
-    tenant_match = shell.tenant_id == session.tenant_id
-    visible_routes = tuple(area.route for area in workspace_area_list)
-    visible_route_detail = ", ".join(visible_routes) if visible_routes else "Keine freigegeben"
-    admin_enabled = "tenant-admin" in session.capabilities
-    admin_route_detail = (
-        ", ".join(shell.admin_routes)
-        if admin_enabled and shell.admin_routes
-        else "Für aktuelle Rolle nicht freigeschaltet"
-    )
-    data_source_detail = ", ".join(shell.data_sources) if shell.data_sources else "Keine"
-    return (
-        TenantDashboardCard(
-            title="Tenant Authority",
-            value=shell.hostname,
-            detail=(
-                f"{shell.tenant_id} via {session.source}"
-                if tenant_match
-                else "Session-Tenant passt nicht zum Shell-Tenant"
-            ),
-            state="ready" if tenant_match else "blocked",
-        ),
-        TenantDashboardCard(
-            title="Arbeitsbereiche",
-            value=str(len(workspace_area_list)),
-            detail=visible_route_detail,
-            state="ready" if workspace_area_list else "empty",
-        ),
-        TenantDashboardCard(
-            title="Datenquellen",
-            value=str(len(shell.data_sources)),
-            detail=data_source_detail,
-            state="ready" if shell.data_sources else "empty",
-        ),
-        TenantDashboardCard(
-            title="Admin Governance",
-            value="Aktiv" if admin_enabled else "Gesperrt",
-            detail=admin_route_detail if admin.workflows else "Keine Admin-Workflows",
-            state="ready" if admin_enabled else "restricted",
-        ),
-    )
-
-
 def tenant_admin_api_config_from_env() -> TenantAdminApiConfig | None:
     base_url = os.environ.get("SCAS_CONTROL_API_URL", "").strip()
     token = os.environ.get("SCAS_TENANT_ADMIN_TOKEN", "").strip()
@@ -1019,31 +932,16 @@ def main() -> None:
         tenant_id = runtime_tenant_id
 
     selected_tenant = tenants[tenant_id]
-    available_roles = {
-        str(role["display_name"]): str(role["id"])
-        for role in selected_tenant.get("role_bundles", [])
-    }
     tenant_session = render_session_gate(st, selected_tenant)
     if runtime_tenant_id is not None:
         st.sidebar.title("Steuerung")
-        st.sidebar.caption("Tenant")
-        st.sidebar.write(tenant_id)
     selected_role_ids = tenant_session.role_ids
-    selected_role_labels = tuple(
-        label for label, role_id in available_roles.items() if role_id in selected_role_ids
-    )
-    st.sidebar.caption("Session")
-    st.sidebar.write(tenant_session.principal_id)
     if tenant_session.source != "local-fixture" and st.sidebar.button("Logout"):
         st.session_state.pop("scas_tenant_session", None)
         st.rerun()
-    st.sidebar.caption("Aktive Rollen")
-    st.sidebar.write(", ".join(selected_role_labels) or "Keine")
 
     tenant_shell = build_tenant_shell(tenants[tenant_id])
-    tenant_admin = build_tenant_admin_section(tenants[tenant_id])
     workspace_areas = build_workspace_areas(selected_tenant, selected_role_ids)
-    granted_capabilities = tenant_session.capabilities
     api_config = tenant_admin_api_config_from_env()
     if api_config is not None:
         try:
@@ -1053,26 +951,17 @@ def main() -> None:
                 tenant_shell.hostname,
             )
             tenant_shell = build_tenant_shell_from_admin_context(admin_context)
-            tenant_admin = build_tenant_admin_section_from_context(admin_context)
         except Exception as error:  # pragma: no cover - defensive Streamlit runtime fallback.
             st.warning(f"Tenant Admin API nicht erreichbar: {error}")
 
     branding = build_tenant_branding(selected_tenant, tenant_shell)
     st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
     navigation_items = build_tenant_navigation_items(workspace_areas)
-    dashboard_cards = build_tenant_dashboard_cards(
-        tenant_shell,
-        tenant_admin,
-        workspace_areas,
-        tenant_session,
-    )
 
     st.sidebar.caption("Navigation")
     for item in navigation_items:
-        admin_marker = " · Admin" if item.admin_only else ""
         st.sidebar.markdown(
-            f"[{escape(item.label)}]({escape(item.route)})"
-            f"<br><small>{escape(item.route)}{admin_marker}</small>",
+            f"[{escape(item.label)}]({escape(item.route)})",
             unsafe_allow_html=True,
         )
 
@@ -1081,46 +970,11 @@ def main() -> None:
         if logo_path.exists():
             st.image(str(logo_path), width=160)
 
-    st.markdown(
-        f"<div class='tenant-kicker'>{escape(branding.landing_type)}</div>",
-        unsafe_allow_html=True,
-    )
     st.title(branding.display_name)
     st.markdown(
         f"<div class='tenant-subtitle'>{escape(branding.legal_name)}</div>",
         unsafe_allow_html=True,
     )
-    shell_cols = st.columns([1.1, 1.1, 1.1, 1.6])
-    shell_cols[0].metric("Tenant", tenant_shell.tenant_id)
-    shell_cols[1].metric("Status", tenant_shell.status)
-    shell_cols[2].caption("Hostname")
-    shell_cols[2].write(tenant_shell.hostname)
-    shell_cols[3].info(tenant_shell.isolation_summary)
-
-    admin_cols = st.columns(3)
-    admin_cols[0].subheader("Admin")
-    admin_cols[0].write(", ".join(tenant_shell.admin_routes))
-    admin_cols[1].subheader("Rollen")
-    admin_cols[1].write(", ".join(tenant_shell.role_names))
-    admin_cols[2].subheader("Datenquellen")
-    admin_cols[2].write(", ".join(tenant_shell.data_sources) or "Keine")
-
-    st.divider()
-    st.subheader("Launch Dashboard")
-    dashboard_columns = st.columns(min(4, len(dashboard_cards)))
-    for index, card in enumerate(dashboard_cards):
-        with dashboard_columns[index % len(dashboard_columns)]:
-            st.markdown(
-                f"""
-                <div class="dashboard-card">
-                    <div class="dashboard-card-title">{escape(card.title)}</div>
-                    <div class="dashboard-card-value">{escape(card.value)}</div>
-                    <div class="dashboard-card-detail">{escape(card.detail)}</div>
-                    <div class="dashboard-card-state">{escape(card.state)}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     st.divider()
     st.subheader("Freigeschaltete Bereiche")
@@ -1134,31 +988,11 @@ def main() -> None:
                     f"""
                     <div class="area-tile">
                         <div class="area-title">{escape(area.display_name)}</div>
-                        <div class="area-description">{escape(area.description)}</div>
-                        <div class="area-meta">
-                            Route: {escape(area.route)} |
-                            Capability: {escape(area.required_capability)}
-                        </div>
+                        <div class="area-meta">Freigeschaltet</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-
-    if "tenant-admin" in granted_capabilities:
-        users_tab, roles_tab, settings_tab, audit_tab = st.tabs(
-            ["Admin Benutzer", "Admin Rollen", "Admin Einstellungen", "Audit"]
-        )
-        with users_tab:
-            st.table(list(tenant_admin.users))
-        with roles_tab:
-            st.table(list(tenant_admin.roles))
-        with settings_tab:
-            st.table(list(tenant_admin.workflows))
-            st.json(tenant_admin.settings)
-        with audit_tab:
-            st.info(tenant_admin.audit_summary)
-    else:
-        st.info("Admin-Bereiche sind für die aktuelle Rolle nicht freigeschaltet.")
 
 
 if __name__ == "__main__":

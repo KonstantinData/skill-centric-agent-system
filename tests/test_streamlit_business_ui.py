@@ -49,6 +49,21 @@ class FakeSidebar:
         self._streamlit.events.append(("sidebar_markdown", args, kwargs))
 
 
+class FakeColumn:
+    def __init__(self, streamlit: FakeStreamlit, index: int) -> None:
+        self._streamlit = streamlit
+        self._index = index
+
+    def __enter__(self) -> FakeColumn:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def markdown(self, *args: Any, **kwargs: Any) -> None:
+        self._streamlit.events.append(("column_markdown", self._index, args, kwargs))
+
+
 class FakeStreamlit:
     def __init__(self) -> None:
         self.session_state: dict[str, Any] = {}
@@ -88,6 +103,23 @@ class FakeStreamlit:
 
     def link_button(self, label: str, url: str) -> None:
         self.events.append(("link_button", label, url))
+
+    def image(self, *args: Any, **kwargs: Any) -> None:
+        self.events.append(("image", args, kwargs))
+
+    def title(self, text: str) -> None:
+        self.events.append(("title", text))
+
+    def divider(self) -> None:
+        self.events.append(("divider",))
+
+    def subheader(self, text: str) -> None:
+        self.events.append(("subheader", text))
+
+    def columns(self, spec: int | list[float]) -> list[FakeColumn]:
+        count = spec if isinstance(spec, int) else len(spec)
+        self.events.append(("columns", spec))
+        return [FakeColumn(self, index) for index in range(count)]
 
     def text_input(self, label: str, **kwargs: Any) -> str:
         self.events.append(("text_input", label, kwargs))
@@ -191,6 +223,9 @@ def test_business_ui_renders_tenant_theme_css_from_branding_metadata() -> None:
     assert "--tenant-accent: #76b726;" in css
     assert "letter-spacing: 0;" in css
     assert "border-right: 4px solid var(--tenant-accent);" in css
+    assert '[data-testid="stMainMenuButton"]' in css
+    assert "color: var(--tenant-text) !important;" in css
+    assert "background: var(--tenant-surface) !important;" in css
 
 
 def test_business_ui_builds_read_only_tenant_admin_sections() -> None:
@@ -291,80 +326,6 @@ def test_business_ui_navigation_is_role_aware() -> None:
     assert researcher_navigation[0].required_capability is None
     assert owner_navigation[-1].admin_only is True
     assert owner_navigation[-1].required_capability == "tenant-admin"
-
-
-def test_business_ui_dashboard_cards_are_tenant_scoped_and_role_aware() -> None:
-    tenants = streamlit_business_ui_app.load_tenant_registry()
-    tenant = tenants["liquisto"]
-    shell = streamlit_business_ui_app.build_tenant_shell(tenant)
-    admin = streamlit_business_ui_app.build_tenant_admin_section(tenant)
-    researcher_session = streamlit_business_ui_app.TenantSession(
-        principal_id="researcher",
-        tenant_id="liquisto",
-        membership_id="membership",
-        role_ids=("liquisto-researcher",),
-        capabilities=frozenset({"research"}),
-        source="trusted-upstream",
-    )
-    owner_session = streamlit_business_ui_app.TenantSession(
-        principal_id="owner",
-        tenant_id="liquisto",
-        membership_id="membership",
-        role_ids=("liquisto-owner",),
-        capabilities=frozenset({"research", "tenant-admin"}),
-        source="trusted-upstream",
-    )
-
-    researcher_cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
-        shell,
-        admin,
-        streamlit_business_ui_app.build_workspace_areas(
-            tenant,
-            researcher_session.role_ids,
-        ),
-        researcher_session,
-    )
-    owner_cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
-        shell,
-        admin,
-        streamlit_business_ui_app.build_workspace_areas(tenant, owner_session.role_ids),
-        owner_session,
-    )
-
-    assert researcher_cards[0].value == "liquisto.condata.io"
-    assert researcher_cards[0].detail == "liquisto via trusted-upstream"
-    assert researcher_cards[1].value == "1"
-    assert researcher_cards[3].value == "Gesperrt"
-    assert researcher_cards[3].state == "restricted"
-    assert owner_cards[1].value == "2"
-    assert owner_cards[3].value == "Aktiv"
-    assert "/admin/users" in owner_cards[3].detail
-
-
-def test_business_ui_dashboard_reports_empty_state_for_unmatched_role() -> None:
-    tenants = streamlit_business_ui_app.load_tenant_registry()
-    tenant = tenants["liquisto"]
-    shell = streamlit_business_ui_app.build_tenant_shell(tenant)
-    admin = streamlit_business_ui_app.build_tenant_admin_section(tenant)
-    session = streamlit_business_ui_app.TenantSession(
-        principal_id="unknown",
-        tenant_id="liquisto",
-        membership_id="membership",
-        role_ids=("unknown-role",),
-        capabilities=frozenset(),
-        source="local-fixture",
-    )
-
-    cards = streamlit_business_ui_app.build_tenant_dashboard_cards(
-        shell,
-        admin,
-        streamlit_business_ui_app.build_workspace_areas(tenant, session.role_ids),
-        session,
-    )
-
-    assert cards[1].value == "0"
-    assert cards[1].detail == "Keine freigegeben"
-    assert cards[1].state == "empty"
 
 
 def test_business_ui_launch_smoke_contract_covers_accessibility_labels() -> None:
@@ -719,6 +680,61 @@ def test_business_ui_local_login_main_renders_standalone_page_before_sidebar(
 
     assert ("form", "scas-local-login") in fake_st.events
     assert not [event for event in fake_st.events if event[0].startswith("sidebar_")]
+
+
+def test_business_ui_main_hides_internal_tenant_metadata_after_login(
+    monkeypatch,
+) -> None:
+    fake_st = FakeStreamlit()
+    monkeypatch.setitem(sys.modules, "streamlit", fake_st)
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
+    fake_st.session_state["scas_tenant_session"] = {
+        "principal_id": "daskuechenhaus-owner-principal",
+        "tenant_id": "daskuechenhaus",
+        "membership_id": "tm-daskuechenhaus-owner-01",
+        "role_ids": ["daskuechenhaus-owner"],
+        "capabilities": ["research", "tenant-admin"],
+        "source": "local-login",
+    }
+
+    streamlit_business_ui_app.main()
+
+    def iter_strings(value: Any) -> list[str]:
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, dict):
+            return [
+                item
+                for nested in value.items()
+                for item in iter_strings(nested)
+            ]
+        if isinstance(value, (list, tuple)):
+            return [item for nested in value for item in iter_strings(nested)]
+        return []
+
+    rendered_text = "\n".join(
+        item for event in fake_st.events for item in iter_strings(event)
+    )
+    assert "das küchenhaus" in rendered_text
+    for hidden_text in (
+        "Tenant Authority",
+        "Tenant\n\ndaskuechenhaus",
+        "Status\n\nsetup",
+        "Hostname",
+        "daskuechenhaus.condata.io",
+        "Server-seitige Hostname-Autorität",
+        "/admin/users",
+        "/admin/roles",
+        "/admin/settings",
+        "Tenant Owner",
+        "Tenant Admin",
+        "Researcher",
+        "Daskuechenhaus Website",
+        "Capability:",
+        "Route:",
+    ):
+        assert hidden_text not in rendered_text
 
 
 def test_business_ui_local_login_renders_password_reset_fallback(monkeypatch) -> None:
