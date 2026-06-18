@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from html import escape
@@ -11,6 +12,27 @@ from urllib import request as urlrequest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
+HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+
+@dataclass(frozen=True)
+class TenantTheme:
+    background: str
+    surface: str
+    text: str
+    secondary_text: str
+    accent: str
+    border: str
+
+
+DEFAULT_TENANT_THEME = TenantTheme(
+    background="#f6f8fb",
+    surface="#ffffff",
+    text="#0b1b35",
+    secondary_text="#415572",
+    accent="#2f654d",
+    border="#dbe4f0",
+)
 
 
 @dataclass(frozen=True)
@@ -36,6 +58,7 @@ class TenantBranding:
     logo_path: str | None
     landing_type: str
     area_presentation: str
+    theme: TenantTheme
 
 
 @dataclass(frozen=True)
@@ -173,7 +196,132 @@ def build_tenant_branding(
         logo_path=tenant_shell.logo_path,
         landing_type=str(landing.get("type", "tenant-operations-dashboard")),
         area_presentation=str(landing.get("area_presentation", "list")),
+        theme=build_tenant_theme(ui_profile),
     )
+
+
+def theme_color(ui_theme: dict[str, Any], key: str, fallback: str) -> str:
+    value = ui_theme.get(key)
+    if isinstance(value, str) and HEX_COLOR_RE.fullmatch(value):
+        return value.lower()
+    return fallback
+
+
+def build_tenant_theme(ui_profile: dict[str, Any]) -> TenantTheme:
+    ui_theme = ui_profile.get("theme", {}) if isinstance(ui_profile, dict) else {}
+    if not isinstance(ui_theme, dict):
+        ui_theme = {}
+    return TenantTheme(
+        background=theme_color(ui_theme, "background", DEFAULT_TENANT_THEME.background),
+        surface=theme_color(ui_theme, "surface", DEFAULT_TENANT_THEME.surface),
+        text=theme_color(ui_theme, "text", DEFAULT_TENANT_THEME.text),
+        secondary_text=theme_color(
+            ui_theme,
+            "secondary_text",
+            DEFAULT_TENANT_THEME.secondary_text,
+        ),
+        accent=theme_color(ui_theme, "accent", DEFAULT_TENANT_THEME.accent),
+        border=theme_color(ui_theme, "border", DEFAULT_TENANT_THEME.border),
+    )
+
+
+def render_tenant_theme_css(theme: TenantTheme) -> str:
+    return f"""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+        :root {{
+            --tenant-background: {theme.background};
+            --tenant-surface: {theme.surface};
+            --tenant-text: {theme.text};
+            --tenant-secondary-text: {theme.secondary_text};
+            --tenant-accent: {theme.accent};
+            --tenant-border: {theme.border};
+        }}
+        .stApp {{
+            background: var(--tenant-background);
+            color: var(--tenant-text);
+        }}
+        h1, h2, h3, h4 {{
+            color: var(--tenant-text);
+            font-family: "Manrope", sans-serif;
+            letter-spacing: 0;
+        }}
+        p, div, span, label {{ font-family: "Manrope", sans-serif; }}
+        [data-testid="stSidebar"] {{
+            background: var(--tenant-surface);
+            border-right: 4px solid var(--tenant-accent);
+        }}
+        [data-testid="stSidebar"] * {{ color: var(--tenant-text) !important; }}
+        .area-tile {{
+            min-height: 154px;
+            border-radius: 8px;
+            background: var(--tenant-surface);
+            border: 1px solid var(--tenant-border);
+            padding: 16px 18px;
+        }}
+        .area-title {{
+            color: var(--tenant-text);
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }}
+        .area-description {{
+            color: var(--tenant-secondary-text);
+            font-size: 0.9rem;
+            min-height: 48px;
+            margin-bottom: 12px;
+        }}
+        .area-meta {{
+            color: var(--tenant-accent);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }}
+        .dashboard-card {{
+            min-height: 132px;
+            border-radius: 8px;
+            background: var(--tenant-surface);
+            border: 1px solid var(--tenant-border);
+            padding: 14px 16px;
+        }}
+        .dashboard-card-title {{
+            color: var(--tenant-secondary-text);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }}
+        .dashboard-card-value {{
+            color: var(--tenant-text);
+            font-size: 1.35rem;
+            font-weight: 800;
+            margin-top: 8px;
+            overflow-wrap: anywhere;
+        }}
+        .dashboard-card-detail {{
+            color: var(--tenant-secondary-text);
+            font-size: 0.86rem;
+            margin-top: 8px;
+        }}
+        .dashboard-card-state {{
+            color: var(--tenant-accent);
+            font-size: 0.76rem;
+            font-weight: 800;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }}
+        .tenant-kicker {{
+            color: var(--tenant-accent);
+            font-size: 0.82rem;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            font-weight: 800;
+        }}
+        .tenant-subtitle {{
+            color: var(--tenant-secondary-text);
+            font-size: 0.95rem;
+            margin-top: -8px;
+        }}
+        </style>
+        """
 
 
 def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
@@ -606,85 +754,6 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
-        .stApp {
-            background: #f6f8fb;
-        }
-        h1, h2, h3, h4 { font-family: "Manrope", sans-serif; letter-spacing: 0; }
-        p, div, span, label { font-family: "Manrope", sans-serif; }
-        [data-testid="stSidebar"] { background: #10223f; }
-        [data-testid="stSidebar"] * { color: #eef4ff !important; }
-        .area-tile {
-            min-height: 154px;
-            border-radius: 8px;
-            background: #ffffff;
-            border: 1px solid #dbe4f0;
-            padding: 16px 18px;
-        }
-        .area-title {
-            color: #0b1b35;
-            font-size: 1.05rem;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-        .area-description {
-            color: #415572;
-            font-size: 0.9rem;
-            min-height: 48px;
-            margin-bottom: 12px;
-        }
-        .area-meta {
-            color: #2f654d;
-            font-size: 0.78rem;
-            font-weight: 700;
-        }
-        .dashboard-card {
-            min-height: 132px;
-            border-radius: 8px;
-            background: #ffffff;
-            border: 1px solid #dbe4f0;
-            padding: 14px 16px;
-        }
-        .dashboard-card-title {
-            color: #52657f;
-            font-size: 0.78rem;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-        .dashboard-card-value {
-            color: #0b1b35;
-            font-size: 1.35rem;
-            font-weight: 800;
-            margin-top: 8px;
-            overflow-wrap: anywhere;
-        }
-        .dashboard-card-detail {
-            color: #415572;
-            font-size: 0.86rem;
-            margin-top: 8px;
-        }
-        .dashboard-card-state {
-            color: #2f654d;
-            font-size: 0.76rem;
-            font-weight: 800;
-            margin-top: 10px;
-            text-transform: uppercase;
-        }
-        .tenant-kicker {
-            color: #52657f;
-            font-size: 0.82rem;
-            letter-spacing: 0;
-            text-transform: uppercase;
-            font-weight: 800;
-        }
-        .tenant-subtitle { color: #415572; font-size: 0.95rem; margin-top: -8px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
     tenants = load_tenant_registry()
 
@@ -740,6 +809,7 @@ def main() -> None:
             st.warning(f"Tenant Admin API nicht erreichbar: {error}")
 
     branding = build_tenant_branding(selected_tenant, tenant_shell)
+    st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
     navigation_items = build_tenant_navigation_items(workspace_areas)
     dashboard_cards = build_tenant_dashboard_cards(
         tenant_shell,

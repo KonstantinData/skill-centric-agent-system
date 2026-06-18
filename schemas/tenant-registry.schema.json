@@ -550,6 +550,9 @@
             }
           }
         },
+        "theme": {
+          "$ref": "#/$defs/uiTheme"
+        },
         "workspace_areas": {
           "type": "array",
           "items": {
@@ -559,6 +562,42 @@
           "uniqueItems": true
         }
       }
+    },
+    "uiTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "background",
+        "surface",
+        "text",
+        "secondary_text",
+        "accent",
+        "border"
+      ],
+      "properties": {
+        "background": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "surface": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "text": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "secondary_text": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "accent": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "border": {
+          "$ref": "#/$defs/hexColor"
+        }
+      }
+    },
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
     },
     "workspaceArea": {
       "type": "object",

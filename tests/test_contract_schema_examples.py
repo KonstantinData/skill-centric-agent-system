@@ -149,6 +149,19 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
         daskuechenhaus["contact_profile"]["email"]
         == "info@schober-daskuechenhaus.de"
     )
+    assert (
+        daskuechenhaus["ui_profile"]["logo_path"]
+        == "assets/images/daskuechenhaus/logo_daskuechenhaus.png"
+    )
+    assert (REPO_ROOT / daskuechenhaus["ui_profile"]["logo_path"]).is_file()
+    assert daskuechenhaus["ui_profile"]["theme"] == {
+        "background": "#fff",
+        "surface": "#fff",
+        "text": "#111",
+        "secondary_text": "#333",
+        "accent": "#76b726",
+        "border": "#76b726",
+    }
     assert daskuechenhaus["admin_model"]["initial_owner"] is None
     assert daskuechenhaus["memory"]["shared_promotion_allowed"] is False
     assert [area["id"] for area in daskuechenhaus["ui_profile"]["workspace_areas"]] == [

@@ -185,10 +185,18 @@
     "admin-action-validator"
   ],
   "ui_profile": {
-    "logo_path": null,
+    "logo_path": "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
     "landing": {
       "type": "internal-operations-dashboard",
       "area_presentation": "tiles"
+    },
+    "theme": {
+      "background": "#fff",
+      "surface": "#fff",
+      "text": "#111",
+      "secondary_text": "#333",
+      "accent": "#76b726",
+      "border": "#76b726"
     },
     "workspace_areas": [
       {
