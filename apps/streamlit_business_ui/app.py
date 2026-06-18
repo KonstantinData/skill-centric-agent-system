@@ -13,6 +13,7 @@ from html import escape
 from pathlib import Path
 from typing import Any
 from urllib import request as urlrequest
+from urllib.parse import quote
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
@@ -79,6 +80,13 @@ class TenantAdminSection:
 
 @dataclass(frozen=True)
 class TenantAdminApiConfig:
+    base_url: str
+    token: str
+    timeout_seconds: float = 8.0
+
+
+@dataclass(frozen=True)
+class CustomerCasesApiConfig:
     base_url: str
     token: str
     timeout_seconds: float = 8.0
@@ -339,6 +347,16 @@ def render_tenant_theme_css(theme: TenantTheme) -> str:
             color: var(--tenant-accent);
             font-size: 0.78rem;
             font-weight: 700;
+        }}
+        .case-pill {{
+            display: inline-block;
+            border: 1px solid var(--tenant-border);
+            border-radius: 999px;
+            color: var(--tenant-text);
+            padding: 3px 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-right: 6px;
         }}
         .tenant-subtitle {{
             color: var(--tenant-secondary-text);
@@ -822,12 +840,158 @@ def build_tenant_navigation_items(
     return tuple(navigation_items)
 
 
+def navigation_href(route: str) -> str:
+    return f"?route={quote(route, safe='')}"
+
+
+def current_route_from_query_params(st: Any) -> str:
+    query_params = getattr(st, "query_params", None)
+    if query_params is None:
+        return "/"
+    raw_route = query_params.get("route", "/")
+    if isinstance(raw_route, list):
+        raw_route = raw_route[0] if raw_route else "/"
+    route = str(raw_route).strip()
+    if not route.startswith("/"):
+        return "/"
+    return route
+
+
 def tenant_admin_api_config_from_env() -> TenantAdminApiConfig | None:
     base_url = os.environ.get("SCAS_CONTROL_API_URL", "").strip()
     token = os.environ.get("SCAS_TENANT_ADMIN_TOKEN", "").strip()
     if not base_url or not token:
         return None
     return TenantAdminApiConfig(base_url=base_url.rstrip("/"), token=token)
+
+
+def customer_cases_api_config_from_env() -> CustomerCasesApiConfig | None:
+    base_url = os.environ.get("SCAS_CUSTOMER_CASES_API_URL", "").strip()
+    token = os.environ.get("SCAS_CUSTOMER_CASES_API_SECRET", "").strip()
+    if not base_url or not token:
+        return None
+    return CustomerCasesApiConfig(base_url=base_url.rstrip("/"), token=token)
+
+
+def load_customer_cases_from_api(config: CustomerCasesApiConfig) -> dict[str, Any]:
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases",
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "accept": "application/json",
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="GET",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def create_customer_case_in_api(
+    config: CustomerCasesApiConfig,
+    *,
+    actor: str,
+    customer_full_name: str,
+    priority: str,
+) -> dict[str, Any]:
+    payload = json.dumps(
+        {
+            "customer_full_name": customer_full_name,
+            "priority": priority,
+        }
+    ).encode("utf-8")
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases",
+        data=payload,
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "content-type": "application/json",
+            "accept": "application/json",
+            "x-actor": actor,
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="POST",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def render_customer_cases_area(
+    st: Any,
+    session: TenantSession,
+) -> None:
+    st.subheader("Kunden-Vorgänge")
+    config = customer_cases_api_config_from_env()
+    if config is None:
+        st.warning("Kunden-Vorgänge API ist noch nicht konfiguriert.")
+        return
+
+    try:
+        payload = load_customer_cases_from_api(config)
+    except Exception:
+        st.error("Kunden-Vorgänge konnten nicht geladen werden.")
+        return
+
+    cases = payload.get("data", [])
+    if not isinstance(cases, list):
+        cases = []
+
+    active_count = sum(1 for case in cases if case.get("status") == "active")
+    phase_labels = {
+        str(case.get("phase_label") or case.get("phase") or "Unbekannt")
+        for case in cases
+    }
+    col_total, col_active, col_phases = st.columns(3)
+    col_total.metric("Vorgänge", len(cases))
+    col_active.metric("Aktiv", active_count)
+    col_phases.metric("Phasen", len(phase_labels))
+
+    with st.form("scas-customer-case-create"):
+        customer_full_name = st.text_input("Kunde")
+        priority = st.selectbox(
+            "Priorität",
+            options=["normal", "high", "urgent", "low"],
+            index=0,
+        )
+        submitted = st.form_submit_button("Vorgang anlegen")
+
+    if submitted:
+        if not customer_full_name.strip():
+            st.error("Bitte Kundennamen eingeben.")
+        else:
+            try:
+                create_customer_case_in_api(
+                    config,
+                    actor=session.principal_id,
+                    customer_full_name=customer_full_name,
+                    priority=priority,
+                )
+            except Exception:
+                st.error("Vorgang konnte nicht angelegt werden.")
+            else:
+                st.success("Vorgang angelegt.")
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+    if not cases:
+        st.info("Noch keine Kunden-Vorgänge angelegt.")
+        return
+
+    table_rows = [
+        {
+            "Vorgang": str(case.get("case_number", "")),
+            "Kunde": str(case.get("customer_full_name", "")),
+            "Phase": str(case.get("phase_label") or case.get("phase") or ""),
+            "Priorität": str(case.get("priority", "")),
+            "Status": str(case.get("status", "")),
+            "Verantwortlich": str(case.get("assigned_to") or ""),
+        }
+        for case in cases
+    ]
+    if hasattr(st, "dataframe"):
+        st.dataframe(table_rows, use_container_width=True, hide_index=True)
+    else:  # pragma: no cover - compatibility for older Streamlit runtimes.
+        st.table(table_rows)
 
 
 def load_tenant_admin_context_from_api(
@@ -977,11 +1141,15 @@ def main() -> None:
 
     branding = build_tenant_branding(selected_tenant, tenant_shell)
     navigation_items = build_tenant_navigation_items(workspace_areas)
+    active_route = current_route_from_query_params(st)
+    visible_routes = {item.route for item in navigation_items}
+    if active_route not in visible_routes:
+        active_route = "/"
 
     st.sidebar.caption("Navigation")
     for item in navigation_items:
         st.sidebar.markdown(
-            f"[{escape(item.label)}]({escape(item.route)})",
+            f"[{escape(item.label)}]({escape(navigation_href(item.route))})",
             unsafe_allow_html=True,
         )
 
@@ -997,6 +1165,10 @@ def main() -> None:
     )
 
     st.divider()
+    if active_route == "/customer-cases":
+        render_customer_cases_area(st, tenant_session)
+        return
+
     st.subheader("Freigeschaltete Bereiche")
     if not workspace_areas:
         st.error("Keine Bereiche für die aktuelle Tenant-Rolle freigeschaltet.")

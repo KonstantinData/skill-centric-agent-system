@@ -71,6 +71,7 @@ SCAS_STAGING_HETZNER_SSH_KEY
 SCAS_STAGING_UI_SESSION_CONTEXT_JSON
 SCAS_STAGING_UI_LOGIN_USERS_JSON
 SCAS_STAGING_TENANT_ADMIN_TOKEN
+SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET
 SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID
 SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 ```
@@ -84,6 +85,7 @@ SCAS_PROD_HETZNER_SSH_KEY
 SCAS_PROD_UI_SESSION_CONTEXT_JSON
 SCAS_PROD_UI_LOGIN_USERS_JSON
 SCAS_PROD_TENANT_ADMIN_TOKEN
+SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET
 SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID
 SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 ```
@@ -111,6 +113,13 @@ service environment. This renders a tenant-branded login entry when no trusted
 session is present. It must point to an approved HTTPS upstream identity
 boundary; the Streamlit app does not store passwords or authenticate users
 itself.
+
+For Daskuechenhaus customer case management, pass
+`customer_cases_api_url=https://daskuechenhaus-control-api.still-butterfly-bbff.workers.dev`.
+The deploy workflow requires the matching environment secret
+`SCAS_*_DASKUECHENHAUS_CASES_API_SECRET` for Daskuechenhaus apply runs and
+writes `SCAS_CUSTOMER_CASES_API_URL` plus `SCAS_CUSTOMER_CASES_API_SECRET` into
+the root-owned service environment file.
 
 ## Build-Only Plan
 
@@ -168,6 +177,7 @@ gh workflow run tenant-ui-deploy.yml \
   -f tenant_id=daskuechenhaus \
   -f hostname=daskuechenhaus.condata.io \
   -f control_api_url=https://<staging-control-api-url> \
+  -f customer_cases_api_url=https://daskuechenhaus-control-api.still-butterfly-bbff.workers.dev \
   -f auth_mode=local-login \
   -f apply_deploy=true \
   -f confirm_production=false
