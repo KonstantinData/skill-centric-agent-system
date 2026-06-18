@@ -291,14 +291,30 @@ def render_tenant_theme_css(theme: TenantTheme) -> str:
             border-right: 4px solid var(--tenant-accent);
         }}
         [data-testid="stSidebar"] * {{ color: var(--tenant-text) !important; }}
-        [data-testid="stMainMenuButton"] {{
+        button[data-testid="stMainMenuButton"],
+        [data-testid="stToolbar"] button[kind="headerNoPadding"],
+        [data-testid="stHeader"] button[kind="headerNoPadding"] {{
             color: var(--tenant-text) !important;
             background: var(--tenant-surface) !important;
             border: 1px solid var(--tenant-border) !important;
             border-radius: 8px !important;
         }}
-        [data-testid="stMainMenuButton"]:hover {{
+        button[data-testid="stMainMenuButton"] svg,
+        [data-testid="stToolbar"] button[kind="headerNoPadding"] svg,
+        [data-testid="stHeader"] button[kind="headerNoPadding"] svg {{
+            color: var(--tenant-text) !important;
+            fill: var(--tenant-text) !important;
+        }}
+        button[data-testid="stMainMenuButton"]:hover,
+        [data-testid="stToolbar"] button[kind="headerNoPadding"]:hover,
+        [data-testid="stHeader"] button[kind="headerNoPadding"]:hover {{
             color: var(--tenant-accent) !important;
+        }}
+        button[data-testid="stMainMenuButton"]:hover svg,
+        [data-testid="stToolbar"] button[kind="headerNoPadding"]:hover svg,
+        [data-testid="stHeader"] button[kind="headerNoPadding"]:hover svg {{
+            color: var(--tenant-accent) !important;
+            fill: var(--tenant-accent) !important;
         }}
         .area-tile {{
             min-height: 154px;
@@ -932,6 +948,10 @@ def main() -> None:
         tenant_id = runtime_tenant_id
 
     selected_tenant = tenants[tenant_id]
+    tenant_shell = build_tenant_shell(tenants[tenant_id])
+    branding = build_tenant_branding(selected_tenant, tenant_shell)
+    st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
+
     tenant_session = render_session_gate(st, selected_tenant)
     if runtime_tenant_id is not None:
         st.sidebar.title("Steuerung")
@@ -940,7 +960,6 @@ def main() -> None:
         st.session_state.pop("scas_tenant_session", None)
         st.rerun()
 
-    tenant_shell = build_tenant_shell(tenants[tenant_id])
     workspace_areas = build_workspace_areas(selected_tenant, selected_role_ids)
     api_config = tenant_admin_api_config_from_env()
     if api_config is not None:
@@ -957,7 +976,6 @@ def main() -> None:
             pass
 
     branding = build_tenant_branding(selected_tenant, tenant_shell)
-    st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
     navigation_items = build_tenant_navigation_items(workspace_areas)
 
     st.sidebar.caption("Navigation")
