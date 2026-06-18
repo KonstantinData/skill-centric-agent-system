@@ -951,8 +951,10 @@ def main() -> None:
                 tenant_shell.hostname,
             )
             tenant_shell = build_tenant_shell_from_admin_context(admin_context)
-        except Exception as error:  # pragma: no cover - defensive Streamlit runtime fallback.
-            st.warning(f"Tenant Admin API nicht erreichbar: {error}")
+        except Exception:  # pragma: no cover - defensive Streamlit runtime fallback.
+            # The backend context is optional for this landing page; do not expose
+            # internal Control API failures on the user-facing tenant UI.
+            pass
 
     branding = build_tenant_branding(selected_tenant, tenant_shell)
     st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
