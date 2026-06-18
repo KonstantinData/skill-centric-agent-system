@@ -73,21 +73,23 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
         "demo-tenant-website-read",
         "inactive-demo-tenant-website-read",
         "liquisto-website-read",
+        "schober-daskuechenhaus-website-read",
         "knowledge-demo-tenant-docs",
         "knowledge-inactive-demo-tenant-docs",
         "knowledge-liquisto-docs",
+        "knowledge-schober-daskuechenhaus-docs",
     }
     assert len(seed.module_versions) == len(seed.modules)
     assert len(seed.module_selection_metadata) == len(seed.modules)
     assert len(seed.module_dependencies) == 38
     assert len(seed.policy_bindings) == 8
-    assert len(seed.scope_bindings) == 10
-    assert len(seed.tenants) == 3
-    assert len(seed.tenant_memberships) == 3
-    assert len(seed.tenant_role_bundles) == 5
-    assert len(seed.tenant_data_sources) == 3
-    assert len(seed.tenant_role_capability_grants) == 8
-    assert len(seed.tenant_role_data_source_grants) == 5
+    assert len(seed.scope_bindings) == 12
+    assert len(seed.tenants) == 4
+    assert len(seed.tenant_memberships) == 4
+    assert len(seed.tenant_role_bundles) == 7
+    assert len(seed.tenant_data_sources) == 4
+    assert len(seed.tenant_role_capability_grants) == 11
+    assert len(seed.tenant_role_data_source_grants) == 7
 
 
 def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
@@ -178,17 +180,17 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
             """
         ).fetchone()[0]
 
-    assert module_count == 26
-    assert version_count == 26
-    assert metadata_count == 26
+    assert module_count == 28
+    assert version_count == 28
+    assert metadata_count == 28
     assert dependency_count == 38
     assert policy_binding_count == 8
-    assert scope_binding_count == 10
-    assert tenant_count == 3
-    assert tenant_membership_count == 3
-    assert tenant_role_count == 5
-    assert tenant_data_source_count == 3
-    assert tenant_capability_grant_count == 8
-    assert tenant_data_source_grant_count == 5
+    assert scope_binding_count == 12
+    assert tenant_count == 4
+    assert tenant_membership_count == 4
+    assert tenant_role_count == 7
+    assert tenant_data_source_count == 4
+    assert tenant_capability_grant_count == 11
+    assert tenant_data_source_grant_count == 7
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

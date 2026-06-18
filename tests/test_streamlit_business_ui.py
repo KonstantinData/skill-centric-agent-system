@@ -36,11 +36,32 @@ def test_business_ui_loads_liquisto_tenant_shell() -> None:
     assert "keine Cross-Tenant" in shell.isolation_summary
 
 
+def test_business_ui_loads_schober_tenant_shell() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+
+    shell = streamlit_business_ui_app.build_tenant_shell(
+        tenants["schober-daskuechenhaus"]
+    )
+
+    assert shell.tenant_id == "schober-daskuechenhaus"
+    assert shell.area_id == "schober-daskuechenhaus"
+    assert shell.legal_name == "das küchenhaus ralph schober GmbH"
+    assert shell.hostname == "schober-daskuechenhaus.de"
+    assert shell.logo_path is None
+    assert shell.admin_routes == ("/admin/users", "/admin/roles", "/admin/settings")
+    assert shell.role_names == ("Tenant Owner", "Researcher")
+    assert shell.data_sources == ("Schober Website",)
+    assert "keine Cross-Tenant" in shell.isolation_summary
+
+
 def test_business_ui_branding_is_loaded_from_selected_tenant_metadata() -> None:
     tenants = streamlit_business_ui_app.load_tenant_registry()
 
     liquisto_branding = streamlit_business_ui_app.build_tenant_branding(
         tenants["liquisto"]
+    )
+    schober_branding = streamlit_business_ui_app.build_tenant_branding(
+        tenants["schober-daskuechenhaus"]
     )
     demo_branding = streamlit_business_ui_app.build_tenant_branding(
         tenants["demo-tenant"]
@@ -51,6 +72,10 @@ def test_business_ui_branding_is_loaded_from_selected_tenant_metadata() -> None:
     assert liquisto_branding.logo_path == "assets/images/liquisto/liquisto_logo.png"
     assert liquisto_branding.landing_type == "internal-operations-dashboard"
     assert liquisto_branding.area_presentation == "tiles"
+    assert schober_branding.display_name == "das küchenhaus ralph schober"
+    assert schober_branding.hostname == "schober-daskuechenhaus.de"
+    assert schober_branding.logo_path is None
+    assert schober_branding.landing_type == "internal-operations-dashboard"
     assert demo_branding.display_name == "Demo Tenant"
     assert demo_branding.hostname == "demo-tenant.example.invalid"
     assert demo_branding.logo_path is None

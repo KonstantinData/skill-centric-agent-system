@@ -34,6 +34,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
     expected = {
         "demo-tenant.example.invalid": "demo-tenant",
         "liquisto.condata.io": "liquisto",
+        "schober-daskuechenhaus.de": "schober-daskuechenhaus",
     }
     for hostname, tenant_id in expected.items():
         authority = resolver.resolve(hostname)
@@ -70,13 +71,19 @@ def test_seed_data_source_grants_do_not_cross_tenant_boundaries() -> None:
         assert source_tenant_by_id[grant["data_source_id"]] == grant["tenant_id"]
 
 
-def test_liquisto_and_demo_tenant_scopes_are_disjoint() -> None:
+def test_seeded_tenant_scopes_are_disjoint() -> None:
     seed = build_seed_records(module_paths(), tenant_paths=tenant_paths())
     module_names = {module["name"] for module in seed.modules}
 
     assert "liquisto-website-read" in module_names
     assert "demo-tenant-website-read" in module_names
+    assert "schober-daskuechenhaus-website-read" in module_names
     assert "knowledge-liquisto-docs" in module_names
     assert "knowledge-demo-tenant-docs" in module_names
+    assert "knowledge-schober-daskuechenhaus-docs" in module_names
     assert "liquisto-website-read" != "demo-tenant-website-read"
+    assert "liquisto-website-read" != "schober-daskuechenhaus-website-read"
+    assert "demo-tenant-website-read" != "schober-daskuechenhaus-website-read"
     assert "knowledge-liquisto-docs" != "knowledge-demo-tenant-docs"
+    assert "knowledge-liquisto-docs" != "knowledge-schober-daskuechenhaus-docs"
+    assert "knowledge-demo-tenant-docs" != "knowledge-schober-daskuechenhaus-docs"
