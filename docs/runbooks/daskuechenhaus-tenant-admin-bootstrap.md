@@ -1,10 +1,10 @@
 # Daskuechenhaus Tenant Admin Bootstrap
 
-Last updated: 2026-06-18 17:20 Europe/Berlin
+Last updated: 2026-06-18 18:10 Europe/Berlin
 
 This runbook defines the non-secret repository contract for bootstrapping the
-initial Daskuechenhaus tenant owner and tenant-admin access. The actual owner
-principal, contact details, and provider identifiers belong in the approved
+initial Daskuechenhaus tenant owner and tenant-admin access. Actual admin
+principals, contact details, and provider identifiers belong in the approved
 operational source, not in fixtures, logs, public evidence, or repository docs.
 
 ## Scope
@@ -32,12 +32,26 @@ Use tenant-specific, environment-scoped GitHub Actions secrets:
 
 ```text
 SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
 SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
 ```
 
-The principal ID must be a stable non-secret identifier, not an email address.
-The workflow also requires the existing environment-scoped Control API token for
-the selected target environment.
+Principal IDs must be stable non-secret identifiers, not email addresses. The
+additional admin secret is an optional JSON string array. The workflow also
+requires the existing environment-scoped Control API token for the selected
+target environment.
+
+## Approved Role Model
+
+- The initial owner membership uses `tm-daskuechenhaus-initial-owner` and
+  `daskuechenhaus-owner`.
+- Additional tenant admins use deterministic `tm-daskuechenhaus-admin-NN`
+  memberships and `daskuechenhaus-admin`.
+- `daskuechenhaus-admin` grants only `tenant-admin`. It has no research
+  capability, no data-source grants, and no filesystem tools.
+- Repository access is managed outside the SCAS tenant role bundle and is not
+  implied by tenant admin access.
 
 ## Preconditions
 
@@ -57,9 +71,13 @@ the selected target environment.
 3. Create or verify exactly one active owner membership for the Daskuechenhaus
    tenant.
 4. Assign the `daskuechenhaus-owner` role through the tenant-admin API path.
-5. Verify the owner session context contains only Daskuechenhaus tenant roles.
-6. Verify non-admin and cross-tenant access attempts fail closed.
-7. Record a sanitized audit summary with membership ID, role ID, target tenant,
+5. Create or verify additional admin memberships from the optional additional
+   admin principal secret and assign only `daskuechenhaus-admin`.
+6. Verify owner and admin session contexts contain only Daskuechenhaus tenant
+   roles.
+7. Verify non-admin, cross-tenant, and admin-without-research access attempts
+   fail closed.
+8. Record a sanitized audit summary with membership ID, role ID, target tenant,
    environment, workflow or operator reference, and timestamp.
 
 Do not record email addresses, private keys, bearer tokens, session JSON,
@@ -103,6 +121,9 @@ Target-environment checks:
 
 - Tenant admin context loads for membership `tm-daskuechenhaus-initial-owner`.
 - The active owner role is `daskuechenhaus-owner`.
+- Additional tenant admin memberships, when configured, use
+  `daskuechenhaus-admin`.
+- `daskuechenhaus-admin` can see `/admin` but cannot see `/research`.
 - `/admin/users`, `/admin/roles`, and `/admin/settings` are visible only for
   the owner/admin session.
 - A researcher session does not receive admin workspace areas.

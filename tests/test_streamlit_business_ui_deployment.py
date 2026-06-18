@@ -69,12 +69,16 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_STAGING_TENANT_ADMIN_TOKEN" in workflow
     assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
+    assert "SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in workflow
     assert "SCAS_PROD_HETZNER_HOST" in workflow
     assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_TENANT_ADMIN_TOKEN" in workflow
     assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
     assert "SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
+    assert "SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in workflow
+    assert "Unsupported owner principal mapping for staging tenant ${TENANT_ID}" in workflow
+    assert "Unsupported owner principal mapping for prod tenant ${TENANT_ID}" in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
     assert "Deprecated compatibility input; SCAS-managed deploy does not read it" in workflow
@@ -85,6 +89,7 @@ def test_tenant_ui_deploy_workflow_resolves_environment_secrets() -> None:
     assert "SCAS_UI_TENANT_ID=%s" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_SESSION_CONTEXT_JSON" in workflow
+    assert "SCAS_UI_LOGIN_URL" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_and_evidence_contract() -> None:
@@ -140,8 +145,11 @@ def test_daskuechenhaus_admin_bootstrap_runbook_keeps_owner_data_out_of_repo() -
     assert "daskuechenhaus" + ".condata.io" in runbook
     assert "SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
     assert "SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
+    assert "SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON" in runbook
+    assert "SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON" in runbook
     assert "Do not hardcode the owner" in runbook
     assert "daskuechenhaus-owner" in runbook
+    assert "daskuechenhaus-admin" in runbook
     assert "Liquisto users, roles, data sources, knowledge scopes, and memory scopes" in runbook
     assert "provider user IDs" in runbook
 

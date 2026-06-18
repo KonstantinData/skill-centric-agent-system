@@ -65,17 +65,21 @@ user identity and owner email are approved.
 Default roles are present but not assigned:
 
 - `daskuechenhaus-owner`
+- `daskuechenhaus-admin`
 - `daskuechenhaus-researcher`
 
 Before activation, bootstrap must define:
 
 1. the initial tenant owner identity,
-2. tenant-local membership IDs,
-3. admin route access checks,
-4. audit evidence for the bootstrap action.
+2. optional additional tenant admin identities,
+3. tenant-local membership IDs,
+4. admin route access checks,
+5. audit evidence for the bootstrap action.
 
 Admin rights remain tenant-local. Email domain knowledge or public website
-knowledge must not grant access.
+knowledge must not grant access. The `daskuechenhaus-admin` role has
+tenant-admin capability only and does not grant research, data-source, or
+filesystem access.
 
 The non-secret bootstrap contract is documented in
 `docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md`. The required
@@ -83,7 +87,9 @@ tenant-specific owner principal secrets are:
 
 ```text
 SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
 SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
+SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
 ```
 
 ## DNS And Routing Evidence

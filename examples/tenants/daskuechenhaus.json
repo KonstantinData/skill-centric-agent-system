@@ -124,6 +124,37 @@
       }
     },
     {
+      "id": "daskuechenhaus-admin",
+      "tenant_id": "daskuechenhaus",
+      "display_name": "Tenant Admin",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "tenant-admin"
+      ],
+      "data_source_grants": [],
+      "derived_runtime_modules": {
+        "skills": [],
+        "workflows": [
+          "tenant-admin"
+        ],
+        "tools": [],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "admin-action-validator",
+          "no-cross-area-scope-validator",
+          "no-cross-tenant-scope-validator",
+          "tenant-profile-validator",
+          "user-permission-validator"
+        ]
+      }
+    },
+    {
       "id": "daskuechenhaus-researcher",
       "tenant_id": "daskuechenhaus",
       "display_name": "Researcher",

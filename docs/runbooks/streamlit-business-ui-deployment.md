@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-18 09:39 Europe/Berlin
+Last updated: 2026-06-18 18:10 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -71,6 +71,7 @@ SCAS_STAGING_HETZNER_SSH_KEY
 SCAS_STAGING_UI_SESSION_CONTEXT_JSON
 SCAS_STAGING_TENANT_ADMIN_TOKEN
 SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID
+SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 ```
 
 Production:
@@ -82,17 +83,25 @@ SCAS_PROD_HETZNER_SSH_KEY
 SCAS_PROD_UI_SESSION_CONTEXT_JSON
 SCAS_PROD_TENANT_ADMIN_TOKEN
 SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID
+SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 ```
 
 `SCAS_*_UI_SESSION_CONTEXT_JSON` must be server-owned session context for the
 tenant and must be valid only behind an approved upstream authentication layer.
 Do not use fixture role IDs or user-supplied tenant IDs for public deployment.
 If an environment-specific session context is not configured, the deploy
-workflow can derive a minimal owner session from
-`SCAS_*_LIQUISTO_OWNER_PRINCIPAL_ID` after the owner membership has been
+workflow can derive a minimal owner session from the tenant-specific owner
+principal secret, for example `SCAS_*_LIQUISTO_OWNER_PRINCIPAL_ID` or
+`SCAS_*_DASKUECHENHAUS_OWNER_PRINCIPAL_ID`, after the owner membership has been
 bootstrapped through `tenant-admin-bootstrap.yml`. If
 `SCAS_*_TENANT_ADMIN_TOKEN` is absent, the workflow falls back to the
 environment-scoped Control API token, which carries the Control API `all` scope.
+
+The optional `login_url` workflow input writes `SCAS_UI_LOGIN_URL` into the
+service environment. This renders a tenant-branded login entry when no trusted
+session is present. It must point to an approved HTTPS upstream identity
+boundary; the Streamlit app does not store passwords or authenticate users
+itself.
 
 ## Build-Only Plan
 

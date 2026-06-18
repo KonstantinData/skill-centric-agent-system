@@ -20,6 +20,34 @@ sys.modules[spec.name] = streamlit_business_ui_app
 spec.loader.exec_module(streamlit_business_ui_app)
 
 
+class StreamlitStop(Exception):
+    pass
+
+
+class FakeStreamlit:
+    def __init__(self) -> None:
+        self.session_state: dict[str, Any] = {}
+        self.events: list[tuple[Any, ...]] = []
+
+    def markdown(self, *args: Any, **kwargs: Any) -> None:
+        self.events.append(("markdown", args, kwargs))
+
+    def caption(self, text: str) -> None:
+        self.events.append(("caption", text))
+
+    def info(self, text: str) -> None:
+        self.events.append(("info", text))
+
+    def error(self, text: str) -> None:
+        self.events.append(("error", text))
+
+    def link_button(self, label: str, url: str) -> None:
+        self.events.append(("link_button", label, url))
+
+    def stop(self) -> None:
+        raise StreamlitStop
+
+
 def test_business_ui_loads_liquisto_tenant_shell() -> None:
     tenants = streamlit_business_ui_app.load_tenant_registry()
 
@@ -49,7 +77,7 @@ def test_business_ui_loads_daskuechenhaus_tenant_shell() -> None:
     assert shell.hostname == "daskuechenhaus.condata.io"
     assert shell.logo_path == "assets/images/daskuechenhaus/logo_daskuechenhaus.png"
     assert shell.admin_routes == ("/admin/users", "/admin/roles", "/admin/settings")
-    assert shell.role_names == ("Tenant Owner", "Researcher")
+    assert shell.role_names == ("Tenant Owner", "Tenant Admin", "Researcher")
     assert shell.data_sources == ("Daskuechenhaus Website",)
     assert "keine Cross-Tenant" in shell.isolation_summary
 
@@ -163,6 +191,24 @@ def test_business_ui_builds_admin_tiles_only_for_admin_capability() -> None:
     assert [area.area_id for area in owner_areas] == ["research", "tenant-admin"]
     assert owner_areas[1].admin_only is True
     assert unknown_areas == ()
+
+
+def test_business_ui_daskuechenhaus_admin_role_has_no_research_or_filesystem_grants() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    tenant = tenants["daskuechenhaus"]
+
+    admin_role = next(
+        role for role in tenant["role_bundles"] if role["id"] == "daskuechenhaus-admin"
+    )
+    admin_areas = streamlit_business_ui_app.build_workspace_areas(
+        tenant,
+        ("daskuechenhaus-admin",),
+    )
+
+    assert admin_role["capability_grants"] == ["tenant-admin"]
+    assert admin_role["data_source_grants"] == []
+    assert admin_role["derived_runtime_modules"]["tools"] == []
+    assert [area.area_id for area in admin_areas] == ["tenant-admin"]
 
 
 def test_business_ui_navigation_is_role_aware() -> None:
@@ -420,6 +466,41 @@ def test_business_ui_required_auth_rejects_missing_trusted_upstream(monkeypatch)
 
     with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="upstream"):
         streamlit_business_ui_app.authenticated_session_from_env(tenants["liquisto"])
+
+
+def test_business_ui_builds_login_view_from_tenant_and_upstream_url(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_URL",
+        "https://identity.example.invalid/login/daskuechenhaus",
+    )
+
+    login_view = streamlit_business_ui_app.build_tenant_login_view(
+        tenants["daskuechenhaus"]
+    )
+
+    assert login_view.tenant_id == "daskuechenhaus"
+    assert login_view.display_name == "das küchenhaus"
+    assert login_view.hostname == "daskuechenhaus.condata.io"
+    assert login_view.login_url == "https://identity.example.invalid/login/daskuechenhaus"
+
+
+def test_business_ui_required_gate_renders_login_entry_without_trusted_session(
+    monkeypatch,
+) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    fake_st = FakeStreamlit()
+    login_url = "https://identity.example.invalid/login/daskuechenhaus"
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "required")
+    monkeypatch.setenv("SCAS_UI_LOGIN_URL", login_url)
+    monkeypatch.delenv("SCAS_UI_UPSTREAM_AUTH_TRUSTED", raising=False)
+    monkeypatch.delenv("SCAS_UI_SESSION_CONTEXT_JSON", raising=False)
+
+    with pytest.raises(StreamlitStop):
+        streamlit_business_ui_app.render_session_gate(fake_st, tenants["daskuechenhaus"])
+
+    assert ("link_button", "Einloggen", login_url) in fake_st.events
+    assert not [event for event in fake_st.events if event[0] == "error"]
 
 
 def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) -> None:
