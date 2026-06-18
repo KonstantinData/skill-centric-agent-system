@@ -1,0 +1,56 @@
+{
+  "id": "task-first-productive-scas-operations-review",
+  "request": "Research the current SCAS operational state from the approved repository documentation and SCAS Notion tracker context, then summarize the next unblocked real work item, missing evidence, and stop conditions before further productive staging operations.",
+  "context": {
+    "repository": {
+      "path": ".",
+      "default_branch": "main",
+      "allowed_paths": [
+        "README.md",
+        "docs/roadmap/scas-execution-queue.md",
+        "docs/roadmap/production-readiness-backlog.md",
+        "docs/roadmap/infrastructure-implementation-status.md",
+        "docs/runbooks/first-productive-agent-operation.md",
+        "docs/runbooks/operations-runbook.md",
+        "docs/policies/production-readiness.md",
+        "docs/policies/environment-separation.md"
+      ]
+    },
+    "tracker": {
+      "area": "SCAS",
+      "allowed_sources": [
+        "SCAS - Issues & Open Questions",
+        "SCAS - Feature Backlog",
+        "SCAS Operations Control Center"
+      ],
+      "purpose": "Use tracker context only to identify active work state, blockers, and evidence references. Do not copy secrets, raw runtime traces, or private data into the output."
+    },
+    "auth": {
+      "principal_id": "user-konstantin",
+      "principal_type": "user",
+      "roles": [
+        "repository-maintainer"
+      ],
+      "authorization_policies": [
+        "submitter-can-request-research"
+      ],
+      "control_plane_principal_kind": "role",
+      "control_plane_principal_id": "repository-maintainer",
+      "display_name": "Konstantin Milonas"
+    }
+  },
+  "constraints": {
+    "write_access": false,
+    "destructive_actions": false,
+    "target_environment": "staging",
+    "production_data": false,
+    "secret_access": false,
+    "raw_runtime_trace_export": false
+  },
+  "acceptance_criteria": [
+    "Report whether the next SCAS action is an implementation task, a staging operation, or a blocker-resolution task.",
+    "List only evidence links or artifact identifiers that are safe to store outside Hetzner.",
+    "Identify any missing approval, stale evidence, or stop condition before running another productive staging operation.",
+    "Do not mutate repository files, Notion records, GitHub state, Cloudflare resources, or Hetzner runtime state."
+  ]
+}
