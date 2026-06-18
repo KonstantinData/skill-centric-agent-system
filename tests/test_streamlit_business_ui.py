@@ -28,6 +28,18 @@ class FakeStreamlit:
     def __init__(self) -> None:
         self.session_state: dict[str, Any] = {}
         self.events: list[tuple[Any, ...]] = []
+        self.text_input_values: dict[str, str] = {}
+        self.form_submitted = False
+
+    def __enter__(self) -> FakeStreamlit:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def form(self, key: str) -> FakeStreamlit:
+        self.events.append(("form", key))
+        return self
 
     def markdown(self, *args: Any, **kwargs: Any) -> None:
         self.events.append(("markdown", args, kwargs))
@@ -43,6 +55,14 @@ class FakeStreamlit:
 
     def link_button(self, label: str, url: str) -> None:
         self.events.append(("link_button", label, url))
+
+    def text_input(self, label: str, **kwargs: Any) -> str:
+        self.events.append(("text_input", label, kwargs))
+        return self.text_input_values.get(label, "")
+
+    def form_submit_button(self, label: str) -> bool:
+        self.events.append(("form_submit_button", label))
+        return self.form_submitted
 
     def stop(self) -> None:
         raise StreamlitStop
@@ -358,7 +378,22 @@ def test_business_ui_required_mode_requires_server_bound_tenant(monkeypatch) -> 
     monkeypatch.setenv("SCAS_UI_AUTH_MODE", "required")
     monkeypatch.delenv("SCAS_UI_TENANT_ID", raising=False)
 
-    with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="TENANT_ID"):
+    with pytest.raises(
+        streamlit_business_ui_app.TenantSessionError,
+        match="authenticated auth modes",
+    ):
+        streamlit_business_ui_app.resolve_runtime_tenant_id(tenants)
+
+
+def test_business_ui_local_login_mode_requires_server_bound_tenant(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.delenv("SCAS_UI_TENANT_ID", raising=False)
+
+    with pytest.raises(
+        streamlit_business_ui_app.TenantSessionError,
+        match="authenticated auth modes",
+    ):
         streamlit_business_ui_app.resolve_runtime_tenant_id(tenants)
 
 
@@ -466,6 +501,153 @@ def test_business_ui_required_auth_rejects_missing_trusted_upstream(monkeypatch)
 
     with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="upstream"):
         streamlit_business_ui_app.authenticated_session_from_env(tenants["liquisto"])
+
+
+def test_business_ui_local_login_hash_round_trip() -> None:
+    encoded_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "correct horse battery staple",
+        salt=b"stable-test-salt!",
+    )
+
+    assert encoded_hash.startswith("pbkdf2_sha256$600000$")
+    assert streamlit_business_ui_app.verify_login_password(
+        "correct horse battery staple",
+        encoded_hash,
+    )
+    assert not streamlit_business_ui_app.verify_login_password("wrong", encoded_hash)
+
+
+def test_business_ui_local_login_builds_tenant_session(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    password_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "tenant-password",
+        salt=b"stable-test-salt!",
+    )
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_USERS_JSON",
+        json.dumps(
+            [
+                {
+                    "username": "daskuechenhaus-admin",
+                    "tenant_id": "daskuechenhaus",
+                    "principal_id": "daskuechenhaus-admin-principal",
+                    "membership_id": "tm-daskuechenhaus-admin-01",
+                    "role_ids": ["daskuechenhaus-admin"],
+                    "password_hash": password_hash,
+                }
+            ]
+        ),
+    )
+
+    session = streamlit_business_ui_app.local_login_session_from_credentials(
+        tenants["daskuechenhaus"],
+        "daskuechenhaus-admin",
+        "tenant-password",
+    )
+
+    assert session.source == "local-login"
+    assert session.principal_id == "daskuechenhaus-admin-principal"
+    assert session.role_ids == ("daskuechenhaus-admin",)
+    assert session.capabilities == frozenset({"tenant-admin"})
+
+
+def test_business_ui_local_login_rejects_wrong_password(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    password_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "tenant-password",
+        salt=b"stable-test-salt!",
+    )
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_USERS_JSON",
+        json.dumps(
+            [
+                {
+                    "username": "daskuechenhaus-admin",
+                    "tenant_id": "daskuechenhaus",
+                    "principal_id": "daskuechenhaus-admin-principal",
+                    "membership_id": "tm-daskuechenhaus-admin-01",
+                    "role_ids": ["daskuechenhaus-admin"],
+                    "password_hash": password_hash,
+                }
+            ]
+        ),
+    )
+
+    with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="Invalid"):
+        streamlit_business_ui_app.local_login_session_from_credentials(
+            tenants["daskuechenhaus"],
+            "daskuechenhaus-admin",
+            "wrong-password",
+        )
+
+
+def test_business_ui_local_login_rejects_unknown_role(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    password_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "tenant-password",
+        salt=b"stable-test-salt!",
+    )
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_USERS_JSON",
+        json.dumps(
+            [
+                {
+                    "username": "daskuechenhaus-admin",
+                    "tenant_id": "daskuechenhaus",
+                    "principal_id": "daskuechenhaus-admin-principal",
+                    "membership_id": "tm-daskuechenhaus-admin-01",
+                    "role_ids": ["liquisto-owner"],
+                    "password_hash": password_hash,
+                }
+            ]
+        ),
+    )
+
+    with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="unknown"):
+        streamlit_business_ui_app.local_login_session_from_credentials(
+            tenants["daskuechenhaus"],
+            "daskuechenhaus-admin",
+            "tenant-password",
+        )
+
+
+def test_business_ui_local_login_gate_accepts_submitted_credentials(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    fake_st = FakeStreamlit()
+    fake_st.text_input_values = {
+        "Benutzername": "daskuechenhaus-admin",
+        "Passwort": "tenant-password",
+    }
+    fake_st.form_submitted = True
+    password_hash = streamlit_business_ui_app.encode_login_password_hash(
+        "tenant-password",
+        salt=b"stable-test-salt!",
+    )
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv(
+        "SCAS_UI_LOGIN_USERS_JSON",
+        json.dumps(
+            [
+                {
+                    "username": "daskuechenhaus-admin",
+                    "tenant_id": "daskuechenhaus",
+                    "principal_id": "daskuechenhaus-admin-principal",
+                    "membership_id": "tm-daskuechenhaus-admin-01",
+                    "role_ids": ["daskuechenhaus-admin"],
+                    "password_hash": password_hash,
+                }
+            ]
+        ),
+    )
+
+    session = streamlit_business_ui_app.render_session_gate(
+        fake_st,
+        tenants["daskuechenhaus"],
+    )
+
+    assert session.source == "local-login"
+    assert fake_st.session_state["scas_tenant_session"]["source"] == "local-login"
+    assert ("form_submit_button", "Einloggen") in fake_st.events
 
 
 def test_business_ui_builds_login_view_from_tenant_and_upstream_url(monkeypatch) -> None:

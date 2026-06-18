@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -13,6 +17,9 @@ from urllib import request as urlrequest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+LOGIN_CREDENTIAL_HASH_SCHEME = "pbkdf2_sha256"
+LOGIN_CREDENTIAL_HASH_ITERATIONS = 600_000
+MIN_LOGIN_CREDENTIAL_HASH_ITERATIONS = 100_000
 
 
 @dataclass(frozen=True)
@@ -116,6 +123,16 @@ class TenantLoginView:
 
 
 @dataclass(frozen=True)
+class LocalLoginUser:
+    username: str
+    tenant_id: str
+    principal_id: str
+    membership_id: str
+    role_ids: tuple[str, ...]
+    password_hash: str
+
+
+@dataclass(frozen=True)
 class TenantDashboardCard:
     title: str
     value: str
@@ -150,8 +167,10 @@ def resolve_runtime_tenant_id(tenants: dict[str, dict[str, Any]]) -> str | None:
             )
         return configured_tenant_id
 
-    if auth_mode_from_env() == "required":
-        raise TenantSessionError("SCAS_UI_TENANT_ID is required in required auth mode.")
+    if auth_mode_from_env() in {"required", "local-login"}:
+        raise TenantSessionError(
+            "SCAS_UI_TENANT_ID is required in authenticated auth modes."
+        )
 
     return None
 
@@ -459,23 +478,12 @@ def build_fixture_session(tenant: dict[str, Any]) -> TenantSession:
     )
 
 
-def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
-    mode = auth_mode_from_env()
-    if mode in {"", "fixture", "local"}:
-        return build_fixture_session(tenant)
-    if mode != "required":
-        raise TenantSessionError(f"Unsupported SCAS_UI_AUTH_MODE: {mode}")
-
-    raw_context = os.environ.get("SCAS_UI_SESSION_CONTEXT_JSON", "").strip()
-    if not raw_context:
-        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is required.")
-    try:
-        context = json.loads(raw_context)
-    except json.JSONDecodeError as error:
-        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is invalid JSON.") from error
-    if not isinstance(context, dict):
-        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON must be an object.")
-
+def build_session_from_context(
+    tenant: dict[str, Any],
+    context: dict[str, Any],
+    *,
+    source: str,
+) -> TenantSession:
     tenant_id = str(context.get("tenant_id", ""))
     if tenant_id != str(tenant["tenant_id"]):
         raise TenantSessionError("Session tenant does not match the selected tenant.")
@@ -498,6 +506,33 @@ def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
             "Session references unknown tenant roles: " + ", ".join(unknown_roles)
         )
 
+    return TenantSession(
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+        membership_id=membership_id,
+        role_ids=role_ids,
+        capabilities=granted_capabilities_for_roles(tenant, role_ids),
+        source=source,
+    )
+
+
+def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
+    mode = auth_mode_from_env()
+    if mode in {"", "fixture", "local"}:
+        return build_fixture_session(tenant)
+    if mode != "required":
+        raise TenantSessionError(f"Unsupported SCAS_UI_AUTH_MODE: {mode}")
+
+    raw_context = os.environ.get("SCAS_UI_SESSION_CONTEXT_JSON", "").strip()
+    if not raw_context:
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is required.")
+    try:
+        context = json.loads(raw_context)
+    except json.JSONDecodeError as error:
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON is invalid JSON.") from error
+    if not isinstance(context, dict):
+        raise TenantSessionError("SCAS_UI_SESSION_CONTEXT_JSON must be an object.")
+
     trusted_upstream = (
         os.environ.get("SCAS_UI_UPSTREAM_AUTH_TRUSTED", "").strip().lower()
         in {"1", "true", "yes"}
@@ -505,13 +540,128 @@ def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
     if not trusted_upstream:
         raise TenantSessionError("Trusted upstream authentication is required.")
 
-    return TenantSession(
-        principal_id=principal_id,
-        tenant_id=tenant_id,
-        membership_id=membership_id,
-        role_ids=role_ids,
-        capabilities=granted_capabilities_for_roles(tenant, role_ids),
-        source="trusted-upstream",
+    return build_session_from_context(tenant, context, source="trusted-upstream")
+
+
+def _base64url_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _base64url_decode(value: str) -> bytes:
+    padding = "=" * ((4 - len(value) % 4) % 4)
+    return base64.urlsafe_b64decode(value + padding)
+
+
+def encode_login_password_hash(
+    password: str,
+    *,
+    salt: bytes | None = None,
+    iterations: int = LOGIN_CREDENTIAL_HASH_ITERATIONS,
+) -> str:
+    if iterations < MIN_LOGIN_CREDENTIAL_HASH_ITERATIONS:
+        raise ValueError("login password hash iterations are too low")
+    password_salt = salt if salt is not None else os.urandom(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        password_salt,
+        iterations,
+    )
+    return "$".join(
+        (
+            LOGIN_CREDENTIAL_HASH_SCHEME,
+            str(iterations),
+            _base64url_encode(password_salt),
+            _base64url_encode(digest),
+        )
+    )
+
+
+def verify_login_password(password: str, encoded_hash: str) -> bool:
+    try:
+        algorithm, iterations_raw, salt_raw, digest_raw = encoded_hash.split("$")
+        iterations = int(iterations_raw)
+        salt = _base64url_decode(salt_raw)
+        expected_digest = _base64url_decode(digest_raw)
+    except (ValueError, binascii.Error):
+        return False
+    if algorithm != LOGIN_CREDENTIAL_HASH_SCHEME:
+        return False
+    if iterations < MIN_LOGIN_CREDENTIAL_HASH_ITERATIONS:
+        return False
+    actual_digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return hmac.compare_digest(actual_digest, expected_digest)
+
+
+def local_login_users_from_env() -> tuple[LocalLoginUser, ...]:
+    raw_users = os.environ.get("SCAS_UI_LOGIN_USERS_JSON", "").strip()
+    if not raw_users:
+        raise TenantSessionError("SCAS_UI_LOGIN_USERS_JSON is required for local-login mode.")
+    try:
+        users = json.loads(raw_users)
+    except json.JSONDecodeError as error:
+        raise TenantSessionError("SCAS_UI_LOGIN_USERS_JSON is invalid JSON.") from error
+    if not isinstance(users, list):
+        raise TenantSessionError("SCAS_UI_LOGIN_USERS_JSON must be an array.")
+
+    parsed_users: list[LocalLoginUser] = []
+    for user in users:
+        if not isinstance(user, dict):
+            raise TenantSessionError("SCAS_UI_LOGIN_USERS_JSON entries must be objects.")
+        username = str(user.get("username", "")).strip()
+        tenant_id = str(user.get("tenant_id", "")).strip()
+        principal_id = str(user.get("principal_id", "")).strip()
+        membership_id = str(user.get("membership_id", "")).strip()
+        password_hash = str(user.get("password_hash", "")).strip()
+        role_ids = tuple(str(role_id) for role_id in user.get("role_ids", []))
+        if not all((username, tenant_id, principal_id, membership_id, password_hash)):
+            raise TenantSessionError("Local login users require username and session fields.")
+        if not role_ids:
+            raise TenantSessionError("Local login users require role_ids.")
+        parsed_users.append(
+            LocalLoginUser(
+                username=username,
+                tenant_id=tenant_id,
+                principal_id=principal_id,
+                membership_id=membership_id,
+                role_ids=role_ids,
+                password_hash=password_hash,
+            )
+        )
+    return tuple(parsed_users)
+
+
+def local_login_session_from_credentials(
+    tenant: dict[str, Any],
+    username: str,
+    password: str,
+) -> TenantSession:
+    normalized_username = username.strip()
+    matching_user = next(
+        (
+            user
+            for user in local_login_users_from_env()
+            if user.username == normalized_username and user.tenant_id == str(tenant["tenant_id"])
+        ),
+        None,
+    )
+    if matching_user is None or not verify_login_password(password, matching_user.password_hash):
+        raise TenantSessionError("Invalid username or password.")
+
+    return build_session_from_context(
+        tenant,
+        {
+            "tenant_id": matching_user.tenant_id,
+            "principal_id": matching_user.principal_id,
+            "membership_id": matching_user.membership_id,
+            "role_ids": list(matching_user.role_ids),
+        },
+        source="local-login",
     )
 
 
@@ -554,6 +704,24 @@ def render_login_area(st: Any, tenant: dict[str, Any]) -> None:
         st.error("Tenant-Session nicht verfuegbar: trusted upstream authentication is required.")
 
 
+def render_local_login_area(st: Any, tenant: dict[str, Any]) -> TenantSession | None:
+    login_view = build_tenant_login_view(tenant)
+    st.markdown(f"### Login {login_view.display_name}")
+    st.caption(login_view.hostname)
+    st.info("Bitte mit dem freigegebenen Tenant-Benutzer anmelden.")
+    with st.form("scas-local-login"):
+        username = st.text_input("Benutzername")
+        password = st.text_input("Passwort", type="password")
+        submitted = st.form_submit_button("Einloggen")
+    if not submitted:
+        return None
+    try:
+        return local_login_session_from_credentials(tenant, username, password)
+    except TenantSessionError:
+        st.error("Login fehlgeschlagen.")
+        return None
+
+
 def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
     mode = auth_mode_from_env()
     if mode in {"", "fixture", "local"}:
@@ -562,6 +730,19 @@ def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
     stored = st.session_state.get("scas_tenant_session")
     if isinstance(stored, dict) and stored.get("tenant_id") == tenant.get("tenant_id"):
         return _session_from_state(stored)
+
+    if mode == "local-login":
+        session = render_local_login_area(st, tenant)
+        if session is not None:
+            st.session_state["scas_tenant_session"] = _session_to_state(session)
+            return session
+        st.stop()
+        raise RuntimeError("streamlit stop did not halt execution")
+
+    if mode != "required":
+        st.error(f"Tenant-Session nicht verfuegbar: unsupported auth mode {mode}.")
+        st.stop()
+        raise RuntimeError("streamlit stop did not halt execution")
 
     trusted_upstream = (
         os.environ.get("SCAS_UI_UPSTREAM_AUTH_TRUSTED", "").strip().lower()
@@ -831,6 +1012,9 @@ def main() -> None:
     )
     st.sidebar.caption("Session")
     st.sidebar.write(tenant_session.principal_id)
+    if tenant_session.source != "local-fixture" and st.sidebar.button("Logout"):
+        st.session_state.pop("scas_tenant_session", None)
+        st.rerun()
     st.sidebar.caption("Aktive Rollen")
     st.sidebar.write(", ".join(selected_role_labels) or "Keine")
 

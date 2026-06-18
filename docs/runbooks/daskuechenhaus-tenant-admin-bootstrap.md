@@ -1,6 +1,6 @@
 # Daskuechenhaus Tenant Admin Bootstrap
 
-Last updated: 2026-06-18 18:10 Europe/Berlin
+Last updated: 2026-06-18 18:35 Europe/Berlin
 
 This runbook defines the non-secret repository contract for bootstrapping the
 initial Daskuechenhaus tenant owner and tenant-admin access. Actual admin
@@ -33,8 +33,10 @@ Use tenant-specific, environment-scoped GitHub Actions secrets:
 ```text
 SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
+SCAS_STAGING_UI_LOGIN_USERS_JSON
 SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID
 SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON
+SCAS_PROD_UI_LOGIN_USERS_JSON
 ```
 
 Principal IDs must be stable non-secret identifiers, not email addresses. The
@@ -52,6 +54,9 @@ target environment.
   capability, no data-source grants, and no filesystem tools.
 - Repository access is managed outside the SCAS tenant role bundle and is not
   implied by tenant admin access.
+- UI local login users are stored only in `SCAS_*_UI_LOGIN_USERS_JSON` with
+  PBKDF2 password hashes. Do not store raw passwords, login names, email
+  addresses, or provider user IDs in repository files or public evidence.
 
 ## Preconditions
 
