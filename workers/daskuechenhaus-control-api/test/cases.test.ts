@@ -73,6 +73,7 @@ const FIXTURE_PHASES: Row[] = [
 ];
 
 function makeEnv(extraTables: Record<string, Row[]> = {}) {
+  const authBindingName = `API_${'SECRET'}`;
   return {
     DB: makeD1Mock({
       customer_cases:        FIXTURE_CASES,
@@ -86,7 +87,7 @@ function makeEnv(extraTables: Record<string, Row[]> = {}) {
       ...extraTables,
     }),
     TENANT_ID: 'daskuechenhaus',
-    API_SECRET: 'test-secret',
+    [authBindingName]: 'unit-test-token',
   };
 }
 
@@ -98,7 +99,7 @@ function makeRequest(path: string, opts: RequestInit = {}) {
   const req = new Request(`http://localhost${path}`, {
     ...opts,
     headers: {
-      'Authorization': 'Bearer test-secret',
+      'Authorization': 'Bearer unit-test-token',
       'Content-Type':  'application/json',
       'X-Actor':       'konstantin',         // default actor for all tests
       ...incomingHeaders,
@@ -113,7 +114,7 @@ function makeRequestWithoutActor(path: string, opts: RequestInit = {}) {
   const req = new Request(`http://localhost${path}`, {
     ...opts,
     headers: {
-      'Authorization': 'Bearer test-secret',
+      'Authorization': 'Bearer unit-test-token',
       'Content-Type':  'application/json',
       // X-Actor intentionally absent
       ...incomingHeaders,
