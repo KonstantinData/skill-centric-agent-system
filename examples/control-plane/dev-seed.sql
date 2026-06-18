@@ -51,11 +51,11 @@ VALUES ('liquisto-website', 'liquisto', 'website', 'Liquisto Website', '["read"]
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
 
 INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
-VALUES ('daskuechenhaus-admin', 'daskuechenhaus', 'Tenant Admin', 'tenant-custom', 1, '[]', '["tenant-admin"]', '[]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","tenant-profile-validator","user-permission-validator"]')
+VALUES ('daskuechenhaus-admin', 'daskuechenhaus', 'Tenant Admin', 'tenant-custom', 1, '[]', '["customer-cases","tenant-admin"]', '[]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","tenant-profile-validator","user-permission-validator"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
 INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
-VALUES ('daskuechenhaus-owner', 'daskuechenhaus', 'Tenant Owner', 'system', 1, '["research-context-synthesis"]', '["research-intake","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator","user-permission-validator"]')
+VALUES ('daskuechenhaus-owner', 'daskuechenhaus', 'Tenant Owner', 'system', 1, '["research-context-synthesis"]', '["customer-cases","research-intake","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator","user-permission-validator"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
 INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
@@ -99,7 +99,15 @@ VALUES ('tm-liquisto-repository-maintainer', 'liquisto', 'repository-maintainer'
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-daskuechenhaus-admin-customer-cases', 'daskuechenhaus', 'daskuechenhaus-admin', 'customer-cases')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
 VALUES ('trcg-daskuechenhaus-admin-tenant-admin', 'daskuechenhaus', 'daskuechenhaus-admin', 'tenant-admin')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-daskuechenhaus-owner-customer-cases', 'daskuechenhaus', 'daskuechenhaus-owner', 'customer-cases')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
 
 INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
