@@ -31,6 +31,9 @@ TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
 )
 DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
+DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME = (
+    "DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON"
+)
 
 
 def load_ci_workflow() -> str:
@@ -369,6 +372,12 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
     assert f"SCAS_STAGING_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert "Unsupported owner principal mapping for staging tenant ${TENANT_ID}" in workflow
+    assert "Unsupported owner principal mapping for prod tenant ${TENANT_ID}" in workflow
+    assert "login_url must be an https URL when provided" in workflow
+    assert "SCAS_UI_LOGIN_URL" in workflow
     assert 'SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}' in workflow
     assert 'SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}' in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
@@ -414,11 +423,19 @@ def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
     assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_STAGING_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_PROD_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME}" in workflow
     assert "staging:daskuechenhaus)" in workflow
     assert "prod:daskuechenhaus)" in workflow
     assert "Unsupported tenant owner bootstrap target" in workflow
     assert "Missing ${OWNER_PRINCIPAL_SECRET_NAME}." in workflow
     assert "Owner principal: stored in environment-scoped GitHub secret; not printed" in workflow
+    assert (
+        "Additional admin principals: stored in environment-scoped GitHub secret; not printed"
+        in workflow
+    )
+    assert "Additional admin principal ids must be non-secret stable ids" in workflow
+    assert "additional_admin_membership_count" in workflow
     assert "scas-tenant-admin-bootstrap/1.0" in workflow
     assert 'context.get("users", [])' in workflow
     assert 'membership.get("membership_id") == membership_id' in workflow

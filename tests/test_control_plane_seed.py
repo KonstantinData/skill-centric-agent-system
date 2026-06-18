@@ -86,9 +86,9 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.scope_bindings) == 12
     assert len(seed.tenants) == 4
     assert len(seed.tenant_memberships) == 4
-    assert len(seed.tenant_role_bundles) == 7
+    assert len(seed.tenant_role_bundles) == 8
     assert len(seed.tenant_data_sources) == 4
-    assert len(seed.tenant_role_capability_grants) == 11
+    assert len(seed.tenant_role_capability_grants) == 12
     assert len(seed.tenant_role_data_source_grants) == 7
 
 
@@ -188,9 +188,9 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
     assert scope_binding_count == 12
     assert tenant_count == 4
     assert tenant_membership_count == 4
-    assert tenant_role_count == 7
+    assert tenant_role_count == 8
     assert tenant_data_source_count == 4
-    assert tenant_capability_grant_count == 11
+    assert tenant_capability_grant_count == 12
     assert tenant_data_source_grant_count == 7
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

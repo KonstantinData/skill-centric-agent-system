@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: ""
+      login_url:
+        description: Optional upstream identity login URL shown by the UI when no trusted session is present
+        required: false
+        type: string
+        default: ""
       apply_deploy:
         description: Apply the deployment on the target host
         required: true
@@ -105,6 +110,7 @@ jobs:
       TENANT_HOSTNAME: ${{ inputs.hostname }}
       CONTROL_API_URL: ${{ inputs.control_api_url }}
       UPSTREAM_AUTH_EVIDENCE_URL: ${{ inputs.upstream_auth_evidence_url }}
+      SCAS_UI_LOGIN_URL: ${{ inputs.login_url }}
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       COMPOSE_PROJECT: ${{ inputs.compose_project }}
@@ -125,6 +131,7 @@ jobs:
       SCAS_STAGING_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_STAGING_UI_SESSION_CONTEXT_JSON }}
       SCAS_STAGING_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_STAGING_TENANT_ADMIN_TOKEN }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
+      SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
       SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
@@ -132,6 +139,7 @@ jobs:
       SCAS_PROD_UI_SESSION_CONTEXT_JSON: ${{ secrets.SCAS_PROD_UI_SESSION_CONTEXT_JSON }}
       SCAS_PROD_TENANT_ADMIN_TOKEN: ${{ secrets.SCAS_PROD_TENANT_ADMIN_TOKEN }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
+      SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
 
     steps:
       - name: Check out repository
@@ -163,6 +171,16 @@ jobs:
 
           if [ "${CONTROL_API_URL}" = "" ]; then
             echo "::error::control_api_url is required."
+            exit 1
+          fi
+
+          if [ -n "${SCAS_UI_LOGIN_URL}" ] && [[ ! "${SCAS_UI_LOGIN_URL}" =~ ^https:// ]]; then
+            echo "::error::login_url must be an https URL when provided."
+            exit 1
+          fi
+
+          if [[ "${SCAS_UI_LOGIN_URL}" == *"'"* ]]; then
+            echo "::error::login_url contains unsupported characters."
             exit 1
           fi
 
@@ -262,7 +280,13 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_STAGING_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_STAGING_UI_SESSION_CONTEXT_JSON:-}" ;;
-                  OWNER_PRINCIPAL_ID) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                  OWNER_PRINCIPAL_ID)
+                    case "${TENANT_ID}" in
+                      liquisto) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                      daskuechenhaus) value="${SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}" ;;
+                      *) echo "::error::Unsupported owner principal mapping for staging tenant ${TENANT_ID}" ; exit 1 ;;
+                    esac
+                    ;;
                   TENANT_ADMIN_TOKEN) value="${SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
@@ -273,7 +297,13 @@ jobs:
                   HETZNER_SSH_KEY) value="${SCAS_PROD_HETZNER_SSH_KEY:-}" ;;
                   HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
                   UI_SESSION_CONTEXT_JSON) value="${SCAS_PROD_UI_SESSION_CONTEXT_JSON:-}" ;;
-                  OWNER_PRINCIPAL_ID) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                  OWNER_PRINCIPAL_ID)
+                    case "${TENANT_ID}" in
+                      liquisto) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
+                      daskuechenhaus) value="${SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}" ;;
+                      *) echo "::error::Unsupported owner principal mapping for prod tenant ${TENANT_ID}" ; exit 1 ;;
+                    esac
+                    ;;
                   TENANT_ADMIN_TOKEN) value="${SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
@@ -395,7 +425,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -432,6 +462,9 @@ jobs:
             printf 'SCAS_UI_TENANT_ID=%s\n' "${TENANT_ID}"
             printf 'SCAS_UI_UPSTREAM_AUTH_TRUSTED=true\n'
             printf 'SCAS_UI_SESSION_CONTEXT_JSON=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON_B64}" | base64 -d)"
+            if [ -n "${SCAS_UI_LOGIN_URL}" ]; then
+              printf 'SCAS_UI_LOGIN_URL=%s\n' "${SCAS_UI_LOGIN_URL}"
+            fi
             printf 'SCAS_CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"
             printf 'SCAS_TENANT_ADMIN_TOKEN=%s\n' "$(printf '%s' "${TENANT_ADMIN_TOKEN_B64}" | base64 -d)"
           } > "${env_file}"

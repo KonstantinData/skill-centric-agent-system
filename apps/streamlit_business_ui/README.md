@@ -61,6 +61,12 @@ boundary, set `SCAS_UI_UPSTREAM_AUTH_TRUSTED=true` and provide the same
 service unless the upstream layer blocks unauthenticated requests and injects
 only server-controlled session context.
 
+When `SCAS_UI_AUTH_MODE=required` and no trusted session is available, the UI
+can render a tenant-branded login entry by setting `SCAS_UI_LOGIN_URL` to the
+approved upstream identity URL. Streamlit still does not authenticate users or
+store credentials; successful access requires the upstream layer to inject the
+validated tenant session context.
+
 ## Run
 
 ```powershell

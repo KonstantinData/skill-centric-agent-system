@@ -54,9 +54,11 @@ jobs:
       SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON }}
       SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON }}
 
     steps:
       - name: Validate and resolve inputs
@@ -92,18 +94,22 @@ jobs:
             staging:liquisto)
               OWNER_PRINCIPAL_SECRET_NAME="SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID"
               OWNER_PRINCIPAL_ID="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON=""
               ;;
             staging:daskuechenhaus)
               OWNER_PRINCIPAL_SECRET_NAME="SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
               OWNER_PRINCIPAL_ID="${SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}"
+              ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON="${SCAS_STAGING_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON:-}"
               ;;
             prod:liquisto)
               OWNER_PRINCIPAL_SECRET_NAME="SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID"
               OWNER_PRINCIPAL_ID="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON=""
               ;;
             prod:daskuechenhaus)
               OWNER_PRINCIPAL_SECRET_NAME="SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
               OWNER_PRINCIPAL_ID="${SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}"
+              ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON="${SCAS_PROD_DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON:-}"
               ;;
             *)
               echo "::error::Unsupported tenant owner bootstrap target: ${TARGET_ENVIRONMENT}:${TENANT_ID}"
@@ -135,6 +141,7 @@ jobs:
             printf 'CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"
             printf 'CONTROL_API_TOKEN_B64=%s\n' "$(printf '%s' "${CONTROL_API_TOKEN}" | base64 -w0)"
             printf 'OWNER_PRINCIPAL_ID_B64=%s\n' "$(printf '%s' "${OWNER_PRINCIPAL_ID}" | base64 -w0)"
+            printf 'ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON_B64=%s\n' "$(printf '%s' "${ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON}" | base64 -w0)"
           } >> "${GITHUB_ENV}"
 
       - name: Create or verify owner membership
@@ -148,6 +155,7 @@ jobs:
           import base64
           import json
           import os
+          import re
           import urllib.error
           import urllib.request
           from datetime import UTC, datetime
@@ -160,8 +168,24 @@ jobs:
           control_api_url = os.environ["CONTROL_API_URL"].rstrip("/")
           control_api_token = base64.b64decode(os.environ["CONTROL_API_TOKEN_B64"]).decode()
           owner_principal_id = base64.b64decode(os.environ["OWNER_PRINCIPAL_ID_B64"]).decode()
+          additional_admins_raw = base64.b64decode(
+              os.environ["ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON_B64"]
+          ).decode()
           membership_id = f"tm-{tenant_id}-initial-owner"
           role_id = f"{tenant_id}-owner"
+          admin_role_id = f"{tenant_id}-admin"
+          principal_id_re = re.compile(r"^[a-z][a-z0-9-]*$")
+
+          additional_admin_principal_ids = []
+          if additional_admins_raw.strip():
+              parsed = json.loads(additional_admins_raw)
+              if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
+                  raise RuntimeError("Additional admin principal IDs must be a JSON string array.")
+              additional_admin_principal_ids = [item.strip() for item in parsed]
+              if any(not principal_id_re.fullmatch(item) for item in additional_admin_principal_ids):
+                  raise RuntimeError(
+                      "Additional admin principal ids must be non-secret stable ids, not email addresses."
+                  )
 
           def request_json(path: str, method: str = "GET", body: dict | None = None) -> dict:
               data = None if body is None else json.dumps(body).encode()
@@ -197,6 +221,19 @@ jobs:
                   },
               )
 
+          for index, principal_id in enumerate(additional_admin_principal_ids, start=1):
+              if apply_bootstrap:
+                  request_json(
+                      f"/tenant-admin/tenants/{tenant_id}/memberships",
+                      method="POST",
+                      body={
+                          "id": f"tm-{tenant_id}-admin-{index:02d}",
+                          "principal_id": principal_id,
+                          "status": "active",
+                          "role_ids": [admin_role_id],
+                      },
+                  )
+
           context = request_json(f"/tenant-admin/tenants/{tenant_id}")
           memberships = context.get("users", [])
           matching = [
@@ -209,6 +246,18 @@ jobs:
           if not matching:
               raise RuntimeError("Owner membership was not found after bootstrap verification.")
 
+          matching_additional_admins = [
+              membership
+              for membership in memberships
+              if membership.get("membership_id", "").startswith(f"tm-{tenant_id}-admin-")
+              and membership.get("status") == "active"
+              and admin_role_id in membership.get("role_ids", [])
+          ]
+          if len(matching_additional_admins) < len(additional_admin_principal_ids):
+              raise RuntimeError(
+                  "Expected additional tenant admin memberships were not found after verification."
+              )
+
           collected_at = datetime.now(UTC).isoformat()
           evidence = "\n".join(
               [
@@ -219,8 +268,11 @@ jobs:
                   f"- Hostname: `{hostname}`",
                   f"- Membership ID: `{membership_id}`",
                   f"- Role ID: `{role_id}`",
+                  f"- Additional tenant admin role ID: `{admin_role_id}`",
+                  f"- Additional tenant admin memberships: `{len(additional_admin_principal_ids)}`",
                   f"- Apply bootstrap: `{str(apply_bootstrap).lower()}`",
                   "- Owner principal: stored in environment-scoped GitHub secret; not printed",
+                  "- Additional admin principals: stored in environment-scoped GitHub secret; not printed",
                   "- Verification: `passed`",
                   f"- Collected at: `{collected_at}`",
                   "",
@@ -237,6 +289,8 @@ jobs:
                       "tenant_id": tenant_id,
                       "membership_id": membership_id,
                       "role_id": role_id,
+                      "additional_admin_role_id": admin_role_id,
+                      "additional_admin_membership_count": len(additional_admin_principal_ids),
                       "apply_bootstrap": apply_bootstrap,
                       "verification": "passed",
                   },

@@ -108,6 +108,14 @@ class TenantSession:
 
 
 @dataclass(frozen=True)
+class TenantLoginView:
+    tenant_id: str
+    display_name: str
+    hostname: str
+    login_url: str | None
+
+
+@dataclass(frozen=True)
 class TenantDashboardCard:
     title: str
     value: str
@@ -125,6 +133,11 @@ def auth_mode_from_env() -> str:
 
 def configured_tenant_id_from_env() -> str | None:
     configured = os.environ.get("SCAS_UI_TENANT_ID", "").strip()
+    return configured or None
+
+
+def login_url_from_env() -> str | None:
+    configured = os.environ.get("SCAS_UI_LOGIN_URL", "").strip()
     return configured or None
 
 
@@ -197,6 +210,16 @@ def build_tenant_branding(
         landing_type=str(landing.get("type", "tenant-operations-dashboard")),
         area_presentation=str(landing.get("area_presentation", "list")),
         theme=build_tenant_theme(ui_profile),
+    )
+
+
+def build_tenant_login_view(tenant: dict[str, Any]) -> TenantLoginView:
+    shell = build_tenant_shell(tenant)
+    return TenantLoginView(
+        tenant_id=shell.tenant_id,
+        display_name=shell.display_name,
+        hostname=shell.hostname,
+        login_url=login_url_from_env(),
     )
 
 
@@ -350,7 +373,7 @@ def build_tenant_admin_section(tenant: dict[str, Any]) -> TenantAdminSection:
     if initial_owner is not None:
         users = (
             {
-                "user": str(initial_owner["email"]),
+                "user": str(initial_owner["user_id"]),
                 "status": "planned",
                 "roles": "Tenant Owner",
             },
@@ -514,6 +537,23 @@ def _session_from_state(state: dict[str, Any]) -> TenantSession:
     )
 
 
+def render_login_area(st: Any, tenant: dict[str, Any]) -> None:
+    login_view = build_tenant_login_view(tenant)
+    st.markdown(f"### Login {login_view.display_name}")
+    st.caption(login_view.hostname)
+    st.info(
+        "Bitte ueber den freigegebenen Identitaetsdienst anmelden. "
+        "Danach laedt die UI die serverseitig gepruefte Tenant-Session."
+    )
+    if login_view.login_url:
+        if hasattr(st, "link_button"):
+            st.link_button("Einloggen", login_view.login_url)
+        else:  # pragma: no cover - compatibility for older Streamlit runtimes.
+            st.markdown(f"[Einloggen]({login_view.login_url})")
+    else:
+        st.error("Tenant-Session nicht verfuegbar: trusted upstream authentication is required.")
+
+
 def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
     mode = auth_mode_from_env()
     if mode in {"", "fixture", "local"}:
@@ -536,7 +576,10 @@ def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
         st.session_state["scas_tenant_session"] = _session_to_state(session)
         return session
 
-    st.error("Tenant-Session nicht verfuegbar: trusted upstream authentication is required.")
+    if login_url_from_env():
+        render_login_area(st, tenant)
+    else:
+        st.error("Tenant-Session nicht verfuegbar: trusted upstream authentication is required.")
     st.stop()
     raise RuntimeError("streamlit stop did not halt execution")
 
