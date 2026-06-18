@@ -47,7 +47,7 @@ def test_business_ui_loads_daskuechenhaus_tenant_shell() -> None:
     assert shell.area_id == "daskuechenhaus"
     assert shell.legal_name == "das küchenhaus ralph schober GmbH"
     assert shell.hostname == "daskuechenhaus.condata.io"
-    assert shell.logo_path is None
+    assert shell.logo_path == "assets/images/daskuechenhaus/logo_daskuechenhaus.png"
     assert shell.admin_routes == ("/admin/users", "/admin/roles", "/admin/settings")
     assert shell.role_names == ("Tenant Owner", "Researcher")
     assert shell.data_sources == ("Daskuechenhaus Website",)
@@ -74,12 +74,39 @@ def test_business_ui_branding_is_loaded_from_selected_tenant_metadata() -> None:
     assert liquisto_branding.area_presentation == "tiles"
     assert daskuechenhaus_branding.display_name == "das küchenhaus"
     assert daskuechenhaus_branding.hostname == "daskuechenhaus.condata.io"
-    assert daskuechenhaus_branding.logo_path is None
+    assert (
+        daskuechenhaus_branding.logo_path
+        == "assets/images/daskuechenhaus/logo_daskuechenhaus.png"
+    )
     assert daskuechenhaus_branding.landing_type == "internal-operations-dashboard"
+    assert daskuechenhaus_branding.theme == streamlit_business_ui_app.TenantTheme(
+        background="#fff",
+        surface="#fff",
+        text="#111",
+        secondary_text="#333",
+        accent="#76b726",
+        border="#76b726",
+    )
     assert demo_branding.display_name == "Demo Tenant"
     assert demo_branding.hostname == "demo-tenant.example.invalid"
     assert demo_branding.logo_path is None
     assert "Liquisto" not in demo_branding.display_name
+
+
+def test_business_ui_renders_tenant_theme_css_from_branding_metadata() -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    branding = streamlit_business_ui_app.build_tenant_branding(
+        tenants["daskuechenhaus"]
+    )
+
+    css = streamlit_business_ui_app.render_tenant_theme_css(branding.theme)
+
+    assert "--tenant-background: #fff;" in css
+    assert "--tenant-text: #111;" in css
+    assert "--tenant-secondary-text: #333;" in css
+    assert "--tenant-accent: #76b726;" in css
+    assert "letter-spacing: 0;" in css
+    assert "border-right: 4px solid var(--tenant-accent);" in css
 
 
 def test_business_ui_builds_read_only_tenant_admin_sections() -> None:

@@ -44,6 +44,19 @@ The initial tenant registry entry is deliberately minimal:
 
 No cross-tenant or cross-area access is configured.
 
+## UI Branding
+
+The tenant UI uses Daskuechenhaus-owned branding only:
+
+- logo: `assets/images/daskuechenhaus/logo_daskuechenhaus.png`
+- background and surface: `#fff`
+- primary text: `#111`
+- secondary text: `#333`
+- accent and border: `#76b726`
+
+`schober-daskuechenhaus.de` remains a public source and contact domain. It is
+not used as the SCAS tenant slug, area ID, hostname, or asset namespace.
+
 ## Admin Bootstrap
 
 The registry keeps `admin_model.initial_owner = null` until a concrete SCAS

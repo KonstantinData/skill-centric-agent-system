@@ -220,6 +220,14 @@ def test_runtime_profile_rejects_unselected_version_pin(
                         "type": "internal-operations-dashboard",
                         "area_presentation": "tiles",
                     },
+                    "theme": {
+                        "background": "white",
+                        "surface": "#fff",
+                        "text": "#111",
+                        "secondary_text": "#333",
+                        "accent": "#76b726",
+                        "border": "#76b726",
+                    },
                     "workspace_areas": [
                         {
                             "id": "research",
@@ -233,7 +241,7 @@ def test_runtime_profile_rejects_unselected_version_pin(
                     ],
                 },
             ),
-            "'demo' is not one of",
+            "'white' does not match",
         ),
     ],
 )
