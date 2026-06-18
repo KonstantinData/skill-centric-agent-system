@@ -383,6 +383,7 @@ jobs:
           install -d -m 750 "${remote_dir}"
           {
             printf 'SCAS_UI_AUTH_MODE=required\n'
+            printf 'SCAS_UI_TENANT_ID=%s\n' "${TENANT_ID}"
             printf 'SCAS_UI_UPSTREAM_AUTH_TRUSTED=true\n'
             printf 'SCAS_UI_SESSION_CONTEXT_JSON=%s\n' "$(printf '%s' "${UI_SESSION_CONTEXT_JSON_B64}" | base64 -d)"
             printf 'SCAS_CONTROL_API_URL=%s\n' "${CONTROL_API_URL}"

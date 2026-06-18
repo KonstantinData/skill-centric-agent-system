@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-17 23:10 Europe/Berlin
+Last updated: 2026-06-18 09:39 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -26,6 +26,12 @@ SCAS-managed Docker Compose file for the Streamlit service. It intentionally
 does not read the legacy host Compose file, host `.env` files, or legacy Compose
 interpolation state. It does not create DNS records, change Cloudflare
 configuration, or bypass tenant authentication.
+
+Production deployments must bind the shared UI implementation to exactly one
+server-controlled tenant by writing `SCAS_UI_TENANT_ID=<tenant_id>` into the
+SCAS-managed environment file. For Liquisto this is `SCAS_UI_TENANT_ID=liquisto`.
+In this mode the app loads only that tenant and does not render a tenant
+selector.
 
 ## Latest Production Inventory
 
@@ -106,7 +112,8 @@ Expected result:
 
 - Docker image builds from `deploy/streamlit-business-ui/Dockerfile`.
 - Image archive artifact is uploaded.
-- Deployment plan artifact states that no remote host was changed.
+- Deployment plan artifact states the fixed tenant ID and that no remote host
+  was changed.
 
 ## Staging Deployment
 
@@ -129,7 +136,9 @@ uploads the image archive, writes a root-owned environment file on the target
 host, writes the complete Compose file under `/opt`, starts only that Compose
 file with the configured project and service name, runs the Streamlit health
 check on `127.0.0.1:<local_health_port>` with a bounded 90-second readiness
-wait, and uploads sanitized deployment evidence.
+wait, and uploads sanitized deployment evidence. The environment file includes
+`SCAS_UI_TENANT_ID=liquisto`, so the deployed hostname cannot switch to another
+tenant through UI state.
 
 ## Production Deployment
 

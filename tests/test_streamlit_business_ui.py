@@ -247,6 +247,44 @@ def test_business_ui_role_ids_from_env_does_not_accept_unknown_roles(monkeypatch
     )
 
 
+def test_business_ui_fixture_mode_allows_local_tenant_selection(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.delenv("SCAS_UI_AUTH_MODE", raising=False)
+    monkeypatch.delenv("SCAS_UI_TENANT_ID", raising=False)
+
+    assert streamlit_business_ui_app.resolve_runtime_tenant_id(tenants) is None
+
+
+def test_business_ui_required_mode_requires_server_bound_tenant(monkeypatch) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "required")
+    monkeypatch.delenv("SCAS_UI_TENANT_ID", raising=False)
+
+    with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="TENANT_ID"):
+        streamlit_business_ui_app.resolve_runtime_tenant_id(tenants)
+
+
+def test_business_ui_server_bound_tenant_hides_cross_tenant_selection(
+    monkeypatch,
+) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "required")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "liquisto")
+
+    assert streamlit_business_ui_app.resolve_runtime_tenant_id(tenants) == "liquisto"
+
+
+def test_business_ui_server_bound_tenant_rejects_unknown_tenant(
+    monkeypatch,
+) -> None:
+    tenants = streamlit_business_ui_app.load_tenant_registry()
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "required")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "missing-tenant")
+
+    with pytest.raises(streamlit_business_ui_app.TenantSessionError, match="available"):
+        streamlit_business_ui_app.resolve_runtime_tenant_id(tenants)
+
+
 def test_business_ui_fixture_session_uses_local_role_selection(monkeypatch) -> None:
     tenants = streamlit_business_ui_app.load_tenant_registry()
     monkeypatch.delenv("SCAS_UI_AUTH_MODE", raising=False)

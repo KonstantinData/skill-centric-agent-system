@@ -2,7 +2,7 @@
 
 Tenant-aware operations dashboard for SCAS business steering. The first screen
 loads tenant shell metadata, branding, landing configuration, role-derived
-navigation, and launch dashboard cards from the selected tenant record. It then
+navigation, and launch dashboard cards from the active tenant record. It then
 shows only the workspace tiles enabled by the current tenant roles. Tenant
 admins additionally see users, roles, launch-critical settings, admin workflow
 routes, and audit traceability status from the tenant context.
@@ -27,6 +27,11 @@ tenant's non-admin role set. In authenticated mode, `SCAS_UI_ROLE_IDS` is ignore
 for authority; visible areas and admin access derive from the validated session
 role IDs.
 
+`SCAS_UI_TENANT_ID` binds the UI to one server-controlled tenant. Production and
+other authenticated deployments must set it, for example `liquisto`, so the app
+loads only that tenant and does not render a tenant selector. When it is omitted,
+the tenant selector is available only for local fixture-mode contract checks.
+
 ## Authentication Modes
 
 Local fixture mode is the default:
@@ -41,6 +46,7 @@ Production-style mode is fail-closed and requires session context:
 
 ```powershell
 $env:SCAS_UI_AUTH_MODE="required"
+$env:SCAS_UI_TENANT_ID="liquisto"
 $env:SCAS_UI_SESSION_CONTEXT_JSON='{"tenant_id":"liquisto","principal_id":"<principal-id>","membership_id":"<membership-id>","role_ids":["liquisto-owner"]}'
 $env:SCAS_UI_UPSTREAM_AUTH_TRUSTED="true"
 streamlit run apps\streamlit_business_ui\app.py
@@ -65,6 +71,7 @@ Optional backend-backed mode:
 $env:SCAS_CONTROL_API_URL="https://<control-api-worker>"
 $env:SCAS_TENANT_ADMIN_TOKEN="<tenant-admin-token>"
 $env:SCAS_UI_AUTH_MODE="required"
+$env:SCAS_UI_TENANT_ID="liquisto"
 $env:SCAS_UI_SESSION_CONTEXT_JSON='{"tenant_id":"liquisto","principal_id":"<principal-id>","membership_id":"<membership-id>","role_ids":["liquisto-researcher"]}'
 $env:SCAS_UI_UPSTREAM_AUTH_TRUSTED="true"
 streamlit run apps\streamlit_business_ui\app.py
@@ -81,11 +88,12 @@ The local launch smoke path is covered by:
 python -m pytest tests/test_streamlit_business_ui.py
 ```
 
-The suite verifies tenant hostname selection, role-derived workspace visibility,
-metadata-derived branding, tenant-specific navigation, landing dashboard
-states, admin/non-admin separation, admin workflow routes, required labels, and
-the authenticated session gate. It is intentionally dependency-free until the
-repository adds a browser E2E or accessibility harness.
+The suite verifies tenant hostname selection, tenant-bound production mode,
+role-derived workspace visibility, metadata-derived branding, tenant-specific
+navigation, landing dashboard states, admin/non-admin separation, admin workflow
+routes, required labels, and the authenticated session gate. It is intentionally
+dependency-free until the repository adds a browser E2E or accessibility
+harness.
 
 ## Deployment Status
 
@@ -98,8 +106,8 @@ the Streamlit Business UI:
 
 The workflow defaults to build-only plan mode and does not mutate the remote
 host unless `apply_deploy=true`. Production apply also requires
-`confirm_production=true`, target-environment Hetzner secrets, a server-owned
-session context secret, a tenant admin token secret, and an
-`upstream_auth_evidence_url` proving the approved authentication boundary. The
-public hostname remains `not-production-ready` until the live tenant launch
-gates in `docs/runbooks/liquisto-tenant-release-gate.md` pass.
+`confirm_production=true`, target-environment Hetzner secrets, fixed
+`SCAS_UI_TENANT_ID`, a server-owned session context secret, a tenant admin token
+secret, and an `upstream_auth_evidence_url` proving the approved authentication
+boundary. The public hostname remains `not-production-ready` until the live
+tenant launch gates in `docs/runbooks/liquisto-tenant-release-gate.md` pass.

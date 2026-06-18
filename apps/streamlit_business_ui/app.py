@@ -96,6 +96,30 @@ class TenantSessionError(ValueError):
     """Raised when the UI cannot establish tenant session authority."""
 
 
+def auth_mode_from_env() -> str:
+    return os.environ.get("SCAS_UI_AUTH_MODE", "fixture").strip().lower()
+
+
+def configured_tenant_id_from_env() -> str | None:
+    configured = os.environ.get("SCAS_UI_TENANT_ID", "").strip()
+    return configured or None
+
+
+def resolve_runtime_tenant_id(tenants: dict[str, dict[str, Any]]) -> str | None:
+    configured_tenant_id = configured_tenant_id_from_env()
+    if configured_tenant_id:
+        if configured_tenant_id not in tenants:
+            raise TenantSessionError(
+                f"Configured SCAS_UI_TENANT_ID is not available: {configured_tenant_id}"
+            )
+        return configured_tenant_id
+
+    if auth_mode_from_env() == "required":
+        raise TenantSessionError("SCAS_UI_TENANT_ID is required in required auth mode.")
+
+    return None
+
+
 def load_tenant_registry(tenants_dir: Path = TENANTS_DIR) -> dict[str, dict[str, Any]]:
     tenants: dict[str, dict[str, Any]] = {}
     for path in sorted(tenants_dir.glob("*.json")):
@@ -265,7 +289,7 @@ def build_fixture_session(tenant: dict[str, Any]) -> TenantSession:
 
 
 def authenticated_session_from_env(tenant: dict[str, Any]) -> TenantSession:
-    mode = os.environ.get("SCAS_UI_AUTH_MODE", "fixture").strip().lower()
+    mode = auth_mode_from_env()
     if mode in {"", "fixture", "local"}:
         return build_fixture_session(tenant)
     if mode != "required":
@@ -343,7 +367,7 @@ def _session_from_state(state: dict[str, Any]) -> TenantSession:
 
 
 def render_session_gate(st: Any, tenant: dict[str, Any]) -> TenantSession:
-    mode = os.environ.get("SCAS_UI_AUTH_MODE", "fixture").strip().lower()
+    mode = auth_mode_from_env()
     if mode in {"", "fixture", "local"}:
         return build_fixture_session(tenant)
 
@@ -665,11 +689,24 @@ def main() -> None:
     tenants = load_tenant_registry()
 
     st.sidebar.title("Steuerung")
-    tenant_id = st.sidebar.selectbox(
-        "Tenant",
-        options=sorted(tenants),
-        index=sorted(tenants).index("liquisto") if "liquisto" in tenants else 0,
-    )
+    try:
+        runtime_tenant_id = resolve_runtime_tenant_id(tenants)
+    except TenantSessionError as error:
+        st.error(f"Tenant-Konfiguration nicht verfuegbar: {error}")
+        st.stop()
+        raise RuntimeError("streamlit stop did not halt execution") from error
+
+    if runtime_tenant_id is None:
+        tenant_id = st.sidebar.selectbox(
+            "Tenant",
+            options=sorted(tenants),
+            index=sorted(tenants).index("liquisto") if "liquisto" in tenants else 0,
+        )
+    else:
+        tenant_id = runtime_tenant_id
+        st.sidebar.caption("Tenant")
+        st.sidebar.write(tenant_id)
+
     selected_tenant = tenants[tenant_id]
     available_roles = {
         str(role["display_name"]): str(role["id"])
