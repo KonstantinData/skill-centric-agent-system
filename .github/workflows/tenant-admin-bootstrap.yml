@@ -53,8 +53,10 @@ jobs:
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
+      SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
+      SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
 
     steps:
       - name: Validate and resolve inputs
@@ -66,12 +68,10 @@ jobs:
             staging)
               CONTROL_API_URL="https://scas-control-api-staging.still-butterfly-bbff.workers.dev"
               CONTROL_API_TOKEN="${SCAS_STAGING_CONTROL_API_TOKEN:-}"
-              OWNER_PRINCIPAL_ID="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
               ;;
             prod)
               CONTROL_API_URL="https://scas-control-api-prod.still-butterfly-bbff.workers.dev"
               CONTROL_API_TOKEN="${SCAS_PROD_CONTROL_API_TOKEN:-}"
-              OWNER_PRINCIPAL_ID="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
               ;;
             *)
               echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
@@ -88,6 +88,29 @@ jobs:
             fi
           done
 
+          case "${TARGET_ENVIRONMENT}:${TENANT_ID}" in
+            staging:liquisto)
+              OWNER_PRINCIPAL_SECRET_NAME="SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID"
+              OWNER_PRINCIPAL_ID="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            staging:daskuechenhaus)
+              OWNER_PRINCIPAL_SECRET_NAME="SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
+              OWNER_PRINCIPAL_ID="${SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            prod:liquisto)
+              OWNER_PRINCIPAL_SECRET_NAME="SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID"
+              OWNER_PRINCIPAL_ID="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            prod:daskuechenhaus)
+              OWNER_PRINCIPAL_SECRET_NAME="SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
+              OWNER_PRINCIPAL_ID="${SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}"
+              ;;
+            *)
+              echo "::error::Unsupported tenant owner bootstrap target: ${TARGET_ENVIRONMENT}:${TENANT_ID}"
+              exit 1
+              ;;
+          esac
+
           if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
             echo "::error::confirm_production must be true for production bootstrap."
             exit 1
@@ -99,7 +122,7 @@ jobs:
           fi
 
           if [ -z "${OWNER_PRINCIPAL_ID}" ]; then
-            echo "::error::Missing ${TARGET_ENVIRONMENT} Liquisto owner principal id secret."
+            echo "::error::Missing ${OWNER_PRINCIPAL_SECRET_NAME}."
             exit 1
           fi
 

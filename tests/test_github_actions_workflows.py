@@ -29,7 +29,8 @@ TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH = (
 TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-evidence.yml"
 )
-TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
+DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
+DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
 
 
 def load_ci_workflow() -> str:
@@ -366,8 +367,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "confirm_production must be true for production deploys" in workflow
     assert "SCAS_STAGING_UI_SESSION_CONTEXT_JSON" in workflow
     assert "SCAS_PROD_UI_SESSION_CONTEXT_JSON" in workflow
-    assert f"SCAS_STAGING_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
-    assert f"SCAS_PROD_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert 'SCAS_STAGING_TENANT_ADMIN_TOKEN:-${SCAS_STAGING_CONTROL_API_TOKEN:-}' in workflow
     assert 'SCAS_PROD_TENANT_ADMIN_TOKEN:-${SCAS_PROD_CONTROL_API_TOKEN:-}' in workflow
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
@@ -409,8 +410,14 @@ def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
     assert "confirm_production:" in workflow
     assert "SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "SCAS_PROD_CONTROL_API_TOKEN" in workflow
-    assert f"SCAS_STAGING_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
-    assert f"SCAS_PROD_{TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert "staging:daskuechenhaus)" in workflow
+    assert "prod:daskuechenhaus)" in workflow
+    assert "Unsupported tenant owner bootstrap target" in workflow
+    assert "Missing ${OWNER_PRINCIPAL_SECRET_NAME}." in workflow
     assert "Owner principal: stored in environment-scoped GitHub secret; not printed" in workflow
     assert "scas-tenant-admin-bootstrap/1.0" in workflow
     assert 'context.get("users", [])' in workflow

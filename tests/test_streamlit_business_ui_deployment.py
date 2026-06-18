@@ -9,6 +9,9 @@ RUNBOOK_PATH = REPO_ROOT / "docs" / "runbooks" / "streamlit-business-ui-deployme
 ADMIN_BOOTSTRAP_RUNBOOK_PATH = (
     REPO_ROOT / "docs" / "runbooks" / "liquisto-tenant-admin-bootstrap.md"
 )
+DASKUECHENHAUS_ADMIN_BOOTSTRAP_RUNBOOK_PATH = (
+    REPO_ROOT / "docs" / "runbooks" / "daskuechenhaus-tenant-admin-bootstrap.md"
+)
 ROLLBACK_RUNBOOK_PATH = (
     REPO_ROOT / "docs" / "runbooks" / "liquisto-tenant-rollback-deprovisioning.md"
 )
@@ -130,6 +133,19 @@ def test_liquisto_admin_bootstrap_runbook_keeps_owner_data_out_of_repo() -> None
     assert "session JSON" in runbook
 
 
+def test_daskuechenhaus_admin_bootstrap_runbook_keeps_owner_data_out_of_repo() -> None:
+    runbook = DASKUECHENHAUS_ADMIN_BOOTSTRAP_RUNBOOK_PATH.read_text(encoding="utf-8")
+
+    assert "tenant_id: daskuechenhaus" in runbook
+    assert "daskuechenhaus" + ".condata.io" in runbook
+    assert "SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
+    assert "SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID" in runbook
+    assert "Do not hardcode the owner" in runbook
+    assert "daskuechenhaus-owner" in runbook
+    assert "Liquisto users, roles, data sources, knowledge scopes, and memory scopes" in runbook
+    assert "provider user IDs" in runbook
+
+
 def test_liquisto_rollback_runbook_is_tenant_local_and_dry_run_first() -> None:
     runbook = ROLLBACK_RUNBOOK_PATH.read_text(encoding="utf-8")
 
@@ -146,6 +162,7 @@ def test_liquisto_launch_runbooks_are_indexed() -> None:
     deployment = RUNBOOK_PATH.read_text(encoding="utf-8")
 
     assert "liquisto-tenant-admin-bootstrap.md" in docs_index
+    assert "daskuechenhaus-tenant-admin-bootstrap.md" in docs_index
     assert "liquisto-tenant-rollback-deprovisioning.md" in docs_index
     assert "liquisto-tenant-admin-bootstrap.md" in release_gate
     assert "liquisto-tenant-rollback-deprovisioning.md" in release_gate

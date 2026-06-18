@@ -12,12 +12,12 @@
     "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.15",
-    "@cloudflare/workers-types": "4.20260615.1",
+    "@cloudflare/vitest-pool-workers": "^0.16.17",
+    "@cloudflare/workers-types": "4.20260617.1",
     "@types/node": "^25.9.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8",
-    "wrangler": "^4.100.0"
+    "wrangler": "^4.102.0"
   },
   "overrides": {
     "esbuild": "0.28.1",

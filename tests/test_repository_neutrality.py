@@ -27,6 +27,8 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     ".github/workflows/tenant-ui-deploy.yml",
     ".github/workflows/tenant-ui-runtime-inventory.yml",
     "docs/README.md",
+    "docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md",
+    "docs/runbooks/daskuechenhaus-tenant-onboarding.md",
     "docs/runbooks/liquisto-tenant-admin-bootstrap.md",
     "docs/runbooks/liquisto-tenant-dns-evidence.md",
     "docs/runbooks/liquisto-tenant-release-gate.md",
