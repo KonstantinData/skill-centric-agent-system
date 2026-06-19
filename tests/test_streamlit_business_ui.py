@@ -911,8 +911,62 @@ def test_business_ui_admin_dashboard_route_uses_existing_session(monkeypatch) ->
     streamlit_business_ui_app.main()
 
     assert ("subheader", "Admin Center") in fake_st.events
+    metric_labels = [event[2] for event in fake_st.events if event[0] == "column_metric"]
+    assert metric_labels[:4] == ["Benutzer", "Rollen", "Workflows", "Datenquellen"]
+    assert "Bereiche" in metric_labels
+    assert "Seiten" in metric_labels
+    assert "Geschützte Aktionen" in metric_labels
+    markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
+    assert "### Accountdaten" in markdown_text
+    assert "### Nutzer & Rechte" in markdown_text
+    assert "### Datenquellen & Integrationen" in markdown_text
+    assert "### Papierkorb" in markdown_text
+    assert "### CentralStationCRM-Adminstruktur" in markdown_text
+    assert "#### Account anpassen" in markdown_text
+    assert "#### Externe Zugriffe & Integrationen" in markdown_text
+    dataframe_rows = [event[1][0] for event in fake_st.events if event[0] == "dataframe"]
+    assert any(
+        {"Bereich": "Tenant", "Wert": "das küchenhaus"}
+        in rows
+        for rows in dataframe_rows
+    )
+    assert any(
+        any(row.get("Name") == "PostgreSQL je Tenant auf der Runtime Plane" for row in rows)
+        for rows in dataframe_rows
+    )
     assert ("form", "scas-admin-password-change") in fake_st.events
     assert not [event for event in fake_st.events if event == ("form", "scas-local-login")]
+
+
+def test_business_ui_crm_admin_blueprint_matches_inspected_operational_structure() -> None:
+    rows = streamlit_business_ui_app.crm_admin_blueprint_rows()
+    routes = {str(row["CRM-Route"]) for row in rows}
+
+    assert len(rows) >= 50
+    assert {
+        "/user_settings",
+        "/account_user_settings/mails",
+        "/account_settings/deal_types/43851/deal_type_stages",
+        "/account_settings/custom_fields_types/new",
+        "/account_settings/users/new_multi",
+        "/account_settings/two_factor",
+        "/account_settings/api_keys/new",
+        "/account_settings/hooks/new",
+        "/integrations/microsoft365",
+        "/account_settings/api_key_externals/fastbill",
+        "/account_settings/account_addon_purchases?tab=contacts",
+        "/gdpr/data_processing_agreements/new",
+        "/account_settings/confirmdelete",
+        "/bill/billing_infos/new",
+        "/trash/attachments",
+    } <= routes
+    assert not any(route.startswith("/partners") for route in routes)
+    assert not any(route.startswith("/referrals") for route in routes)
+    assert any(
+        row["CRM-Route"] == "/account_settings/confirmdelete"
+        and "Destructive action disabled" in row["Schreibmodus"]
+        for row in rows
+    )
 
 
 def test_business_ui_admin_password_tool_generates_hash() -> None:
