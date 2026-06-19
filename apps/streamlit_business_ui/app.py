@@ -858,21 +858,44 @@ def build_tenant_navigation_items(
     return tuple(navigation_items)
 
 
-def navigation_href(route: str) -> str:
-    return f"?route={quote(route, safe='')}"
-
-
 def current_route_from_query_params(st: Any) -> str:
     query_params = getattr(st, "query_params", None)
-    if query_params is None:
-        return "/"
-    raw_route = query_params.get("route", "/")
+    raw_route = query_params.get("route") if query_params is not None else None
     if isinstance(raw_route, list):
         raw_route = raw_route[0] if raw_route else "/"
     route = str(raw_route).strip()
-    if not route.startswith("/"):
-        return "/"
-    return route
+    if route.startswith("/"):
+        return route
+    stored_route = st.session_state.get("scas_active_route")
+    if isinstance(stored_route, str) and stored_route.startswith("/"):
+        return stored_route
+    return "/"
+
+
+def activate_navigation_route(st: Any, route: str) -> None:
+    st.session_state["scas_active_route"] = route
+    query_params = getattr(st, "query_params", None)
+    if query_params is not None:
+        query_params["route"] = route
+
+
+def render_sidebar_navigation(
+    st: Any,
+    navigation_items: tuple[TenantNavigationItem, ...],
+    active_route: str,
+) -> str:
+    st.sidebar.caption("Navigation")
+    selected_route = active_route
+    for item in navigation_items:
+        button_type = "primary" if item.route == active_route else "secondary"
+        if st.sidebar.button(
+            item.label,
+            key=f"nav-{item.route}",
+            type=button_type,
+        ):
+            activate_navigation_route(st, item.route)
+            selected_route = item.route
+    return selected_route
 
 
 def tenant_admin_api_config_from_env() -> TenantAdminApiConfig | None:
@@ -1396,6 +1419,60 @@ def render_customer_cases_area(
         st.table(table_rows)
 
 
+def render_password_change_admin_tool(st: Any) -> None:
+    st.markdown("### Passwort ändern")
+    st.info(
+        "Die UI speichert Passwörter nicht selbst. Für eine dauerhafte Änderung "
+        "muss der erzeugte Hash in `SCAS_UI_LOGIN_USERS_JSON` übernommen und die "
+        "UI neu deployed werden."
+    )
+    with st.form("scas-admin-password-change"):
+        username = st.text_input("Benutzername")
+        new_password = st.text_input("Neues Passwort", type="password")
+        repeat_password = st.text_input("Neues Passwort wiederholen", type="password")
+        submitted = st.form_submit_button("Passwort-Hash erzeugen")
+
+    if not submitted:
+        return
+
+    if not username.strip():
+        st.error("Bitte Benutzername eingeben.")
+        return
+    if new_password != repeat_password:
+        st.error("Die Passwörter stimmen nicht überein.")
+        return
+    if len(new_password) < 12:
+        st.error("Das neue Passwort muss mindestens 12 Zeichen haben.")
+        return
+
+    password_hash = encode_login_password_hash(new_password)
+    st.success("Passwort-Hash erzeugt.")
+    st.code(
+        json.dumps(
+            {
+                "username": username.strip(),
+                "password_hash": password_hash,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        language="json",
+    )
+
+
+def render_admin_dashboard(
+    st: Any,
+    session: TenantSession,
+) -> None:
+    st.subheader("Admin-Dashboard")
+    if "tenant-admin" not in session.capabilities:
+        st.error("Admin-Dashboard ist für diese Sitzung nicht freigeschaltet.")
+        return
+
+    st.caption(f"Angemeldet als: {session.principal_id}")
+    render_password_change_admin_tool(st)
+
+
 def load_tenant_admin_context_from_api(
     config: TenantAdminApiConfig,
     tenant_id: str,
@@ -1548,12 +1625,7 @@ def main() -> None:
     if active_route not in visible_routes:
         active_route = "/"
 
-    st.sidebar.caption("Navigation")
-    for item in navigation_items:
-        st.sidebar.markdown(
-            f"[{escape(item.label)}]({escape(navigation_href(item.route))})",
-            unsafe_allow_html=True,
-        )
+    active_route = render_sidebar_navigation(st, navigation_items, active_route)
 
     if branding.logo_path:
         logo_path = REPO_ROOT / branding.logo_path
@@ -1569,6 +1641,9 @@ def main() -> None:
     st.divider()
     if active_route == "/customer-cases":
         render_customer_cases_area(st, tenant_session)
+        return
+    if active_route == "/admin":
+        render_admin_dashboard(st, tenant_session)
         return
 
     st.subheader("Freigeschaltete Bereiche")
