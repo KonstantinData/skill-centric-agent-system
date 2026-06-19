@@ -45,6 +45,24 @@ def parse_args() -> argparse.Namespace:
         default="repository-maintainer",
         help="Principal id for generated scope bindings.",
     )
+    parser.add_argument(
+        "--omit-default-tenant-memberships",
+        action="store_true",
+        help=(
+            "Do not create fallback tenant memberships for tenants without an "
+            "initial owner. Use for production seeds that bootstrap memberships "
+            "through the tenant-admin workflow."
+        ),
+    )
+    parser.add_argument(
+        "--omit-default-scope-bindings",
+        action="store_true",
+        help=(
+            "Do not create fallback principal scope bindings. Use for production "
+            "seeds where tenant and retrieval authority must come from explicit "
+            "environment provisioning rather than repository defaults."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -57,6 +75,8 @@ def main() -> None:
         tenant_paths=tenant_paths,
         principal_kind=args.principal_kind,
         principal_id=args.principal_id,
+        include_default_scope_bindings=not args.omit_default_scope_bindings,
+        include_default_tenant_memberships=not args.omit_default_tenant_memberships,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(generate_seed_sql(records), encoding="utf-8")

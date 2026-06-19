@@ -155,7 +155,14 @@ Latest production evidence:
 
 | Date | Environment | GitHub run | Result | Evidence |
 | --- | --- | --- | --- | --- |
+| 2026-06-19 23:13 Europe/Berlin | prod | [27848706256](https://github.com/KonstantinData/skill-centric-agent-system/actions/runs/27848706256) | passed | Prod Control Plane D1 contained `daskuechenhaus`; owner/admin bootstrap completed; live tenant-admin context returned only Daskuechenhaus tenant, role, user, and data-source tenant IDs; mismatched tenant/hostname checks returned `tenant_hostname_denied`; generated `repository-maintainer` memberships and scope bindings were removed from prod authority. |
 | 2026-06-18 17:10 Europe/Berlin | prod | no bootstrap run yet | pending | Live UI check showed `daskuechenhaus.condata.io` serving Daskuechenhaus tenant content and `Initial owner pending`. |
+
+For production Control Plane seeding, generate the seed with
+`--omit-default-tenant-memberships --omit-default-scope-bindings` and create
+memberships through this bootstrap workflow. Default tenant memberships and
+default principal scope bindings are suitable for local/dev fixtures, not
+production tenant authority.
 
 ## Rollback
 
