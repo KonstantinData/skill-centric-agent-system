@@ -25,6 +25,10 @@ Tenant-specific Cloudflare Worker for the Daskuechenhaus customer case manager.
 - `customer_participants`: one or more private/company Beteiligte under the
   same Kunden-Nr.; this supports two names on a contract or invoice without
   creating a second Kunden-Nr.
+- `tax_number`, `vat_id`, `iso_country_code`, and the tax/communication flags
+  (`is_nato`, `has_custom_vat`, `reverse_charge`, `marketing_allowed`,
+  `e_invoice`) are stored with the customer and first participant in v1.2. The
+  business functions behind those flags are intentionally implemented later.
 
 All user-facing labels in the Daskuechenhaus UI are German. The API and schema
 keep English identifiers for repository consistency.
@@ -65,14 +69,23 @@ npx wrangler d1 execute daskuechenhaus-cases --remote --file=schema_v1_1.sql
 `schema_v1_1.sql` is intentionally a migration script, not an idempotent seed
 file. Run it once per database.
 
+After v1.1, apply the one-time v1.2 migration before deploying code that writes
+the new tax and checkbox fields:
+
+```powershell
+npx wrangler d1 execute daskuechenhaus-cases --remote --file=schema_v1_2.sql
+```
+
+`schema_v1_2.sql` is also non-idempotent and must run only once per database.
+
 For local D1 validation:
 
 ```powershell
 npx wrangler d1 execute daskuechenhaus-cases --local --file=schema_v1.sql
 ```
 
-Use `schema_v1_1.sql` locally only against a copy of a Sprint-1 database that
-was originally created before the v1.1 columns existed.
+Use migration files locally only against a copy of a database that was created
+before the corresponding columns existed.
 
 ## Secret
 
