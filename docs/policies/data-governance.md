@@ -13,7 +13,7 @@ there is a concrete security, privacy, governance, or quality risk.
 | --- | --- | --- |
 | `public` | Published or intentionally shareable information. | Cloudflare knowledge, Cloudflare memory, Hetzner runtime artifacts. |
 | `internal` | Repository, operations, or project context that is not secret. | Cloudflare knowledge or memory when scoped and policy-approved. |
-| `confidential` | Sensitive customer, operational, or private context. | Hetzner runtime artifacts by default; Cloudflare only with explicit policy approval. |
+| `confidential` | Sensitive customer, operational, or private context. | Hetzner tenant PostgreSQL databases or Hetzner runtime artifacts by default; Cloudflare only with explicit policy approval. |
 | `secret` | Credentials, bearer tokens, private keys, cookies, auth headers, provider keys, or equivalent values. | No persistent content store; only platform secret stores or environment variables. |
 
 Secrets must not appear in prompts, runtime outputs, tool artifacts, Notion
@@ -46,6 +46,14 @@ Runtime artifacts may contain task-local execution data on Hetzner. Cloudflare
 must not receive raw runtime traces, raw tool outputs, or run logs. The Control
 Plane may receive validated knowledge records, policy-approved memory records,
 scope metadata, ingestion jobs, and audit events.
+
+Tenant customer and operational business data must remain in tenant-local
+PostgreSQL databases on Hetzner unless a separate policy explicitly approves a
+bounded metadata projection. Cloudflare D1 is not an operational customer data
+store; it may hold tenant authority and data-source registration metadata, but
+not Daskuechenhaus customer cases, customer records, order state, email
+communication bodies, calendar contents, invoice-relevant state, or aftersales
+case content.
 
 ## Knowledge And Data Quality
 

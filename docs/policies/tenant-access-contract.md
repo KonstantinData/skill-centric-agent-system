@@ -172,6 +172,14 @@ lookups. The connector resolves sources only from the sealed runtime
 fails closed for global profiles, cross-tenant sources, unavailable sources, or
 ungranted access modes.
 
+Production tenant customer and operational business databases are Hetzner
+PostgreSQL databases, one database per tenant. The Control Plane may register
+those databases as tenant-owned data sources and may grant access through
+tenant-local roles, but Cloudflare D1 remains an authority and metadata store
+only. It must not become the production store for tenant customer records,
+customer cases, order workflows, email tracking, calendar references, or
+aftersales state.
+
 ## Runtime Profile Context
 
 Every runtime profile includes `tenant_context` and must conform to:

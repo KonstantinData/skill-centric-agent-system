@@ -44,6 +44,38 @@ The initial tenant registry entry is deliberately minimal:
 
 No cross-tenant or cross-area access is configured.
 
+## Customer Data Storage
+
+Daskuechenhaus customer cases, customer records, order workflow state, email
+communication tracking, calendar references, and aftersales state are
+production customer data. They must live in the Hetzner PostgreSQL tenant
+database `tenant_das_kuechenhaus`.
+
+This storage rule is about the Daskuechenhaus operational/customer database
+only. It does not change SCAS memory handling.
+
+Cloudflare D1 remains the Control Plane authority store for tenant metadata,
+hostnames, memberships, roles, data-source registrations, scope bindings,
+policy bindings, and bounded audit metadata. It is not the production store for
+Daskuechenhaus customer cases.
+
+Any experimental Daskuechenhaus customer-case data previously created in
+Cloudflare D1 is discarded as a source system. The production customer-case
+product starts with a new PostgreSQL schema; no D1-to-Hetzner customer-case
+migration is planned.
+
+Provision the empty tenant database on `scas-runtime-prod` with:
+
+```bash
+SCAS_TENANT_DB=tenant_das_kuechenhaus \
+SCAS_TENANT_DB_OWNER=tenant_das_kuechenhaus_app \
+scripts/hetzner/provision_tenant_database.sh
+```
+
+This step creates only the database, owner/application role, and empty
+`tenant` and `audit` schemas. The German Daskuechenhaus customer-case schema is
+a follow-up migration.
+
 ## UI Branding
 
 The tenant UI uses Daskuechenhaus-owned branding only:
