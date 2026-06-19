@@ -840,21 +840,25 @@ def build_tenant_navigation_items(
         TenantNavigationItem(
             label="Übersicht",
             route="/",
-            description="Tenant landing dashboard",
+            description="Statusseite mit den dem Benutzer zugeordneten Ereignissen",
             required_capability=None,
             admin_only=False,
         )
     ]
-    navigation_items.extend(
-        TenantNavigationItem(
-            label=area.display_name,
-            route=area.route,
-            description=area.description,
-            required_capability=area.required_capability,
-            admin_only=area.admin_only,
-        )
+    has_admin_area = any(
+        area.admin_only or area.required_capability == "tenant-admin"
         for area in workspace_areas
     )
+    if has_admin_area:
+        navigation_items.append(
+            TenantNavigationItem(
+                label="Admin Center",
+                route="/admin",
+                description="Tenant administration",
+                required_capability="tenant-admin",
+                admin_only=True,
+            )
+        )
     return tuple(navigation_items)
 
 
@@ -1059,6 +1063,18 @@ def customer_case_needs_attention(case: dict[str, Any]) -> bool:
     return bool(case.get("has_attention") or case.get("needs_attention"))
 
 
+def customer_case_assigned_user_id(case: dict[str, Any]) -> str:
+    for key in ("responsible_user_id", "assigned_to", "owner_id"):
+        value = str(case.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def customer_case_is_assigned_to_user(case: dict[str, Any], principal_id: str) -> bool:
+    return customer_case_assigned_user_id(case) == principal_id
+
+
 def customer_case_display_label(case: dict[str, Any]) -> str:
     case_number = str(case.get("case_number") or "ohne Vorgangs-Nr.").strip()
     customer_name = str(case.get("customer_full_name") or "ohne Name").strip()
@@ -1147,7 +1163,7 @@ def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> in
         for offset, (phase, label) in enumerate(CUSTOMER_CASE_PHASES[start : start + 5]):
             suffix = "  ⚠" if attention[phase] else ""
             count_label = "1 Vorgang" if counts[phase] == 1 else f"{counts[phase]} Vorgänge"
-            button_label = f"Phase {phase}\n{label}\n{count_label}{suffix}"
+            button_label = f"Statusphase {phase}\n{label}\n{count_label}{suffix}"
             with cols[offset]:
                 if st.button(button_label, key=f"customer-case-phase-{phase}"):
                     selected_phase = phase
@@ -1315,7 +1331,7 @@ def render_customer_case_edit_form(
         phase_options = [label for _phase, label in CUSTOMER_CASE_PHASES]
         current_phase = customer_case_phase_number(case)
         phase_label = st.selectbox(
-            "Prozessphase",
+            "Statusphase",
             options=phase_options,
             index=max(current_phase - 1, 0),
         )
@@ -1387,7 +1403,7 @@ def render_customer_cases_area(
     st: Any,
     session: TenantSession,
 ) -> None:
-    st.subheader("Kunden-Vorgänge")
+    st.subheader("Übersicht")
     config = customer_cases_api_config_from_env()
     if config is None:
         st.warning("Kunden-Vorgänge API ist noch nicht konfiguriert.")
@@ -1403,8 +1419,22 @@ def render_customer_cases_area(
     if not isinstance(cases, list):
         cases = []
 
-    st.caption("Prozessübersicht")
-    selected_phase = render_customer_case_phase_tiles(st, cases)
+    status_filter = st.selectbox(
+        "Status filtern",
+        options=["Meine Ereignisse", "Alle Ereignisse"],
+        index=0,
+    )
+    if status_filter == "Meine Ereignisse":
+        status_cases = [
+            case
+            for case in cases
+            if customer_case_is_assigned_to_user(case, session.principal_id)
+        ]
+    else:
+        status_cases = cases
+
+    st.caption("Statusübersicht")
+    selected_phase = render_customer_case_phase_tiles(st, status_cases)
     selected_phase_label = dict(CUSTOMER_CASE_PHASES)[selected_phase]
 
     if st.button("Neuen Vorgang anlegen", key="customer-case-create-open"):
@@ -1415,13 +1445,13 @@ def render_customer_cases_area(
         )
 
     selected_cases = [
-        case for case in cases if customer_case_phase_number(case) == selected_phase
+        case for case in status_cases if customer_case_phase_number(case) == selected_phase
     ]
 
-    st.caption(f"Vorgänge in Prozessphase: {selected_phase_label}")
+    st.caption(f"Ereignisse in Statusphase: {selected_phase_label}")
 
     if not selected_cases:
-        st.info("In dieser Prozessphase sind keine Kunden-Vorgänge vorhanden.")
+        st.info("In dieser Statusphase sind keine Ereignisse für den aktuellen Filter vorhanden.")
         return
 
     search_term = st.text_input(
@@ -1438,7 +1468,7 @@ def render_customer_cases_area(
     else:
         visible_cases = selected_cases[:25]
         st.caption(
-            "Ohne Suche werden die ersten 25 Vorgänge dieser Prozessphase angezeigt."
+            "Ohne Suche werden die ersten 25 Ereignisse dieser Statusphase angezeigt."
         )
 
     if not visible_cases:
@@ -1563,9 +1593,9 @@ def render_admin_dashboard(
     st: Any,
     session: TenantSession,
 ) -> None:
-    st.subheader("Admin-Dashboard")
+    st.subheader("Admin Center")
     if "tenant-admin" not in session.capabilities:
-        st.error("Admin-Dashboard ist für diese Sitzung nicht freigeschaltet.")
+        st.error("Admin Center ist für diese Sitzung nicht freigeschaltet.")
         return
 
     st.caption(f"Angemeldet als: {session.principal_id}")
@@ -1738,7 +1768,7 @@ def main() -> None:
     )
 
     st.divider()
-    if active_route == "/customer-cases":
+    if active_route == "/" and "customer-cases" in tenant_session.capabilities:
         render_customer_cases_area(st, tenant_session)
         return
     if active_route == "/admin":
