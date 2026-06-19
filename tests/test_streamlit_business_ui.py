@@ -408,8 +408,8 @@ def test_business_ui_navigation_is_role_aware() -> None:
         owner_areas
     )
 
-    assert [item.route for item in researcher_navigation] == ["/", "/research"]
-    assert [item.route for item in owner_navigation] == ["/", "/research", "/admin"]
+    assert [item.route for item in researcher_navigation] == ["/"]
+    assert [item.route for item in owner_navigation] == ["/", "/admin"]
     assert researcher_navigation[0].required_capability is None
     assert owner_navigation[-1].admin_only is True
     assert owner_navigation[-1].required_capability == "tenant-admin"
@@ -417,7 +417,7 @@ def test_business_ui_navigation_is_role_aware() -> None:
 
 def test_business_ui_sidebar_navigation_sets_route_without_login_reset() -> None:
     fake_st = FakeStreamlit()
-    fake_st.sidebar_button_values["Kunden-Vorgänge"] = True
+    fake_st.sidebar_button_values["Admin Center"] = True
     navigation_items = (
         streamlit_business_ui_app.TenantNavigationItem(
             label="Übersicht",
@@ -427,11 +427,11 @@ def test_business_ui_sidebar_navigation_sets_route_without_login_reset() -> None
             admin_only=False,
         ),
         streamlit_business_ui_app.TenantNavigationItem(
-            label="Kunden-Vorgänge",
-            route="/customer-cases",
+            label="Admin Center",
+            route="/admin",
             description="",
-            required_capability="customer-cases",
-            admin_only=False,
+            required_capability="tenant-admin",
+            admin_only=True,
         ),
     )
 
@@ -441,9 +441,9 @@ def test_business_ui_sidebar_navigation_sets_route_without_login_reset() -> None
         "/",
     )
 
-    assert selected_route == "/customer-cases"
-    assert fake_st.session_state["scas_active_route"] == "/customer-cases"
-    assert fake_st.query_params["route"] == "/customer-cases"
+    assert selected_route == "/admin"
+    assert fake_st.session_state["scas_active_route"] == "/admin"
+    assert fake_st.query_params["route"] == "/admin"
     assert [event for event in fake_st.events if event[0] == "sidebar_button"]
     assert not [event for event in fake_st.events if event[0] == "sidebar_markdown"]
 
@@ -910,7 +910,7 @@ def test_business_ui_admin_dashboard_route_uses_existing_session(monkeypatch) ->
 
     streamlit_business_ui_app.main()
 
-    assert ("subheader", "Admin-Dashboard") in fake_st.events
+    assert ("subheader", "Admin Center") in fake_st.events
     assert ("form", "scas-admin-password-change") in fake_st.events
     assert not [event for event in fake_st.events if event == ("form", "scas-local-login")]
 
@@ -1321,6 +1321,7 @@ def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch)
             "phase": 1,
             "priority": "normal",
             "status": "active",
+            "responsible_user_id": "other-user",
         },
         {
             "id": "case-002",
@@ -1331,6 +1332,7 @@ def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch)
             "phase": 1,
             "priority": "high",
             "status": "active",
+            "responsible_user_id": "daskuechenhaus-owner-principal",
         },
     ]
     monkeypatch.setattr(
@@ -1352,7 +1354,12 @@ def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch)
     streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
 
     assert edited_case_ids == ["case-002"]
-    assert not [event for event in fake_st.events if event[0] == "selectbox"]
+    assert (
+        "selectbox",
+        "Status filtern",
+        ("Meine Ereignisse", "Alle Ereignisse"),
+        0,
+    ) in fake_st.events
     checkbox_labels = [event[1] for event in fake_st.events if event[0] == "checkbox"]
     assert checkbox_labels == [
         "VG-2026-0002 · Anna Meyer · CARAT-Auftrags-Nr. CARAT-2002"
@@ -1368,7 +1375,7 @@ def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch)
             "CARAT-Auftrags-Nr.": "CARAT-2002",
             "Priorität": "Hoch",
             "Status": "active",
-            "Verantwortlich": "",
+            "Verantwortlich": "daskuechenhaus-owner-principal",
         }
     ]
 
@@ -1377,7 +1384,7 @@ def test_business_ui_main_renders_customer_cases_route(
     monkeypatch,
 ) -> None:
     fake_st = FakeStreamlit()
-    fake_st.query_params = {"route": "/customer-cases"}
+    fake_st.query_params = {"route": "/"}
     monkeypatch.setitem(sys.modules, "streamlit", fake_st)
     monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
     monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
@@ -1407,7 +1414,7 @@ def test_business_ui_main_renders_customer_cases_route(
                     "phase_label": "Neuer Kontakt",
                     "priority": "normal",
                     "status": "active",
-                    "assigned_to": None,
+                    "assigned_to": "daskuechenhaus-owner-principal",
                     "has_attention": 1,
                 }
             ],
@@ -1417,12 +1424,18 @@ def test_business_ui_main_renders_customer_cases_route(
 
     streamlit_business_ui_app.main()
 
-    assert ("subheader", "Kunden-Vorgänge") in fake_st.events
-    assert ("caption", "Prozessübersicht") in fake_st.events
+    assert ("subheader", "Übersicht") in fake_st.events
+    assert (
+        "selectbox",
+        "Status filtern",
+        ("Meine Ereignisse", "Alle Ereignisse"),
+        0,
+    ) in fake_st.events
+    assert ("caption", "Statusübersicht") in fake_st.events
     assert [
         event
         for event in fake_st.events
-        if event[0] == "button" and "Neuer Kontakt" in event[1]
+        if event[0] == "button" and "Statusphase 1" in event[1]
     ]
     assert [
         event
@@ -1430,5 +1443,4 @@ def test_business_ui_main_renders_customer_cases_route(
         if event[0] == "text_input"
         and event[1] == "Nachname oder CARAT-Auftrags-Nr. suchen"
     ]
-    assert not [event for event in fake_st.events if event[0] == "selectbox"]
     assert [event for event in fake_st.events if event[0] == "dataframe"]

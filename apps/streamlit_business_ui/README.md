@@ -29,9 +29,12 @@ For Daskuechenhaus customer case management, set
 uses `GET /tenant-cases` for the case list and `POST /tenant-cases` with
 `X-Actor` derived from the tenant session when creating a new case.
 
-The Daskuechenhaus `Kunden-Vorgänge` start view is a process cockpit. It first
-renders the 10 process phases as tiles and uses the selected tile only as a
-filter over the same case database. A tile may show only:
+The Daskuechenhaus `Übersicht` view is the status page. It uses
+`Status filtern` with `Meine Ereignisse` as the default so the signed-in user
+first sees the events assigned to them; `Alle Ereignisse` can be selected for a
+tenant-wide status view. The page renders the 10 status phases as tiles and
+uses the selected tile only as a filter over the same case database. A tile may
+show only:
 
 - phase number,
 - phase name,
@@ -51,7 +54,7 @@ company customers: `Kundentyp`, `CARAT-Auftrags-Nr.`, `Anrede`, `Nachname`,
 `Werbezusendung erlaubt`, `E-Rechnung`, and `Priorität`.
 
 `Kunden-Nr.` and `Vorgangs-Nr.` are assigned by the system during create. The
-edit dialog lets users update the Vorgang fields such as process phase,
+edit dialog lets users update the Vorgang fields such as status phase,
 priority, status, responsible user, CARAT order number, and attention marker.
 For editing an existing case, the UI must not use a broad dropdown over all
 phase cases. Users filter the selected phase by last name or CARAT order number,
@@ -101,8 +104,9 @@ and validates passwords against PBKDF2 hashes stored in
 the tenant operations sidebar and navigation are not rendered until a session is
 created, and the login page is hidden again until the user logs out.
 After login, sidebar navigation uses Streamlit buttons and session state rather
-than plain page links, so switching between `Übersicht`, `Kunden-Vorgänge`,
-`Research`, and `Admin-Dashboard` stays inside the authenticated session.
+than plain page links. The dashboard sidebar intentionally shows only
+`Übersicht` plus `Admin Center` for sessions with the `tenant-admin`
+capability; non-admin sessions do not see the admin entry.
 When `SCAS_UI_PASSWORD_RESET_URL` is configured, the login page shows a
 `Passwort vergessen?` link to the approved reset flow. Without that URL, it
 shows an administrator-contact fallback instead of pretending that self-service
@@ -133,7 +137,7 @@ Automated self-service password reset requires a trusted delivery path, usually
 an identity provider or mail provider that can send one-time reset links. Manual
 administrator password resets do not require SMTP access.
 
-The `Admin-Dashboard` includes a password-change helper for local-login mode.
+The `Admin Center` includes a password-change helper for local-login mode.
 It generates a new PBKDF2 password hash for the selected username. The UI does
 not write secrets or host environment files itself; the generated hash must be
 copied into the environment-specific `SCAS_UI_LOGIN_USERS_JSON` secret and then
