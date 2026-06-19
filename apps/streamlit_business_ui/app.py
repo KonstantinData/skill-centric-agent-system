@@ -909,39 +909,58 @@ def create_customer_case_in_api(
     config: CustomerCasesApiConfig,
     *,
     actor: str,
-    case_number: str,
     carat_order_number: str,
-    customer_number: str,
     customer_type: str,
     salutation: str,
     first_name: str,
     last_name: str,
     company_name: str,
     company_name_2: str,
+    company_name_3: str,
+    company_name_4: str,
+    vat_id: str,
+    tax_number: str,
     customer_phone: str,
     customer_mobile: str,
     customer_email: str,
-    country: str,
+    iso_country_code: str,
     postal_code: str,
     city: str,
+    is_nato: bool,
+    has_custom_vat: bool,
+    custom_vat_rate: str,
+    custom_vat_rate_label: str,
+    reverse_charge: bool,
+    marketing_allowed: bool,
+    e_invoice: bool,
     priority: str,
 ) -> dict[str, Any]:
     raw_payload = {
-        "case_number": case_number,
         "carat_order_number": carat_order_number,
-        "customer_number": customer_number,
         "customer_type": customer_type,
         "salutation": salutation,
         "first_name": first_name,
         "last_name": last_name,
         "company_name": company_name,
         "company_name_2": company_name_2,
+        "company_name_3": company_name_3,
+        "company_name_4": company_name_4,
+        "vat_id": vat_id,
+        "tax_number": tax_number,
         "customer_phone": customer_phone,
         "customer_mobile": customer_mobile,
         "customer_email": customer_email,
-        "country": country,
+        "country": iso_country_code,
+        "iso_country_code": iso_country_code,
         "postal_code": postal_code,
         "city": city,
+        "is_nato": is_nato,
+        "has_custom_vat": has_custom_vat,
+        "custom_vat_rate": custom_vat_rate,
+        "custom_vat_rate_label": custom_vat_rate_label,
+        "reverse_charge": reverse_charge,
+        "marketing_allowed": marketing_allowed,
+        "e_invoice": e_invoice,
         "priority": priority,
     }
     payload = json.dumps(
@@ -958,6 +977,47 @@ def create_customer_case_in_api(
             "user-agent": "scas-streamlit-business-ui/1.0",
         },
         method="POST",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def update_customer_case_in_api(
+    config: CustomerCasesApiConfig,
+    *,
+    actor: str,
+    case_id: str,
+    case_number: str,
+    carat_order_number: str,
+    phase: int,
+    priority: str,
+    status: str,
+    responsible_user_id: str,
+    needs_attention: bool,
+) -> dict[str, Any]:
+    raw_payload = {
+        "case_number": case_number,
+        "carat_order_number": carat_order_number,
+        "phase": phase,
+        "priority": priority,
+        "status": status,
+        "responsible_user_id": responsible_user_id,
+        "needs_attention": 1 if needs_attention else 0,
+    }
+    payload = json.dumps(
+        {key: value for key, value in raw_payload.items() if str(value).strip()}
+    ).encode("utf-8")
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases/{quote(case_id, safe='')}",
+        data=payload,
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "content-type": "application/json",
+            "accept": "application/json",
+            "x-actor": actor,
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="PATCH",
     )
     with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
         return json.loads(response.read().decode("utf-8"))
@@ -990,19 +1050,24 @@ def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> in
         """
         <style>
         div[data-testid="stButton"] button {
-            min-height: 92px;
+            min-height: 118px;
+            height: 118px;
             width: 100%;
-            border-radius: 6px;
-            border: 1px solid rgba(49, 51, 63, 0.18);
-            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid rgba(118, 183, 38, 0.38);
+            background: linear-gradient(135deg, #ffffff 0%, #f6faf1 100%);
             color: #111111;
             white-space: pre-line;
             text-align: left;
-            font-weight: 500;
+            font-weight: 650;
+            box-shadow: 0 8px 22px rgba(17, 17, 17, 0.08);
+            transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
         }
         div[data-testid="stButton"] button:hover {
             border-color: #76b726;
             color: #111111;
+            box-shadow: 0 10px 26px rgba(118, 183, 38, 0.18);
+            transform: translateY(-1px);
         }
         </style>
         """,
@@ -1012,15 +1077,242 @@ def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> in
     for start in (0, 5):
         cols = st.columns(5)
         for offset, (phase, label) in enumerate(CUSTOMER_CASE_PHASES[start : start + 5]):
-            suffix = "  !" if attention[phase] else ""
+            suffix = "  ⚠" if attention[phase] else ""
             count_label = "1 Vorgang" if counts[phase] == 1 else f"{counts[phase]} Vorgänge"
-            button_label = f"{phase}\n{label}\n\n{count_label}{suffix}"
+            button_label = f"Phase {phase}\n{label}\n{count_label}{suffix}"
             with cols[offset]:
                 if st.button(button_label, key=f"customer-case-phase-{phase}"):
                     selected_phase = phase
                     st.session_state["scas_customer_cases_phase"] = phase
 
     return selected_phase
+
+
+def render_dialog(st: Any, title: str, render_content: Any) -> None:
+    dialog = getattr(st, "dialog", None)
+    if callable(dialog):
+        try:
+            decorator = dialog(title, width="large")
+        except TypeError:  # pragma: no cover - older Streamlit runtimes.
+            decorator = dialog(title)
+
+        @decorator
+        def _dialog() -> None:
+            render_content()
+
+        _dialog()
+        return
+
+    render_content()
+
+
+def render_customer_case_create_form(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+) -> None:
+    st.caption("Kunden-Nr. und Vorgangs-Nr. werden automatisch vergeben.")
+    with st.form("scas-customer-case-create"):
+        customer_type_label = st.selectbox(
+            "Kundentyp",
+            options=["Privatkunde", "Firmenkunde"],
+            index=0,
+        )
+        customer_type = "company" if customer_type_label == "Firmenkunde" else "private"
+
+        salutation = ""
+        first_name = ""
+        last_name = ""
+        company_name = ""
+        company_name_2 = ""
+        company_name_3 = ""
+        company_name_4 = ""
+        vat_id = ""
+        tax_number = ""
+        if customer_type == "company":
+            st.markdown("**Firmenkunde**")
+            company_name = st.text_input("Firma")
+            company_name_2 = st.text_input("Name 2")
+            company_name_3 = st.text_input("Name 3")
+            company_name_4 = st.text_input("Name 4")
+            vat_id = st.text_input("USt-ID")
+            tax_number = st.text_input("Steuernummer")
+        else:
+            st.markdown("**Privatkunde**")
+            salutation = st.selectbox(
+                "Anrede",
+                options=["", "Frau", "Herr", "Familie"],
+                index=0,
+            )
+            last_name = st.text_input("Nachname")
+            first_name = st.text_input("Vorname")
+
+        customer_phone = st.text_input("Telefon")
+        customer_mobile = st.text_input("Mobil")
+        customer_email = st.text_input("E-Mail")
+        iso_country_code = st.text_input("ISO Länder Code")
+        postal_code = st.text_input("PLZ")
+        city = st.text_input("Ort")
+        carat_order_number = st.text_input("CARAT-Auftrags-Nr.")
+        priority_label = st.selectbox(
+            "Priorität",
+            options=["Normal", "Hoch", "Dringend", "Niedrig"],
+            index=0,
+        )
+
+        st.markdown("**Steuerung**")
+        is_nato = st.checkbox("NATO")
+        has_custom_vat = st.checkbox("Abweichende MwSt.")
+        custom_vat_rate_label = st.selectbox(
+            "MwSt. Auswahl",
+            options=["", "0 %", "7 %", "19 %", "Individuell"],
+            index=0,
+        )
+        custom_vat_rate = st.text_input("Abweichende MwSt. Eingabe")
+        reverse_charge = st.checkbox("Umkehr der Steuerschuldnerschaft")
+        marketing_allowed = st.checkbox("Werbezusendung erlaubt")
+        e_invoice = st.checkbox("E-Rechnung")
+        submitted = st.form_submit_button("Vorgang anlegen")
+
+    priority_by_label = {
+        "Normal": "normal",
+        "Hoch": "high",
+        "Dringend": "urgent",
+        "Niedrig": "low",
+    }
+
+    if not submitted:
+        return
+
+    required_name = company_name if customer_type == "company" else last_name
+    if not required_name.strip():
+        st.error("Bitte mindestens Firma oder Nachname eingeben.")
+        return
+
+    try:
+        create_customer_case_in_api(
+            config,
+            actor=session.principal_id,
+            carat_order_number=carat_order_number,
+            customer_type=customer_type,
+            salutation=salutation,
+            first_name=first_name,
+            last_name=last_name,
+            company_name=company_name,
+            company_name_2=company_name_2,
+            company_name_3=company_name_3,
+            company_name_4=company_name_4,
+            vat_id=vat_id,
+            tax_number=tax_number,
+            customer_phone=customer_phone,
+            customer_mobile=customer_mobile,
+            customer_email=customer_email,
+            iso_country_code=iso_country_code,
+            postal_code=postal_code,
+            city=city,
+            is_nato=is_nato,
+            has_custom_vat=has_custom_vat,
+            custom_vat_rate=custom_vat_rate,
+            custom_vat_rate_label=custom_vat_rate_label,
+            reverse_charge=reverse_charge,
+            marketing_allowed=marketing_allowed,
+            e_invoice=e_invoice,
+            priority=priority_by_label[priority_label],
+        )
+    except Exception:
+        st.error("Vorgang konnte nicht angelegt werden.")
+    else:
+        st.success("Vorgang angelegt.")
+        if hasattr(st, "rerun"):
+            st.rerun()
+
+
+def render_customer_case_edit_form(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+    case: dict[str, Any],
+) -> None:
+    case_id = str(case.get("id", ""))
+    with st.form(f"scas-customer-case-edit-{case_id}"):
+        st.caption(f"Kunden-Nr.: {case.get('customer_number') or 'automatisch'}")
+        case_number = st.text_input(
+            "Vorgangs-Nr.",
+            value=str(case.get("case_number", "")),
+        )
+        carat_order_number = st.text_input(
+            "CARAT-Auftrags-Nr.",
+            value=str(case.get("carat_order_number") or ""),
+        )
+        phase_options = [label for _phase, label in CUSTOMER_CASE_PHASES]
+        current_phase = customer_case_phase_number(case)
+        phase_label = st.selectbox(
+            "Prozessphase",
+            options=phase_options,
+            index=max(current_phase - 1, 0),
+        )
+        priority_options = ["Normal", "Hoch", "Dringend", "Niedrig"]
+        priority_by_label = {
+            "Normal": "normal",
+            "Hoch": "high",
+            "Dringend": "urgent",
+            "Niedrig": "low",
+        }
+        current_priority = str(case.get("priority", "normal"))
+        current_priority_label = next(
+            (
+                label
+                for label, value in priority_by_label.items()
+                if value == current_priority
+            ),
+            "Normal",
+        )
+        priority_label = st.selectbox(
+            "Priorität",
+            options=priority_options,
+            index=priority_options.index(current_priority_label),
+        )
+        status_options = ["active", "paused", "won", "lost", "closed"]
+        current_status = str(case.get("status", "active"))
+        status = st.selectbox(
+            "Status",
+            options=status_options,
+            index=status_options.index(current_status)
+            if current_status in status_options
+            else 0,
+        )
+        responsible_user_id = st.text_input(
+            "Verantwortlich",
+            value=str(case.get("responsible_user_id") or case.get("assigned_to") or ""),
+        )
+        needs_attention = st.checkbox(
+            "Handlungsbedarf",
+            value=customer_case_needs_attention(case),
+        )
+        submitted = st.form_submit_button("Änderungen speichern")
+
+    if not submitted:
+        return
+
+    try:
+        update_customer_case_in_api(
+            config,
+            actor=session.principal_id,
+            case_id=case_id,
+            case_number=case_number,
+            carat_order_number=carat_order_number,
+            phase=phase_options.index(phase_label) + 1,
+            priority=priority_by_label[priority_label],
+            status=status,
+            responsible_user_id=responsible_user_id,
+            needs_attention=needs_attention,
+        )
+    except Exception:
+        st.error("Vorgang konnte nicht aktualisiert werden.")
+    else:
+        st.success("Vorgang aktualisiert.")
+        if hasattr(st, "rerun"):
+            st.rerun()
 
 
 def render_customer_cases_area(
@@ -1047,84 +1339,12 @@ def render_customer_cases_area(
     selected_phase = render_customer_case_phase_tiles(st, cases)
     selected_phase_label = dict(CUSTOMER_CASE_PHASES)[selected_phase]
 
-    with st.expander("Neuen Vorgang anlegen"), st.form("scas-customer-case-create"):
-        customer_type_label = st.selectbox(
-            "Kundentyp",
-            options=["Privatkunde", "Firmenkunde"],
-            index=0,
+    if st.button("Neuen Vorgang anlegen", key="customer-case-create-open"):
+        render_dialog(
+            st,
+            "Neuen Vorgang anlegen",
+            lambda: render_customer_case_create_form(st, config, session),
         )
-        customer_number = st.text_input("Kunden-Nr.")
-        case_number = st.text_input("Vorgangs-Nr.")
-        carat_order_number = st.text_input("CARAT-Auftrags-Nr.")
-        salutation = st.selectbox(
-            "Anrede",
-            options=["", "Frau", "Herr", "Familie"],
-            index=0,
-        )
-        company_name = ""
-        company_name_2 = ""
-        first_name = ""
-        last_name = ""
-        if customer_type_label == "Firmenkunde":
-            company_name = st.text_input("Firma")
-            company_name_2 = st.text_input("Name/Zusatz")
-        else:
-            last_name = st.text_input("Nachname")
-            first_name = st.text_input("Vorname")
-        customer_phone = st.text_input("Telefon")
-        customer_mobile = st.text_input("Mobil")
-        customer_email = st.text_input("E-Mail")
-        country = st.text_input("Land")
-        postal_code = st.text_input("PLZ")
-        city = st.text_input("Ort")
-        priority_label = st.selectbox(
-            "Priorität",
-            options=["Normal", "Hoch", "Dringend", "Niedrig"],
-            index=0,
-        )
-        submitted = st.form_submit_button("Vorgang anlegen")
-
-    priority_by_label = {
-        "Normal": "normal",
-        "Hoch": "high",
-        "Dringend": "urgent",
-        "Niedrig": "low",
-    }
-    customer_type = "company" if customer_type_label == "Firmenkunde" else "private"
-    priority = priority_by_label[priority_label]
-
-    if submitted:
-        required_name = company_name if customer_type == "company" else last_name
-        if not required_name.strip():
-            st.error("Bitte mindestens Firma oder Nachname eingeben.")
-        else:
-            try:
-                create_customer_case_in_api(
-                    config,
-                    actor=session.principal_id,
-                    case_number=case_number,
-                    carat_order_number=carat_order_number,
-                    customer_number=customer_number,
-                    customer_type=customer_type,
-                    salutation=salutation,
-                    first_name=first_name,
-                    last_name=last_name,
-                    company_name=company_name,
-                    company_name_2=company_name_2,
-                    customer_phone=customer_phone,
-                    customer_mobile=customer_mobile,
-                    customer_email=customer_email,
-                    country=country,
-                    postal_code=postal_code,
-                    city=city,
-                    priority=priority,
-                )
-            except Exception:
-                st.error("Vorgang konnte nicht angelegt werden.")
-            else:
-                st.success("Vorgang angelegt.")
-                if hasattr(st, "rerun"):
-                    st.rerun()
 
     selected_cases = [
         case for case in cases if customer_case_phase_number(case) == selected_phase
@@ -1135,6 +1355,23 @@ def render_customer_cases_area(
     if not selected_cases:
         st.info("In dieser Prozessphase sind keine Kunden-Vorgänge vorhanden.")
         return
+
+    case_options = {
+        f"{case.get('case_number', '')} · {case.get('customer_full_name', '')}".strip(): case
+        for case in selected_cases
+    }
+    selected_case_label = st.selectbox(
+        "Vorgang auswählen",
+        options=list(case_options.keys()),
+        index=0,
+    )
+    selected_case = case_options[selected_case_label]
+    if st.button("Ausgewählten Vorgang bearbeiten", key="customer-case-edit-open"):
+        render_dialog(
+            st,
+            "Vorgang bearbeiten",
+            lambda: render_customer_case_edit_form(st, config, session, selected_case),
+        )
 
     table_rows = [
         {

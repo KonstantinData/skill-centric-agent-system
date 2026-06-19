@@ -42,10 +42,17 @@ Customer names, task details, appointments, budgets, responsible users, and
 agent hints must not be rendered inside the phase tiles. Those details belong
 to the filtered case list and later case detail views.
 
-The create form uses German labels for the Daskuechenhaus workflow:
-`Kunden-Nr.`, `Vorgangs-Nr.`, `CARAT-Auftrags-Nr.`, `Kundentyp`,
-`Anrede`, `Nachname`, `Vorname`, `Firma`, `Telefon`, `Mobil`, `E-Mail`,
-`Land`, `PLZ`, `Ort`, and `Priorität`.
+The Daskuechenhaus workflow uses centered dialogs for creating and editing
+customer cases. The create dialog uses German labels and separates private and
+company customers: `Kundentyp`, `CARAT-Auftrags-Nr.`, `Anrede`, `Nachname`,
+`Vorname`, `Firma`, `Name 2`, `Name 3`, `Name 4`, `USt-ID`, `Steuernummer`,
+`Telefon`, `Mobil`, `E-Mail`, `ISO Länder Code`, `PLZ`, `Ort`, `NATO`,
+`Abweichende MwSt.`, `MwSt. Auswahl`, `Umkehr der Steuerschuldnerschaft`,
+`Werbezusendung erlaubt`, `E-Rechnung`, and `Priorität`.
+
+`Kunden-Nr.` and `Vorgangs-Nr.` are assigned by the system during create. The
+edit dialog lets users update the Vorgang fields such as process phase,
+priority, status, responsible user, CARAT order number, and attention marker.
 
 `SCAS_UI_ROLE_IDS` can provide comma-separated tenant role IDs for local contract
 verification. Unknown role IDs are ignored and the UI falls back to the

@@ -73,6 +73,7 @@ class FakeStreamlit:
         self.events: list[tuple[Any, ...]] = []
         self.text_input_values: dict[str, str] = {}
         self.selectbox_values: dict[str, str] = {}
+        self.checkbox_values: dict[str, bool] = {}
         self.form_submitted = False
         self.query_params: dict[str, str] = {}
         self.sidebar = FakeSidebar(self)
@@ -89,6 +90,18 @@ class FakeStreamlit:
     def form(self, key: str) -> FakeStreamlit:
         self.events.append(("form", key))
         return self
+
+    def dialog(self, title: str, **kwargs: Any) -> Any:
+        self.events.append(("dialog", title, kwargs))
+
+        def decorator(func: Any) -> Any:
+            def wrapper(*args: Any, **inner_kwargs: Any) -> Any:
+                self.events.append(("dialog_open", title))
+                return func(*args, **inner_kwargs)
+
+            return wrapper
+
+        return decorator
 
     def expander(self, label: str) -> FakeStreamlit:
         self.events.append(("expander", label))
@@ -144,11 +157,15 @@ class FakeStreamlit:
 
     def text_input(self, label: str, **kwargs: Any) -> str:
         self.events.append(("text_input", label, kwargs))
-        return self.text_input_values.get(label, "")
+        return self.text_input_values.get(label, str(kwargs.get("value", "")))
 
     def selectbox(self, label: str, *, options: list[str], index: int) -> str:
         self.events.append(("selectbox", label, tuple(options), index))
         return self.selectbox_values.get(label, options[index])
+
+    def checkbox(self, label: str, **kwargs: Any) -> bool:
+        self.events.append(("checkbox", label, kwargs))
+        return self.checkbox_values.get(label, bool(kwargs.get("value", False)))
 
     def form_submit_button(self, label: str) -> bool:
         self.events.append(("form_submit_button", label))
@@ -1062,21 +1079,30 @@ def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> Non
     payload = streamlit_business_ui_app.create_customer_case_in_api(
         config,
         actor="daskuechenhaus-owner-principal",
-        case_number="VG-2026-0002",
         carat_order_number="",
-        customer_number="K-2026-0002",
         customer_type="private",
         salutation="Frau",
         first_name="Maria",
         last_name="Hoffmann",
         company_name="",
         company_name_2="",
+        company_name_3="",
+        company_name_4="",
+        vat_id="",
+        tax_number="",
         customer_phone="0711 123456",
         customer_mobile="0171 123456",
         customer_email="maria@example.invalid",
-        country="DE",
+        iso_country_code="DE",
         postal_code="70173",
         city="Stuttgart",
+        is_nato=False,
+        has_custom_vat=True,
+        custom_vat_rate="17.5",
+        custom_vat_rate_label="Individuell",
+        reverse_charge=False,
+        marketing_allowed=True,
+        e_invoice=True,
         priority="high",
     )
 
@@ -1086,8 +1112,6 @@ def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> Non
         "content_type": "application/json",
         "actor": "daskuechenhaus-owner-principal",
         "body": {
-            "case_number": "VG-2026-0002",
-            "customer_number": "K-2026-0002",
             "customer_type": "private",
             "salutation": "Frau",
             "first_name": "Maria",
@@ -1096,13 +1120,82 @@ def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> Non
             "customer_mobile": "0171 123456",
             "customer_email": "maria@example.invalid",
             "country": "DE",
+            "iso_country_code": "DE",
             "postal_code": "70173",
             "city": "Stuttgart",
+            "is_nato": False,
+            "has_custom_vat": True,
+            "custom_vat_rate": "17.5",
+            "custom_vat_rate_label": "Individuell",
+            "reverse_charge": False,
+            "marketing_allowed": True,
+            "e_invoice": True,
             "priority": "high",
         },
         "timeout": 2.0,
     }
     assert payload["data"]["id"] == "case-001"
+
+
+def test_business_ui_updates_customer_case_in_api(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"data":{"id":"case-001","phase":4}}'
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["method"] = request.get_method()
+        captured["authorization"] = request.headers["Authorization"]
+        captured["actor"] = request.headers["X-actor"]
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.update_customer_case_in_api(
+        config,
+        actor="daskuechenhaus-owner-principal",
+        case_id="case-001",
+        case_number="VG-2026-0001",
+        carat_order_number="CARAT-1",
+        phase=4,
+        priority="high",
+        status="active",
+        responsible_user_id="konstantin",
+        needs_attention=True,
+    )
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases/case-001",
+        "method": "PATCH",
+        "authorization": "Bearer token",
+        "actor": "daskuechenhaus-owner-principal",
+        "body": {
+            "case_number": "VG-2026-0001",
+            "carat_order_number": "CARAT-1",
+            "phase": 4,
+            "priority": "high",
+            "status": "active",
+            "responsible_user_id": "konstantin",
+            "needs_attention": 1,
+        },
+        "timeout": 2.0,
+    }
+    assert payload["data"]["phase"] == 4
 
 
 def test_business_ui_main_renders_customer_cases_route(

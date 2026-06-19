@@ -46,12 +46,25 @@ casesRouter.get('/', async (c) => {
         cu.first_name,
         cu.last_name,
         cu.company_name,
+        cu.company_name_2,
+        cu.company_name_3,
+        cu.company_name_4,
+        cu.vat_id,
+        cu.tax_number,
         cu.email AS customer_email,
         cu.phone AS customer_phone,
         cu.mobile AS customer_mobile,
         cu.country,
+        cu.iso_country_code,
         cu.postal_code,
         cu.city,
+        cu.is_nato,
+        cu.has_custom_vat,
+        cu.custom_vat_rate,
+        cu.custom_vat_rate_label,
+        cu.reverse_charge,
+        cu.marketing_allowed,
+        cu.e_invoice,
         rp.label AS phase_label,
         rp.category AS phase_category,
         CASE
@@ -129,16 +142,27 @@ casesRouter.post('/', async (c) => {
           last_name,
           company_name,
           company_name_2,
+          company_name_3,
+          company_name_4,
           vat_id,
+          tax_number,
           email,
           phone,
           mobile,
           country,
+          iso_country_code,
           postal_code,
           city,
+          is_nato,
+          has_custom_vat,
+          custom_vat_rate,
+          custom_vat_rate_label,
+          reverse_charge,
+          marketing_allowed,
+          e_invoice,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         customerId,
@@ -151,13 +175,24 @@ casesRouter.post('/', async (c) => {
         getString(body, 'last_name'),
         getString(body, 'company_name'),
         getString(body, 'company_name_2'),
+        getString(body, 'company_name_3'),
+        getString(body, 'company_name_4'),
         getString(body, 'vat_id'),
+        getString(body, 'tax_number'),
         getString(body, 'customer_email'),
         getString(body, 'customer_phone'),
         getString(body, 'customer_mobile'),
-        getString(body, 'country'),
+        getString(body, 'country') ?? getString(body, 'iso_country_code'),
+        getString(body, 'iso_country_code') ?? getString(body, 'country'),
         getString(body, 'postal_code'),
         getString(body, 'city'),
+        getFlag(body, 'is_nato'),
+        getFlag(body, 'has_custom_vat'),
+        getString(body, 'custom_vat_rate'),
+        getString(body, 'custom_vat_rate_label'),
+        getFlag(body, 'reverse_charge'),
+        getFlag(body, 'marketing_allowed'),
+        getFlag(body, 'e_invoice'),
         now,
         now
       )
@@ -177,16 +212,27 @@ casesRouter.post('/', async (c) => {
           last_name,
           company_name,
           company_name_2,
+          company_name_3,
+          company_name_4,
           vat_id,
+          tax_number,
           phone,
           mobile,
           email,
           country,
+          iso_country_code,
           postal_code,
           city,
+          is_nato,
+          has_custom_vat,
+          custom_vat_rate,
+          custom_vat_rate_label,
+          reverse_charge,
+          marketing_allowed,
+          e_invoice,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         ulid(),
@@ -200,13 +246,24 @@ casesRouter.post('/', async (c) => {
         getString(body, 'last_name'),
         getString(body, 'company_name'),
         getString(body, 'company_name_2'),
+        getString(body, 'company_name_3'),
+        getString(body, 'company_name_4'),
         getString(body, 'vat_id'),
+        getString(body, 'tax_number'),
         getString(body, 'customer_phone'),
         getString(body, 'customer_mobile'),
         getString(body, 'customer_email'),
-        getString(body, 'country'),
+        getString(body, 'country') ?? getString(body, 'iso_country_code'),
+        getString(body, 'iso_country_code') ?? getString(body, 'country'),
         getString(body, 'postal_code'),
         getString(body, 'city'),
+        getFlag(body, 'is_nato'),
+        getFlag(body, 'has_custom_vat'),
+        getString(body, 'custom_vat_rate'),
+        getString(body, 'custom_vat_rate_label'),
+        getFlag(body, 'reverse_charge'),
+        getFlag(body, 'marketing_allowed'),
+        getFlag(body, 'e_invoice'),
         now,
         now
       )
@@ -536,6 +593,11 @@ function requestActor(c: AppContext): string {
 function getString(body: JsonObject, key: string): string | null {
   const value = body[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function getFlag(body: JsonObject, key: string): number {
+  const value = body[key];
+  return value === true || value === 1 ? 1 : 0;
 }
 
 function normalizePhase(value: unknown): number | string {
