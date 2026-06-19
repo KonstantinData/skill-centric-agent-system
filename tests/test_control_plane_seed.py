@@ -92,6 +92,25 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.tenant_role_data_source_grants) == 7
 
 
+def test_seed_records_can_omit_default_authority_for_prod() -> None:
+    seed = build_seed_records(
+        module_paths(),
+        tenant_paths=tenant_paths(),
+        include_default_scope_bindings=False,
+        include_default_tenant_memberships=False,
+    )
+
+    assert seed.tenants
+    assert seed.tenant_role_bundles
+    assert seed.tenant_data_sources
+    assert not seed.scope_bindings
+    assert not [
+        membership
+        for membership in seed.tenant_memberships
+        if membership["principal_id"] == "repository-maintainer"
+    ]
+
+
 def test_task_selectable_modules_use_task_matching_output_contracts() -> None:
     expected_validator_by_task_type = {
         "code-review": "review-findings-contract",

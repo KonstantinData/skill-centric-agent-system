@@ -207,6 +207,8 @@ def build_seed_records(
     created_at: str = DEFAULT_CREATED_AT,
     principal_kind: str = DEFAULT_PRINCIPAL_KIND,
     principal_id: str = DEFAULT_PRINCIPAL_ID,
+    include_default_scope_bindings: bool = True,
+    include_default_tenant_memberships: bool = True,
 ) -> ControlPlaneSeedRecords:
     tenant_input_paths = tenant_paths or []
     module_inputs = [_load_module(path) for path in sorted(module_paths)]
@@ -287,7 +289,7 @@ def build_seed_records(
                 }
             )
 
-    if default_policy_name is not None:
+    if default_policy_name is not None and include_default_scope_bindings:
         scope_modules = {
             (dependency["name"], dependency["kind"]): dependency
             for dependency in dependencies.values()
@@ -316,6 +318,7 @@ def build_seed_records(
         tenant_input_paths,
         created_at=created_at,
         default_principal_id=principal_id,
+        include_default_tenant_memberships=include_default_tenant_memberships,
     )
     return ControlPlaneSeedRecords(
         tenants=tenant_records["tenants"],
@@ -413,6 +416,7 @@ def _tenant_seed_records(
     *,
     created_at: str,
     default_principal_id: str,
+    include_default_tenant_memberships: bool,
 ) -> dict[str, tuple[dict[str, Any], ...]]:
     tenants: list[dict[str, Any]] = []
     hostnames: list[dict[str, Any]] = []
@@ -488,7 +492,7 @@ def _tenant_seed_records(
                 }
             )
 
-        if not tenant_memberships:
+        if not tenant_memberships and include_default_tenant_memberships:
             tenant_memberships.append(
                 {
                     "id": _tenant_membership_id(tenant_id, default_principal_id),
