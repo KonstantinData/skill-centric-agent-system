@@ -53,6 +53,10 @@ company customers: `Kundentyp`, `CARAT-Auftrags-Nr.`, `Anrede`, `Nachname`,
 `Kunden-Nr.` and `Vorgangs-Nr.` are assigned by the system during create. The
 edit dialog lets users update the Vorgang fields such as process phase,
 priority, status, responsible user, CARAT order number, and attention marker.
+For editing an existing case, the UI must not use a broad dropdown over all
+phase cases. Users filter the selected phase by last name or CARAT order number,
+mark exactly one filtered case with a checkbox, and then open
+`Ausgewählten Vorgang bearbeiten`.
 
 `SCAS_UI_ROLE_IDS` can provide comma-separated tenant role IDs for local contract
 verification. Unknown role IDs are ignored and the UI falls back to the

@@ -1059,6 +1059,51 @@ def customer_case_needs_attention(case: dict[str, Any]) -> bool:
     return bool(case.get("has_attention") or case.get("needs_attention"))
 
 
+def customer_case_display_label(case: dict[str, Any]) -> str:
+    case_number = str(case.get("case_number") or "ohne Vorgangs-Nr.").strip()
+    customer_name = str(case.get("customer_full_name") or "ohne Name").strip()
+    carat_order_number = str(case.get("carat_order_number") or "").strip()
+    if carat_order_number:
+        return f"{case_number} · {customer_name} · CARAT-Auftrags-Nr. {carat_order_number}"
+    return f"{case_number} · {customer_name}"
+
+
+def customer_case_matches_search(case: dict[str, Any], search_term: str) -> bool:
+    normalized_search = search_term.strip().casefold()
+    if not normalized_search:
+        return True
+
+    searchable_values = (
+        case.get("customer_last_name"),
+        case.get("last_name"),
+        case.get("customer_full_name"),
+        case.get("customer_name"),
+        case.get("company_name"),
+        case.get("carat_order_number"),
+    )
+    return any(
+        normalized_search in str(value or "").casefold()
+        for value in searchable_values
+    )
+
+
+def sync_customer_case_checkbox_selection(
+    st: Any,
+    selected_case_id: str,
+    visible_case_ids: tuple[str, ...],
+) -> None:
+    selected_key = f"customer-case-select-{selected_case_id}"
+    if st.session_state.get(selected_key):
+        st.session_state["scas_customer_case_selected_id"] = selected_case_id
+        for case_id in visible_case_ids:
+            if case_id != selected_case_id:
+                st.session_state[f"customer-case-select-{case_id}"] = False
+        return
+
+    if st.session_state.get("scas_customer_case_selected_id") == selected_case_id:
+        st.session_state.pop("scas_customer_case_selected_id", None)
+
+
 def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> int:
     selected_phase = int(st.session_state.get("scas_customer_cases_phase", 1))
     counts = {phase: 0 for phase, _label in CUSTOMER_CASE_PHASES}
@@ -1379,17 +1424,71 @@ def render_customer_cases_area(
         st.info("In dieser Prozessphase sind keine Kunden-Vorgänge vorhanden.")
         return
 
-    case_options = {
-        f"{case.get('case_number', '')} · {case.get('customer_full_name', '')}".strip(): case
-        for case in selected_cases
-    }
-    selected_case_label = st.selectbox(
-        "Vorgang auswählen",
-        options=list(case_options.keys()),
-        index=0,
+    search_term = st.text_input(
+        "Nachname oder CARAT-Auftrags-Nr. suchen",
+        key="customer-case-search",
+        placeholder="z. B. Schober oder CARAT-12345",
     )
-    selected_case = case_options[selected_case_label]
-    if st.button("Ausgewählten Vorgang bearbeiten", key="customer-case-edit-open"):
+    if search_term.strip():
+        visible_cases = [
+            case
+            for case in selected_cases
+            if customer_case_matches_search(case, search_term)
+        ]
+    else:
+        visible_cases = selected_cases[:25]
+        st.caption(
+            "Ohne Suche werden die ersten 25 Vorgänge dieser Prozessphase angezeigt."
+        )
+
+    if not visible_cases:
+        st.info("Keine Vorgänge zur aktuellen Suche gefunden.")
+        return
+
+    selected_case_id = str(
+        st.session_state.get("scas_customer_case_selected_id", "")
+    )
+    visible_case_ids = tuple(
+        str(case.get("id") or case.get("case_number") or "")
+        for case in visible_cases
+        if case.get("id") or case.get("case_number")
+    )
+    if selected_case_id and selected_case_id not in visible_case_ids:
+        selected_case_id = ""
+        st.session_state.pop("scas_customer_case_selected_id", None)
+
+    st.caption("Gefilterten Vorgang markieren")
+    for case in visible_cases:
+        case_id = str(case.get("id") or case.get("case_number") or "")
+        if not case_id:
+            continue
+        checked = st.checkbox(
+            customer_case_display_label(case),
+            key=f"customer-case-select-{case_id}",
+            value=selected_case_id == case_id,
+            on_change=sync_customer_case_checkbox_selection,
+            args=(st, case_id, visible_case_ids),
+        )
+        if checked:
+            selected_case_id = case_id
+            st.session_state["scas_customer_case_selected_id"] = case_id
+        elif selected_case_id == case_id:
+            selected_case_id = ""
+            st.session_state.pop("scas_customer_case_selected_id", None)
+
+    selected_case = next(
+        (
+            case
+            for case in visible_cases
+            if str(case.get("id") or case.get("case_number") or "") == selected_case_id
+        ),
+        None,
+    )
+    if st.button(
+        "Ausgewählten Vorgang bearbeiten",
+        key="customer-case-edit-open",
+        disabled=selected_case is None,
+    ):
         render_dialog(
             st,
             "Vorgang bearbeiten",
@@ -1411,7 +1510,7 @@ def render_customer_cases_area(
                 case.get("responsible_user_id") or case.get("assigned_to") or ""
             ),
         }
-        for case in selected_cases
+        for case in visible_cases
     ]
     if hasattr(st, "dataframe"):
         st.dataframe(table_rows, use_container_width=True, hide_index=True)

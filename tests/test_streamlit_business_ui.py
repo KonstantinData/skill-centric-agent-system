@@ -74,6 +74,7 @@ class FakeStreamlit:
         self.text_input_values: dict[str, str] = {}
         self.selectbox_values: dict[str, str] = {}
         self.checkbox_values: dict[str, bool] = {}
+        self.button_values: dict[str, bool] = {}
         self.sidebar_button_values: dict[str, bool] = {}
         self.form_submitted = False
         self.query_params: dict[str, str] = {}
@@ -131,7 +132,12 @@ class FakeStreamlit:
 
     def button(self, label: str, **kwargs: Any) -> bool:
         self.events.append(("button", label, kwargs))
-        return False
+        if kwargs.get("disabled"):
+            return False
+        key = str(kwargs.get("key", ""))
+        if key and key in self.button_values:
+            return self.button_values[key]
+        return self.button_values.get(label, False)
 
     def image(self, *args: Any, **kwargs: Any) -> None:
         self.events.append(("image", args, kwargs))
@@ -161,6 +167,9 @@ class FakeStreamlit:
 
     def text_input(self, label: str, **kwargs: Any) -> str:
         self.events.append(("text_input", label, kwargs))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.text_input_values:
+            return self.text_input_values[key]
         return self.text_input_values.get(label, str(kwargs.get("value", "")))
 
     def selectbox(self, label: str, *, options: list[str], index: int) -> str:
@@ -169,6 +178,9 @@ class FakeStreamlit:
 
     def checkbox(self, label: str, **kwargs: Any) -> bool:
         self.events.append(("checkbox", label, kwargs))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.checkbox_values:
+            return self.checkbox_values[key]
         return self.checkbox_values.get(label, bool(kwargs.get("value", False)))
 
     def form_submit_button(self, label: str) -> bool:
@@ -1272,6 +1284,95 @@ def test_business_ui_updates_customer_case_in_api(monkeypatch) -> None:
     assert payload["data"]["phase"] == 4
 
 
+def test_business_ui_customer_case_search_matches_last_name_and_carat_number() -> None:
+    case = {
+        "customer_full_name": "Elena Betz",
+        "carat_order_number": "CARAT-7788",
+    }
+
+    assert streamlit_business_ui_app.customer_case_matches_search(case, "Betz")
+    assert streamlit_business_ui_app.customer_case_matches_search(case, "carat-7788")
+    assert not streamlit_business_ui_app.customer_case_matches_search(case, "Schober")
+
+
+def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.text_input_values["customer-case-search"] = "Meyer"
+    fake_st.checkbox_values["customer-case-select-case-002"] = True
+    fake_st.button_values["customer-case-edit-open"] = True
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="daskuechenhaus-owner-principal",
+        tenant_id="daskuechenhaus",
+        membership_id="tm-daskuechenhaus-owner-01",
+        role_ids=("daskuechenhaus-owner",),
+        capabilities=frozenset({"customer-cases"}),
+        source="local-login",
+    )
+    cases = [
+        {
+            "id": "case-001",
+            "case_number": "VG-2026-0001",
+            "customer_number": "K-2026-0001",
+            "customer_full_name": "Elena Betz",
+            "carat_order_number": "CARAT-1001",
+            "phase": 1,
+            "priority": "normal",
+            "status": "active",
+        },
+        {
+            "id": "case-002",
+            "case_number": "VG-2026-0002",
+            "customer_number": "K-2026-0002",
+            "customer_full_name": "Anna Meyer",
+            "carat_order_number": "CARAT-2002",
+            "phase": 1,
+            "priority": "high",
+            "status": "active",
+        },
+    ]
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "load_customer_cases_from_api",
+        lambda _config: {"data": cases, "count": 2},
+    )
+    edited_case_ids: list[str] = []
+
+    def fake_edit_form(_st, _config, _session, case):
+        edited_case_ids.append(case["id"])
+
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "render_customer_case_edit_form",
+        fake_edit_form,
+    )
+
+    streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
+
+    assert edited_case_ids == ["case-002"]
+    assert not [event for event in fake_st.events if event[0] == "selectbox"]
+    checkbox_labels = [event[1] for event in fake_st.events if event[0] == "checkbox"]
+    assert checkbox_labels == [
+        "VG-2026-0002 · Anna Meyer · CARAT-Auftrags-Nr. CARAT-2002"
+    ]
+    dataframe_rows = [
+        event[1][0] for event in fake_st.events if event[0] == "dataframe"
+    ][0]
+    assert dataframe_rows == [
+        {
+            "Vorgangs-Nr.": "VG-2026-0002",
+            "Kunden-Nr.": "K-2026-0002",
+            "Kunde/Firma": "Anna Meyer",
+            "CARAT-Auftrags-Nr.": "CARAT-2002",
+            "Priorität": "Hoch",
+            "Status": "active",
+            "Verantwortlich": "",
+        }
+    ]
+
+
 def test_business_ui_main_renders_customer_cases_route(
     monkeypatch,
 ) -> None:
@@ -1300,6 +1401,8 @@ def test_business_ui_main_renders_customer_cases_route(
                     "case_number": "VG-2026-0001",
                     "customer_number": "K-2026-0001",
                     "customer_full_name": "Maria Hoffmann",
+                    "id": "case-001",
+                    "carat_order_number": "CARAT-0001",
                     "phase": 1,
                     "phase_label": "Neuer Kontakt",
                     "priority": "normal",
@@ -1321,4 +1424,11 @@ def test_business_ui_main_renders_customer_cases_route(
         for event in fake_st.events
         if event[0] == "button" and "Neuer Kontakt" in event[1]
     ]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "text_input"
+        and event[1] == "Nachname oder CARAT-Auftrags-Nr. suchen"
+    ]
+    assert not [event for event in fake_st.events if event[0] == "selectbox"]
     assert [event for event in fake_st.events if event[0] == "dataframe"]
