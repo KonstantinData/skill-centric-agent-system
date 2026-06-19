@@ -18,8 +18,8 @@ Environment-specific resource names and secret prefixes are defined in
 
 | Plane | Owns | Does Not Own |
 | --- | --- | --- |
-| Cloudflare Control Plane | Registries, policies, scope metadata, knowledge catalog, consolidated memory, semantic indexes, ingestion state | Raw runtime traces, raw tool outputs, run logs, execution artifacts |
-| Hetzner Runtime Plane | Runtime runs, steps, tool outputs, traces, validation results, artifacts, memory candidates | Registry source of truth, knowledge source of truth, long-term memory source of truth |
+| Cloudflare Control Plane | Registries, policies, scope metadata, knowledge catalog, consolidated memory, semantic indexes, ingestion state | Raw runtime traces, raw tool outputs, run logs, execution artifacts, tenant customer or operational business data |
+| Hetzner Runtime Plane | Runtime runs, steps, tool outputs, traces, validation results, artifacts, memory candidates, tenant customer databases, tenant operational business data | Registry source of truth, knowledge source of truth, long-term memory source of truth |
 
 ## Cloudflare Resources
 
@@ -137,6 +137,48 @@ Artifact paths:
 ```
 
 The runtime writes raw outputs and traces only to Hetzner. Cloudflare receives only approved memory records derived from those outputs.
+
+## Hetzner Tenant Databases
+
+Production tenant operational and customer data lives in tenant-local
+PostgreSQL databases on Hetzner. Each tenant receives a separate database;
+tenant isolation must not depend only on PostgreSQL schemas in a shared
+database.
+
+This section covers tenant business databases only. It does not change the
+separate Cloudflare memory and knowledge resources or the memory feedback loop.
+
+Initial tenant database names:
+
+- `tenant_condata`
+- `tenant_mein_kuechenexperte`
+- `tenant_das_kuechenhaus`
+- `tenant_kinderhaus`
+- `tenant_elternkindwelt`
+
+Cloudflare D1 remains the Control Plane authority store. It stores tenant
+metadata, hostnames, memberships, role bundles, data-source registrations,
+scope bindings, policy bindings, and bounded audit metadata. It is not the
+production store for tenant customer records, customer cases, order workflows,
+email communication tracking, calendar references, or aftersales state.
+
+The Daskuechenhaus customer-case product starts from a new PostgreSQL schema in
+`tenant_das_kuechenhaus`. The experimental Cloudflare D1 customer-case database
+is not a migration source and must not be used for production customer-case
+writes.
+
+Tenant database provisioning is handled by:
+
+```bash
+SCAS_TENANT_DB=tenant_das_kuechenhaus \
+SCAS_TENANT_DB_OWNER=tenant_das_kuechenhaus_app \
+scripts/hetzner/provision_tenant_database.sh
+```
+
+The provisioning script is idempotent and non-destructive. It creates the
+tenant database, owner/application role, and empty `tenant` and `audit` schemas
+for later product migrations. Customer-case tables are created by a separate
+tenant product schema migration.
 
 Runtime events follow the Flight Recorder pattern:
 
