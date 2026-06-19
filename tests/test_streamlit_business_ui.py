@@ -41,9 +41,9 @@ class FakeSidebar:
         self._streamlit.events.append(("sidebar_selectbox", label, tuple(options), index))
         return options[index]
 
-    def button(self, label: str) -> bool:
-        self._streamlit.events.append(("sidebar_button", label))
-        return False
+    def button(self, label: str, **kwargs: Any) -> bool:
+        self._streamlit.events.append(("sidebar_button", label, kwargs))
+        return self._streamlit.sidebar_button_values.get(label, False)
 
     def markdown(self, *args: Any, **kwargs: Any) -> None:
         self._streamlit.events.append(("sidebar_markdown", args, kwargs))
@@ -74,6 +74,7 @@ class FakeStreamlit:
         self.text_input_values: dict[str, str] = {}
         self.selectbox_values: dict[str, str] = {}
         self.checkbox_values: dict[str, bool] = {}
+        self.sidebar_button_values: dict[str, bool] = {}
         self.form_submitted = False
         self.query_params: dict[str, str] = {}
         self.sidebar = FakeSidebar(self)
@@ -154,6 +155,9 @@ class FakeStreamlit:
 
     def table(self, value: Any) -> None:
         self.events.append(("table", value))
+
+    def code(self, body: str, **kwargs: Any) -> None:
+        self.events.append(("code", body, kwargs))
 
     def text_input(self, label: str, **kwargs: Any) -> str:
         self.events.append(("text_input", label, kwargs))
@@ -399,11 +403,37 @@ def test_business_ui_navigation_is_role_aware() -> None:
     assert owner_navigation[-1].required_capability == "tenant-admin"
 
 
-def test_business_ui_navigation_href_uses_query_route() -> None:
-    assert (
-        streamlit_business_ui_app.navigation_href("/customer-cases")
-        == "?route=%2Fcustomer-cases"
+def test_business_ui_sidebar_navigation_sets_route_without_login_reset() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.sidebar_button_values["Kunden-Vorgänge"] = True
+    navigation_items = (
+        streamlit_business_ui_app.TenantNavigationItem(
+            label="Übersicht",
+            route="/",
+            description="",
+            required_capability=None,
+            admin_only=False,
+        ),
+        streamlit_business_ui_app.TenantNavigationItem(
+            label="Kunden-Vorgänge",
+            route="/customer-cases",
+            description="",
+            required_capability="customer-cases",
+            admin_only=False,
+        ),
     )
+
+    selected_route = streamlit_business_ui_app.render_sidebar_navigation(
+        fake_st,
+        navigation_items,
+        "/",
+    )
+
+    assert selected_route == "/customer-cases"
+    assert fake_st.session_state["scas_active_route"] == "/customer-cases"
+    assert fake_st.query_params["route"] == "/customer-cases"
+    assert [event for event in fake_st.events if event[0] == "sidebar_button"]
+    assert not [event for event in fake_st.events if event[0] == "sidebar_markdown"]
 
 
 def test_business_ui_current_route_rejects_invalid_query_route() -> None:
@@ -849,6 +879,50 @@ def test_business_ui_main_hides_optional_admin_api_failures(
     streamlit_business_ui_app.main()
 
     assert not [event for event in fake_st.events if event[0] == "warning"]
+
+
+def test_business_ui_admin_dashboard_route_uses_existing_session(monkeypatch) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.query_params = {"route": "/admin"}
+    monkeypatch.setitem(sys.modules, "streamlit", fake_st)
+    monkeypatch.setenv("SCAS_UI_AUTH_MODE", "local-login")
+    monkeypatch.setenv("SCAS_UI_TENANT_ID", "daskuechenhaus")
+    fake_st.session_state["scas_tenant_session"] = {
+        "principal_id": "daskuechenhaus-owner-principal",
+        "tenant_id": "daskuechenhaus",
+        "membership_id": "tm-daskuechenhaus-owner-01",
+        "role_ids": ["daskuechenhaus-owner"],
+        "capabilities": ["research", "tenant-admin", "customer-cases"],
+        "source": "local-login",
+    }
+
+    streamlit_business_ui_app.main()
+
+    assert ("subheader", "Admin-Dashboard") in fake_st.events
+    assert ("form", "scas-admin-password-change") in fake_st.events
+    assert not [event for event in fake_st.events if event == ("form", "scas-local-login")]
+
+
+def test_business_ui_admin_password_tool_generates_hash() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.form_submitted = True
+    fake_st.text_input_values = {
+        "Benutzername": "konstantin",
+        "Neues Passwort": "new-secure-password",
+        "Neues Passwort wiederholen": "new-secure-password",
+    }
+
+    streamlit_business_ui_app.render_password_change_admin_tool(fake_st)
+
+    code_events = [event for event in fake_st.events if event[0] == "code"]
+    assert code_events
+    payload = json.loads(code_events[0][1])
+    assert payload["username"] == "konstantin"
+    assert payload["password_hash"].startswith("pbkdf2_sha256$")
+    assert streamlit_business_ui_app.verify_login_password(
+        "new-secure-password",
+        payload["password_hash"],
+    )
 
 
 def test_business_ui_local_login_renders_password_reset_fallback(monkeypatch) -> None:

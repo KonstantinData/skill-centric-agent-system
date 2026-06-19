@@ -96,6 +96,9 @@ and validates passwords against PBKDF2 hashes stored in
 `SCAS_UI_LOGIN_USERS_JSON`. The login form is a standalone unauthenticated page:
 the tenant operations sidebar and navigation are not rendered until a session is
 created, and the login page is hidden again until the user logs out.
+After login, sidebar navigation uses Streamlit buttons and session state rather
+than plain page links, so switching between `Übersicht`, `Kunden-Vorgänge`,
+`Research`, and `Admin-Dashboard` stays inside the authenticated session.
 When `SCAS_UI_PASSWORD_RESET_URL` is configured, the login page shows a
 `Passwort vergessen?` link to the approved reset flow. Without that URL, it
 shows an administrator-contact fallback instead of pretending that self-service
@@ -125,6 +128,12 @@ Do not commit login names, password hashes, raw passwords, or provider user IDs.
 Automated self-service password reset requires a trusted delivery path, usually
 an identity provider or mail provider that can send one-time reset links. Manual
 administrator password resets do not require SMTP access.
+
+The `Admin-Dashboard` includes a password-change helper for local-login mode.
+It generates a new PBKDF2 password hash for the selected username. The UI does
+not write secrets or host environment files itself; the generated hash must be
+copied into the environment-specific `SCAS_UI_LOGIN_USERS_JSON` secret and then
+deployed through the tenant UI deployment workflow.
 
 When `SCAS_UI_AUTH_MODE=required` and no trusted session is available, the UI
 can render a tenant-branded login entry by setting `SCAS_UI_LOGIN_URL` to the
