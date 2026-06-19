@@ -115,6 +115,10 @@ class FakeStreamlit:
     def link_button(self, label: str, url: str) -> None:
         self.events.append(("link_button", label, url))
 
+    def button(self, label: str, **kwargs: Any) -> bool:
+        self.events.append(("button", label, kwargs))
+        return False
+
     def image(self, *args: Any, **kwargs: Any) -> None:
         self.events.append(("image", args, kwargs))
 
@@ -994,10 +998,11 @@ def test_business_ui_loads_customer_cases_from_api(monkeypatch) -> None:
 
         def read(self) -> bytes:
             return (
-                b'{"data":[{"case_number":"KH-2026-0001",'
+                b'{"data":[{"case_number":"VG-2026-0001",'
+                b'"customer_number":"K-2026-0001",'
                 b'"customer_full_name":"Maria Hoffmann",'
-                b'"phase_label":"Neuer Kontakt","priority":"normal",'
-                b'"status":"active"}],"count":1}'
+                b'"phase":1,"phase_label":"Neuer Kontakt","priority":"normal",'
+                b'"status":"active","has_attention":1}],"count":1}'
             )
 
     def fake_urlopen(request, timeout: float) -> FakeResponse:
@@ -1057,7 +1062,21 @@ def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> Non
     payload = streamlit_business_ui_app.create_customer_case_in_api(
         config,
         actor="daskuechenhaus-owner-principal",
-        customer_full_name="Neue Kundin",
+        case_number="VG-2026-0002",
+        carat_order_number="",
+        customer_number="K-2026-0002",
+        customer_type="private",
+        salutation="Frau",
+        first_name="Maria",
+        last_name="Hoffmann",
+        company_name="",
+        company_name_2="",
+        customer_phone="0711 123456",
+        customer_mobile="0171 123456",
+        customer_email="maria@example.invalid",
+        country="DE",
+        postal_code="70173",
+        city="Stuttgart",
         priority="high",
     )
 
@@ -1066,7 +1085,21 @@ def test_business_ui_creates_customer_case_with_actor_header(monkeypatch) -> Non
         "authorization": "Bearer token",
         "content_type": "application/json",
         "actor": "daskuechenhaus-owner-principal",
-        "body": {"customer_full_name": "Neue Kundin", "priority": "high"},
+        "body": {
+            "case_number": "VG-2026-0002",
+            "customer_number": "K-2026-0002",
+            "customer_type": "private",
+            "salutation": "Frau",
+            "first_name": "Maria",
+            "last_name": "Hoffmann",
+            "customer_phone": "0711 123456",
+            "customer_mobile": "0171 123456",
+            "customer_email": "maria@example.invalid",
+            "country": "DE",
+            "postal_code": "70173",
+            "city": "Stuttgart",
+            "priority": "high",
+        },
         "timeout": 2.0,
     }
     assert payload["data"]["id"] == "case-001"
@@ -1097,12 +1130,15 @@ def test_business_ui_main_renders_customer_cases_route(
         lambda _config: {
             "data": [
                 {
-                    "case_number": "KH-2026-0001",
+                    "case_number": "VG-2026-0001",
+                    "customer_number": "K-2026-0001",
                     "customer_full_name": "Maria Hoffmann",
+                    "phase": 1,
                     "phase_label": "Neuer Kontakt",
                     "priority": "normal",
                     "status": "active",
                     "assigned_to": None,
+                    "has_attention": 1,
                 }
             ],
             "count": 1,
@@ -1112,5 +1148,10 @@ def test_business_ui_main_renders_customer_cases_route(
     streamlit_business_ui_app.main()
 
     assert ("subheader", "Kunden-Vorgänge") in fake_st.events
-    assert ("column_metric", 0, "Vorgänge", 1) in fake_st.events
+    assert ("caption", "Prozessübersicht") in fake_st.events
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "button" and "Neuer Kontakt" in event[1]
+    ]
     assert [event for event in fake_st.events if event[0] == "dataframe"]

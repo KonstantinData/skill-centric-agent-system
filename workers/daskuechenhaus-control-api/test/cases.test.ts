@@ -50,21 +50,29 @@ function makeD1Mock(tables: Record<string, Row[]> = {}) {
 const FIXTURE_CASES: Row[] = [
   {
     id: 'case-001', tenant_id: 'daskuechenhaus', customer_id: 'cust-001',
-    case_number: 'KH-2026-0001', phase: 2, priority: 'normal',
-    status: 'active', assigned_to: null,
+    case_number: 'VG-2026-0001', carat_order_number: null, phase: 2, priority: 'normal',
+    status: 'active', assigned_to: null, created_by_user_id: 'konstantin',
+    responsible_user_id: 'konstantin', needs_attention: 0,
     created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
   },
   {
     id: 'case-002', tenant_id: 'other-tenant', customer_id: 'cust-002',
-    case_number: 'XX-2026-0001', phase: 1, priority: 'low',
-    status: 'active', assigned_to: null,
+    case_number: 'VG-2026-0001', carat_order_number: null, phase: 1, priority: 'low',
+    status: 'active', assigned_to: null, created_by_user_id: 'other',
+    responsible_user_id: 'other', needs_attention: 0,
     created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
   },
 ];
 
 const FIXTURE_CUSTOMERS: Row[] = [
-  { id: 'cust-001', tenant_id: 'daskuechenhaus', full_name: 'Maria Hoffmann' },
-  { id: 'cust-002', tenant_id: 'other-tenant',   full_name: 'Other Person' },
+  {
+    id: 'cust-001', tenant_id: 'daskuechenhaus', customer_number: 'K-2026-0001',
+    customer_type: 'private', full_name: 'Maria Hoffmann',
+  },
+  {
+    id: 'cust-002', tenant_id: 'other-tenant', customer_number: 'K-2026-9999',
+    customer_type: 'private', full_name: 'Other Person',
+  },
 ];
 
 const FIXTURE_PHASES: Row[] = [
@@ -84,6 +92,7 @@ function makeEnv(extraTables: Record<string, Row[]> = {}) {
       case_notes:            [],
       case_appointments:     [],
       case_project_profiles: [],
+      customer_participants:  [],
       ...extraTables,
     }),
     TENANT_ID: 'daskuechenhaus',
@@ -180,7 +189,7 @@ describe('POST /tenant-cases', () => {
   it('accepts inline customer creation', async () => {
     const res = await makeRequest('/tenant-cases', {
       method: 'POST',
-      body: JSON.stringify({ customer_full_name: 'Neue Kundin', priority: 'high' }),
+      body: JSON.stringify({ first_name: 'Neue', last_name: 'Kundin', priority: 'high' }),
     });
     expect([200, 201]).toContain(res.status);
   });
