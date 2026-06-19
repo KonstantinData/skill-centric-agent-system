@@ -107,6 +107,15 @@ class CrmAdminBlueprintPage:
 
 
 @dataclass(frozen=True)
+class AdminCenterPage:
+    group: str
+    label: str
+    page_id: str
+    crm_route: str
+    supported: bool
+
+
+@dataclass(frozen=True)
 class TenantAdminApiConfig:
     base_url: str
     token: str
@@ -641,6 +650,135 @@ CRM_ADMIN_CENTER_BLUEPRINT: tuple[CrmAdminBlueprintPage, ...] = (
         "Gelöschte Dateien und Wiederherstellen-Links",
         "Read-only; restore/delete requires backend audit.",
     ),
+)
+
+
+ADMIN_CENTER_PAGES: tuple[AdminCenterPage, ...] = (
+    AdminCenterPage("Meine Daten", "Stammdaten", "profile", "/user_settings", True),
+    AdminCenterPage(
+        "Meine Daten",
+        "Passwort & Sicherheit",
+        "security",
+        "/user_settings/security",
+        True,
+    ),
+    AdminCenterPage(
+        "Meine Daten",
+        "Sprache, Zeitzone & Arbeitstag",
+        "localisation",
+        "/user_settings/localisation",
+        True,
+    ),
+    AdminCenterPage(
+        "Meine Einstellungen",
+        "E-Mail-Benachrichtigungen",
+        "mail_notifications",
+        "/account_user_settings/mails",
+        True,
+    ),
+    AdminCenterPage(
+        "Meine Einstellungen",
+        "E-Mail-Ablage",
+        "mail_archive",
+        "/account_user_settings/mailin",
+        True,
+    ),
+    AdminCenterPage(
+        "Meine Einstellungen",
+        "Microsoft 365",
+        "microsoft365",
+        "/account_user_settings/microsoft365",
+        False,
+    ),
+    AdminCenterPage(
+        "Meine Einstellungen",
+        "Externe Zugriffe",
+        "personal_api_keys",
+        "/account_user_settings/api_keys",
+        False,
+    ),
+    AdminCenterPage(
+        "Meine Einstellungen",
+        "Beobachtete Seiten",
+        "observed_pages",
+        "/account_user_settings/userobservers",
+        True,
+    ),
+    AdminCenterPage(
+        "Accounteinstellungen",
+        "Accountdaten",
+        "account_data",
+        "/account_settings",
+        False,
+    ),
+    AdminCenterPage(
+        "Accounteinstellungen",
+        "Nutzer & Rechte",
+        "users_rights",
+        "/account_settings/users",
+        False,
+    ),
+    AdminCenterPage(
+        "Accounteinstellungen",
+        "API, Webhooks & Integrationen",
+        "account_integrations",
+        "/account_settings/api_keys",
+        False,
+    ),
+    AdminCenterPage(
+        "Accounteinstellungen",
+        "Paket, Export, DSGVO & Billing",
+        "account_compliance",
+        "/account_settings/show_upgrade",
+        False,
+    ),
+    AdminCenterPage("Papierkorb", "Personen", "trash_people", "/trash/people", False),
+    AdminCenterPage("Papierkorb", "Firmen", "trash_companies", "/trash/companies", False),
+    AdminCenterPage(
+        "Papierkorb",
+        "Pipeline-Einträge",
+        "trash_deals",
+        "/trash/deals",
+        False,
+    ),
+    AdminCenterPage("Papierkorb", "Dateien", "trash_files", "/trash/attachments", False),
+)
+
+ADMIN_CENTER_FORM_DEFAULTS: dict[str, dict[str, Any]] = {
+    "profile": {
+        "first_name": "Konstantin",
+        "last_name": "Milonas",
+        "login_email": "k.milonas@schober-daskuechenhaus.de",
+    },
+    "security": {
+        "force_two_factor": False,
+    },
+    "localisation": {
+        "language": "Deutsch",
+        "timezone": "Europe/Berlin",
+        "workweek": "Montag bis Freitag",
+        "workday_start": "08:00",
+        "workday_end": "17:00",
+    },
+    "mail_notifications": {
+        "upcoming_mails": "zu Beginn jedes Arbeitstages",
+        "notification_mails": "zeitnah während meines Arbeitstages",
+    },
+    "mail_archive": {
+        "mail_archive_enabled": True,
+        "ignored_attachments": "logo.png, image001.png, smime.p7s",
+    },
+    "observed_pages": {
+        "digest_enabled": True,
+    },
+}
+
+MAIL_UPCOMING_PROMPT = (
+    "Wann möchtest du per E-Mail über anstehende Aufgaben, Termine, "
+    "Angebote & Projekte informiert werden?"
+)
+MAIL_NOTIFICATION_PROMPT = (
+    "Wann möchtest du per E-Mail über ungelesene Benachrichtigungen informiert werden?"
 )
 
 
@@ -2075,6 +2213,538 @@ def render_password_change_admin_tool(st: Any) -> None:
     )
 
 
+def admin_center_groups() -> tuple[str, ...]:
+    return tuple(dict.fromkeys(page.group for page in ADMIN_CENTER_PAGES))
+
+
+def admin_center_pages_for_group(group: str) -> tuple[AdminCenterPage, ...]:
+    return tuple(page for page in ADMIN_CENTER_PAGES if page.group == group)
+
+
+def admin_center_page_by_id(page_id: str) -> AdminCenterPage:
+    for page in ADMIN_CENTER_PAGES:
+        if page.page_id == page_id:
+            return page
+    return ADMIN_CENTER_PAGES[0]
+
+
+def admin_center_saved_state(st: Any, page_id: str) -> dict[str, Any]:
+    key = f"scas_admin_center_saved_{page_id}"
+    if key not in st.session_state:
+        st.session_state[key] = dict(ADMIN_CENTER_FORM_DEFAULTS.get(page_id, {}))
+    return dict(st.session_state[key])
+
+
+def reset_admin_widget_state_if_requested(
+    st: Any,
+    page_id: str,
+    widget_values: dict[str, Any],
+) -> None:
+    if not st.session_state.pop(f"scas_admin_center_reset_{page_id}", False):
+        return
+
+    for widget_key, value in widget_values.items():
+        st.session_state[widget_key] = value
+
+
+def render_admin_center_flash(st: Any) -> None:
+    message = st.session_state.pop("scas_admin_center_flash", "")
+    if message:
+        st.info(str(message))
+
+
+def option_index(options: tuple[str, ...], selected: Any) -> int:
+    try:
+        return options.index(str(selected))
+    except ValueError:
+        return 0
+
+
+def handle_admin_form_submission(
+    st: Any,
+    page_id: str,
+    draft: dict[str, Any],
+    *,
+    save_clicked: bool,
+    cancel_clicked: bool,
+    validate: Any | None = None,
+    supports_save: bool = True,
+) -> None:
+    if cancel_clicked:
+        st.session_state[f"scas_admin_center_reset_{page_id}"] = True
+        st.session_state["scas_admin_center_flash"] = "Änderungen verworfen."
+        st.info("Änderungen verworfen.")
+        st.rerun()
+        return
+
+    if not save_clicked:
+        return
+
+    if validate is not None:
+        validation_error = validate(draft)
+        if validation_error:
+            st.error(validation_error)
+            return
+
+    if not supports_save:
+        st.warning(
+            "Diese Aktion benötigt einen auditierten Backend-Workflow und wurde "
+            "nicht gespeichert."
+        )
+        return
+
+    st.session_state[f"scas_admin_center_saved_{page_id}"] = dict(draft)
+    st.session_state[f"scas_admin_center_draft_{page_id}"] = dict(draft)
+    st.success("Einstellungen gespeichert.")
+
+
+def render_admin_center_navigation(st: Any) -> AdminCenterPage:
+    groups = admin_center_groups()
+    active_group = str(st.session_state.get("scas_admin_center_group", groups[0]))
+    if active_group not in groups:
+        active_group = groups[0]
+
+    active_page_id = str(
+        st.session_state.get(
+            "scas_admin_center_page",
+            admin_center_pages_for_group(active_group)[0].page_id,
+        )
+    )
+    active_page = admin_center_page_by_id(active_page_id)
+    if active_page.group != active_group:
+        active_page = admin_center_pages_for_group(active_group)[0]
+        active_page_id = active_page.page_id
+
+    for group in groups:
+        st.markdown(f"**{group}**")
+        for page in admin_center_pages_for_group(group):
+            label = f"• {page.label}" if page.page_id != active_page_id else f"▸ {page.label}"
+            if st.button(label, key=f"admin-nav-{page.page_id}"):
+                st.session_state["scas_admin_center_group"] = group
+                st.session_state["scas_admin_center_page"] = page.page_id
+                active_page = page
+                active_page_id = page.page_id
+        st.markdown("")
+
+    st.session_state["scas_admin_center_group"] = active_page.group
+    st.session_state["scas_admin_center_page"] = active_page.page_id
+    return active_page
+
+
+def render_profile_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "profile")
+    reset_admin_widget_state_if_requested(
+        st,
+        "profile",
+        {
+            "admin-profile-first-name": str(saved.get("first_name", "")),
+            "admin-profile-last-name": str(saved.get("last_name", "")),
+            "admin-profile-login-email": str(saved.get("login_email", "")),
+        },
+    )
+    st.markdown("### Stammdaten")
+    st.caption("Name, Login und Profilangaben für den aktuellen Zugang.")
+    with st.form("scas-admin-profile"):
+        first_name = st.text_input(
+            "Vorname",
+            value=str(saved.get("first_name", "")),
+            key="admin-profile-first-name",
+        )
+        last_name = st.text_input(
+            "Nachname",
+            value=str(saved.get("last_name", "")),
+            key="admin-profile-last-name",
+        )
+        login_email = st.text_input(
+            "E-Mail-Adresse (Login)",
+            value=str(saved.get("login_email", "")),
+            key="admin-profile-login-email",
+        )
+        save_clicked = st.form_submit_button("Speichern", key="admin-profile-save")
+        cancel_clicked = st.form_submit_button("Abbrechen", key="admin-profile-cancel")
+
+    draft = {
+        "first_name": first_name.strip(),
+        "last_name": last_name.strip(),
+        "login_email": login_email.strip(),
+    }
+
+    def validate_profile(values: dict[str, Any]) -> str:
+        if not values["first_name"] or not values["last_name"]:
+            return "Vorname und Nachname sind erforderlich."
+        if "@" not in values["login_email"]:
+            return "Bitte eine gültige Login-E-Mail-Adresse eingeben."
+        return ""
+
+    handle_admin_form_submission(
+        st,
+        "profile",
+        draft,
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+        validate=validate_profile,
+    )
+
+
+def render_security_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "security")
+    reset_admin_widget_state_if_requested(
+        st,
+        "security",
+        {"admin-security-force-2fa": bool(saved.get("force_two_factor", False))},
+    )
+    st.markdown("### Passwort & Sicherheit")
+    st.caption("Passwort-Hash erzeugen und spätere 2FA-Erzwingung vorbereiten.")
+    with st.form("scas-admin-security"):
+        force_two_factor = st.checkbox(
+            "Zwei-Faktor-Authentifizierung für diesen Zugang erzwingen",
+            value=bool(saved.get("force_two_factor", False)),
+            key="admin-security-force-2fa",
+        )
+        save_clicked = st.form_submit_button("Speichern", key="admin-security-save")
+        cancel_clicked = st.form_submit_button("Abbrechen", key="admin-security-cancel")
+    handle_admin_form_submission(
+        st,
+        "security",
+        {"force_two_factor": force_two_factor},
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+    )
+    render_password_change_admin_tool(st)
+
+
+def render_localisation_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "localisation")
+    reset_admin_widget_state_if_requested(
+        st,
+        "localisation",
+        {
+            "admin-localisation-language": saved.get("language"),
+            "admin-localisation-timezone": saved.get("timezone"),
+            "admin-localisation-workweek": saved.get("workweek"),
+            "admin-localisation-workday-start": saved.get("workday_start"),
+            "admin-localisation-workday-end": saved.get("workday_end"),
+        },
+    )
+    languages = ("Deutsch", "Englisch")
+    timezones = ("Europe/Berlin", "UTC")
+    workweeks = ("Montag bis Freitag", "Montag bis Sonntag")
+    starts = ("06:00", "07:00", "08:00", "09:00", "10:00")
+    ends = ("15:00", "16:00", "17:00", "18:00", "19:00")
+
+    st.markdown("### Sprache, Zeitzone & Arbeitstag")
+    with st.form("scas-admin-localisation"):
+        language = st.selectbox(
+            "Sprache",
+            options=list(languages),
+            index=option_index(languages, saved.get("language")),
+            key="admin-localisation-language",
+        )
+        timezone = st.selectbox(
+            "Zeitzone",
+            options=list(timezones),
+            index=option_index(timezones, saved.get("timezone")),
+            key="admin-localisation-timezone",
+        )
+        workweek = st.radio(
+            "Arbeitswoche",
+            options=list(workweeks),
+            index=option_index(workweeks, saved.get("workweek")),
+            key="admin-localisation-workweek",
+        )
+        workday_start = st.selectbox(
+            "Arbeitstag Beginn",
+            options=list(starts),
+            index=option_index(starts, saved.get("workday_start")),
+            key="admin-localisation-workday-start",
+        )
+        workday_end = st.selectbox(
+            "Arbeitstag Ende",
+            options=list(ends),
+            index=option_index(ends, saved.get("workday_end")),
+            key="admin-localisation-workday-end",
+        )
+        save_clicked = st.form_submit_button("Speichern", key="admin-localisation-save")
+        cancel_clicked = st.form_submit_button("Abbrechen", key="admin-localisation-cancel")
+
+    draft = {
+        "language": language,
+        "timezone": timezone,
+        "workweek": workweek,
+        "workday_start": workday_start,
+        "workday_end": workday_end,
+    }
+
+    def validate_workday(values: dict[str, Any]) -> str:
+        if str(values["workday_start"]) >= str(values["workday_end"]):
+            return "Der Arbeitstag muss vor seinem Ende beginnen."
+        return ""
+
+    handle_admin_form_submission(
+        st,
+        "localisation",
+        draft,
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+        validate=validate_workday,
+    )
+
+
+def render_mail_notifications_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "mail_notifications")
+    reset_admin_widget_state_if_requested(
+        st,
+        "mail_notifications",
+        {
+            "admin-mail-notifications-upcoming": saved.get("upcoming_mails"),
+            "admin-mail-notifications-notifications": saved.get("notification_mails"),
+        },
+    )
+    upcoming_options = (
+        "zu Beginn jedes Arbeitstages",
+        "Montags, zu Beginn der Arbeitswoche",
+        "gar nicht",
+    )
+    notification_options = (
+        "zeitnah - maximal eine Stunde nach dem Ereignis",
+        "zeitnah während meines Arbeitstages",
+        "zu Beginn meines Arbeitstages",
+        "gar nicht",
+    )
+
+    st.markdown("### E-Mail-Benachrichtigungen")
+    with st.form("scas-admin-mail-notifications"):
+        upcoming_mails = st.radio(
+            MAIL_UPCOMING_PROMPT,
+            options=list(upcoming_options),
+            index=option_index(upcoming_options, saved.get("upcoming_mails")),
+            key="admin-mail-notifications-upcoming",
+        )
+        notification_mails = st.radio(
+            MAIL_NOTIFICATION_PROMPT,
+            options=list(notification_options),
+            index=option_index(notification_options, saved.get("notification_mails")),
+            key="admin-mail-notifications-notifications",
+        )
+        save_clicked = st.form_submit_button(
+            "Speichern",
+            key="admin-mail-notifications-save",
+        )
+        cancel_clicked = st.form_submit_button(
+            "Abbrechen",
+            key="admin-mail-notifications-cancel",
+        )
+    handle_admin_form_submission(
+        st,
+        "mail_notifications",
+        {
+            "upcoming_mails": upcoming_mails,
+            "notification_mails": notification_mails,
+        },
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+    )
+
+
+def render_mail_archive_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "mail_archive")
+    reset_admin_widget_state_if_requested(
+        st,
+        "mail_archive",
+        {
+            "admin-mail-archive-enabled": bool(saved.get("mail_archive_enabled", True)),
+            "admin-mail-archive-ignored": str(saved.get("ignored_attachments", "")),
+        },
+    )
+    st.markdown("### E-Mail-Ablage")
+    st.caption("Persönliche Ablageeinstellungen für E-Mails und Anhänge.")
+    with st.form("scas-admin-mail-archive"):
+        mail_archive_enabled = st.checkbox(
+            "E-Mail-Ablage aktivieren",
+            value=bool(saved.get("mail_archive_enabled", True)),
+            key="admin-mail-archive-enabled",
+        )
+        ignored_attachments = st.text_input(
+            "Folgende Dateien ignorieren",
+            value=str(saved.get("ignored_attachments", "")),
+            key="admin-mail-archive-ignored",
+        )
+        save_clicked = st.form_submit_button("Speichern", key="admin-mail-archive-save")
+        cancel_clicked = st.form_submit_button("Abbrechen", key="admin-mail-archive-cancel")
+    handle_admin_form_submission(
+        st,
+        "mail_archive",
+        {
+            "mail_archive_enabled": mail_archive_enabled,
+            "ignored_attachments": ignored_attachments.strip(),
+        },
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+    )
+
+
+def render_microsoft365_admin_page(st: Any) -> None:
+    st.markdown("### Microsoft 365")
+    st.info("Microsoft 365 ist noch nicht verbunden.")
+    if st.button("Integration einrichten", key="admin-microsoft365-connect"):
+        st.warning("OAuth-Verbindungen benötigen einen auditierten Backend-Workflow.")
+
+
+def render_personal_api_keys_admin_page(st: Any) -> None:
+    st.markdown("### Externe Zugriffe")
+    st.dataframe(
+        [{"Typ": "Persönlicher API-Schlüssel", "Status": "Noch kein Schlüssel"}],
+        hide_index=True,
+        use_container_width=True,
+    )
+    if st.button("Neuen API-Schlüssel erstellen", key="admin-personal-api-key-new"):
+        st.warning("API-Schlüssel werden nicht in Streamlit erzeugt oder angezeigt.")
+
+
+def render_observed_pages_admin_page(st: Any) -> None:
+    saved = admin_center_saved_state(st, "observed_pages")
+    reset_admin_widget_state_if_requested(
+        st,
+        "observed_pages",
+        {"admin-observed-pages-digest": bool(saved.get("digest_enabled", True))},
+    )
+    st.markdown("### Beobachtete Seiten")
+    st.dataframe(
+        [{"Seite": "Keine beobachteten Seiten", "Status": "leer"}],
+        hide_index=True,
+        use_container_width=True,
+    )
+    with st.form("scas-admin-observed-pages"):
+        digest_enabled = st.checkbox(
+            "Aktivitätszusammenfassung für beobachtete Seiten anzeigen",
+            value=bool(saved.get("digest_enabled", True)),
+            key="admin-observed-pages-digest",
+        )
+        save_clicked = st.form_submit_button("Speichern", key="admin-observed-pages-save")
+        cancel_clicked = st.form_submit_button("Abbrechen", key="admin-observed-pages-cancel")
+    handle_admin_form_submission(
+        st,
+        "observed_pages",
+        {"digest_enabled": digest_enabled},
+        save_clicked=save_clicked,
+        cancel_clicked=cancel_clicked,
+    )
+    if st.button("Alle Beobachtungen entfernen", key="admin-observed-pages-clear"):
+        st.warning("Das Entfernen aller Beobachtungen benötigt einen Backend-Audit-Workflow.")
+
+
+def render_account_data_admin_page(
+    st: Any,
+    tenant_shell: TenantShell,
+    admin_section: TenantAdminSection,
+) -> None:
+    st.markdown("### Accountdaten")
+    st.dataframe(
+        [
+            {"Feld": "Tenant", "Wert": tenant_shell.display_name},
+            {"Feld": "Rechtlicher Name", "Wert": tenant_shell.legal_name},
+            {"Feld": "Hostname", "Wert": tenant_shell.hostname},
+            {"Feld": "Status", "Wert": tenant_shell.status},
+            {"Feld": "Admin-Routen", "Wert": str(admin_section.settings.get("admin_routes", ""))},
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    st.info("Account-Stammdaten werden in v1 angezeigt, aber nicht direkt gespeichert.")
+
+
+def render_users_rights_admin_page(st: Any, admin_section: TenantAdminSection) -> None:
+    st.markdown("### Nutzer & Rechte")
+    st.dataframe(list(admin_section.users), hide_index=True, use_container_width=True)
+    st.dataframe(list(admin_section.roles), hide_index=True, use_container_width=True)
+    if st.button("NutzerIn einladen", key="admin-users-invite"):
+        st.warning("Einladungen benötigen einen Mail-/Identity-Backend-Workflow.")
+
+
+def render_account_integrations_admin_page(st: Any) -> None:
+    st.markdown("### API, Webhooks & Integrationen")
+    st.dataframe(
+        [
+            {"Bereich": "API-Schlüssel", "Status": "Backend erforderlich"},
+            {"Bereich": "Webhooks", "Status": "Backend erforderlich"},
+            {"Bereich": "Microsoft 365", "Status": "Nicht verbunden"},
+            {"Bereich": "FastBill / Helpspace", "Status": "Secret-Speicher erforderlich"},
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    if st.button("Webhook anlegen", key="admin-webhook-new"):
+        st.warning("Webhooks benötigen validierte Ziel-URLs und Audit-Events.")
+
+
+def render_account_compliance_admin_page(st: Any) -> None:
+    st.markdown("### Paket, Export, DSGVO & Billing")
+    st.dataframe(
+        [
+            {"Bereich": "Paket wechseln", "Aktion": "nur anzeigen"},
+            {"Bereich": "Alle Daten exportieren", "Aktion": "Backend-Job erforderlich"},
+            {"Bereich": "Auftragsverarbeitung", "Aktion": "rechtlicher Workflow erforderlich"},
+            {"Bereich": "Adresse & Zahlungsdaten", "Aktion": "nie in Streamlit speichern"},
+            {"Bereich": "Account zurücksetzen/löschen", "Aktion": "deaktiviert"},
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+
+
+def render_trash_admin_page(st: Any, page: AdminCenterPage) -> None:
+    st.markdown(f"### Papierkorb: {page.label}")
+    st.dataframe(
+        [{"Eintrag": "Keine wiederherstellbaren Einträge", "Status": "leer"}],
+        hide_index=True,
+        use_container_width=True,
+    )
+    if st.button(
+        "Alle Einträge auf dieser Seite wiederherstellen",
+        key=f"admin-{page.page_id}-restore",
+    ):
+        st.warning("Wiederherstellungen benötigen einen auditierten Backend-Workflow.")
+
+
+def render_admin_center_page(
+    st: Any,
+    page: AdminCenterPage,
+    tenant_shell: TenantShell,
+    admin_section: TenantAdminSection,
+) -> None:
+    st.markdown(f"## {page.label}")
+    st.caption(f"CRM-Referenz: {page.crm_route}")
+    render_admin_center_flash(st)
+    if page.page_id == "profile":
+        render_profile_admin_page(st)
+    elif page.page_id == "security":
+        render_security_admin_page(st)
+    elif page.page_id == "localisation":
+        render_localisation_admin_page(st)
+    elif page.page_id == "mail_notifications":
+        render_mail_notifications_admin_page(st)
+    elif page.page_id == "mail_archive":
+        render_mail_archive_admin_page(st)
+    elif page.page_id == "microsoft365":
+        render_microsoft365_admin_page(st)
+    elif page.page_id == "personal_api_keys":
+        render_personal_api_keys_admin_page(st)
+    elif page.page_id == "observed_pages":
+        render_observed_pages_admin_page(st)
+    elif page.page_id == "account_data":
+        render_account_data_admin_page(st, tenant_shell, admin_section)
+    elif page.page_id == "users_rights":
+        render_users_rights_admin_page(st, admin_section)
+    elif page.page_id == "account_integrations":
+        render_account_integrations_admin_page(st)
+    elif page.page_id == "account_compliance":
+        render_account_compliance_admin_page(st)
+    elif page.group == "Papierkorb":
+        render_trash_admin_page(st, page)
+    else:
+        st.warning("Diese Admin-Seite ist noch nicht umgesetzt.")
+
+
 def crm_admin_blueprint_rows(
     pages: Iterable[CrmAdminBlueprintPage] = CRM_ADMIN_CENTER_BLUEPRINT,
 ) -> list[dict[str, Any]]:
@@ -2133,80 +2803,11 @@ def render_admin_dashboard(
         return
 
     st.caption(f"Angemeldet als: {session.principal_id}")
-    summary_columns = st.columns(4)
-    summary_columns[0].metric("Benutzer", len(admin_section.users))
-    summary_columns[1].metric("Rollen", len(admin_section.roles))
-    summary_columns[2].metric("Workflows", len(admin_section.workflows))
-    summary_columns[3].metric("Datenquellen", len(tenant_shell.data_sources))
-
-    account_rows = [
-        {"Bereich": "Tenant", "Wert": tenant_shell.display_name},
-        {"Bereich": "Rechtlicher Name", "Wert": tenant_shell.legal_name},
-        {"Bereich": "Hostname", "Wert": tenant_shell.hostname},
-        {"Bereich": "Status", "Wert": tenant_shell.status},
-    ]
-    account_rows.extend(
-        {"Bereich": str(key).replace("_", " ").title(), "Wert": str(value)}
-        for key, value in admin_section.settings.items()
-        if value not in (None, "")
-    )
-    st.markdown("### Accountdaten")
-    st.dataframe(account_rows, hide_index=True, use_container_width=True)
-
-    st.markdown("### Nutzer & Rechte")
-    st.dataframe(list(admin_section.users), hide_index=True, use_container_width=True)
-    st.dataframe(list(admin_section.roles), hide_index=True, use_container_width=True)
-
-    st.markdown("### Workflows")
-    st.dataframe(list(admin_section.workflows), hide_index=True, use_container_width=True)
-
-    integration_rows = [
-        {
-            "Bereich": "Tenant-Datenquelle",
-            "Name": source,
-            "Status": "konfiguriert",
-        }
-        for source in tenant_shell.data_sources
-    ]
-    if not integration_rows:
-        integration_rows = [
-            {
-                "Bereich": "Tenant-Datenquelle",
-                "Name": "Noch keine Datenquelle registriert",
-                "Status": "offen",
-            }
-        ]
-    integration_rows.extend(
-        [
-            {
-                "Bereich": "Externe Zugriffe",
-                "Name": "API-Schlüssel, Webhooks und Partner-Integrationen",
-                "Status": "über Admin-Rollen freischalten",
-            },
-            {
-                "Bereich": "Tenant-Datenbank",
-                "Name": "PostgreSQL je Tenant auf der Runtime Plane",
-                "Status": "Provisionierung und Rotation außerhalb der UI",
-            },
-        ]
-    )
-    st.markdown("### Datenquellen & Integrationen")
-    st.dataframe(integration_rows, hide_index=True, use_container_width=True)
-
-    st.markdown("### Sicherheit & Audit")
-    st.info(tenant_shell.isolation_summary)
-    st.caption(admin_section.audit_summary)
-
-    st.markdown("### Papierkorb")
-    st.info(
-        "Gelöschte Tenant-Daten werden im Admin Center nur sichtbar gemacht. "
-        "Wiederherstellung und endgültige Löschung bleiben auditpflichtige "
-        "Backend-Workflows."
-    )
-
-    render_crm_admin_blueprint(st)
-
-    render_password_change_admin_tool(st)
+    nav_column, content_column = st.columns([0.28, 0.72])
+    with nav_column:
+        active_page = render_admin_center_navigation(st)
+    with content_column:
+        render_admin_center_page(st, active_page, tenant_shell, admin_section)
 
 
 def load_tenant_admin_context_from_api(

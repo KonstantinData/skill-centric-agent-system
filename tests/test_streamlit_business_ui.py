@@ -73,8 +73,10 @@ class FakeStreamlit:
         self.events: list[tuple[Any, ...]] = []
         self.text_input_values: dict[str, str] = {}
         self.selectbox_values: dict[str, str] = {}
+        self.radio_values: dict[str, str] = {}
         self.checkbox_values: dict[str, bool] = {}
         self.button_values: dict[str, bool] = {}
+        self.form_submit_values: dict[str, bool] = {}
         self.sidebar_button_values: dict[str, bool] = {}
         self.form_submitted = False
         self.query_params: dict[str, str] = {}
@@ -172,9 +174,19 @@ class FakeStreamlit:
             return self.text_input_values[key]
         return self.text_input_values.get(label, str(kwargs.get("value", "")))
 
-    def selectbox(self, label: str, *, options: list[str], index: int) -> str:
+    def selectbox(self, label: str, *, options: list[str], index: int, **kwargs: Any) -> str:
         self.events.append(("selectbox", label, tuple(options), index))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.selectbox_values:
+            return self.selectbox_values[key]
         return self.selectbox_values.get(label, options[index])
+
+    def radio(self, label: str, *, options: list[str], index: int, **kwargs: Any) -> str:
+        self.events.append(("radio", label, tuple(options), index))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.radio_values:
+            return self.radio_values[key]
+        return self.radio_values.get(label, options[index])
 
     def checkbox(self, label: str, **kwargs: Any) -> bool:
         self.events.append(("checkbox", label, kwargs))
@@ -183,8 +195,11 @@ class FakeStreamlit:
             return self.checkbox_values[key]
         return self.checkbox_values.get(label, bool(kwargs.get("value", False)))
 
-    def form_submit_button(self, label: str) -> bool:
+    def form_submit_button(self, label: str, **kwargs: Any) -> bool:
         self.events.append(("form_submit_button", label))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.form_submit_values:
+            return self.form_submit_values[key]
         return self.form_submitted
 
     def rerun(self) -> None:
@@ -911,62 +926,206 @@ def test_business_ui_admin_dashboard_route_uses_existing_session(monkeypatch) ->
     streamlit_business_ui_app.main()
 
     assert ("subheader", "Admin Center") in fake_st.events
-    metric_labels = [event[2] for event in fake_st.events if event[0] == "column_metric"]
-    assert metric_labels[:4] == ["Benutzer", "Rollen", "Workflows", "Datenquellen"]
-    assert "Bereiche" in metric_labels
-    assert "Seiten" in metric_labels
-    assert "Geschützte Aktionen" in metric_labels
     markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
-    assert "### Accountdaten" in markdown_text
-    assert "### Nutzer & Rechte" in markdown_text
-    assert "### Datenquellen & Integrationen" in markdown_text
-    assert "### Papierkorb" in markdown_text
-    assert "### CentralStationCRM-Adminstruktur" in markdown_text
-    assert "#### Account anpassen" in markdown_text
-    assert "#### Externe Zugriffe & Integrationen" in markdown_text
-    dataframe_rows = [event[1][0] for event in fake_st.events if event[0] == "dataframe"]
-    assert any(
-        {"Bereich": "Tenant", "Wert": "das küchenhaus"}
-        in rows
-        for rows in dataframe_rows
-    )
-    assert any(
-        any(row.get("Name") == "PostgreSQL je Tenant auf der Runtime Plane" for row in rows)
-        for rows in dataframe_rows
-    )
-    assert ("form", "scas-admin-password-change") in fake_st.events
+    assert "**Meine Daten**" in markdown_text
+    assert "**Meine Einstellungen**" in markdown_text
+    assert "## Stammdaten" in markdown_text
+    assert "### Stammdaten" in markdown_text
+    assert ("form", "scas-admin-profile") in fake_st.events
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "text_input" and event[1] == "Vorname"
+    ]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "button" and event[1] == "▸ Stammdaten"
+    ]
     assert not [event for event in fake_st.events if event == ("form", "scas-local-login")]
 
 
-def test_business_ui_crm_admin_blueprint_matches_inspected_operational_structure() -> None:
-    rows = streamlit_business_ui_app.crm_admin_blueprint_rows()
-    routes = {str(row["CRM-Route"]) for row in rows}
+def test_business_ui_admin_center_page_model_covers_required_navigation() -> None:
+    pages = streamlit_business_ui_app.ADMIN_CENTER_PAGES
+    groups = {page.group for page in pages}
+    page_ids = {page.page_id for page in pages}
 
-    assert len(rows) >= 50
+    assert groups == {
+        "Meine Daten",
+        "Meine Einstellungen",
+        "Accounteinstellungen",
+        "Papierkorb",
+    }
     assert {
-        "/user_settings",
-        "/account_user_settings/mails",
-        "/account_settings/deal_types/43851/deal_type_stages",
-        "/account_settings/custom_fields_types/new",
-        "/account_settings/users/new_multi",
-        "/account_settings/two_factor",
-        "/account_settings/api_keys/new",
-        "/account_settings/hooks/new",
-        "/integrations/microsoft365",
-        "/account_settings/api_key_externals/fastbill",
-        "/account_settings/account_addon_purchases?tab=contacts",
-        "/gdpr/data_processing_agreements/new",
-        "/account_settings/confirmdelete",
-        "/bill/billing_infos/new",
-        "/trash/attachments",
-    } <= routes
-    assert not any(route.startswith("/partners") for route in routes)
-    assert not any(route.startswith("/referrals") for route in routes)
-    assert any(
-        row["CRM-Route"] == "/account_settings/confirmdelete"
-        and "Destructive action disabled" in row["Schreibmodus"]
-        for row in rows
+        "profile",
+        "security",
+        "localisation",
+        "mail_notifications",
+        "mail_archive",
+        "microsoft365",
+        "personal_api_keys",
+        "observed_pages",
+        "account_data",
+        "users_rights",
+        "account_integrations",
+        "account_compliance",
+        "trash_people",
+        "trash_companies",
+        "trash_deals",
+        "trash_files",
+    } <= page_ids
+    assert not any(page.crm_route.startswith("/partners") for page in pages)
+    assert not any(page.crm_route.startswith("/referrals") for page in pages)
+
+
+def admin_dashboard_fixture() -> tuple[Any, Any, Any]:
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="daskuechenhaus-owner-principal",
+        tenant_id="daskuechenhaus",
+        membership_id="tm-daskuechenhaus-owner-01",
+        role_ids=("daskuechenhaus-owner",),
+        capabilities=frozenset({"tenant-admin", "customer-cases"}),
+        source="local-login",
     )
+    shell = streamlit_business_ui_app.TenantShell(
+        tenant_id="daskuechenhaus",
+        area_id="daskuechenhaus",
+        display_name="das küchenhaus",
+        legal_name="das küchenhaus ralph schober GmbH",
+        status="setup",
+        hostname="daskuechenhaus.condata.io",
+        logo_path=None,
+        admin_routes=("/admin/users", "/admin/roles"),
+        role_names=("Tenant Owner",),
+        data_sources=("Daskuechenhaus Website",),
+        isolation_summary="Tenant isolation active.",
+    )
+    admin_section = streamlit_business_ui_app.TenantAdminSection(
+        users=(
+            {
+                "user": "daskuechenhaus-owner-principal",
+                "status": "active",
+                "roles": "Tenant Owner",
+            },
+        ),
+        roles=(
+            {
+                "role": "Tenant Owner",
+                "role_id": "daskuechenhaus-owner",
+                "type": "system",
+                "capabilities": "tenant-admin, customer-cases",
+                "data_sources": "daskuechenhaus-website",
+            },
+        ),
+        workflows=(),
+        settings={"admin_routes": "/admin/users, /admin/roles"},
+        audit_summary="Audit ready.",
+    )
+    return session, shell, admin_section
+
+
+def test_business_ui_admin_profile_form_saves_session_state() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.text_input_values = {
+        "admin-profile-first-name": "Ralph",
+        "admin-profile-last-name": "Schober",
+        "admin-profile-login-email": "ralph@example.test",
+    }
+    fake_st.form_submit_values["admin-profile-save"] = True
+    session, shell, admin_section = admin_dashboard_fixture()
+
+    streamlit_business_ui_app.render_admin_dashboard(
+        fake_st,
+        session,
+        shell,
+        admin_section,
+    )
+
+    assert fake_st.session_state["scas_admin_center_saved_profile"] == {
+        "first_name": "Ralph",
+        "last_name": "Schober",
+        "login_email": "ralph@example.test",
+    }
+    assert ("success", "Einstellungen gespeichert.") in fake_st.events
+
+
+def test_business_ui_admin_localisation_cancel_keeps_saved_state() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.session_state["scas_admin_center_group"] = "Meine Daten"
+    fake_st.session_state["scas_admin_center_page"] = "localisation"
+    fake_st.session_state["scas_admin_center_saved_localisation"] = {
+        "language": "Deutsch",
+        "timezone": "Europe/Berlin",
+        "workweek": "Montag bis Freitag",
+        "workday_start": "08:00",
+        "workday_end": "17:00",
+    }
+    fake_st.selectbox_values = {
+        "Arbeitstag Beginn": "09:00",
+        "Arbeitstag Ende": "18:00",
+    }
+    fake_st.form_submit_values["admin-localisation-cancel"] = True
+    session, shell, admin_section = admin_dashboard_fixture()
+
+    streamlit_business_ui_app.render_admin_dashboard(
+        fake_st,
+        session,
+        shell,
+        admin_section,
+    )
+
+    assert fake_st.session_state["scas_admin_center_saved_localisation"][
+        "workday_start"
+    ] == "08:00"
+    assert ("info", "Änderungen verworfen.") in fake_st.events
+
+
+def test_business_ui_admin_mail_notifications_form_saves_radio_values() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.session_state["scas_admin_center_group"] = "Meine Einstellungen"
+    fake_st.session_state["scas_admin_center_page"] = "mail_notifications"
+    fake_st.radio_values = {
+        streamlit_business_ui_app.MAIL_UPCOMING_PROMPT: "gar nicht",
+        streamlit_business_ui_app.MAIL_NOTIFICATION_PROMPT: (
+            "zu Beginn meines Arbeitstages"
+        ),
+    }
+    fake_st.form_submit_values["admin-mail-notifications-save"] = True
+    session, shell, admin_section = admin_dashboard_fixture()
+
+    streamlit_business_ui_app.render_admin_dashboard(
+        fake_st,
+        session,
+        shell,
+        admin_section,
+    )
+
+    assert fake_st.session_state["scas_admin_center_saved_mail_notifications"] == {
+        "upcoming_mails": "gar nicht",
+        "notification_mails": "zu Beginn meines Arbeitstages",
+    }
+    assert [event for event in fake_st.events if event[0] == "radio"]
+    assert ("success", "Einstellungen gespeichert.") in fake_st.events
+
+
+def test_business_ui_admin_secret_actions_do_not_fake_save() -> None:
+    fake_st = FakeStreamlit()
+    fake_st.session_state["scas_admin_center_group"] = "Meine Einstellungen"
+    fake_st.session_state["scas_admin_center_page"] = "personal_api_keys"
+    fake_st.button_values["admin-personal-api-key-new"] = True
+    session, shell, admin_section = admin_dashboard_fixture()
+
+    streamlit_business_ui_app.render_admin_dashboard(
+        fake_st,
+        session,
+        shell,
+        admin_section,
+    )
+
+    assert (
+        "warning",
+        "API-Schlüssel werden nicht in Streamlit erzeugt oder angezeigt.",
+    ) in fake_st.events
 
 
 def test_business_ui_admin_password_tool_generates_hash() -> None:
