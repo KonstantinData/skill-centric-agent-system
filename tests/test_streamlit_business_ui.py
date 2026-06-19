@@ -911,6 +911,23 @@ def test_business_ui_admin_dashboard_route_uses_existing_session(monkeypatch) ->
     streamlit_business_ui_app.main()
 
     assert ("subheader", "Admin Center") in fake_st.events
+    metric_labels = [event[2] for event in fake_st.events if event[0] == "column_metric"]
+    assert metric_labels == ["Benutzer", "Rollen", "Workflows", "Datenquellen"]
+    markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
+    assert "### Accountdaten" in markdown_text
+    assert "### Nutzer & Rechte" in markdown_text
+    assert "### Datenquellen & Integrationen" in markdown_text
+    assert "### Papierkorb" in markdown_text
+    dataframe_rows = [event[1][0] for event in fake_st.events if event[0] == "dataframe"]
+    assert any(
+        {"Bereich": "Tenant", "Wert": "das küchenhaus"}
+        in rows
+        for rows in dataframe_rows
+    )
+    assert any(
+        any(row.get("Name") == "PostgreSQL je Tenant auf der Runtime Plane" for row in rows)
+        for rows in dataframe_rows
+    )
     assert ("form", "scas-admin-password-change") in fake_st.events
     assert not [event for event in fake_st.events if event == ("form", "scas-local-login")]
 

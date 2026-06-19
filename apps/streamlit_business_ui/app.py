@@ -1592,6 +1592,8 @@ def render_password_change_admin_tool(st: Any) -> None:
 def render_admin_dashboard(
     st: Any,
     session: TenantSession,
+    tenant_shell: TenantShell,
+    admin_section: TenantAdminSection,
 ) -> None:
     st.subheader("Admin Center")
     if "tenant-admin" not in session.capabilities:
@@ -1599,6 +1601,77 @@ def render_admin_dashboard(
         return
 
     st.caption(f"Angemeldet als: {session.principal_id}")
+    summary_columns = st.columns(4)
+    summary_columns[0].metric("Benutzer", len(admin_section.users))
+    summary_columns[1].metric("Rollen", len(admin_section.roles))
+    summary_columns[2].metric("Workflows", len(admin_section.workflows))
+    summary_columns[3].metric("Datenquellen", len(tenant_shell.data_sources))
+
+    account_rows = [
+        {"Bereich": "Tenant", "Wert": tenant_shell.display_name},
+        {"Bereich": "Rechtlicher Name", "Wert": tenant_shell.legal_name},
+        {"Bereich": "Hostname", "Wert": tenant_shell.hostname},
+        {"Bereich": "Status", "Wert": tenant_shell.status},
+    ]
+    account_rows.extend(
+        {"Bereich": str(key).replace("_", " ").title(), "Wert": str(value)}
+        for key, value in admin_section.settings.items()
+        if value not in (None, "")
+    )
+    st.markdown("### Accountdaten")
+    st.dataframe(account_rows, hide_index=True, use_container_width=True)
+
+    st.markdown("### Nutzer & Rechte")
+    st.dataframe(list(admin_section.users), hide_index=True, use_container_width=True)
+    st.dataframe(list(admin_section.roles), hide_index=True, use_container_width=True)
+
+    st.markdown("### Workflows")
+    st.dataframe(list(admin_section.workflows), hide_index=True, use_container_width=True)
+
+    integration_rows = [
+        {
+            "Bereich": "Tenant-Datenquelle",
+            "Name": source,
+            "Status": "konfiguriert",
+        }
+        for source in tenant_shell.data_sources
+    ]
+    if not integration_rows:
+        integration_rows = [
+            {
+                "Bereich": "Tenant-Datenquelle",
+                "Name": "Noch keine Datenquelle registriert",
+                "Status": "offen",
+            }
+        ]
+    integration_rows.extend(
+        [
+            {
+                "Bereich": "Externe Zugriffe",
+                "Name": "API-Schlüssel, Webhooks und Partner-Integrationen",
+                "Status": "über Admin-Rollen freischalten",
+            },
+            {
+                "Bereich": "Tenant-Datenbank",
+                "Name": "PostgreSQL je Tenant auf der Runtime Plane",
+                "Status": "Provisionierung und Rotation außerhalb der UI",
+            },
+        ]
+    )
+    st.markdown("### Datenquellen & Integrationen")
+    st.dataframe(integration_rows, hide_index=True, use_container_width=True)
+
+    st.markdown("### Sicherheit & Audit")
+    st.info(tenant_shell.isolation_summary)
+    st.caption(admin_section.audit_summary)
+
+    st.markdown("### Papierkorb")
+    st.info(
+        "Gelöschte Tenant-Daten werden im Admin Center nur sichtbar gemacht. "
+        "Wiederherstellung und endgültige Löschung bleiben auditpflichtige "
+        "Backend-Workflows."
+    )
+
     render_password_change_admin_tool(st)
 
 
@@ -1721,6 +1794,7 @@ def main() -> None:
 
     selected_tenant = tenants[tenant_id]
     tenant_shell = build_tenant_shell(tenants[tenant_id])
+    tenant_admin_section = build_tenant_admin_section(selected_tenant)
     branding = build_tenant_branding(selected_tenant, tenant_shell)
     st.markdown(render_tenant_theme_css(branding.theme), unsafe_allow_html=True)
 
@@ -1742,6 +1816,7 @@ def main() -> None:
                 tenant_shell.hostname,
             )
             tenant_shell = build_tenant_shell_from_admin_context(admin_context)
+            tenant_admin_section = build_tenant_admin_section_from_context(admin_context)
         except Exception:  # pragma: no cover - defensive Streamlit runtime fallback.
             # The backend context is optional for this landing page; do not expose
             # internal Control API failures on the user-facing tenant UI.
@@ -1772,7 +1847,7 @@ def main() -> None:
         render_customer_cases_area(st, tenant_session)
         return
     if active_route == "/admin":
-        render_admin_dashboard(st, tenant_session)
+        render_admin_dashboard(st, tenant_session, tenant_shell, tenant_admin_section)
         return
 
     st.subheader("Freigeschaltete Bereiche")

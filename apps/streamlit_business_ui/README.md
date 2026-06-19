@@ -143,6 +143,14 @@ not write secrets or host environment files itself; the generated hash must be
 copied into the environment-specific `SCAS_UI_LOGIN_USERS_JSON` secret and then
 deployed through the tenant UI deployment workflow.
 
+The first Admin Center slice mirrors the CentralStationCRM settings structure
+for tenant operators: account metadata, users and rights, admin workflows,
+data sources and integrations, security/audit state, and a trash/retention
+placeholder. It is intentionally read-only except for generating local password
+hashes. Tenant PostgreSQL provisioning, API keys, webhook secrets, integration
+credentials, restore actions, and permanent deletions stay backend-governed and
+audited outside the Streamlit UI.
+
 When `SCAS_UI_AUTH_MODE=required` and no trusted session is available, the UI
 can render a tenant-branded login entry by setting `SCAS_UI_LOGIN_URL` to the
 approved upstream identity URL. Streamlit still does not authenticate users or
