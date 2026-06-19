@@ -97,6 +97,16 @@ class TenantAdminSection:
 
 
 @dataclass(frozen=True)
+class CrmAdminBlueprintPage:
+    section: str
+    page: str
+    route: str
+    depth: int
+    controls: str
+    write_policy: str
+
+
+@dataclass(frozen=True)
 class TenantAdminApiConfig:
     base_url: str
     token: str
@@ -156,6 +166,482 @@ class LocalLoginUser:
     membership_id: str
     role_ids: tuple[str, ...]
     password_hash: str
+
+
+CRM_ADMIN_CENTER_BLUEPRINT: tuple[CrmAdminBlueprintPage, ...] = (
+    CrmAdminBlueprintPage(
+        "Meine Daten",
+        "Stammdaten",
+        "/user_settings",
+        1,
+        "Profilfoto, Vorname, Nachname, Login-E-Mail",
+        "Read-only mirror; profile writes require an identity backend.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Daten",
+        "Login-E-Mail ändern",
+        "/user_settings/edit_login",
+        2,
+        "Aktuelles Passwort, neue Login-E-Mail",
+        "Disabled until a trusted identity provider exists.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Daten",
+        "Passwort & Sicherheit",
+        "/user_settings/security",
+        1,
+        "Passwortstatus und Sicherheitsnavigation",
+        "Read-only; local password hashes are generated separately below.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Daten",
+        "Passwort ändern",
+        "/user_settings/edit_password",
+        2,
+        "Aktuelles Passwort, Passwort, Wiederholung",
+        "No direct password write from Streamlit; hash generation only.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Daten",
+        "Sprache, Zeitzone & Arbeitstag",
+        "/user_settings/localisation",
+        1,
+        "Sprache, Zeitzone, Arbeitswoche, Arbeitstag",
+        "Read-only until per-user preferences are persisted.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "E-Mail-Benachrichtigungen",
+        "/account_user_settings/mails",
+        1,
+        "Aufgaben-/Termin-Mails, Benachrichtigungsfrequenz",
+        "Read-only until notification delivery is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "E-Mail-Ablage",
+        "/account_user_settings/mailin",
+        1,
+        "Mailablage-Adresse, ignorierte Dateien",
+        "Read-only; mailbox ingestion needs a tenant mail boundary.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "Microsoft 365",
+        "/account_user_settings/microsoft365",
+        1,
+        "Microsoft-365-E-Mail-Synchronisation",
+        "Disabled until OAuth consent and token storage are implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "Persönliche externe Zugriffe",
+        "/account_user_settings/api_keys",
+        1,
+        "Persönliche API-Schlüssel",
+        "Read-only; secret material is never rendered by Streamlit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "Persönlichen API-Schlüssel erstellen",
+        "/account_user_settings/api_keys/new",
+        2,
+        "Nutzer, Beschreibung",
+        "Backend-governed secret creation only.",
+    ),
+    CrmAdminBlueprintPage(
+        "Meine Einstellungen",
+        "Beobachtete Seiten",
+        "/account_user_settings/userobservers",
+        1,
+        "Beobachtete Seiten und Löschfunktion",
+        "Read-only; bulk cleanup requires an audited backend action.",
+    ),
+    CrmAdminBlueprintPage(
+        "Accounteinstellungen",
+        "Accountdaten",
+        "/account_settings",
+        1,
+        "Kundennummer, Benutzer, Kontakte, Dateispeicher",
+        "Read-only tenant/account overview.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Pipelines verwalten",
+        "/account_settings/deal_types",
+        1,
+        "Pipeline-Liste, Pipeline erstellen, Vorlagen",
+        "Read-only until tenant workflow schema writes exist.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Pipeline bearbeiten",
+        "/account_settings/deal_types/43851/edit",
+        2,
+        "Name, Eintragsnamen, Geldwert, Wahrscheinlichkeit, Zieldatum",
+        "Schema changes require audited tenant-admin writes.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Phasen verwalten",
+        "/account_settings/deal_types/43851/deal_type_stages",
+        2,
+        "Eigene Phasen, gewonnen, verloren",
+        "Read-only mirror of current phase model.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Phase anlegen",
+        "/account_settings/deal_types/43851/deal_type_stages/new",
+        3,
+        "Phasenname und Pipeline-Felder",
+        "Disabled until phase creation is backed by the tenant database.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Pipeline-Vorlagen",
+        "/account_settings/deal_types/43851/templates",
+        3,
+        "B2B, Agentur, Immobilien, Recruiting, Projekte",
+        "Template application requires an audited backend action.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Eigene Felder",
+        "/account_settings/custom_fields_types",
+        1,
+        "Feldtypen und neue Felder",
+        "Read-only until tenant schema registry writes are available.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Eigenes Feld erstellen",
+        "/account_settings/custom_fields_types/new",
+        2,
+        "Feldname, Objektart, Feldtyp",
+        "Disabled; requires tenant schema migration support.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Ziele verwalten",
+        "/account_settings/conversion_step_types",
+        1,
+        "Telefonat, Meeting, Gespräch, Chancen-Ziele",
+        "Read-only until analytics goal writes are implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Ziel erstellen",
+        "/account_settings/conversion_step_types/new",
+        2,
+        "Zielname, Zieltyp, Pipeline-Zuordnung",
+        "Disabled until analytics configuration is backend-governed.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Dubletten finden und entfernen",
+        "/account_settings/show_dublets",
+        1,
+        "Personen, Firmen, Chancen, Vorschau-Modus",
+        "Read-only; merging/removal needs explicit audited jobs.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Karteileichen finden",
+        "/account_settings/data_cleanup",
+        1,
+        "Inaktivitätszeitraum, Personen, Firmen, Angebote",
+        "Read-only; cleanup jobs are backend-only.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Webformulare",
+        "/account_settings/web_forms",
+        1,
+        "Formularliste und Formular erstellen",
+        "Read-only until public form routing is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Webformular erstellen",
+        "/account_settings/web_forms/new",
+        2,
+        "Formularname und Zielobjekt",
+        "Disabled until form publication and validation exist.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Vorlagen für Aufgabenlisten",
+        "/account_settings/task_list_templates",
+        1,
+        "Aufgabenlisten-Vorlagen",
+        "Read-only until workflow template writes exist.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Webadresse ändern",
+        "/account_settings/edit",
+        1,
+        "Account-Name / Webadresse",
+        "Disabled; hostname changes require DNS and tenant routing checks.",
+    ),
+    CrmAdminBlueprintPage(
+        "Account anpassen",
+        "Stammdaten bearbeiten",
+        "/account_settings/edit_org_data",
+        1,
+        "Branche, Mitarbeitende, Firmenalter",
+        "Read-only until organization profile persistence is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Nutzerverwaltung",
+        "/account_settings/users",
+        1,
+        "Aktive/deaktivierte Nutzer, Rechteerklärung",
+        "Uses tenant-admin context when available.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "NutzerIn einladen",
+        "/account_settings/users/new",
+        2,
+        "Vorname, Nachname, Login-E-Mail, Rechte",
+        "Disabled until invitation delivery is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Mehrere NutzerInnen einladen",
+        "/account_settings/users/new_multi",
+        2,
+        "Mehrfach-Einladung",
+        "Disabled until invitation delivery is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Zwei-Faktor-Sicherheit",
+        "/account_settings/two_factor",
+        2,
+        "2FA-Account-Regel",
+        "Disabled until identity provider enforcement exists.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Nutzeraktivitäten-Logbuch",
+        "/account_settings/user_actions",
+        2,
+        "Login, Upload, Löschung, Export, Admin-Aktivitäten",
+        "Read-only audit mirror.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Nutzeraktivitäten ohne Login",
+        "/account_settings/user_actions?scope=without_session_actions",
+        3,
+        "Nicht-Login-Aktivitäten",
+        "Read-only audit mirror.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Gruppen verwalten",
+        "/account_settings/groups",
+        2,
+        "Gruppenliste und Nutzeranzeige",
+        "Read-only until group grants are in the role model.",
+    ),
+    CrmAdminBlueprintPage(
+        "Nutzer & Zugriffsrechte",
+        "Gruppen mit Nutzern anzeigen",
+        "/account_settings/groups?list_users=true",
+        3,
+        "Gruppen inklusive Nutzer",
+        "Read-only until group grants are in the role model.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Account-API-Schlüssel",
+        "/account_settings/api_keys",
+        1,
+        "API-Schlüssel und OAuth-Integrationen",
+        "Read-only; secrets are backend-governed.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "API-Schlüssel erstellen",
+        "/account_settings/api_keys/new",
+        2,
+        "Beschreibung und Scope",
+        "Disabled; secret creation requires backend audit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "OAuth-Integrationen",
+        "/account_settings/api_keys?active_tab=oauth_access_tokens",
+        2,
+        "OAuth-Zugriffe",
+        "Read-only; token storage is never exposed.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Webhooks",
+        "/account_settings/hooks",
+        1,
+        "Webhook-Liste und Ereignisüberwachung",
+        "Read-only until webhook delivery is implemented.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Webhook anlegen",
+        "/account_settings/hooks/new",
+        2,
+        "Ziel-URL, Ereignisse, Aktivstatus",
+        "Disabled; outbound callbacks require validation and audit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Integrationen",
+        "/integrations",
+        1,
+        "Microsoft 365, Lexware, FastBill, Helpspace und weitere",
+        "Operational setup pages only; marketing pages are ignored.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Microsoft 365 Integration",
+        "/integrations/microsoft365",
+        2,
+        "E-Mail-Synchronisation verbinden",
+        "Disabled until OAuth connect flow is available.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Lexware Office Integration",
+        "/integrations/lexware_office",
+        2,
+        "Lexware-Verbindung",
+        "Disabled until OAuth/API credential storage exists.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "FastBill Integration",
+        "/account_settings/api_key_externals/fastbill",
+        2,
+        "FastBill E-Mail, API-Schlüssel",
+        "Disabled; integration secrets are backend-only.",
+    ),
+    CrmAdminBlueprintPage(
+        "Externe Zugriffe & Integrationen",
+        "Helpspace Integration",
+        "/account_settings/api_key_externals/helpspace",
+        2,
+        "Helpspace Client ID, Zugriffstoken",
+        "Disabled; integration secrets are backend-only.",
+    ),
+    CrmAdminBlueprintPage(
+        "Paketverwaltung",
+        "Paket wechseln",
+        "/account_settings/show_upgrade",
+        1,
+        "Starter, Team, Benutzer, Kontakte, Dateien",
+        "Read-only; commercial changes require billing workflow.",
+    ),
+    CrmAdminBlueprintPage(
+        "Paketverwaltung",
+        "Erweiterungen verwalten",
+        "/account_settings/account_addon_purchases",
+        1,
+        "Pipelines, Gruppen, Ziele, Lexware, Kontakte, Dateispeicher",
+        "Read-only; purchases require billing workflow.",
+    ),
+    CrmAdminBlueprintPage(
+        "Paketverwaltung",
+        "Kontakte erweitern",
+        "/account_settings/account_addon_purchases?tab=contacts",
+        2,
+        "Kontaktpakete",
+        "Read-only commercial option.",
+    ),
+    CrmAdminBlueprintPage(
+        "Paketverwaltung",
+        "Dateispeicher erweitern",
+        "/account_settings/account_addon_purchases?tab=attachments",
+        2,
+        "Speicherpakete",
+        "Read-only commercial option.",
+    ),
+    CrmAdminBlueprintPage(
+        "Daten & Compliance",
+        "Alle Daten exportieren",
+        "/account_settings/show_export",
+        1,
+        "Komplettexport starten und Downloadhinweis",
+        "Export jobs are disabled in UI and require backend approval.",
+    ),
+    CrmAdminBlueprintPage(
+        "Daten & Compliance",
+        "Auftragsverarbeitung (DSGVO)",
+        "/gdpr/data_processing_agreements/new",
+        1,
+        "Personengruppen, verarbeitete Daten, AVV-Abschluss",
+        "Read-only until legal approval workflow exists.",
+    ),
+    CrmAdminBlueprintPage(
+        "Daten & Compliance",
+        "Account zurücksetzen",
+        "/account_settings/confirm_reset",
+        1,
+        "Passwortbestätigung",
+        "Destructive action disabled; requires explicit backend workflow.",
+    ),
+    CrmAdminBlueprintPage(
+        "Daten & Compliance",
+        "Account kündigen & Daten löschen",
+        "/account_settings/confirmdelete",
+        1,
+        "Passwortbestätigung",
+        "Destructive action disabled; requires explicit backend workflow.",
+    ),
+    CrmAdminBlueprintPage(
+        "Rechnungsverwaltung",
+        "Adresse & Zahlungsdaten",
+        "/bill/billing_infos/new",
+        1,
+        "Firmendaten, IBAN/Karte, Rechnungs-E-Mail",
+        "Payment data is never collected by Streamlit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Papierkorb",
+        "Personen",
+        "/trash/people",
+        1,
+        "Gelöschte Personen",
+        "Read-only; restore/delete requires backend audit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Papierkorb",
+        "Firmen",
+        "/trash/companies",
+        1,
+        "Gelöschte Firmen",
+        "Read-only; restore/delete requires backend audit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Papierkorb",
+        "Pipeline-Einträge",
+        "/trash/deals",
+        1,
+        "Gelöschte Pipeline-Einträge",
+        "Read-only; restore/delete requires backend audit.",
+    ),
+    CrmAdminBlueprintPage(
+        "Papierkorb",
+        "Dateien",
+        "/trash/attachments",
+        1,
+        "Gelöschte Dateien und Wiederherstellen-Links",
+        "Read-only; restore/delete requires backend audit.",
+    ),
+)
 
 
 class TenantSessionError(ValueError):
@@ -1589,6 +2075,52 @@ def render_password_change_admin_tool(st: Any) -> None:
     )
 
 
+def crm_admin_blueprint_rows(
+    pages: Iterable[CrmAdminBlueprintPage] = CRM_ADMIN_CENTER_BLUEPRINT,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "Bereich": page.section,
+            "Ebene": page.depth,
+            "Seite": page.page,
+            "CRM-Route": page.route,
+            "Felder / Controls": page.controls,
+            "Schreibmodus": page.write_policy,
+        }
+        for page in pages
+    ]
+
+
+def render_crm_admin_blueprint(st: Any) -> None:
+    rows = crm_admin_blueprint_rows()
+    sections = tuple(dict.fromkeys(row["Bereich"] for row in rows))
+    protected_actions = sum(
+        1
+        for row in rows
+        if "disabled" in row["Schreibmodus"].lower()
+        or "backend" in row["Schreibmodus"].lower()
+        or "destructive" in row["Schreibmodus"].lower()
+    )
+    st.markdown("### CentralStationCRM-Adminstruktur")
+    st.caption(
+        "Read-only nachgebaut aus dem Browser-Audit. Marketing- und reine "
+        "Partner-Landingpages sind ausgelassen; operative Integrations-Setups "
+        "bleiben sichtbar."
+    )
+    blueprint_columns = st.columns(3)
+    blueprint_columns[0].metric("Bereiche", len(sections))
+    blueprint_columns[1].metric("Seiten", len(rows))
+    blueprint_columns[2].metric("Geschützte Aktionen", protected_actions)
+
+    for section in sections:
+        st.markdown(f"#### {section}")
+        st.dataframe(
+            [row for row in rows if row["Bereich"] == section],
+            hide_index=True,
+            use_container_width=True,
+        )
+
+
 def render_admin_dashboard(
     st: Any,
     session: TenantSession,
@@ -1671,6 +2203,8 @@ def render_admin_dashboard(
         "Wiederherstellung und endgültige Löschung bleiben auditpflichtige "
         "Backend-Workflows."
     )
+
+    render_crm_admin_blueprint(st)
 
     render_password_change_admin_tool(st)
 
