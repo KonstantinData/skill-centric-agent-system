@@ -6,26 +6,43 @@ CREATE TABLE IF NOT EXISTS ref_phases (
   category TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO ref_phases (phase, label, category) VALUES
+INSERT INTO ref_phases (phase, label, category) VALUES
   (1, 'Neuer Kontakt', 'qualification'),
   (2, 'Erstberatung geplant', 'qualification'),
-  (3, 'Bedarf geklaert', 'planning'),
-  (4, 'Aufmass geplant', 'planning'),
-  (5, 'Planung in Arbeit', 'planning'),
-  (6, 'Angebot erstellt', 'offer'),
-  (7, 'Auftrag bestaetigt', 'order'),
-  (8, 'Lieferung und Montage', 'fulfillment'),
-  (9, 'Abnahme und Rechnung', 'billing'),
-  (10, 'Aftersales', 'aftersales');
+  (3, 'Beratung abgeschlossen', 'qualification'),
+  (4, 'Aufmass / Planung', 'planning'),
+  (5, 'Angebot erstellt', 'offer'),
+  (6, 'Auftrag erteilt', 'order'),
+  (7, 'Bestellung / Produktion', 'fulfillment'),
+  (8, 'Lieferung / Montage', 'fulfillment'),
+  (9, 'Abnahme / Rechnung', 'billing'),
+  (10, 'Aftersales / Abgeschlossen', 'aftersales')
+ON CONFLICT(phase) DO UPDATE SET
+  label = excluded.label,
+  category = excluded.category;
 
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
+  customer_number TEXT,
+  customer_type TEXT NOT NULL DEFAULT 'private'
+    CHECK (customer_type IN ('private', 'company')),
   full_name TEXT NOT NULL,
+  salutation TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  company_name TEXT,
+  company_name_2 TEXT,
+  vat_id TEXT,
   email TEXT,
   phone TEXT,
+  mobile TEXT,
+  country TEXT,
+  postal_code TEXT,
+  city TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  UNIQUE (tenant_id, customer_number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_tenant_name
@@ -36,12 +53,16 @@ CREATE TABLE IF NOT EXISTS customer_cases (
   tenant_id TEXT NOT NULL,
   customer_id TEXT NOT NULL,
   case_number TEXT NOT NULL,
+  carat_order_number TEXT,
   phase INTEGER NOT NULL DEFAULT 1 CHECK (phase BETWEEN 1 AND 10),
   priority TEXT NOT NULL DEFAULT 'normal'
     CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   status TEXT NOT NULL DEFAULT 'active'
     CHECK (status IN ('active', 'paused', 'won', 'lost', 'closed')),
   assigned_to TEXT,
+  created_by_user_id TEXT,
+  responsible_user_id TEXT,
+  needs_attention INTEGER NOT NULL DEFAULT 0 CHECK (needs_attention IN (0, 1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (customer_id) REFERENCES customers (id),
@@ -57,6 +78,40 @@ CREATE INDEX IF NOT EXISTS idx_cases_tenant_phase
 
 CREATE INDEX IF NOT EXISTS idx_cases_tenant_assigned
   ON customer_cases (tenant_id, assigned_to);
+
+CREATE TABLE IF NOT EXISTS customer_participants (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  customer_id TEXT NOT NULL,
+  participant_index INTEGER NOT NULL,
+  participant_type TEXT NOT NULL DEFAULT 'private'
+    CHECK (participant_type IN ('private', 'company')),
+  role TEXT NOT NULL DEFAULT 'hauptkunde',
+  salutation TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  company_name TEXT,
+  company_name_2 TEXT,
+  vat_id TEXT,
+  phone TEXT,
+  mobile TEXT,
+  email TEXT,
+  country TEXT,
+  postal_code TEXT,
+  city TEXT,
+  use_for_offer INTEGER NOT NULL DEFAULT 1 CHECK (use_for_offer IN (0, 1)),
+  use_for_order INTEGER NOT NULL DEFAULT 1 CHECK (use_for_order IN (0, 1)),
+  use_for_delivery_note INTEGER NOT NULL DEFAULT 1 CHECK (use_for_delivery_note IN (0, 1)),
+  use_for_invoice INTEGER NOT NULL DEFAULT 1 CHECK (use_for_invoice IN (0, 1)),
+  use_for_graphics_print INTEGER NOT NULL DEFAULT 1 CHECK (use_for_graphics_print IN (0, 1)),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (customer_id) REFERENCES customers (id),
+  UNIQUE (tenant_id, customer_id, participant_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_participants_customer
+  ON customer_participants (tenant_id, customer_id, participant_index);
 
 CREATE TABLE IF NOT EXISTS case_project_profiles (
   id TEXT PRIMARY KEY,
@@ -132,10 +187,22 @@ CREATE TABLE IF NOT EXISTS case_communications (
     CHECK (channel IN ('phone', 'email', 'in_person', 'video', 'other')),
   direction TEXT NOT NULL
     CHECK (direction IN ('inbound', 'outbound', 'internal')),
+  subject TEXT,
+  from_address TEXT,
+  to_address TEXT,
+  cc_address TEXT,
+  message_id TEXT,
+  thread_id TEXT,
+  mailbox TEXT,
+  folder TEXT,
+  sent_at TEXT,
+  received_at TEXT,
   summary TEXT NOT NULL,
   source TEXT NOT NULL DEFAULT 'manual'
-    CHECK (source IN ('manual', 'skill_suggestion', 'system_import')),
+    CHECK (source IN ('manual', 'skill_suggestion', 'system_import', 'manitu_mail', 'scas_agent')),
   confirmed_by TEXT,
+  linked_by_user_id TEXT,
+  linked_by_agent_id TEXT,
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   FOREIGN KEY (case_id) REFERENCES customer_cases (id)
@@ -149,11 +216,19 @@ CREATE TABLE IF NOT EXISTS case_appointments (
   tenant_id TEXT NOT NULL,
   case_id TEXT NOT NULL,
   appointment_type TEXT NOT NULL,
+  title TEXT,
   starts_at TEXT NOT NULL,
   ends_at TEXT,
   location TEXT,
   status TEXT NOT NULL DEFAULT 'planned'
     CHECK (status IN ('planned', 'done', 'cancelled')),
+  assigned_to_user_id TEXT,
+  external_calendar_system TEXT,
+  external_calendar_id TEXT,
+  external_event_id TEXT,
+  sync_status TEXT NOT NULL DEFAULT 'not_synced'
+    CHECK (sync_status IN ('not_synced', 'sync_pending', 'synced', 'sync_failed')),
+  last_synced_at TEXT,
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,

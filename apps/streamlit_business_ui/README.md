@@ -29,6 +29,24 @@ For Daskuechenhaus customer case management, set
 uses `GET /tenant-cases` for the case list and `POST /tenant-cases` with
 `X-Actor` derived from the tenant session when creating a new case.
 
+The Daskuechenhaus `Kunden-Vorgänge` start view is a process cockpit. It first
+renders the 10 process phases as tiles and uses the selected tile only as a
+filter over the same case database. A tile may show only:
+
+- phase number,
+- phase name,
+- case count,
+- an attention marker when at least one case in that phase needs action.
+
+Customer names, task details, appointments, budgets, responsible users, and
+agent hints must not be rendered inside the phase tiles. Those details belong
+to the filtered case list and later case detail views.
+
+The create form uses German labels for the Daskuechenhaus workflow:
+`Kunden-Nr.`, `Vorgangs-Nr.`, `CARAT-Auftrags-Nr.`, `Kundentyp`,
+`Anrede`, `Nachname`, `Vorname`, `Firma`, `Telefon`, `Mobil`, `E-Mail`,
+`Land`, `PLZ`, `Ort`, and `Priorität`.
+
 `SCAS_UI_ROLE_IDS` can provide comma-separated tenant role IDs for local contract
 verification. Unknown role IDs are ignored and the UI falls back to the
 tenant's non-admin role set. In authenticated mode, `SCAS_UI_ROLE_IDS` is ignored

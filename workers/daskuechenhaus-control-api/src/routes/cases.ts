@@ -7,14 +7,28 @@ import type { AppEnv, JsonObject } from '../types';
 
 type CasePatch = {
   assigned_to?: string | null;
+  case_number?: string;
+  carat_order_number?: string | null;
   phase?: number;
   priority?: string;
+  responsible_user_id?: string | null;
   status?: string;
+  needs_attention?: number;
 };
 
-const PATCHABLE_FIELDS = new Set(['assigned_to', 'phase', 'priority', 'status']);
+const PATCHABLE_FIELDS = new Set([
+  'assigned_to',
+  'case_number',
+  'carat_order_number',
+  'phase',
+  'priority',
+  'responsible_user_id',
+  'status',
+  'needs_attention',
+]);
 const PRIORITIES = new Set(['low', 'normal', 'high', 'urgent']);
 const STATUSES = new Set(['active', 'paused', 'won', 'lost', 'closed']);
+const CUSTOMER_TYPES = new Set(['private', 'company']);
 
 const casesRouter = new Hono<AppEnv>();
 type AppContext = Context<AppEnv>;
@@ -26,8 +40,35 @@ casesRouter.get('/', async (c) => {
       `SELECT
         cc.*,
         cu.full_name AS customer_full_name,
+        cu.customer_number,
+        cu.customer_type,
+        cu.salutation,
+        cu.first_name,
+        cu.last_name,
+        cu.company_name,
+        cu.email AS customer_email,
+        cu.phone AS customer_phone,
+        cu.mobile AS customer_mobile,
+        cu.country,
+        cu.postal_code,
+        cu.city,
         rp.label AS phase_label,
-        rp.category AS phase_category
+        rp.category AS phase_category,
+        CASE
+          WHEN cc.needs_attention = 1 THEN 1
+          WHEN EXISTS (
+            SELECT 1
+            FROM case_tasks task
+            WHERE task.tenant_id = cc.tenant_id
+              AND task.case_id = cc.id
+              AND task.status IN ('open', 'in_progress')
+              AND task.due_date IS NOT NULL
+              AND task.due_date <= date('now')
+          ) THEN 1
+          WHEN cc.phase >= 6
+            AND (cc.carat_order_number IS NULL OR trim(cc.carat_order_number) = '') THEN 1
+          ELSE 0
+        END AS has_attention
       FROM customer_cases cc
       LEFT JOIN customers cu ON cu.id = cc.customer_id AND cu.tenant_id = cc.tenant_id
       LEFT JOIN ref_phases rp ON rp.phase = cc.phase
@@ -47,13 +88,19 @@ casesRouter.post('/', async (c) => {
   const now = new Date().toISOString();
 
   let customerId = getString(body, 'customer_id');
-  const inlineCustomerName = getString(body, 'customer_full_name');
+  const customerType = getString(body, 'customer_type') ?? 'private';
+  if (!CUSTOMER_TYPES.has(customerType)) {
+    return errorResponse(c, 400, 'customer_type must be private or company');
+  }
+
+  const inlineCustomerName =
+    getString(body, 'customer_full_name') ?? buildCustomerFullName(body, customerType);
 
   if (!customerId && !inlineCustomerName) {
     return errorResponse(
       c,
       400,
-      'customer_id or customer_full_name is required to create a customer case'
+      'customer_id or customer data is required to create a customer case'
     );
   }
 
@@ -67,24 +114,99 @@ casesRouter.post('/', async (c) => {
     }
   } else {
     customerId = ulid();
+    const customerNumber =
+      getString(body, 'customer_number') ?? await nextCustomerNumber(c.env.DB, tenantId, now);
     await c.env.DB
       .prepare(
         `INSERT INTO customers (
           id,
           tenant_id,
+          customer_number,
+          customer_type,
           full_name,
+          salutation,
+          first_name,
+          last_name,
+          company_name,
+          company_name_2,
+          vat_id,
           email,
           phone,
+          mobile,
+          country,
+          postal_code,
+          city,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         customerId,
         tenantId,
+        customerNumber,
+        customerType,
         inlineCustomerName,
+        getString(body, 'salutation'),
+        getString(body, 'first_name'),
+        getString(body, 'last_name'),
+        getString(body, 'company_name'),
+        getString(body, 'company_name_2'),
+        getString(body, 'vat_id'),
         getString(body, 'customer_email'),
         getString(body, 'customer_phone'),
+        getString(body, 'customer_mobile'),
+        getString(body, 'country'),
+        getString(body, 'postal_code'),
+        getString(body, 'city'),
+        now,
+        now
+      )
+      .run();
+
+    await c.env.DB
+      .prepare(
+        `INSERT INTO customer_participants (
+          id,
+          tenant_id,
+          customer_id,
+          participant_index,
+          participant_type,
+          role,
+          salutation,
+          first_name,
+          last_name,
+          company_name,
+          company_name_2,
+          vat_id,
+          phone,
+          mobile,
+          email,
+          country,
+          postal_code,
+          city,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        ulid(),
+        tenantId,
+        customerId,
+        1,
+        customerType,
+        getString(body, 'participant_role') ?? 'hauptkunde',
+        getString(body, 'salutation'),
+        getString(body, 'first_name'),
+        getString(body, 'last_name'),
+        getString(body, 'company_name'),
+        getString(body, 'company_name_2'),
+        getString(body, 'vat_id'),
+        getString(body, 'customer_phone'),
+        getString(body, 'customer_mobile'),
+        getString(body, 'customer_email'),
+        getString(body, 'country'),
+        getString(body, 'postal_code'),
+        getString(body, 'city'),
         now,
         now
       )
@@ -108,7 +230,9 @@ casesRouter.post('/', async (c) => {
   }
 
   const assignedTo = getString(body, 'assigned_to');
-  const caseNumber = await nextCaseNumber(c.env.DB, tenantId, now);
+  const responsibleUserId = getString(body, 'responsible_user_id') ?? assignedTo ?? actor;
+  const caseNumber = getString(body, 'case_number') ?? await nextCaseNumber(c.env.DB, tenantId, now);
+  const caratOrderNumber = getString(body, 'carat_order_number');
 
   await c.env.DB.batch([
     c.env.DB
@@ -118,23 +242,31 @@ casesRouter.post('/', async (c) => {
           tenant_id,
           customer_id,
           case_number,
+          carat_order_number,
           phase,
           priority,
           status,
           assigned_to,
+          created_by_user_id,
+          responsible_user_id,
+          needs_attention,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         caseId,
         tenantId,
         customerId,
         caseNumber,
+        caratOrderNumber,
         phase,
         priority,
         status,
         assignedTo,
+        actor,
+        responsibleUserId,
+        0,
         now,
         now
       ),
@@ -156,7 +288,7 @@ casesRouter.post('/', async (c) => {
     caseId,
     actor,
     action: 'case.created',
-    details: { case_number: caseNumber, customer_id: customerId },
+    details: { case_number: caseNumber, carat_order_number: caratOrderNumber, customer_id: customerId },
   });
 
   return c.json(
@@ -166,10 +298,14 @@ casesRouter.post('/', async (c) => {
         tenant_id: tenantId,
         customer_id: customerId,
         case_number: caseNumber,
+        carat_order_number: caratOrderNumber,
         phase,
         priority,
         status,
         assigned_to: assignedTo,
+        created_by_user_id: actor,
+        responsible_user_id: responsibleUserId,
+        needs_attention: 0,
         created_at: now,
         updated_at: now,
       },
@@ -199,6 +335,10 @@ casesRouter.patch('/:id', async (c) => {
 
   if (patch.priority !== undefined && !PRIORITIES.has(patch.priority)) {
     return errorResponse(c, 400, 'priority must be one of low, normal, high, urgent');
+  }
+
+  if (patch.needs_attention !== undefined && ![0, 1].includes(patch.needs_attention)) {
+    return errorResponse(c, 400, 'needs_attention must be 0 or 1');
   }
 
   if (patch.status !== undefined && !STATUSES.has(patch.status)) {
@@ -414,10 +554,14 @@ function pickPatch(body: JsonObject): CasePatch {
     }
     if (key === 'phase') {
       patch.phase = value as number;
+    } else if (key === 'needs_attention') {
+      patch.needs_attention = Number(value);
     } else if (key === 'assigned_to') {
       patch.assigned_to = typeof value === 'string' && value.trim() ? value.trim() : null;
+    } else if (key === 'carat_order_number' || key === 'responsible_user_id') {
+      patch[key] = typeof value === 'string' && value.trim() ? value.trim() : null;
     } else if (typeof value === 'string') {
-      patch[key as 'priority' | 'status'] = value.trim();
+      patch[key as 'case_number' | 'priority' | 'status'] = value.trim();
     }
   }
   return patch;
@@ -447,10 +591,41 @@ async function nextCaseNumber(
       FROM customer_cases
       WHERE tenant_id = ? AND case_number LIKE ?`
     )
-    .bind(tenantId, `KH-${year}-%`)
+    .bind(tenantId, `VG-${year}-%`)
     .first<{ count: number }>();
   const next = Number(countRow?.count ?? 0) + 1;
-  return `KH-${year}-${String(next).padStart(4, '0')}`;
+  return `VG-${year}-${String(next).padStart(4, '0')}`;
+}
+
+async function nextCustomerNumber(
+  db: D1Database,
+  tenantId: string,
+  timestamp: string
+): Promise<string> {
+  const year = timestamp.slice(0, 4);
+  const countRow = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+      FROM customers
+      WHERE tenant_id = ? AND customer_number LIKE ?`
+    )
+    .bind(tenantId, `K-${year}-%`)
+    .first<{ count: number }>();
+  const next = Number(countRow?.count ?? 0) + 1;
+  return `K-${year}-${String(next).padStart(4, '0')}`;
+}
+
+function buildCustomerFullName(body: JsonObject, customerType: string): string | null {
+  if (customerType === 'company') {
+    return getString(body, 'company_name');
+  }
+
+  const firstName = getString(body, 'first_name');
+  const lastName = getString(body, 'last_name');
+  if (!firstName && !lastName) {
+    return null;
+  }
+  return [firstName, lastName].filter(Boolean).join(' ');
 }
 
 export default casesRouter;

@@ -21,6 +21,24 @@ HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 LOGIN_CREDENTIAL_HASH_SCHEME = "pbkdf2_sha256"
 LOGIN_CREDENTIAL_HASH_ITERATIONS = 600_000
 MIN_LOGIN_CREDENTIAL_HASH_ITERATIONS = 100_000
+CUSTOMER_CASE_PHASES = (
+    (1, "Neuer Kontakt"),
+    (2, "Erstberatung geplant"),
+    (3, "Beratung abgeschlossen"),
+    (4, "Aufmaß / Planung"),
+    (5, "Angebot erstellt"),
+    (6, "Auftrag erteilt"),
+    (7, "Bestellung / Produktion"),
+    (8, "Lieferung / Montage"),
+    (9, "Abnahme / Rechnung"),
+    (10, "Aftersales / Abgeschlossen"),
+)
+CUSTOMER_CASE_PRIORITY_LABELS = {
+    "normal": "Normal",
+    "high": "Hoch",
+    "urgent": "Dringend",
+    "low": "Niedrig",
+}
 
 
 @dataclass(frozen=True)
@@ -891,14 +909,43 @@ def create_customer_case_in_api(
     config: CustomerCasesApiConfig,
     *,
     actor: str,
-    customer_full_name: str,
+    case_number: str,
+    carat_order_number: str,
+    customer_number: str,
+    customer_type: str,
+    salutation: str,
+    first_name: str,
+    last_name: str,
+    company_name: str,
+    company_name_2: str,
+    customer_phone: str,
+    customer_mobile: str,
+    customer_email: str,
+    country: str,
+    postal_code: str,
+    city: str,
     priority: str,
 ) -> dict[str, Any]:
+    raw_payload = {
+        "case_number": case_number,
+        "carat_order_number": carat_order_number,
+        "customer_number": customer_number,
+        "customer_type": customer_type,
+        "salutation": salutation,
+        "first_name": first_name,
+        "last_name": last_name,
+        "company_name": company_name,
+        "company_name_2": company_name_2,
+        "customer_phone": customer_phone,
+        "customer_mobile": customer_mobile,
+        "customer_email": customer_email,
+        "country": country,
+        "postal_code": postal_code,
+        "city": city,
+        "priority": priority,
+    }
     payload = json.dumps(
-        {
-            "customer_full_name": customer_full_name,
-            "priority": priority,
-        }
+        {key: value for key, value in raw_payload.items() if str(value).strip()}
     ).encode("utf-8")
     api_request = urlrequest.Request(
         f"{config.base_url}/tenant-cases",
@@ -914,6 +961,66 @@ def create_customer_case_in_api(
     )
     with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def customer_case_phase_number(case: dict[str, Any]) -> int:
+    raw_phase = case.get("phase")
+    try:
+        phase = int(raw_phase)
+    except (TypeError, ValueError):
+        return 1
+    return phase if 1 <= phase <= 10 else 1
+
+
+def customer_case_needs_attention(case: dict[str, Any]) -> bool:
+    return bool(case.get("has_attention") or case.get("needs_attention"))
+
+
+def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> int:
+    selected_phase = int(st.session_state.get("scas_customer_cases_phase", 1))
+    counts = {phase: 0 for phase, _label in CUSTOMER_CASE_PHASES}
+    attention = {phase: False for phase, _label in CUSTOMER_CASE_PHASES}
+
+    for case in cases:
+        phase = customer_case_phase_number(case)
+        counts[phase] += 1
+        attention[phase] = attention[phase] or customer_case_needs_attention(case)
+
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stButton"] button {
+            min-height: 92px;
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid rgba(49, 51, 63, 0.18);
+            background: #ffffff;
+            color: #111111;
+            white-space: pre-line;
+            text-align: left;
+            font-weight: 500;
+        }
+        div[data-testid="stButton"] button:hover {
+            border-color: #76b726;
+            color: #111111;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    for start in (0, 5):
+        cols = st.columns(5)
+        for offset, (phase, label) in enumerate(CUSTOMER_CASE_PHASES[start : start + 5]):
+            suffix = "  !" if attention[phase] else ""
+            count_label = "1 Vorgang" if counts[phase] == 1 else f"{counts[phase]} Vorgänge"
+            button_label = f"{phase}\n{label}\n\n{count_label}{suffix}"
+            with cols[offset]:
+                if st.button(button_label, key=f"customer-case-phase-{phase}"):
+                    selected_phase = phase
+                    st.session_state["scas_customer_cases_phase"] = phase
+
+    return selected_phase
 
 
 def render_customer_cases_area(
@@ -936,34 +1043,80 @@ def render_customer_cases_area(
     if not isinstance(cases, list):
         cases = []
 
-    active_count = sum(1 for case in cases if case.get("status") == "active")
-    phase_labels = {
-        str(case.get("phase_label") or case.get("phase") or "Unbekannt")
-        for case in cases
-    }
-    col_total, col_active, col_phases = st.columns(3)
-    col_total.metric("Vorgänge", len(cases))
-    col_active.metric("Aktiv", active_count)
-    col_phases.metric("Phasen", len(phase_labels))
+    st.caption("Prozessübersicht")
+    selected_phase = render_customer_case_phase_tiles(st, cases)
+    selected_phase_label = dict(CUSTOMER_CASE_PHASES)[selected_phase]
 
-    with st.form("scas-customer-case-create"):
-        customer_full_name = st.text_input("Kunde")
-        priority = st.selectbox(
+    with st.expander("Neuen Vorgang anlegen"), st.form("scas-customer-case-create"):
+        customer_type_label = st.selectbox(
+            "Kundentyp",
+            options=["Privatkunde", "Firmenkunde"],
+            index=0,
+        )
+        customer_number = st.text_input("Kunden-Nr.")
+        case_number = st.text_input("Vorgangs-Nr.")
+        carat_order_number = st.text_input("CARAT-Auftrags-Nr.")
+        salutation = st.selectbox(
+            "Anrede",
+            options=["", "Frau", "Herr", "Familie"],
+            index=0,
+        )
+        company_name = ""
+        company_name_2 = ""
+        first_name = ""
+        last_name = ""
+        if customer_type_label == "Firmenkunde":
+            company_name = st.text_input("Firma")
+            company_name_2 = st.text_input("Name/Zusatz")
+        else:
+            last_name = st.text_input("Nachname")
+            first_name = st.text_input("Vorname")
+        customer_phone = st.text_input("Telefon")
+        customer_mobile = st.text_input("Mobil")
+        customer_email = st.text_input("E-Mail")
+        country = st.text_input("Land")
+        postal_code = st.text_input("PLZ")
+        city = st.text_input("Ort")
+        priority_label = st.selectbox(
             "Priorität",
-            options=["normal", "high", "urgent", "low"],
+            options=["Normal", "Hoch", "Dringend", "Niedrig"],
             index=0,
         )
         submitted = st.form_submit_button("Vorgang anlegen")
 
+    priority_by_label = {
+        "Normal": "normal",
+        "Hoch": "high",
+        "Dringend": "urgent",
+        "Niedrig": "low",
+    }
+    customer_type = "company" if customer_type_label == "Firmenkunde" else "private"
+    priority = priority_by_label[priority_label]
+
     if submitted:
-        if not customer_full_name.strip():
-            st.error("Bitte Kundennamen eingeben.")
+        required_name = company_name if customer_type == "company" else last_name
+        if not required_name.strip():
+            st.error("Bitte mindestens Firma oder Nachname eingeben.")
         else:
             try:
                 create_customer_case_in_api(
                     config,
                     actor=session.principal_id,
-                    customer_full_name=customer_full_name,
+                    case_number=case_number,
+                    carat_order_number=carat_order_number,
+                    customer_number=customer_number,
+                    customer_type=customer_type,
+                    salutation=salutation,
+                    first_name=first_name,
+                    last_name=last_name,
+                    company_name=company_name,
+                    company_name_2=company_name_2,
+                    customer_phone=customer_phone,
+                    customer_mobile=customer_mobile,
+                    customer_email=customer_email,
+                    country=country,
+                    postal_code=postal_code,
+                    city=city,
                     priority=priority,
                 )
             except Exception:
@@ -973,20 +1126,32 @@ def render_customer_cases_area(
                 if hasattr(st, "rerun"):
                     st.rerun()
 
-    if not cases:
-        st.info("Noch keine Kunden-Vorgänge angelegt.")
+    selected_cases = [
+        case for case in cases if customer_case_phase_number(case) == selected_phase
+    ]
+
+    st.caption(f"Vorgänge in Prozessphase: {selected_phase_label}")
+
+    if not selected_cases:
+        st.info("In dieser Prozessphase sind keine Kunden-Vorgänge vorhanden.")
         return
 
     table_rows = [
         {
-            "Vorgang": str(case.get("case_number", "")),
-            "Kunde": str(case.get("customer_full_name", "")),
-            "Phase": str(case.get("phase_label") or case.get("phase") or ""),
-            "Priorität": str(case.get("priority", "")),
+            "Vorgangs-Nr.": str(case.get("case_number", "")),
+            "Kunden-Nr.": str(case.get("customer_number", "")),
+            "Kunde/Firma": str(case.get("customer_full_name", "")),
+            "CARAT-Auftrags-Nr.": str(case.get("carat_order_number") or ""),
+            "Priorität": CUSTOMER_CASE_PRIORITY_LABELS.get(
+                str(case.get("priority", "")),
+                str(case.get("priority", "")),
+            ),
             "Status": str(case.get("status", "")),
-            "Verantwortlich": str(case.get("assigned_to") or ""),
+            "Verantwortlich": str(
+                case.get("responsible_user_id") or case.get("assigned_to") or ""
+            ),
         }
-        for case in cases
+        for case in selected_cases
     ]
     if hasattr(st, "dataframe"):
         st.dataframe(table_rows, use_container_width=True, hide_index=True)

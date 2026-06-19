@@ -8,7 +8,9 @@
     "check": "wrangler deploy --dry-run",
     "typecheck": "tsc --noEmit",
     "d1:local": "wrangler d1 execute daskuechenhaus-cases --local --file=schema_v1.sql",
+    "d1:local:v1_1": "wrangler d1 execute daskuechenhaus-cases --local --file=schema_v1_1.sql",
     "d1:remote": "wrangler d1 execute daskuechenhaus-cases --remote --file=schema_v1.sql",
+    "d1:remote:v1_1": "wrangler d1 execute daskuechenhaus-cases --remote --file=schema_v1_1.sql",
     "test": "vitest run",
     "test:watch": "vitest"
   },
