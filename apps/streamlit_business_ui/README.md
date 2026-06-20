@@ -32,34 +32,32 @@ uses `GET /tenant-cases` for the case list and `POST /tenant-cases` with
 The Daskuechenhaus `Übersicht` view is the status page. It uses
 `Status filtern` with `Meine Ereignisse` as the default so the signed-in user
 first sees the events assigned to them; `Alle Ereignisse` can be selected for a
-tenant-wide status view. The page renders the 10 status phases as tiles and
-uses the selected tile only as a filter over the same case database. A tile may
-show only:
+tenant-wide status view. The page is a CRM-style event feed, not a phase-tile
+overview. Feed entries show event context such as time, actor, customer/case
+label, current status, and whether action is needed. Selecting an entry opens
+the right-hand `Kundenkarte` panel.
 
-- phase number,
-- phase name,
-- case count,
-- an attention marker when at least one case in that phase needs action.
+The 10 status phases remain part of the customer case model, but they are only
+edited inside the customer card. `Kundenkarte > Vorgang` lets users update
+`Vorgangs-Nr.`, `CARAT-Auftrags-Nr.`, `Statusphase`, `Priorität`, `Status`,
+responsible user, and the attention marker with explicit `Speichern` and
+`Abbrechen` actions. `Kundenkarte > Kontaktdaten` shows the customer/contact
+record, `Kundenkarte > Aufgaben & Notizen` creates notes and tasks through the
+case API, and `Kundenkarte > Verlauf` reads the case audit trail when the
+backend endpoint is available.
 
-Customer names, task details, appointments, budgets, responsible users, and
-agent hints must not be rendered inside the phase tiles. Those details belong
-to the filtered case list and later case detail views.
-
-The Daskuechenhaus workflow uses centered dialogs for creating and editing
-customer cases. The create dialog uses German labels and separates private and
-company customers: `Kundentyp`, `CARAT-Auftrags-Nr.`, `Anrede`, `Nachname`,
+The Daskuechenhaus workflow uses a centered dialog for creating customer cases.
+The create dialog uses German labels and separates private and company
+customers: `Kundentyp`, `CARAT-Auftrags-Nr.`, `Anrede`, `Nachname`,
 `Vorname`, `Firma`, `Name 2`, `Name 3`, `Name 4`, `USt-ID`, `Steuernummer`,
 `Telefon`, `Mobil`, `E-Mail`, `ISO Länder Code`, `PLZ`, `Ort`, `NATO`,
 `Abweichende MwSt.`, `MwSt. Auswahl`, `Umkehr der Steuerschuldnerschaft`,
 `Werbezusendung erlaubt`, `E-Rechnung`, and `Priorität`.
 
-`Kunden-Nr.` and `Vorgangs-Nr.` are assigned by the system during create. The
-edit dialog lets users update the Vorgang fields such as status phase,
-priority, status, responsible user, CARAT order number, and attention marker.
-For editing an existing case, the UI must not use a broad dropdown over all
-phase cases. Users filter the selected phase by last name or CARAT order number,
-mark exactly one filtered case with a checkbox, and then open
-`Ausgewählten Vorgang bearbeiten`.
+`Kunden-Nr.` and `Vorgangs-Nr.` are assigned by the system during create.
+Editing an existing case happens in the customer card opened from the status
+feed, so the overview does not render broad case tables, phase tiles, or
+separate demo edit surfaces.
 
 `SCAS_UI_ROLE_IDS` can provide comma-separated tenant role IDs for local contract
 verification. Unknown role IDs are ignored and the UI falls back to the

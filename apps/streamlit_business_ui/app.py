@@ -1674,6 +1674,87 @@ def update_customer_case_in_api(
         return json.loads(response.read().decode("utf-8"))
 
 
+def create_customer_case_note_in_api(
+    config: CustomerCasesApiConfig,
+    *,
+    actor: str,
+    case_id: str,
+    content: str,
+) -> dict[str, Any]:
+    payload = json.dumps(
+        {
+            "content": content,
+            "note_type": "manual",
+            "source": "manual",
+        }
+    ).encode("utf-8")
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases/{quote(case_id, safe='')}/notes",
+        data=payload,
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "content-type": "application/json",
+            "accept": "application/json",
+            "x-actor": actor,
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="POST",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def create_customer_case_task_in_api(
+    config: CustomerCasesApiConfig,
+    *,
+    actor: str,
+    case_id: str,
+    title: str,
+    due_date: str,
+    assigned_to: str,
+) -> dict[str, Any]:
+    raw_payload = {
+        "title": title,
+        "due_date": due_date,
+        "assigned_to": assigned_to,
+        "source": "manual",
+    }
+    payload = json.dumps(
+        {key: value for key, value in raw_payload.items() if str(value).strip()}
+    ).encode("utf-8")
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases/{quote(case_id, safe='')}/tasks",
+        data=payload,
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "content-type": "application/json",
+            "accept": "application/json",
+            "x-actor": actor,
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="POST",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def load_customer_case_audit_from_api(
+    config: CustomerCasesApiConfig,
+    case_id: str,
+) -> dict[str, Any]:
+    api_request = urlrequest.Request(
+        f"{config.base_url}/tenant-cases/{quote(case_id, safe='')}/audit",
+        headers={
+            "authorization": f"Bearer {config.token}",
+            "accept": "application/json",
+            "user-agent": "scas-streamlit-business-ui/1.0",
+        },
+        method="GET",
+    )
+    with urlrequest.urlopen(api_request, timeout=config.timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def customer_case_phase_number(case: dict[str, Any]) -> int:
     raw_phase = case.get("phase")
     try:
@@ -1708,6 +1789,58 @@ def customer_case_display_label(case: dict[str, Any]) -> str:
     return f"{case_number} · {customer_name}"
 
 
+def customer_case_id(case: dict[str, Any]) -> str:
+    return str(case.get("id") or case.get("case_number") or "").strip()
+
+
+def customer_case_phase_label(case: dict[str, Any]) -> str:
+    phase = customer_case_phase_number(case)
+    return str(case.get("phase_label") or dict(CUSTOMER_CASE_PHASES)[phase])
+
+
+def customer_case_timestamp(case: dict[str, Any]) -> str:
+    return str(case.get("updated_at") or case.get("created_at") or "kein Datum")
+
+
+def customer_case_actor(case: dict[str, Any]) -> str:
+    return str(
+        case.get("updated_by")
+        or case.get("created_by_user_id")
+        or case.get("responsible_user_id")
+        or case.get("assigned_to")
+        or "System"
+    )
+
+
+def customer_case_event_text(case: dict[str, Any]) -> str:
+    if customer_case_needs_attention(case):
+        return "Vorgang benötigt Aufmerksamkeit"
+    if str(case.get("status") or "") == "won":
+        return "Vorgang wurde gewonnen"
+    if str(case.get("status") or "") == "lost":
+        return "Vorgang wurde verloren"
+    if case.get("updated_at") and case.get("created_at") != case.get("updated_at"):
+        return "Vorgang wurde aktualisiert"
+    return "Vorgang wurde angelegt"
+
+
+def customer_case_priority_label(case: dict[str, Any]) -> str:
+    raw_priority = str(case.get("priority") or "normal")
+    return CUSTOMER_CASE_PRIORITY_LABELS.get(raw_priority, raw_priority)
+
+
+def customer_case_status_label(case: dict[str, Any]) -> str:
+    labels = {
+        "active": "Offen",
+        "paused": "Pausiert",
+        "won": "Gewonnen",
+        "lost": "Verloren",
+        "closed": "Abgeschlossen",
+    }
+    raw_status = str(case.get("status") or "active")
+    return labels.get(raw_status, raw_status)
+
+
 def customer_case_matches_search(case: dict[str, Any], search_term: str) -> bool:
     normalized_search = search_term.strip().casefold()
     if not normalized_search:
@@ -1727,73 +1860,28 @@ def customer_case_matches_search(case: dict[str, Any], search_term: str) -> bool
     )
 
 
-def sync_customer_case_checkbox_selection(
-    st: Any,
-    selected_case_id: str,
-    visible_case_ids: tuple[str, ...],
-) -> None:
-    selected_key = f"customer-case-select-{selected_case_id}"
-    if st.session_state.get(selected_key):
-        st.session_state["scas_customer_case_selected_id"] = selected_case_id
-        for case_id in visible_case_ids:
-            if case_id != selected_case_id:
-                st.session_state[f"customer-case-select-{case_id}"] = False
-        return
-
-    if st.session_state.get("scas_customer_case_selected_id") == selected_case_id:
-        st.session_state.pop("scas_customer_case_selected_id", None)
-
-
-def render_customer_case_phase_tiles(st: Any, cases: list[dict[str, Any]]) -> int:
-    selected_phase = int(st.session_state.get("scas_customer_cases_phase", 1))
-    counts = {phase: 0 for phase, _label in CUSTOMER_CASE_PHASES}
-    attention = {phase: False for phase, _label in CUSTOMER_CASE_PHASES}
-
-    for case in cases:
-        phase = customer_case_phase_number(case)
-        counts[phase] += 1
-        attention[phase] = attention[phase] or customer_case_needs_attention(case)
-
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stButton"] button {
-            min-height: 118px;
-            height: 118px;
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid rgba(118, 183, 38, 0.38);
-            background: linear-gradient(135deg, #ffffff 0%, #f6faf1 100%);
-            color: #111111;
-            white-space: pre-line;
-            text-align: left;
-            font-weight: 650;
-            box-shadow: 0 8px 22px rgba(17, 17, 17, 0.08);
-            transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
-        }
-        div[data-testid="stButton"] button:hover {
-            border-color: #76b726;
-            color: #111111;
-            box-shadow: 0 10px 26px rgba(118, 183, 38, 0.18);
-            transform: translateY(-1px);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+def customer_case_matches_status_feed_search(
+    case: dict[str, Any],
+    search_term: str,
+) -> bool:
+    normalized_search = search_term.strip().casefold()
+    if not normalized_search:
+        return True
+    searchable_values = (
+        case.get("case_number"),
+        case.get("customer_number"),
+        case.get("customer_full_name"),
+        case.get("company_name"),
+        case.get("first_name"),
+        case.get("last_name"),
+        case.get("carat_order_number"),
+        customer_case_event_text(case),
+        customer_case_phase_label(case),
     )
-
-    for start in (0, 5):
-        cols = st.columns(5)
-        for offset, (phase, label) in enumerate(CUSTOMER_CASE_PHASES[start : start + 5]):
-            suffix = "  ⚠" if attention[phase] else ""
-            count_label = "1 Vorgang" if counts[phase] == 1 else f"{counts[phase]} Vorgänge"
-            button_label = f"Statusphase {phase}\n{label}\n{count_label}{suffix}"
-            with cols[offset]:
-                if st.button(button_label, key=f"customer-case-phase-{phase}"):
-                    selected_phase = phase
-                    st.session_state["scas_customer_cases_phase"] = phase
-
-    return selected_phase
+    return any(
+        normalized_search in str(value or "").casefold()
+        for value in searchable_values
+    )
 
 
 def render_dialog(st: Any, title: str, render_content: Any) -> None:
@@ -1935,29 +2023,96 @@ def render_customer_case_create_form(
             st.rerun()
 
 
-def render_customer_case_edit_form(
+def render_status_feed_sidebar(
+    st: Any,
+    cases: list[dict[str, Any]],
+    session: TenantSession,
+) -> None:
+    assigned_cases = [
+        case for case in cases if customer_case_is_assigned_to_user(case, session.principal_id)
+    ]
+    attention_cases = [case for case in assigned_cases if customer_case_needs_attention(case)]
+    won_cases = [case for case in cases if str(case.get("status") or "") == "won"]
+
+    st.markdown("### Anstehende Aufgaben")
+    if attention_cases:
+        for case in attention_cases[:4]:
+            st.markdown(
+                f"**{escape(customer_case_display_label(case))}**  \n"
+                f"{escape(customer_case_phase_label(case))}"
+            )
+    else:
+        st.info("Keine überfälligen oder markierten Aufgaben.")
+
+    st.markdown("### Erreichte Ziele")
+    if won_cases:
+        for case in won_cases[:3]:
+            st.markdown(f"**{escape(customer_case_display_label(case))}**")
+    else:
+        st.caption("In der aktuellen Ansicht wurden noch keine Ziele erreicht.")
+
+    st.markdown("### Neuigkeiten")
+    st.caption("Statusänderungen, neue Vorgänge und exportrelevante Hinweise erscheinen hier.")
+
+
+def render_customer_case_event_card(st: Any, case: dict[str, Any]) -> None:
+    case_id = customer_case_id(case)
+    if not case_id:
+        return
+    event_text = customer_case_event_text(case)
+    attention_marker = " · Handlungsbedarf" if customer_case_needs_attention(case) else ""
+    timestamp = escape(customer_case_timestamp(case))
+    actor = escape(customer_case_actor(case))
+    title = escape(customer_case_display_label(case))
+    body = (
+        f"{escape(event_text)} · {escape(customer_case_phase_label(case))}"
+        f"{escape(attention_marker)}"
+    )
+    st.markdown(
+        f"""
+        <div class="status-event-card">
+            <div class="status-event-meta">{timestamp} · von {actor}</div>
+            <div class="status-event-title">{title}</div>
+            <div class="status-event-body">{body}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if st.button("Öffnen", key=f"customer-case-open-{case_id}"):
+        st.session_state["scas_customer_case_selected_id"] = case_id
+        if hasattr(st, "rerun"):
+            st.rerun()
+
+
+def render_customer_case_status_form(
     st: Any,
     config: CustomerCasesApiConfig,
     session: TenantSession,
     case: dict[str, Any],
 ) -> None:
-    case_id = str(case.get("id", ""))
-    with st.form(f"scas-customer-case-edit-{case_id}"):
+    case_id = customer_case_id(case)
+    if not case_id:
+        st.warning("Dieser Vorgang hat keine stabile ID und kann nicht gespeichert werden.")
+        return
+
+    with st.form(f"scas-customer-case-status-{case_id}"):
         st.caption(f"Kunden-Nr.: {case.get('customer_number') or 'automatisch'}")
         case_number = st.text_input(
             "Vorgangs-Nr.",
             value=str(case.get("case_number", "")),
+            key=f"status-case-number-{case_id}",
         )
         carat_order_number = st.text_input(
             "CARAT-Auftrags-Nr.",
             value=str(case.get("carat_order_number") or ""),
+            key=f"status-carat-order-number-{case_id}",
         )
         phase_options = [label for _phase, label in CUSTOMER_CASE_PHASES]
-        current_phase = customer_case_phase_number(case)
         phase_label = st.selectbox(
             "Statusphase",
             options=phase_options,
-            index=max(current_phase - 1, 0),
+            index=max(customer_case_phase_number(case) - 1, 0),
+            key=f"status-phase-{case_id}",
         )
         priority_options = ["Normal", "Hoch", "Dringend", "Niedrig"]
         priority_by_label = {
@@ -1979,27 +2134,53 @@ def render_customer_case_edit_form(
             "Priorität",
             options=priority_options,
             index=priority_options.index(current_priority_label),
+            key=f"status-priority-{case_id}",
         )
-        status_options = ["active", "paused", "won", "lost", "closed"]
+        status_labels = {
+            "Offen": "active",
+            "Pausiert": "paused",
+            "Gewonnen": "won",
+            "Verloren": "lost",
+            "Abgeschlossen": "closed",
+        }
         current_status = str(case.get("status", "active"))
-        status = st.selectbox(
+        current_status_label = next(
+            (
+                label
+                for label, value in status_labels.items()
+                if value == current_status
+            ),
+            "Offen",
+        )
+        status_label = st.selectbox(
             "Status",
-            options=status_options,
-            index=status_options.index(current_status)
-            if current_status in status_options
-            else 0,
+            options=list(status_labels),
+            index=list(status_labels).index(current_status_label),
+            key=f"status-state-{case_id}",
         )
         responsible_user_id = st.text_input(
             "Verantwortlich",
             value=str(case.get("responsible_user_id") or case.get("assigned_to") or ""),
+            key=f"status-responsible-{case_id}",
         )
         needs_attention = st.checkbox(
             "Handlungsbedarf",
             value=customer_case_needs_attention(case),
+            key=f"status-attention-{case_id}",
         )
-        submitted = st.form_submit_button("Änderungen speichern")
+        save_clicked = st.form_submit_button("Speichern", key=f"status-save-{case_id}")
+        cancel_clicked = st.form_submit_button("Abbrechen", key=f"status-cancel-{case_id}")
 
-    if not submitted:
+    if cancel_clicked:
+        st.info("Änderungen verworfen.")
+        if hasattr(st, "rerun"):
+            st.rerun()
+        return
+    if not save_clicked:
+        return
+
+    if not case_number.strip():
+        st.error("Vorgangs-Nr. ist erforderlich.")
         return
 
     try:
@@ -2011,16 +2192,168 @@ def render_customer_case_edit_form(
             carat_order_number=carat_order_number,
             phase=phase_options.index(phase_label) + 1,
             priority=priority_by_label[priority_label],
-            status=status,
+            status=status_labels[status_label],
             responsible_user_id=responsible_user_id,
             needs_attention=needs_attention,
         )
     except Exception:
-        st.error("Vorgang konnte nicht aktualisiert werden.")
+        st.error("Vorgang konnte nicht gespeichert werden.")
     else:
-        st.success("Vorgang aktualisiert.")
+        st.success("Vorgang gespeichert.")
         if hasattr(st, "rerun"):
             st.rerun()
+
+
+def render_customer_case_task_and_note_forms(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+    case: dict[str, Any],
+) -> None:
+    case_id = customer_case_id(case)
+    if not case_id:
+        st.warning("Dieser Vorgang hat keine stabile ID.")
+        return
+
+    st.markdown("#### Notiz schreiben")
+    with st.form(f"scas-customer-case-note-{case_id}"):
+        note_content = st.text_input(
+            "Notiz",
+            key=f"status-note-{case_id}",
+            placeholder="Notiz schreiben ...",
+        )
+        note_submitted = st.form_submit_button("Notiz speichern", key=f"note-save-{case_id}")
+    if note_submitted:
+        if not note_content.strip():
+            st.error("Bitte eine Notiz eingeben.")
+        else:
+            try:
+                create_customer_case_note_in_api(
+                    config,
+                    actor=session.principal_id,
+                    case_id=case_id,
+                    content=note_content,
+                )
+            except Exception:
+                st.error("Notiz konnte nicht gespeichert werden.")
+            else:
+                st.success("Notiz gespeichert.")
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+    st.markdown("#### Aufgabe anlegen")
+    with st.form(f"scas-customer-case-task-{case_id}"):
+        task_title = st.text_input(
+            "Aufgabe",
+            key=f"status-task-title-{case_id}",
+            placeholder="Aufgabe anlegen ...",
+        )
+        due_date = st.text_input(
+            "Fällig am",
+            key=f"status-task-due-{case_id}",
+            placeholder="YYYY-MM-DD",
+        )
+        assigned_to = st.text_input(
+            "Zuständig",
+            value=str(case.get("responsible_user_id") or case.get("assigned_to") or ""),
+            key=f"status-task-assigned-{case_id}",
+        )
+        task_submitted = st.form_submit_button("Aufgabe speichern", key=f"task-save-{case_id}")
+    if task_submitted:
+        if not task_title.strip():
+            st.error("Bitte eine Aufgabe eingeben.")
+        else:
+            try:
+                create_customer_case_task_in_api(
+                    config,
+                    actor=session.principal_id,
+                    case_id=case_id,
+                    title=task_title,
+                    due_date=due_date,
+                    assigned_to=assigned_to,
+                )
+            except Exception:
+                st.error("Aufgabe konnte nicht gespeichert werden.")
+            else:
+                st.success("Aufgabe gespeichert.")
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+
+def render_customer_case_audit(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    case: dict[str, Any],
+) -> None:
+    case_id = customer_case_id(case)
+    if not case_id:
+        st.warning("Dieser Vorgang hat keine stabile ID.")
+        return
+    try:
+        payload = load_customer_case_audit_from_api(config, case_id)
+    except Exception:
+        st.warning("Verlauf konnte nicht geladen werden.")
+        return
+
+    events = payload.get("data", [])
+    if not isinstance(events, list) or not events:
+        st.info("Noch kein Verlauf vorhanden.")
+        return
+    for event in events[:12]:
+        action = str(event.get("action") or "Ereignis")
+        actor = str(event.get("actor") or "System")
+        created_at = str(event.get("created_at") or "")
+        field = str(event.get("field_name") or "")
+        old_value = str(event.get("old_value") or "")
+        new_value = str(event.get("new_value") or "")
+        detail = f" · {escape(field)}: {escape(old_value)} → {escape(new_value)}" if field else ""
+        st.markdown(f"**{escape(action)}**  \n{escape(created_at)} · {escape(actor)}{detail}")
+
+
+def render_customer_case_detail_panel(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+    case: dict[str, Any] | None,
+) -> None:
+    st.markdown("### Kundenkarte")
+    if case is None:
+        st.info("Wähle links ein Ereignis aus.")
+        return
+
+    st.markdown(f"## {escape(str(case.get('customer_full_name') or 'Ohne Name'))}")
+    st.caption(customer_case_display_label(case))
+    phase_summary = (
+        f"{customer_case_phase_number(case)} · {escape(customer_case_phase_label(case))}"
+    )
+    st.markdown(
+        f"**Status:** {escape(customer_case_status_label(case))}  \n"
+        f"**Statusphase:** {phase_summary}  \n"
+        f"**Priorität:** {escape(customer_case_priority_label(case))}"
+    )
+
+    detail_page = st.selectbox(
+        "Kartenbereich",
+        options=["Vorgang", "Kontaktdaten", "Aufgaben & Notizen", "Verlauf"],
+        index=0,
+        key=f"status-detail-page-{customer_case_id(case)}",
+    )
+
+    if detail_page == "Vorgang":
+        render_customer_case_status_form(st, config, session, case)
+    elif detail_page == "Kontaktdaten":
+        st.text_input("Kunden-Nr.", value=str(case.get("customer_number") or ""), disabled=True)
+        st.text_input("Telefon", value=str(case.get("customer_phone") or ""), disabled=True)
+        st.text_input("Mobil", value=str(case.get("customer_mobile") or ""), disabled=True)
+        st.text_input("E-Mail", value=str(case.get("customer_email") or ""), disabled=True)
+        st.text_input("PLZ", value=str(case.get("postal_code") or ""), disabled=True)
+        st.text_input("Ort", value=str(case.get("city") or ""), disabled=True)
+        st.info("Kontaktdaten sind in v1 sichtbar, aber noch nicht über diese Karte speicherbar.")
+    elif detail_page == "Aufgaben & Notizen":
+        render_customer_case_task_and_note_forms(st, config, session, case)
+        st.warning("Dateiablage benötigt noch einen Upload-/Storage-Workflow.")
+    else:
+        render_customer_case_audit(st, config, case)
 
 
 def render_customer_cases_area(
@@ -2043,6 +2376,33 @@ def render_customer_cases_area(
     if not isinstance(cases, list):
         cases = []
 
+    st.markdown(
+        """
+        <style>
+        .status-event-card {
+            border: 1px solid rgba(17, 17, 17, 0.12);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin: 0 0 8px 0;
+            background: #ffffff;
+        }
+        .status-event-meta {
+            color: #555;
+            font-size: 0.84rem;
+            margin-bottom: 4px;
+        }
+        .status-event-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .status-event-body {
+            color: #222;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     status_filter = st.selectbox(
         "Status filtern",
         options=["Meine Ereignisse", "Alle Ereignisse"],
@@ -2057,10 +2417,6 @@ def render_customer_cases_area(
     else:
         status_cases = cases
 
-    st.caption("Statusübersicht")
-    selected_phase = render_customer_case_phase_tiles(st, status_cases)
-    selected_phase_label = dict(CUSTOMER_CASE_PHASES)[selected_phase]
-
     if st.button("Neuen Vorgang anlegen", key="customer-case-create-open"):
         render_dialog(
             st,
@@ -2068,35 +2424,27 @@ def render_customer_cases_area(
             lambda: render_customer_case_create_form(st, config, session),
         )
 
-    selected_cases = [
-        case for case in status_cases if customer_case_phase_number(case) == selected_phase
-    ]
-
-    st.caption(f"Ereignisse in Statusphase: {selected_phase_label}")
-
-    if not selected_cases:
-        st.info("In dieser Statusphase sind keine Ereignisse für den aktuellen Filter vorhanden.")
+    st.caption("Statusfeed")
+    if not status_cases:
+        st.info("Für den aktuellen Filter sind keine Ereignisse vorhanden.")
         return
 
     search_term = st.text_input(
-        "Nachname oder CARAT-Auftrags-Nr. suchen",
+        "Ereignisse suchen",
         key="customer-case-search",
-        placeholder="z. B. Schober oder CARAT-12345",
+        placeholder="z. B. Name, Vorgangs-Nr., CARAT-Auftrags-Nr. oder Ereignis",
     )
     if search_term.strip():
         visible_cases = [
             case
-            for case in selected_cases
-            if customer_case_matches_search(case, search_term)
+            for case in status_cases
+            if customer_case_matches_status_feed_search(case, search_term)
         ]
     else:
-        visible_cases = selected_cases[:25]
-        st.caption(
-            "Ohne Suche werden die ersten 25 Ereignisse dieser Statusphase angezeigt."
-        )
+        visible_cases = status_cases[:25]
 
     if not visible_cases:
-        st.info("Keine Vorgänge zur aktuellen Suche gefunden.")
+        st.info("Keine Ereignisse zur aktuellen Suche gefunden.")
         return
 
     selected_case_id = str(
@@ -2110,66 +2458,29 @@ def render_customer_cases_area(
     if selected_case_id and selected_case_id not in visible_case_ids:
         selected_case_id = ""
         st.session_state.pop("scas_customer_case_selected_id", None)
-
-    st.caption("Gefilterten Vorgang markieren")
-    for case in visible_cases:
-        case_id = str(case.get("id") or case.get("case_number") or "")
-        if not case_id:
-            continue
-        checked = st.checkbox(
-            customer_case_display_label(case),
-            key=f"customer-case-select-{case_id}",
-            value=selected_case_id == case_id,
-            on_change=sync_customer_case_checkbox_selection,
-            args=(st, case_id, visible_case_ids),
-        )
-        if checked:
-            selected_case_id = case_id
-            st.session_state["scas_customer_case_selected_id"] = case_id
-        elif selected_case_id == case_id:
-            selected_case_id = ""
-            st.session_state.pop("scas_customer_case_selected_id", None)
+    if not selected_case_id and visible_case_ids:
+        selected_case_id = visible_case_ids[0]
+        st.session_state["scas_customer_case_selected_id"] = selected_case_id
 
     selected_case = next(
         (
             case
             for case in visible_cases
-            if str(case.get("id") or case.get("case_number") or "") == selected_case_id
+            if customer_case_id(case) == selected_case_id
         ),
         None,
     )
-    if st.button(
-        "Ausgewählten Vorgang bearbeiten",
-        key="customer-case-edit-open",
-        disabled=selected_case is None,
-    ):
-        render_dialog(
-            st,
-            "Vorgang bearbeiten",
-            lambda: render_customer_case_edit_form(st, config, session, selected_case),
-        )
 
-    table_rows = [
-        {
-            "Vorgangs-Nr.": str(case.get("case_number", "")),
-            "Kunden-Nr.": str(case.get("customer_number", "")),
-            "Kunde/Firma": str(case.get("customer_full_name", "")),
-            "CARAT-Auftrags-Nr.": str(case.get("carat_order_number") or ""),
-            "Priorität": CUSTOMER_CASE_PRIORITY_LABELS.get(
-                str(case.get("priority", "")),
-                str(case.get("priority", "")),
-            ),
-            "Status": str(case.get("status", "")),
-            "Verantwortlich": str(
-                case.get("responsible_user_id") or case.get("assigned_to") or ""
-            ),
-        }
-        for case in visible_cases
-    ]
-    if hasattr(st, "dataframe"):
-        st.dataframe(table_rows, use_container_width=True, hide_index=True)
-    else:  # pragma: no cover - compatibility for older Streamlit runtimes.
-        st.table(table_rows)
+    feed_column, detail_column = st.columns([0.58, 0.42])
+    with feed_column:
+        st.markdown(f"### {status_filter}")
+        for case in visible_cases:
+            render_customer_case_event_card(st, case)
+
+    with detail_column:
+        render_status_feed_sidebar(st, status_cases, session)
+        st.divider()
+        render_customer_case_detail_panel(st, config, session, selected_case)
 
 
 def render_password_change_admin_tool(st: Any) -> None:
