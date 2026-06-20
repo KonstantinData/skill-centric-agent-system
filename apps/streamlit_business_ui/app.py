@@ -9,6 +9,7 @@ import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date, time
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -1892,6 +1893,35 @@ def customer_case_matches_status_feed_search(
     )
 
 
+def tenant_registered_user_options(
+    session: TenantSession,
+    admin_section: TenantAdminSection | None,
+) -> tuple[tuple[str, str], ...]:
+    users: dict[str, str] = {session.principal_id: session.principal_id}
+    if admin_section is not None:
+        for user in admin_section.users:
+            principal_id = str(user.get("user") or "").strip()
+            if not principal_id or principal_id == "Initial owner pending":
+                continue
+            status = str(user.get("status") or "").strip()
+            suffix = f" · {status}" if status else ""
+            users.setdefault(principal_id, f"{principal_id}{suffix}")
+
+    try:
+        local_users = local_login_users_from_env()
+    except TenantSessionError:
+        local_users = ()
+    for user in local_users:
+        if user.tenant_id != session.tenant_id:
+            continue
+        users.setdefault(user.principal_id, f"{user.username} · {user.principal_id}")
+
+    ordered_principal_ids = [session.principal_id] + [
+        principal_id for principal_id in users if principal_id != session.principal_id
+    ]
+    return tuple((users[principal_id], principal_id) for principal_id in ordered_principal_ids)
+
+
 def render_dialog(st: Any, title: str, render_content: Any) -> None:
     dialog = getattr(st, "dialog", None)
     if callable(dialog):
@@ -2036,35 +2066,60 @@ def render_status_task_create_form(
     config: CustomerCasesApiConfig,
     session: TenantSession,
     cases: list[dict[str, Any]],
+    admin_section: TenantAdminSection | None,
 ) -> None:
     stable_cases = [case for case in cases if customer_case_id(case)]
-    if not stable_cases:
-        st.info("Es ist kein Vorgang für eine neue Aufgabe verfügbar.")
-        return
-
-    case_options = [customer_case_display_label(case) for case in stable_cases]
-    case_by_label = dict(zip(case_options, stable_cases, strict=False))
+    user_options = tenant_registered_user_options(session, admin_section)
+    user_labels = [label for label, _principal_id in user_options]
+    user_principal_by_label = dict(user_options)
     with st.form("scas-status-task-create"):
-        selected_case_label = st.selectbox("Vorgang", options=case_options, index=0)
+        case_search = st.text_input(
+            "Vorgang suchen (optional)",
+            key="status-sidebar-task-case-search",
+            placeholder="Nachname, Vorname, Vorgangs-Nr. oder CARAT-Auftrags-Nr.",
+        )
+        matching_cases = [
+            case
+            for case in stable_cases
+            if customer_case_matches_status_feed_search(case, case_search)
+        ][:25]
+        case_options = ["Kein Vorgang"] + [
+            customer_case_display_label(case) for case in matching_cases
+        ]
+        case_by_label = dict(
+            zip(case_options[1:], matching_cases, strict=False)
+        )
+        selected_case_label = st.selectbox(
+            "Vorgang",
+            options=case_options,
+            index=0,
+            key="status-sidebar-task-case",
+        )
         task_title = st.text_input(
-            "Aufgabe",
+            "Was ist zu erledigen?",
             key="status-sidebar-task-title",
-            placeholder="Aufgabe anlegen ...",
+            placeholder="Kurz beschreiben, was zu erledigen ist ...",
         )
-        due_date = st.text_input(
+        due_date_value = st.date_input(
             "Fällig am",
-            key="status-sidebar-task-due",
-            placeholder="YYYY-MM-DD",
+            value=date.today(),
+            key="status-sidebar-task-due-date",
         )
-        selected_case = case_by_label[selected_case_label]
-        assigned_to = st.text_input(
+        due_time_value = st.time_input(
+            "Uhrzeit",
+            value=time(hour=9, minute=0),
+            key="status-sidebar-task-due-time",
+        )
+        assigned_to_label = st.selectbox(
             "Zuständig",
-            value=str(
-                selected_case.get("responsible_user_id")
-                or selected_case.get("assigned_to")
-                or session.principal_id
-            ),
+            options=user_labels,
+            index=0,
             key="status-sidebar-task-assigned",
+        )
+        attachments = st.file_uploader(
+            "Anlage",
+            accept_multiple_files=True,
+            key="status-sidebar-task-attachments",
         )
         task_submitted = st.form_submit_button("Aufgabe speichern")
 
@@ -2073,6 +2128,22 @@ def render_status_task_create_form(
     if not task_title.strip():
         st.error("Bitte eine Aufgabe eingeben.")
         return
+    selected_case = case_by_label.get(selected_case_label)
+    if selected_case is None:
+        st.error(
+            "Aufgaben ohne Vorgang benötigen noch den tenantweiten Aufgaben-Endpunkt. "
+            "Bitte vorerst einen Vorgang auswählen."
+        )
+        return
+    if attachments:
+        st.error(
+            "Anlagen können ausgewählt werden, werden aber erst mit dem Dateiablage-Endpunkt "
+            "dauerhaft gespeichert. Bitte Aufgabe ohne Anlage speichern."
+        )
+        return
+
+    due_date = f"{due_date_value.isoformat()} | {due_time_value.strftime('%H-%M')}"
+    assigned_to = user_principal_by_label[assigned_to_label]
 
     try:
         create_customer_case_task_in_api(
@@ -2096,6 +2167,7 @@ def render_status_feed_sidebar(
     config: CustomerCasesApiConfig,
     cases: list[dict[str, Any]],
     session: TenantSession,
+    admin_section: TenantAdminSection | None,
 ) -> None:
     assigned_cases = [
         case for case in cases if customer_case_is_assigned_to_user(case, session.principal_id)
@@ -2108,7 +2180,13 @@ def render_status_feed_sidebar(
         render_dialog(
             st,
             "Aufgabe anlegen",
-            lambda: render_status_task_create_form(st, config, session, cases),
+            lambda: render_status_task_create_form(
+                st,
+                config,
+                session,
+                cases,
+                admin_section,
+            ),
         )
     if attention_cases:
         for case in attention_cases[:4]:
@@ -2441,6 +2519,7 @@ def render_customer_case_detail_panel(
 def render_customer_cases_area(
     st: Any,
     session: TenantSession,
+    admin_section: TenantAdminSection | None = None,
 ) -> None:
     st.subheader("Übersicht")
     config = customer_cases_api_config_from_env()
@@ -2499,44 +2578,43 @@ def render_customer_cases_area(
     else:
         status_cases = cases
 
-    if st.button("Neuen Vorgang anlegen", key="customer-case-create-open"):
-        render_dialog(
-            st,
-            "Neuen Vorgang anlegen",
-            lambda: render_customer_case_create_form(st, config, session),
-        )
-
     st.caption("Statusfeed")
-    if not status_cases:
-        st.info("Für den aktuellen Filter sind keine Ereignisse vorhanden.")
-        return
-
-    search_term = st.text_input(
-        "Ereignisse suchen",
-        key="customer-case-search",
-        placeholder="z. B. Name, Vorgangs-Nr., CARAT-Auftrags-Nr. oder Ereignis",
-    )
-    if search_term.strip():
-        visible_cases = [
-            case
-            for case in status_cases
-            if customer_case_matches_status_feed_search(case, search_term)
-        ]
-    else:
-        visible_cases = status_cases[:25]
-
-    if not visible_cases:
-        st.info("Keine Ereignisse zur aktuellen Suche gefunden.")
-        return
-
     feed_column, sidebar_column = st.columns([0.68, 0.32])
+
     with feed_column:
-        st.markdown(f"### {status_filter}")
-        for case in visible_cases:
-            render_customer_case_event_card(st, config, session, case)
+        if st.button("Neuen Vorgang anlegen", key="customer-case-create-open"):
+            render_dialog(
+                st,
+                "Neuen Vorgang anlegen",
+                lambda: render_customer_case_create_form(st, config, session),
+            )
+
+        if not status_cases:
+            st.info("Für den aktuellen Filter sind keine Ereignisse vorhanden.")
+        else:
+            search_term = st.text_input(
+                "Ereignisse suchen",
+                key="customer-case-search",
+                placeholder="z. B. Name, Vorgangs-Nr., CARAT-Auftrags-Nr. oder Ereignis",
+            )
+            if search_term.strip():
+                visible_cases = [
+                    case
+                    for case in status_cases
+                    if customer_case_matches_status_feed_search(case, search_term)
+                ]
+            else:
+                visible_cases = status_cases[:25]
+
+            if not visible_cases:
+                st.info("Keine Ereignisse zur aktuellen Suche gefunden.")
+            else:
+                st.markdown(f"### {status_filter}")
+                for case in visible_cases:
+                    render_customer_case_event_card(st, config, session, case)
 
     with sidebar_column:
-        render_status_feed_sidebar(st, config, status_cases, session)
+        render_status_feed_sidebar(st, config, status_cases, session, admin_section)
 
 
 def render_password_change_admin_tool(st: Any) -> None:
@@ -3346,7 +3424,7 @@ def main() -> None:
 
     st.divider()
     if active_route == "/" and "customer-cases" in tenant_session.capabilities:
-        render_customer_cases_area(st, tenant_session)
+        render_customer_cases_area(st, tenant_session, tenant_admin_section)
         return
     if active_route == "/admin":
         render_admin_dashboard(st, tenant_session, tenant_shell, tenant_admin_section)

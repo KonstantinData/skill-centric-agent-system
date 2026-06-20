@@ -38,7 +38,17 @@ label, current status, and whether action is needed. The status page uses two
 columns: the left column contains the filtered event feed and the right column
 contains compact status widgets such as `Anstehende Aufgaben`, `Erreichte Ziele`,
 and `Neuigkeiten`. `Anstehende Aufgaben` includes an `Aufgabe anlegen` action
-that opens a task dialog with case selection.
+that opens a task dialog. The dialog keeps `Vorgang` optional in the UI and
+uses a searchable case lookup before the case selector so the user does not
+have to scan a long dropdown. Persisted tasks still require a selected case
+until the Daskuechenhaus case Worker exposes a tenant-wide task endpoint for
+tasks without a case association. The task prompt is `Was ist zu erledigen?`;
+`Fällig am` uses a calendar date picker and separate time picker and is sent to
+the current case-task API as `YYYY-MM-DD | HH-MM`. `Zuständig` defaults to the
+signed-in user and can be changed to another registered tenant user from the
+admin/login context. The dialog also shows an `Anlage` upload control; selected
+files are blocked from saving until a durable file storage endpoint exists, so
+the UI does not pretend that attachments were persisted.
 
 The 10 status phases remain part of the customer case model, but they are only
 edited inside the customer card. The overview does not show the customer card

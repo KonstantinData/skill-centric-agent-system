@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from datetime import date, time
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,9 @@ class FakeStreamlit:
         self.text_input_values: dict[str, str] = {}
         self.selectbox_values: dict[str, str] = {}
         self.radio_values: dict[str, str] = {}
+        self.date_input_values: dict[str, date] = {}
+        self.time_input_values: dict[str, time] = {}
+        self.file_uploader_values: dict[str, Any] = {}
         self.checkbox_values: dict[str, bool] = {}
         self.button_values: dict[str, bool] = {}
         self.form_submit_values: dict[str, bool] = {}
@@ -173,6 +177,27 @@ class FakeStreamlit:
         if key and key in self.text_input_values:
             return self.text_input_values[key]
         return self.text_input_values.get(label, str(kwargs.get("value", "")))
+
+    def date_input(self, label: str, **kwargs: Any) -> date:
+        self.events.append(("date_input", label, kwargs))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.date_input_values:
+            return self.date_input_values[key]
+        return self.date_input_values.get(label, kwargs["value"])
+
+    def time_input(self, label: str, **kwargs: Any) -> time:
+        self.events.append(("time_input", label, kwargs))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.time_input_values:
+            return self.time_input_values[key]
+        return self.time_input_values.get(label, kwargs["value"])
+
+    def file_uploader(self, label: str, **kwargs: Any) -> Any:
+        self.events.append(("file_uploader", label, kwargs))
+        key = str(kwargs.get("key", ""))
+        if key and key in self.file_uploader_values:
+            return self.file_uploader_values[key]
+        return self.file_uploader_values.get(label, [])
 
     def selectbox(self, label: str, *, options: list[str], index: int, **kwargs: Any) -> str:
         self.events.append(("selectbox", label, tuple(options), index))
@@ -1777,8 +1802,14 @@ def test_business_ui_status_sidebar_creates_task(monkeypatch) -> None:
     fake_st = FakeStreamlit()
     fake_st.button_values["status-task-create-open"] = True
     fake_st.form_submitted = True
+    fake_st.text_input_values["status-sidebar-task-case-search"] = "Meyer"
+    fake_st.selectbox_values["status-sidebar-task-case"] = "VG-2026-0002 · Anna Meyer"
     fake_st.text_input_values["status-sidebar-task-title"] = "Aufmaß terminieren"
-    fake_st.text_input_values["status-sidebar-task-due"] = "2026-06-24"
+    fake_st.date_input_values["status-sidebar-task-due-date"] = date(2026, 6, 24)
+    fake_st.time_input_values["status-sidebar-task-due-time"] = time(14, 30)
+    fake_st.selectbox_values["status-sidebar-task-assigned"] = (
+        "daskuechenhaus-planner-principal · active"
+    )
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
     created_tasks: list[dict[str, str]] = []
@@ -1790,6 +1821,24 @@ def test_business_ui_status_sidebar_creates_task(monkeypatch) -> None:
         role_ids=("daskuechenhaus-owner",),
         capabilities=frozenset({"customer-cases"}),
         source="local-login",
+    )
+    admin_section = streamlit_business_ui_app.TenantAdminSection(
+        users=(
+            {
+                "user": "daskuechenhaus-owner-principal",
+                "status": "active",
+                "roles": "Tenant Owner",
+            },
+            {
+                "user": "daskuechenhaus-planner-principal",
+                "status": "active",
+                "roles": "Planung",
+            },
+        ),
+        roles=(),
+        workflows=(),
+        settings={},
+        audit_summary="Audit ready.",
     )
     monkeypatch.setattr(
         streamlit_business_ui_app,
@@ -1829,19 +1878,98 @@ def test_business_ui_status_sidebar_creates_task(monkeypatch) -> None:
         fake_create_task,
     )
 
-    streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
+    streamlit_business_ui_app.render_customer_cases_area(fake_st, session, admin_section)
 
     assert ("dialog", "Aufgabe anlegen", {"width": "large"}) in fake_st.events
     assert ("form", "scas-status-task-create") in fake_st.events
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "text_input"
+        and event[1] == "Vorgang suchen (optional)"
+    ]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "date_input" and event[1] == "Fällig am"
+    ]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "time_input" and event[1] == "Uhrzeit"
+    ]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "file_uploader" and event[1] == "Anlage"
+    ]
     assert created_tasks == [
         {
             "actor": "daskuechenhaus-owner-principal",
             "case_id": "case-002",
             "title": "Aufmaß terminieren",
-            "due_date": "2026-06-24",
-            "assigned_to": "daskuechenhaus-owner-principal",
+            "due_date": "2026-06-24 | 14-30",
+            "assigned_to": "daskuechenhaus-planner-principal",
         }
     ]
+
+
+def test_business_ui_status_sidebar_blocks_unassigned_task_until_backend_exists(
+    monkeypatch,
+) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.button_values["status-task-create-open"] = True
+    fake_st.form_submitted = True
+    fake_st.selectbox_values["status-sidebar-task-case"] = "Kein Vorgang"
+    fake_st.text_input_values["status-sidebar-task-title"] = "Interne Nachbereitung"
+    fake_st.date_input_values["status-sidebar-task-due-date"] = date(2026, 6, 25)
+    fake_st.time_input_values["status-sidebar-task-due-time"] = time(10, 0)
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="daskuechenhaus-owner-principal",
+        tenant_id="daskuechenhaus",
+        membership_id="tm-daskuechenhaus-owner-01",
+        role_ids=("daskuechenhaus-owner",),
+        capabilities=frozenset({"customer-cases"}),
+        source="local-login",
+    )
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "load_customer_cases_from_api",
+        lambda _config: {
+            "data": [
+                {
+                    "id": "case-002",
+                    "case_number": "VG-2026-0002",
+                    "customer_full_name": "Anna Meyer",
+                    "phase": 1,
+                    "priority": "high",
+                    "status": "active",
+                    "responsible_user_id": "daskuechenhaus-owner-principal",
+                }
+            ],
+            "count": 1,
+        },
+    )
+
+    def fake_create_task(*_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError("unassigned status tasks must not call the case task API")
+
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "create_customer_case_task_in_api",
+        fake_create_task,
+    )
+
+    streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
+
+    assert (
+        "error",
+        "Aufgaben ohne Vorgang benötigen noch den tenantweiten Aufgaben-Endpunkt. "
+        "Bitte vorerst einen Vorgang auswählen.",
+    ) in fake_st.events
 
 
 def test_business_ui_main_renders_customer_cases_route(
