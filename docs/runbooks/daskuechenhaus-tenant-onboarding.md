@@ -49,7 +49,7 @@ No cross-tenant or cross-area access is configured.
 Daskuechenhaus customer cases, customer records, order workflow state, email
 communication tracking, calendar references, and aftersales state are
 production customer data. They must live in the Hetzner PostgreSQL tenant
-database `tenant_das_kuechenhaus`.
+database `tenant_daskuechenhaus`.
 
 This storage rule is about the Daskuechenhaus operational/customer database
 only. It does not change SCAS memory handling.
@@ -67,13 +67,13 @@ migration is planned.
 Provision the empty tenant database on `scas-runtime-prod` with:
 
 ```bash
-SCAS_TENANT_DB=tenant_das_kuechenhaus \
-SCAS_TENANT_DB_OWNER=tenant_das_kuechenhaus_app \
+SCAS_TENANT_DB=tenant_daskuechenhaus \
+SCAS_TENANT_DB_OWNER=tenant_daskuechenhaus_app \
 scripts/hetzner/provision_tenant_database.sh
 ```
 
 This step creates only the database, owner/application role, and empty
-`tenant` and `audit` schemas. The German Daskuechenhaus customer-case schema is
+`app` and `audit` schemas. The German Daskuechenhaus customer-case schema is
 a follow-up migration.
 
 ## UI Branding

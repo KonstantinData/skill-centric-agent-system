@@ -152,7 +152,7 @@ Initial tenant database names:
 
 - `tenant_condata`
 - `tenant_mein_kuechenexperte`
-- `tenant_das_kuechenhaus`
+- `tenant_daskuechenhaus`
 - `tenant_kinderhaus`
 - `tenant_elternkindwelt`
 
@@ -163,20 +163,20 @@ production store for tenant customer records, customer cases, order workflows,
 email communication tracking, calendar references, or aftersales state.
 
 The Daskuechenhaus customer-case product starts from a new PostgreSQL schema in
-`tenant_das_kuechenhaus`. The experimental Cloudflare D1 customer-case database
+`tenant_daskuechenhaus`. The experimental Cloudflare D1 customer-case database
 is not a migration source and must not be used for production customer-case
 writes.
 
 Tenant database provisioning is handled by:
 
 ```bash
-SCAS_TENANT_DB=tenant_das_kuechenhaus \
-SCAS_TENANT_DB_OWNER=tenant_das_kuechenhaus_app \
+SCAS_TENANT_DB=tenant_daskuechenhaus \
+SCAS_TENANT_DB_OWNER=tenant_daskuechenhaus_app \
 scripts/hetzner/provision_tenant_database.sh
 ```
 
 The provisioning script is idempotent and non-destructive. It creates the
-tenant database, owner/application role, and empty `tenant` and `audit` schemas
+tenant database, owner/application role, and empty `app` and `audit` schemas
 for later product migrations. Customer-case tables are created by a separate
 tenant product schema migration.
 

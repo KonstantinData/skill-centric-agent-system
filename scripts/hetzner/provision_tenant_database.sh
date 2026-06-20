@@ -7,16 +7,16 @@ Usage:
   provision_tenant_database.sh
 
 Environment:
-  SCAS_TENANT_DB        Tenant PostgreSQL database. Default: tenant_das_kuechenhaus
-  SCAS_TENANT_DB_OWNER  PostgreSQL owner/application role. Default: tenant_das_kuechenhaus_app
+  SCAS_TENANT_DB        Tenant PostgreSQL database. Default: tenant_daskuechenhaus
+  SCAS_TENANT_DB_OWNER  PostgreSQL owner/application role. Default: tenant_daskuechenhaus_app
 
 This script is idempotent and non-destructive. It creates or verifies one
 tenant business database. It does not create SCAS memory storage.
 USAGE
 }
 
-SCAS_TENANT_DB="${SCAS_TENANT_DB:-tenant_das_kuechenhaus}"
-SCAS_TENANT_DB_OWNER="${SCAS_TENANT_DB_OWNER:-tenant_das_kuechenhaus_app}"
+SCAS_TENANT_DB="${SCAS_TENANT_DB:-tenant_daskuechenhaus}"
+SCAS_TENANT_DB_OWNER="${SCAS_TENANT_DB_OWNER:-tenant_daskuechenhaus_app}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -68,17 +68,27 @@ COMMENT ON DATABASE \"${SCAS_TENANT_DB}\" IS
 
 psql_postgres -d "$SCAS_TENANT_DB" -c "
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-CREATE SCHEMA IF NOT EXISTS tenant AUTHORIZATION \"${SCAS_TENANT_DB_OWNER}\";
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'tenant')
+     AND NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app') THEN
+    ALTER SCHEMA tenant RENAME TO app;
+  END IF;
+END
+\$\$;
+CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION \"${SCAS_TENANT_DB_OWNER}\";
+ALTER SCHEMA app OWNER TO \"${SCAS_TENANT_DB_OWNER}\";
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION \"${SCAS_TENANT_DB_OWNER}\";
-COMMENT ON SCHEMA tenant IS
+ALTER SCHEMA audit OWNER TO \"${SCAS_TENANT_DB_OWNER}\";
+COMMENT ON SCHEMA app IS
   'Tenant business and customer data schema. Not SCAS memory storage.';
 COMMENT ON SCHEMA audit IS
   'Tenant-local business audit schema. Not SCAS memory storage.';
-GRANT USAGE, CREATE ON SCHEMA tenant TO \"${SCAS_TENANT_DB_OWNER}\";
+GRANT USAGE, CREATE ON SCHEMA app TO \"${SCAS_TENANT_DB_OWNER}\";
 GRANT USAGE, CREATE ON SCHEMA audit TO \"${SCAS_TENANT_DB_OWNER}\";
-ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA tenant
+ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA app
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"${SCAS_TENANT_DB_OWNER}\";
-ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA tenant
+ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA app
   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO \"${SCAS_TENANT_DB_OWNER}\";
 ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA audit
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"${SCAS_TENANT_DB_OWNER}\";
@@ -89,4 +99,4 @@ ALTER DEFAULT PRIVILEGES FOR ROLE \"${SCAS_TENANT_DB_OWNER}\" IN SCHEMA audit
 echo "SCAS tenant PostgreSQL database ready"
 echo "database=${SCAS_TENANT_DB}"
 echo "owner=${SCAS_TENANT_DB_OWNER}"
-echo "schemas=tenant,audit"
+echo "schemas=app,audit"

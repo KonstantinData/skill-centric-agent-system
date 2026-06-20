@@ -8,3 +8,6 @@ routes = [
   { pattern = "es-daskuechenhaus.de/*", zone_name = "es-daskuechenhaus.de" },
   { pattern = "www.es-daskuechenhaus.de/*", zone_name = "es-daskuechenhaus.de" }
 ]
+
+[vars]
+DKH_ADMIN_API_BASE_URL = "https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api"
