@@ -1497,6 +1497,150 @@ def test_business_ui_updates_customer_case_in_api(monkeypatch) -> None:
     assert payload["data"]["phase"] == 4
 
 
+def test_business_ui_creates_customer_case_note_with_actor_header(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"data":{"id":"note-001"}}'
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["method"] = request.get_method()
+        captured["authorization"] = request.headers["Authorization"]
+        captured["actor"] = request.headers["X-actor"]
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.create_customer_case_note_in_api(
+        config,
+        actor="daskuechenhaus-owner-principal",
+        case_id="case-001",
+        content="Kunde hat Grundriss nachgereicht.",
+    )
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases/case-001/notes",
+        "method": "POST",
+        "authorization": "Bearer token",
+        "actor": "daskuechenhaus-owner-principal",
+        "body": {
+            "content": "Kunde hat Grundriss nachgereicht.",
+            "note_type": "manual",
+            "source": "manual",
+        },
+        "timeout": 2.0,
+    }
+    assert payload["data"]["id"] == "note-001"
+
+
+def test_business_ui_creates_customer_case_task_with_actor_header(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"data":{"id":"task-001"}}'
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["method"] = request.get_method()
+        captured["authorization"] = request.headers["Authorization"]
+        captured["actor"] = request.headers["X-actor"]
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.create_customer_case_task_in_api(
+        config,
+        actor="daskuechenhaus-owner-principal",
+        case_id="case-001",
+        title="Grundriss prüfen",
+        due_date="2026-06-24",
+        assigned_to="daskuechenhaus-owner-principal",
+    )
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases/case-001/tasks",
+        "method": "POST",
+        "authorization": "Bearer token",
+        "actor": "daskuechenhaus-owner-principal",
+        "body": {
+            "title": "Grundriss prüfen",
+            "due_date": "2026-06-24",
+            "assigned_to": "daskuechenhaus-owner-principal",
+            "source": "manual",
+        },
+        "timeout": 2.0,
+    }
+    assert payload["data"]["id"] == "task-001"
+
+
+def test_business_ui_loads_customer_case_audit_from_api(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"data":[{"action":"case.updated"}]}'
+
+    def fake_urlopen(request, timeout: float) -> FakeResponse:
+        captured["url"] = request.full_url
+        captured["authorization"] = request.headers["Authorization"]
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(streamlit_business_ui_app.urlrequest, "urlopen", fake_urlopen)
+    config = streamlit_business_ui_app.CustomerCasesApiConfig(
+        base_url="https://cases.example.invalid",
+        token="token",
+        timeout_seconds=2.0,
+    )
+
+    payload = streamlit_business_ui_app.load_customer_case_audit_from_api(
+        config,
+        "case-001",
+    )
+
+    assert captured == {
+        "url": "https://cases.example.invalid/tenant-cases/case-001/audit",
+        "authorization": "Bearer token",
+        "timeout": 2.0,
+    }
+    assert payload["data"][0]["action"] == "case.updated"
+
+
 def test_business_ui_customer_case_search_matches_last_name_and_carat_number() -> None:
     case = {
         "customer_full_name": "Elena Betz",
@@ -1508,11 +1652,11 @@ def test_business_ui_customer_case_search_matches_last_name_and_carat_number() -
     assert not streamlit_business_ui_app.customer_case_matches_search(case, "Schober")
 
 
-def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch) -> None:
+def test_business_ui_customer_cases_area_renders_status_feed_and_detail_card(
+    monkeypatch,
+) -> None:
     fake_st = FakeStreamlit()
     fake_st.text_input_values["customer-case-search"] = "Meyer"
-    fake_st.checkbox_values["customer-case-select-case-002"] = True
-    fake_st.button_values["customer-case-edit-open"] = True
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
 
@@ -1553,44 +1697,26 @@ def test_business_ui_customer_cases_edit_uses_checked_filtered_case(monkeypatch)
         "load_customer_cases_from_api",
         lambda _config: {"data": cases, "count": 2},
     )
-    edited_case_ids: list[str] = []
-
-    def fake_edit_form(_st, _config, _session, case):
-        edited_case_ids.append(case["id"])
-
-    monkeypatch.setattr(
-        streamlit_business_ui_app,
-        "render_customer_case_edit_form",
-        fake_edit_form,
-    )
 
     streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
 
-    assert edited_case_ids == ["case-002"]
     assert (
         "selectbox",
         "Status filtern",
         ("Meine Ereignisse", "Alle Ereignisse"),
         0,
     ) in fake_st.events
-    checkbox_labels = [event[1] for event in fake_st.events if event[0] == "checkbox"]
-    assert checkbox_labels == [
-        "VG-2026-0002 · Anna Meyer · CARAT-Auftrags-Nr. CARAT-2002"
+    markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
+    assert any("### Meine Ereignisse" in text for text in markdown_text)
+    assert any("VG-2026-0002 · Anna Meyer" in text for text in markdown_text)
+    assert any("### Kundenkarte" in text for text in markdown_text)
+    assert ("form", "scas-customer-case-status-case-002") in fake_st.events
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "selectbox" and event[1] == "Statusphase"
     ]
-    dataframe_rows = [
-        event[1][0] for event in fake_st.events if event[0] == "dataframe"
-    ][0]
-    assert dataframe_rows == [
-        {
-            "Vorgangs-Nr.": "VG-2026-0002",
-            "Kunden-Nr.": "K-2026-0002",
-            "Kunde/Firma": "Anna Meyer",
-            "CARAT-Auftrags-Nr.": "CARAT-2002",
-            "Priorität": "Hoch",
-            "Status": "active",
-            "Verantwortlich": "daskuechenhaus-owner-principal",
-        }
-    ]
+    assert not [event for event in fake_st.events if event[0] == "dataframe"]
 
 
 def test_business_ui_main_renders_customer_cases_route(
@@ -1644,16 +1770,17 @@ def test_business_ui_main_renders_customer_cases_route(
         ("Meine Ereignisse", "Alle Ereignisse"),
         0,
     ) in fake_st.events
-    assert ("caption", "Statusübersicht") in fake_st.events
-    assert [
-        event
-        for event in fake_st.events
-        if event[0] == "button" and "Statusphase 1" in event[1]
-    ]
+    assert ("caption", "Statusfeed") in fake_st.events
     assert [
         event
         for event in fake_st.events
         if event[0] == "text_input"
-        and event[1] == "Nachname oder CARAT-Auftrags-Nr. suchen"
+        and event[1] == "Ereignisse suchen"
     ]
-    assert [event for event in fake_st.events if event[0] == "dataframe"]
+    assert [event for event in fake_st.events if event[0] == "form"]
+    assert not [
+        event
+        for event in fake_st.events
+        if event[0] == "button" and str(event[1]).startswith("Statusphase ")
+    ]
+    assert not [event for event in fake_st.events if event[0] == "dataframe"]
