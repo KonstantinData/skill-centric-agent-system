@@ -1,0 +1,27 @@
+[Unit]
+Description=Daskuechenhaus Admin API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=tenant_daskuechenhaus_app
+Group=tenant_daskuechenhaus_app
+WorkingDirectory=/opt/daskuechenhaus/admin-api
+Environment=DKH_ADMIN_DATABASE=tenant_daskuechenhaus
+Environment=DKH_ADMIN_API_HOST=127.0.0.1
+Environment=DKH_ADMIN_API_PORT=8715
+Environment=DKH_ADMIN_API_TOKEN_FILE=/etc/daskuechenhaus/admin-api-token
+Environment=DKH_ADMIN_ALLOWED_EMAILS=k.milonas@schober-daskuechenhaus.de
+Environment=DKH_ADMIN_UPLOAD_ROOT=/var/lib/daskuechenhaus/uploads
+ExecStart=/usr/bin/python3 /opt/daskuechenhaus/admin-api/app.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/etc/daskuechenhaus
+ReadWritePaths=/var/lib/daskuechenhaus/uploads
+
+[Install]
+WantedBy=multi-user.target

@@ -22,9 +22,9 @@ def test_tenant_database_provisioning_script_exists() -> None:
 def test_tenant_database_provisioning_defaults_to_daskuechenhaus() -> None:
     script = load_script()
 
-    assert 'SCAS_TENANT_DB="${SCAS_TENANT_DB:-tenant_das_kuechenhaus}"' in script
+    assert 'SCAS_TENANT_DB="${SCAS_TENANT_DB:-tenant_daskuechenhaus}"' in script
     assert (
-        'SCAS_TENANT_DB_OWNER="${SCAS_TENANT_DB_OWNER:-tenant_das_kuechenhaus_app}"'
+        'SCAS_TENANT_DB_OWNER="${SCAS_TENANT_DB_OWNER:-tenant_daskuechenhaus_app}"'
         in script
     )
 
@@ -59,7 +59,8 @@ def test_tenant_database_provisioning_creates_database_role_and_schemas() -> Non
     assert "createdb --owner=\"$SCAS_TENANT_DB_OWNER\" \"$SCAS_TENANT_DB\"" in script
     assert "REVOKE ALL ON DATABASE" in script
     assert "GRANT CONNECT, TEMPORARY ON DATABASE" in script
-    assert "CREATE SCHEMA IF NOT EXISTS tenant" in script
+    assert "ALTER SCHEMA tenant RENAME TO app" in script
+    assert "CREATE SCHEMA IF NOT EXISTS app" in script
     assert "CREATE SCHEMA IF NOT EXISTS audit" in script
     assert "REVOKE CREATE ON SCHEMA public FROM PUBLIC" in script
 

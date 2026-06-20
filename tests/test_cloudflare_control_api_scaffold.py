@@ -77,6 +77,11 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert config["main"] == "src/index.ts"
     assert config["workers_dev"] is False
     assert config["preview_urls"] is False
+    assert config["vars"] == {
+        "DKH_ADMIN_API_BASE_URL": (
+            "https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api"
+        )
+    }
     assert config["routes"] == [
         {
             "pattern": "es-daskuechenhaus.de/*",
@@ -90,8 +95,46 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
 
     assert 'url.pathname === "/health"' in source
     assert 'url.pathname === "/index.php"' in source
+    assert 'url.pathname === "/admin.php"' in source
+    assert 'url.pathname.startsWith("/admin-api/")' in source
+    assert 'url.pathname.startsWith("/overview-api/")' in source
+    assert "DKH_ADMIN_API_TOKEN" in source
+    assert "DKH_ADMIN_API_BASE_URL" in source
+    assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
+    assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
     assert 'location' in source
-    assert "Access geschuetzt" in source
+    assert "Uebersicht" in source
+    assert "Aufgabe anlegen" in source
+    assert "E-Mail Eingange" in source
+    assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
+    assert "modal users-modal" in source
+    assert "modal settings-modal" in source
+    assert "modal integrations-modal" in source
+    assert "Mitarbeiter anlegen" in source
+    assert "Konstantin Milonas" not in source
+    assert "Verkauf" in source
+    assert "Cloudflare Subject" not in source
+    assert "Neuer Mitarbeiter" not in source
+    assert "Naechster Schritt" not in source
+    assert "Worker eine gesicherte API" not in source
+    assert 'id="admin-workdays"' not in source
+    assert 'for="admin-workdays"' not in source
+    assert 'id="employee-roles"' in source
+    assert 'id="employee-workdays"' in source
+    assert "employee-roles-panel" in source
+    assert "employee-workdays-panel" in source
+    assert "Mitarbeiteruebersicht" in source
+    assert 'method="post"' in source
+    assert 'href="/admin.php?modal=users&edit=${user.id}"' in source
+    assert "fetchAdminState" in source
+    assert "proxyAdminApi" in source
+    assert "morning_start_time_" in source
+    assert "afternoon_end_time_" in source
+    assert 'name="department"' in source
+    assert 'name="is_active"' in source
+    assert 'name="external_identity_provider"' in source
+    assert 'name="company_name"' in source
+    assert 'name="secret_reference"' in source
     assert "SECURITY_HEADERS" in source
     assert "default-src 'none'" in source
     assert "x-robots-tag" in source

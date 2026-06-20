@@ -33,7 +33,7 @@ Initial production tenant databases are:
 
 - `tenant_condata`
 - `tenant_mein_kuechenexperte`
-- `tenant_das_kuechenhaus`
+- `tenant_daskuechenhaus`
 - `tenant_kinderhaus`
 - `tenant_elternkindwelt`
 
@@ -44,7 +44,7 @@ or other tenant customer data.
 The experimental Daskuechenhaus Cloudflare D1 customer-case database is
 discarded as a source system. Its data is not migrated to Hetzner. The
 Daskuechenhaus customer-case product starts with a new PostgreSQL schema in
-`tenant_das_kuechenhaus`.
+`tenant_daskuechenhaus`.
 
 This decision is only about tenant operational and customer databases. It does
 not change the existing memory architecture, memory feedback loop, knowledge
@@ -70,7 +70,7 @@ storage, or Cloudflare memory resources.
 - Add Hetzner tenant database provisioning scripts and runbook steps.
 - Define PostgreSQL role and connection naming conventions for tenant
   databases.
-- Create the initial `tenant_das_kuechenhaus` customer-case schema from the
+- Create the initial `tenant_daskuechenhaus` customer-case schema from the
   German product model.
 - Update application data access so Daskuechenhaus customer cases read and
   write only from the tenant PostgreSQL database.

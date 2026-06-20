@@ -1,0 +1,236 @@
+name: es-daskuechenhaus.de Mail Runtime Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_sync:
+        description: Write mail runtime configuration to Hetzner
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_sync=true
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-mail-runtime-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Validate and optionally sync mail runtime secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    env:
+      APPLY_SYNC: ${{ inputs.apply_sync }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      DKH_EMAIL_IMAP_HOST: ${{ secrets.DKH_EMAIL_IMAP_HOST }}
+      DKH_EMAIL_IMAP_PORT: ${{ secrets.DKH_EMAIL_IMAP_PORT }}
+      DKH_EMAIL_SMTP_HOST: ${{ secrets.DKH_EMAIL_SMTP_HOST }}
+      DKH_EMAIL_SMTP_PORT: ${{ secrets.DKH_EMAIL_SMTP_PORT }}
+      DKH_MAIL_K_MILONAS_IMAP_USERNAME: ${{ secrets.DKH_MAIL_K_MILONAS_IMAP_USERNAME }}
+      DKH_MAIL_K_MILONAS_IMAP_PASSWORD: ${{ secrets.DKH_MAIL_K_MILONAS_IMAP_PASSWORD }}
+      DKH_MAIL_K_MILONAS_SMTP_USERNAME: ${{ secrets.DKH_MAIL_K_MILONAS_SMTP_USERNAME }}
+      DKH_MAIL_K_MILONAS_SMTP_PASSWORD: ${{ secrets.DKH_MAIL_K_MILONAS_SMTP_PASSWORD }}
+      DKH_MAIL_K_MILONAS_FROM_ADDRESS: ${{ secrets.DKH_MAIL_K_MILONAS_FROM_ADDRESS }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate mail runtime inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for name in \
+            DKH_EMAIL_IMAP_HOST \
+            DKH_EMAIL_IMAP_PORT \
+            DKH_EMAIL_SMTP_HOST \
+            DKH_EMAIL_SMTP_PORT \
+            DKH_MAIL_K_MILONAS_IMAP_USERNAME \
+            DKH_MAIL_K_MILONAS_IMAP_PASSWORD \
+            DKH_MAIL_K_MILONAS_SMTP_USERNAME \
+            DKH_MAIL_K_MILONAS_SMTP_PASSWORD \
+            DKH_MAIL_K_MILONAS_FROM_ADDRESS
+          do
+            if [ -n "${!name:-}" ]; then
+              echo "::add-mask::${!name}"
+            fi
+          done
+
+          missing=0
+          for name in \
+            DKH_EMAIL_IMAP_HOST \
+            DKH_EMAIL_IMAP_PORT \
+            DKH_EMAIL_SMTP_HOST \
+            DKH_EMAIL_SMTP_PORT \
+            DKH_MAIL_K_MILONAS_IMAP_USERNAME \
+            DKH_MAIL_K_MILONAS_IMAP_PASSWORD \
+            DKH_MAIL_K_MILONAS_SMTP_USERNAME \
+            DKH_MAIL_K_MILONAS_SMTP_PASSWORD \
+            DKH_MAIL_K_MILONAS_FROM_ADDRESS
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required GitHub secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ ! "${DKH_EMAIL_IMAP_PORT}" =~ ^[0-9]+$ ]]; then
+            echo "::error::DKH_EMAIL_IMAP_PORT must be numeric."
+            missing=1
+          fi
+          if [[ ! "${DKH_EMAIL_SMTP_PORT}" =~ ^[0-9]+$ ]]; then
+            echo "::error::DKH_EMAIL_SMTP_PORT must be numeric."
+            missing=1
+          fi
+
+          if [ "${APPLY_SYNC}" = "true" ]; then
+            if [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+              echo "::error::confirm_production must be true when apply_sync=true."
+              missing=1
+            fi
+          fi
+
+          target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
+          target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
+          target_key="${SCAS_PROD_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}"
+          for pair in \
+            "TARGET_HETZNER_HOST:${target_host}" \
+            "TARGET_HETZNER_USER:${target_user}" \
+            "TARGET_HETZNER_SSH_KEY:${target_key}"
+          do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "${value}" ]; then
+              echo "::error::Missing required Hetzner secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ "${target_key}" == *"__SCAS_HETZNER_SSH_KEY__"* ]]; then
+            echo "::error::Refusing to export HETZNER_SSH_KEY: value contains reserved delimiter."
+            missing=1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${target_key}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+          exit "${missing}"
+
+      - name: Build mail runtime env file
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cat > mail.env <<EOF
+          DKH_EMAIL_IMAP_HOST=${DKH_EMAIL_IMAP_HOST}
+          DKH_EMAIL_IMAP_PORT=${DKH_EMAIL_IMAP_PORT}
+          DKH_EMAIL_SMTP_HOST=${DKH_EMAIL_SMTP_HOST}
+          DKH_EMAIL_SMTP_PORT=${DKH_EMAIL_SMTP_PORT}
+          DKH_MAIL_K_MILONAS_IMAP_USERNAME=${DKH_MAIL_K_MILONAS_IMAP_USERNAME}
+          DKH_MAIL_K_MILONAS_IMAP_PASSWORD=${DKH_MAIL_K_MILONAS_IMAP_PASSWORD}
+          DKH_MAIL_K_MILONAS_SMTP_USERNAME=${DKH_MAIL_K_MILONAS_SMTP_USERNAME}
+          DKH_MAIL_K_MILONAS_SMTP_PASSWORD=${DKH_MAIL_K_MILONAS_SMTP_PASSWORD}
+          DKH_MAIL_K_MILONAS_FROM_ADDRESS=${DKH_MAIL_K_MILONAS_FROM_ADDRESS}
+          EOF
+          sed -i 's/^          //' mail.env
+          chmod 0600 mail.env
+
+      - name: Plan mail runtime sync
+        if: inputs.apply_sync == false
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p es-daskuechenhaus-mail-runtime-evidence
+          {
+            printf '# es-daskuechenhaus.de Mail Runtime Sync Plan\n\n'
+            printf -- '- Apply sync: `false`\n'
+            printf -- '- Hetzner target: configured through GitHub secrets\n'
+            printf -- '- Mail env target: `/etc/daskuechenhaus/mail.env`\n'
+            printf -- '- PostgreSQL migration: `0003_mail_runtime_configuration.sql`\n'
+            printf -- '- Remote mutation: none\n'
+          } > es-daskuechenhaus-mail-runtime-evidence/plan.md
+
+      - name: Upload mail runtime sync plan
+        if: inputs.apply_sync == false
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-mail-runtime-sync-plan
+          path: es-daskuechenhaus-mail-runtime-evidence/plan.md
+
+      - name: Configure SSH
+        if: inputs.apply_sync == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 0600 "${HOME}/.ssh/hetzner_key"
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null 2>&1; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Sync mail runtime configuration to Hetzner
+        if: inputs.apply_sync == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_env="/tmp/daskuechenhaus-mail-${GITHUB_RUN_ID}.env"
+          remote_migration="/tmp/0003_mail_runtime_configuration-${GITHUB_RUN_ID}.sql"
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            mail.env \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_env}"
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            migrations/hetzner/tenants/daskuechenhaus/0003_mail_runtime_configuration.sql \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_migration}"
+          ssh -i "${HOME}/.ssh/hetzner_key" \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "set -euo pipefail
+             sudo -n install -d -o root -g tenant_daskuechenhaus_app -m 0750 /etc/daskuechenhaus
+             sudo -n install -o root -g tenant_daskuechenhaus_app -m 0640 '${remote_env}' /etc/daskuechenhaus/mail.env
+             sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f '${remote_migration}'
+             rm -f '${remote_env}' '${remote_migration}'"
+
+      - name: Upload mail runtime sync evidence
+        if: inputs.apply_sync == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p es-daskuechenhaus-mail-runtime-evidence
+          {
+            printf '# es-daskuechenhaus.de Mail Runtime Sync Evidence\n\n'
+            printf -- '- Apply sync: `true`\n'
+            printf -- '- Mail env target: `/etc/daskuechenhaus/mail.env`\n'
+            printf -- '- PostgreSQL migration: `0003_mail_runtime_configuration.sql`\n'
+            printf -- '- Secret values in artifact: `none`\n'
+          } > es-daskuechenhaus-mail-runtime-evidence/deployment.md
+
+      - name: Store mail runtime sync evidence
+        if: inputs.apply_sync == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-mail-runtime-sync-evidence
+          path: es-daskuechenhaus-mail-runtime-evidence/deployment.md
