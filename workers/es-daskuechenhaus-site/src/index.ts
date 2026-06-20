@@ -28,6 +28,16 @@ function htmlResponse(body: string, status = 200): Response {
   });
 }
 
+function redirectResponse(location: string): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      ...SECURITY_HEADERS,
+      location,
+    },
+  });
+}
+
 function renderHome(): string {
   return `<!doctype html>
 <html lang="de">
@@ -160,7 +170,7 @@ function renderHome(): string {
     <aside>
       ${LOGO_MARKUP}
       <nav aria-label="Bereiche">
-        <a href="/" aria-current="page">Einsatzsteuerung</a>
+        <a href="/index.php" aria-current="page">Einsatzsteuerung</a>
         <a href="/planung">Planung</a>
         <a href="/aufgaben">Aufgaben</a>
         <a href="/status">Status</a>
@@ -215,6 +225,9 @@ export default {
       });
     }
     if (url.pathname === "/" || url.pathname === "") {
+      return redirectResponse("/index.php");
+    }
+    if (url.pathname === "/index.php") {
       return htmlResponse(renderHome());
     }
     return htmlResponse("<!doctype html><title>Nicht gefunden</title><h1>Nicht gefunden</h1>", 404);
