@@ -81,6 +81,10 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
         {
             "pattern": "es-daskuechenhaus.de/*",
             "zone_name": "es-daskuechenhaus.de",
+        },
+        {
+            "pattern": "www.es-daskuechenhaus.de/*",
+            "zone_name": "es-daskuechenhaus.de",
         }
     ]
 
@@ -99,6 +103,8 @@ def test_es_daskuechenhaus_access_script_requires_explicit_allow_list() -> None:
     assert "DKH_CLOUDFLARE_API_TOKEN" in script
     assert "allowed-emails" in script
     assert "allowed_emails is required when --apply is used" in script
+    assert "PRIMARY_HOSTNAME" in script
+    assert "access_app_name" in script
     assert "100::" in script
     assert "/dns_records" in script
     assert "/access/apps" in script

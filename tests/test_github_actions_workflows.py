@@ -489,15 +489,18 @@ def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
     assert "DKH_CLOUDFLARE_ACCOUNT_ID" in workflow
     assert "DKH_CLOUDFLARE_ZONE_ID" in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "HOSTNAMES: es-daskuechenhaus.de,www.es-daskuechenhaus.de" in workflow
     assert "secrets.CLOUDFLARE_API_TOKEN" not in workflow
     assert "confirm_production must be true when apply_deploy=true" in workflow
     assert "allowed_emails is required when apply_deploy=true" in workflow
     assert "scripts/cloudflare/es_daskuechenhaus_access.py" in workflow
+    assert 'IFS=\',\' read -r -a hostnames <<< "${HOSTNAMES}"' in workflow
     assert "npm run dkh-site:typecheck" in workflow
     assert "npm run dkh-site:check" in workflow
     assert "npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml" in workflow
     assert (
-        "Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access."
+        "Anonymous access returned HTTP 200 for ${hostname}. "
+        "Cloudflare Access is not blocking public access."
         in workflow
     )
     assert "es-daskuechenhaus-site-deploy-plan" in workflow

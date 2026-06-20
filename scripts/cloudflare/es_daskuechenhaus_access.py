@@ -8,7 +8,8 @@ from typing import Any
 from urllib import error, parse, request
 
 API_BASE = "https://api.cloudflare.com/client/v4"
-APP_NAME = "es-daskuechenhaus.de Einsatzsteuerung"
+PRIMARY_HOSTNAME = "es-daskuechenhaus.de"
+PRIMARY_APP_NAME = "es-daskuechenhaus.de Einsatzsteuerung"
 POLICY_NAME = "Allow DKH operators with MFA"
 
 
@@ -110,17 +111,26 @@ def ensure_dns_record(config: CloudflareConfig, hostname: str, apply: bool) -> s
     return "created" if apply else "would create"
 
 
+def access_app_name(hostname: str) -> str:
+    if hostname == PRIMARY_HOSTNAME:
+        return PRIMARY_APP_NAME
+    return f"{hostname} Einsatzsteuerung"
+
+
 def find_access_app(config: CloudflareConfig, hostname: str) -> dict[str, Any] | None:
     apps = cf_request(
         config,
         "GET",
         f"/accounts/{config.account_id}/access/apps?per_page=100",
     ).get("result", [])
+    expected_name = access_app_name(hostname)
     return next(
         (
             app
             for app in apps
-            if app.get("domain") == hostname or app.get("name") == APP_NAME
+            if app.get("domain") == hostname
+            or app.get("name") == expected_name
+            or (hostname == PRIMARY_HOSTNAME and app.get("name") == PRIMARY_APP_NAME)
         ),
         None,
     )
@@ -128,7 +138,7 @@ def find_access_app(config: CloudflareConfig, hostname: str) -> dict[str, Any] |
 
 def access_app_payload(hostname: str) -> dict[str, Any]:
     return {
-        "name": APP_NAME,
+        "name": access_app_name(hostname),
         "domain": hostname,
         "type": "self_hosted",
         "session_duration": "8h",
