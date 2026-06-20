@@ -34,17 +34,22 @@ The Daskuechenhaus `Übersicht` view is the status page. It uses
 first sees the events assigned to them; `Alle Ereignisse` can be selected for a
 tenant-wide status view. The page is a CRM-style event feed, not a phase-tile
 overview. Feed entries show event context such as time, actor, customer/case
-label, current status, and whether action is needed. Selecting an entry opens
-the right-hand `Kundenkarte` panel.
+label, current status, and whether action is needed. The status page uses two
+columns: the left column contains the filtered event feed and the right column
+contains compact status widgets such as `Anstehende Aufgaben`, `Erreichte Ziele`,
+and `Neuigkeiten`. `Anstehende Aufgaben` includes an `Aufgabe anlegen` action
+that opens a task dialog with case selection.
 
 The 10 status phases remain part of the customer case model, but they are only
-edited inside the customer card. `Kundenkarte > Vorgang` lets users update
-`Vorgangs-Nr.`, `CARAT-Auftrags-Nr.`, `Statusphase`, `Priorität`, `Status`,
-responsible user, and the attention marker with explicit `Speichern` and
-`Abbrechen` actions. `Kundenkarte > Kontaktdaten` shows the customer/contact
-record, `Kundenkarte > Aufgaben & Notizen` creates notes and tasks through the
-case API, and `Kundenkarte > Verlauf` reads the case audit trail when the
-backend endpoint is available.
+edited inside the customer card. The overview does not show the customer card
+inline; opening a feed entry opens the customer card in a dialog.
+`Kundenkarte > Vorgang` lets users update `Vorgangs-Nr.`,
+`CARAT-Auftrags-Nr.`, `Statusphase`, `Priorität`, `Status`, responsible user,
+and the attention marker with explicit `Speichern` and `Abbrechen` actions.
+`Kundenkarte > Kontaktdaten` shows the customer/contact record,
+`Kundenkarte > Aufgaben & Notizen` creates notes and tasks through the case API,
+and `Kundenkarte > Verlauf` reads the case audit trail when the backend endpoint
+is available.
 
 The Daskuechenhaus workflow uses a centered dialog for creating customer cases.
 The create dialog uses German labels and separates private and company

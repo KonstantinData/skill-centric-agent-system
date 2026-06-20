@@ -1652,11 +1652,11 @@ def test_business_ui_customer_case_search_matches_last_name_and_carat_number() -
     assert not streamlit_business_ui_app.customer_case_matches_search(case, "Schober")
 
 
-def test_business_ui_customer_cases_area_renders_status_feed_and_detail_card(
+def test_business_ui_customer_cases_area_renders_two_column_status_feed(
     monkeypatch,
 ) -> None:
     fake_st = FakeStreamlit()
-    fake_st.text_input_values["customer-case-search"] = "Meyer"
+    fake_st.text_input_values["customer-case-search"] = "Anna"
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
     monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
 
@@ -1685,6 +1685,8 @@ def test_business_ui_customer_cases_area_renders_status_feed_and_detail_card(
             "case_number": "VG-2026-0002",
             "customer_number": "K-2026-0002",
             "customer_full_name": "Anna Meyer",
+            "first_name": "Anna",
+            "last_name": "Meyer",
             "carat_order_number": "CARAT-2002",
             "phase": 1,
             "priority": "high",
@@ -1709,14 +1711,137 @@ def test_business_ui_customer_cases_area_renders_status_feed_and_detail_card(
     markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
     assert any("### Meine Ereignisse" in text for text in markdown_text)
     assert any("VG-2026-0002 · Anna Meyer" in text for text in markdown_text)
-    assert any("### Kundenkarte" in text for text in markdown_text)
-    assert ("form", "scas-customer-case-status-case-002") in fake_st.events
+    assert not any("### Kundenkarte" in text for text in markdown_text)
+    assert ("columns", [0.68, 0.32]) in fake_st.events
     assert [
+        event
+        for event in fake_st.events
+        if event[0] == "button" and event[1] == "Aufgabe anlegen"
+    ]
+    assert ("form", "scas-customer-case-status-case-002") not in fake_st.events
+    assert not [
         event
         for event in fake_st.events
         if event[0] == "selectbox" and event[1] == "Statusphase"
     ]
     assert not [event for event in fake_st.events if event[0] == "dataframe"]
+
+
+def test_business_ui_customer_case_event_opens_card_dialog(monkeypatch) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.button_values["customer-case-open-case-002"] = True
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="daskuechenhaus-owner-principal",
+        tenant_id="daskuechenhaus",
+        membership_id="tm-daskuechenhaus-owner-01",
+        role_ids=("daskuechenhaus-owner",),
+        capabilities=frozenset({"customer-cases"}),
+        source="local-login",
+    )
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "load_customer_cases_from_api",
+        lambda _config: {
+            "data": [
+                {
+                    "id": "case-002",
+                    "case_number": "VG-2026-0002",
+                    "customer_number": "K-2026-0002",
+                    "customer_full_name": "Anna Meyer",
+                    "first_name": "Anna",
+                    "last_name": "Meyer",
+                    "carat_order_number": "CARAT-2002",
+                    "phase": 1,
+                    "priority": "high",
+                    "status": "active",
+                    "responsible_user_id": "daskuechenhaus-owner-principal",
+                }
+            ],
+            "count": 1,
+        },
+    )
+
+    streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
+
+    assert ("dialog", "Kundenkarte", {"width": "large"}) in fake_st.events
+    assert ("dialog_open", "Kundenkarte") in fake_st.events
+    markdown_text = [event[1][0] for event in fake_st.events if event[0] == "markdown"]
+    assert any("### Kundenkarte" in text for text in markdown_text)
+    assert ("form", "scas-customer-case-status-case-002") in fake_st.events
+
+
+def test_business_ui_status_sidebar_creates_task(monkeypatch) -> None:
+    fake_st = FakeStreamlit()
+    fake_st.button_values["status-task-create-open"] = True
+    fake_st.form_submitted = True
+    fake_st.text_input_values["status-sidebar-task-title"] = "Aufmaß terminieren"
+    fake_st.text_input_values["status-sidebar-task-due"] = "2026-06-24"
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_URL", "https://cases.example.invalid")
+    monkeypatch.setenv("SCAS_CUSTOMER_CASES_API_SECRET", "token")
+    created_tasks: list[dict[str, str]] = []
+
+    session = streamlit_business_ui_app.TenantSession(
+        principal_id="daskuechenhaus-owner-principal",
+        tenant_id="daskuechenhaus",
+        membership_id="tm-daskuechenhaus-owner-01",
+        role_ids=("daskuechenhaus-owner",),
+        capabilities=frozenset({"customer-cases"}),
+        source="local-login",
+    )
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "load_customer_cases_from_api",
+        lambda _config: {
+            "data": [
+                {
+                    "id": "case-002",
+                    "case_number": "VG-2026-0002",
+                    "customer_number": "K-2026-0002",
+                    "customer_full_name": "Anna Meyer",
+                    "phase": 1,
+                    "priority": "high",
+                    "status": "active",
+                    "responsible_user_id": "daskuechenhaus-owner-principal",
+                }
+            ],
+            "count": 1,
+        },
+    )
+
+    def fake_create_task(_config, *, actor, case_id, title, due_date, assigned_to):
+        created_tasks.append(
+            {
+                "actor": actor,
+                "case_id": case_id,
+                "title": title,
+                "due_date": due_date,
+                "assigned_to": assigned_to,
+            }
+        )
+        return {"data": {"id": "task-001"}}
+
+    monkeypatch.setattr(
+        streamlit_business_ui_app,
+        "create_customer_case_task_in_api",
+        fake_create_task,
+    )
+
+    streamlit_business_ui_app.render_customer_cases_area(fake_st, session)
+
+    assert ("dialog", "Aufgabe anlegen", {"width": "large"}) in fake_st.events
+    assert ("form", "scas-status-task-create") in fake_st.events
+    assert created_tasks == [
+        {
+            "actor": "daskuechenhaus-owner-principal",
+            "case_id": "case-002",
+            "title": "Aufmaß terminieren",
+            "due_date": "2026-06-24",
+            "assigned_to": "daskuechenhaus-owner-principal",
+        }
+    ]
 
 
 def test_business_ui_main_renders_customer_cases_route(
@@ -1777,7 +1902,12 @@ def test_business_ui_main_renders_customer_cases_route(
         if event[0] == "text_input"
         and event[1] == "Ereignisse suchen"
     ]
-    assert [event for event in fake_st.events if event[0] == "form"]
+    assert [
+        event
+        for event in fake_st.events
+        if event[0] == "button" and event[1] == "Aufgabe anlegen"
+    ]
+    assert not [event for event in fake_st.events if event[0] == "form"]
     assert not [
         event
         for event in fake_st.events

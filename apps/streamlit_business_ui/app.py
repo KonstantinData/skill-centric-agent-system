@@ -1874,7 +1874,15 @@ def customer_case_matches_status_feed_search(
         case.get("company_name"),
         case.get("first_name"),
         case.get("last_name"),
+        case.get("salutation"),
         case.get("carat_order_number"),
+        case.get("customer_phone"),
+        case.get("customer_mobile"),
+        case.get("customer_email"),
+        case.get("postal_code"),
+        case.get("city"),
+        case.get("responsible_user_id"),
+        case.get("assigned_to"),
         customer_case_event_text(case),
         customer_case_phase_label(case),
     )
@@ -2023,8 +2031,69 @@ def render_customer_case_create_form(
             st.rerun()
 
 
+def render_status_task_create_form(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+    cases: list[dict[str, Any]],
+) -> None:
+    stable_cases = [case for case in cases if customer_case_id(case)]
+    if not stable_cases:
+        st.info("Es ist kein Vorgang für eine neue Aufgabe verfügbar.")
+        return
+
+    case_options = [customer_case_display_label(case) for case in stable_cases]
+    case_by_label = dict(zip(case_options, stable_cases, strict=False))
+    with st.form("scas-status-task-create"):
+        selected_case_label = st.selectbox("Vorgang", options=case_options, index=0)
+        task_title = st.text_input(
+            "Aufgabe",
+            key="status-sidebar-task-title",
+            placeholder="Aufgabe anlegen ...",
+        )
+        due_date = st.text_input(
+            "Fällig am",
+            key="status-sidebar-task-due",
+            placeholder="YYYY-MM-DD",
+        )
+        selected_case = case_by_label[selected_case_label]
+        assigned_to = st.text_input(
+            "Zuständig",
+            value=str(
+                selected_case.get("responsible_user_id")
+                or selected_case.get("assigned_to")
+                or session.principal_id
+            ),
+            key="status-sidebar-task-assigned",
+        )
+        task_submitted = st.form_submit_button("Aufgabe speichern")
+
+    if not task_submitted:
+        return
+    if not task_title.strip():
+        st.error("Bitte eine Aufgabe eingeben.")
+        return
+
+    try:
+        create_customer_case_task_in_api(
+            config,
+            actor=session.principal_id,
+            case_id=customer_case_id(selected_case),
+            title=task_title,
+            due_date=due_date,
+            assigned_to=assigned_to,
+        )
+    except Exception:
+        st.error("Aufgabe konnte nicht gespeichert werden.")
+    else:
+        st.success("Aufgabe gespeichert.")
+        if hasattr(st, "rerun"):
+            st.rerun()
+
+
 def render_status_feed_sidebar(
     st: Any,
+    config: CustomerCasesApiConfig,
     cases: list[dict[str, Any]],
     session: TenantSession,
 ) -> None:
@@ -2035,6 +2104,12 @@ def render_status_feed_sidebar(
     won_cases = [case for case in cases if str(case.get("status") or "") == "won"]
 
     st.markdown("### Anstehende Aufgaben")
+    if st.button("Aufgabe anlegen", key="status-task-create-open"):
+        render_dialog(
+            st,
+            "Aufgabe anlegen",
+            lambda: render_status_task_create_form(st, config, session, cases),
+        )
     if attention_cases:
         for case in attention_cases[:4]:
             st.markdown(
@@ -2055,7 +2130,12 @@ def render_status_feed_sidebar(
     st.caption("Statusänderungen, neue Vorgänge und exportrelevante Hinweise erscheinen hier.")
 
 
-def render_customer_case_event_card(st: Any, case: dict[str, Any]) -> None:
+def render_customer_case_event_card(
+    st: Any,
+    config: CustomerCasesApiConfig,
+    session: TenantSession,
+    case: dict[str, Any],
+) -> None:
     case_id = customer_case_id(case)
     if not case_id:
         return
@@ -2078,10 +2158,12 @@ def render_customer_case_event_card(st: Any, case: dict[str, Any]) -> None:
         """,
         unsafe_allow_html=True,
     )
-    if st.button("Öffnen", key=f"customer-case-open-{case_id}"):
-        st.session_state["scas_customer_case_selected_id"] = case_id
-        if hasattr(st, "rerun"):
-            st.rerun()
+    if st.button("Kundenkarte öffnen", key=f"customer-case-open-{case_id}"):
+        render_dialog(
+            st,
+            "Kundenkarte",
+            lambda: render_customer_case_detail_panel(st, config, session, case),
+        )
 
 
 def render_customer_case_status_form(
@@ -2447,40 +2529,14 @@ def render_customer_cases_area(
         st.info("Keine Ereignisse zur aktuellen Suche gefunden.")
         return
 
-    selected_case_id = str(
-        st.session_state.get("scas_customer_case_selected_id", "")
-    )
-    visible_case_ids = tuple(
-        str(case.get("id") or case.get("case_number") or "")
-        for case in visible_cases
-        if case.get("id") or case.get("case_number")
-    )
-    if selected_case_id and selected_case_id not in visible_case_ids:
-        selected_case_id = ""
-        st.session_state.pop("scas_customer_case_selected_id", None)
-    if not selected_case_id and visible_case_ids:
-        selected_case_id = visible_case_ids[0]
-        st.session_state["scas_customer_case_selected_id"] = selected_case_id
-
-    selected_case = next(
-        (
-            case
-            for case in visible_cases
-            if customer_case_id(case) == selected_case_id
-        ),
-        None,
-    )
-
-    feed_column, detail_column = st.columns([0.58, 0.42])
+    feed_column, sidebar_column = st.columns([0.68, 0.32])
     with feed_column:
         st.markdown(f"### {status_filter}")
         for case in visible_cases:
-            render_customer_case_event_card(st, case)
+            render_customer_case_event_card(st, config, session, case)
 
-    with detail_column:
-        render_status_feed_sidebar(st, status_cases, session)
-        st.divider()
-        render_customer_case_detail_panel(st, config, session, selected_case)
+    with sidebar_column:
+        render_status_feed_sidebar(st, config, status_cases, session)
 
 
 def render_password_change_admin_tool(st: Any) -> None:
