@@ -48,29 +48,43 @@ def build_message(*, with_message_id: bool = True) -> EmailMessage:
     return message
 
 
+def make_account(**overrides: object) -> importer.MailAccount:
+    defaults: dict[str, object] = {
+        "id": 11,
+        "display_name": "Konstantin Milonas",
+        "email_address": "k.milonas@schober-daskuechenhaus.de",
+        "import_folder": "INBOX",
+        "import_uidvalidity": None,
+        "last_imported_uid": 0,
+        "imap_host_ref": "DKH_EMAIL_IMAP_HOST",
+        "imap_port_ref": "DKH_EMAIL_IMAP_PORT",
+        "imap_username_ref": "DKH_MAIL_K_MILONAS_IMAP_USERNAME",
+        "imap_password_ref": "DKH_MAIL_K_MILONAS_IMAP_PASSWORD",  # pragma: allowlist secret
+    }
+    defaults.update(overrides)
+    return importer.MailAccount(**defaults)
+
+
 # --- pure helper behavior -------------------------------------------------
 
 
 def test_load_mail_env_parses_comments_quotes_and_export(tmp_path: Path) -> None:
+    lines = [
+        "# comment line",
+        "",
+        "DKH_EMAIL_IMAP_HOST=imap.example.com",
+        'DKH_MAIL_K_MILONAS_IMAP_PASSWORD="s3cr3t with spaces"',  # pragma: allowlist secret
+        "export DKH_EMAIL_IMAP_PORT=993",
+    ]
     env_file = tmp_path / "mail.env"
-    env_file.write_text(
-        "\n".join(
-            [
-                "# comment line",
-                "",
-                "DKH_EMAIL_IMAP_HOST=imap.example.com",
-                'DKH_MAIL_K_MILONAS_IMAP_PASSWORD="s3cr3t with spaces"',
-                "export DKH_EMAIL_IMAP_PORT=993",
-            ]
-        ),
-        encoding="utf-8",
-    )
+    env_file.write_text("\n".join(lines), encoding="utf-8")
 
     values = importer.load_mail_env(env_file)
 
     assert values["DKH_EMAIL_IMAP_HOST"] == "imap.example.com"
-    assert values["DKH_MAIL_K_MILONAS_IMAP_PASSWORD"] == "s3cr3t with spaces"
     assert values["DKH_EMAIL_IMAP_PORT"] == "993"
+    imap_password = values["DKH_MAIL_K_MILONAS_IMAP_PASSWORD"]
+    assert imap_password == "s3cr3t with spaces"  # pragma: allowlist secret
 
 
 def test_load_mail_env_missing_file_raises(tmp_path: Path) -> None:
@@ -151,18 +165,7 @@ def test_parse_received_at_reads_date_header() -> None:
 
 
 def test_message_external_id_uses_header_when_present() -> None:
-    account = importer.MailAccount(
-        id=11,
-        display_name="Konstantin Milonas",
-        email_address="k.milonas@schober-daskuechenhaus.de",
-        import_folder="INBOX",
-        import_uidvalidity=None,
-        last_imported_uid=0,
-        imap_host_ref="DKH_EMAIL_IMAP_HOST",
-        imap_port_ref="DKH_EMAIL_IMAP_PORT",
-        imap_username_ref="DKH_MAIL_K_MILONAS_IMAP_USERNAME",
-        imap_password_ref="DKH_MAIL_K_MILONAS_IMAP_PASSWORD",
-    )
+    account = make_account()
 
     real = importer.message_external_id(build_message(), account, 42, 7)
     assert real == "<abc123@example.com>"
@@ -174,23 +177,12 @@ def test_message_external_id_uses_header_when_present() -> None:
 
 
 def test_resolve_imap_settings_reads_secret_references() -> None:
-    account = importer.MailAccount(
-        id=11,
-        display_name="Konstantin Milonas",
-        email_address="k.milonas@schober-daskuechenhaus.de",
-        import_folder="INBOX",
-        import_uidvalidity=None,
-        last_imported_uid=0,
-        imap_host_ref="DKH_EMAIL_IMAP_HOST",
-        imap_port_ref="DKH_EMAIL_IMAP_PORT",
-        imap_username_ref="DKH_MAIL_K_MILONAS_IMAP_USERNAME",
-        imap_password_ref="DKH_MAIL_K_MILONAS_IMAP_PASSWORD",
-    )
+    account = make_account()
     env = {
         "DKH_EMAIL_IMAP_HOST": "imap.example.com",
         "DKH_EMAIL_IMAP_PORT": "993",
         "DKH_MAIL_K_MILONAS_IMAP_USERNAME": "k.milonas@schober-daskuechenhaus.de",
-        "DKH_MAIL_K_MILONAS_IMAP_PASSWORD": "s3cr3t",
+        "DKH_MAIL_K_MILONAS_IMAP_PASSWORD": "s3cr3t",  # pragma: allowlist secret
     }
 
     settings = importer.resolve_imap_settings(account, env)
@@ -198,22 +190,11 @@ def test_resolve_imap_settings_reads_secret_references() -> None:
     assert settings.host == "imap.example.com"
     assert settings.port == 993
     assert settings.username == "k.milonas@schober-daskuechenhaus.de"
-    assert settings.password == "s3cr3t"
+    assert settings.password == "s3cr3t"  # pragma: allowlist secret
 
 
 def test_resolve_imap_settings_missing_value_raises() -> None:
-    account = importer.MailAccount(
-        id=11,
-        display_name="Konstantin Milonas",
-        email_address="k.milonas@schober-daskuechenhaus.de",
-        import_folder="INBOX",
-        import_uidvalidity=None,
-        last_imported_uid=0,
-        imap_host_ref="DKH_EMAIL_IMAP_HOST",
-        imap_port_ref="DKH_EMAIL_IMAP_PORT",
-        imap_username_ref="DKH_MAIL_K_MILONAS_IMAP_USERNAME",
-        imap_password_ref="DKH_MAIL_K_MILONAS_IMAP_PASSWORD",
-    )
+    account = make_account()
 
     try:
         importer.resolve_imap_settings(account, {"DKH_EMAIL_IMAP_HOST": "imap.example.com"})
