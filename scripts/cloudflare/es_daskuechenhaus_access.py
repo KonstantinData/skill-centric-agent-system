@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
 
-
 API_BASE = "https://api.cloudflare.com/client/v4"
 APP_NAME = "es-daskuechenhaus.de Einsatzsteuerung"
 POLICY_NAME = "Allow DKH operators with MFA"
@@ -141,13 +140,22 @@ def access_app_payload(hostname: str) -> dict[str, Any]:
     }
 
 
-def ensure_access_app(config: CloudflareConfig, hostname: str, apply: bool) -> tuple[str, str | None]:
+def ensure_access_app(
+    config: CloudflareConfig,
+    hostname: str,
+    apply: bool,
+) -> tuple[str, str | None]:
     existing = find_access_app(config, hostname)
     payload = access_app_payload(hostname)
     if existing:
         app_id = str(existing["id"])
         if apply:
-            cf_request(config, "PUT", f"/accounts/{config.account_id}/access/apps/{app_id}", payload)
+            cf_request(
+                config,
+                "PUT",
+                f"/accounts/{config.account_id}/access/apps/{app_id}",
+                payload,
+            )
         return ("updated" if apply else "would update", app_id)
     if not apply:
         return "would create", None

@@ -496,7 +496,10 @@ def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
     assert "npm run dkh-site:typecheck" in workflow
     assert "npm run dkh-site:check" in workflow
     assert "npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml" in workflow
-    assert "Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access." in workflow
+    assert (
+        "Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access."
+        in workflow
+    )
     assert "es-daskuechenhaus-site-deploy-plan" in workflow
     assert "es-daskuechenhaus-site-deployment-evidence" in workflow
 
