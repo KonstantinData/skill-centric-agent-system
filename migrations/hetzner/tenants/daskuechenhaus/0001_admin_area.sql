@@ -460,7 +460,7 @@ VALUES (
   '0711/36550746',
   'info@schober-daskuechenhaus.de',
   'https://www.schober-daskuechenhaus.de',
-  'DE265715198',
+  'DE265715198', -- pragma: allowlist secret
   'Amtsgericht Stuttgart, HR 730338',
   'Ralph Schober'
 )

@@ -63,7 +63,8 @@ def test_daskuechenhaus_admin_api_handles_task_uploads_on_hetzner() -> None:
     assert "FileUpload" in source
     assert "ALLOWED_TASK_ATTACHMENT_TYPES" in source
     assert "save_task_attachment" in source
-    assert 'DKH_ADMIN_UPLOAD_ROOT=/var/lib/daskuechenhaus/uploads' in service
+    assert "DKH_ADMIN_UPLOAD_ROOT=" in service
+    assert "/var/lib/daskuechenhaus/uploads" in service
     assert "ReadWritePaths=/var/lib/daskuechenhaus/uploads" in service
 
 

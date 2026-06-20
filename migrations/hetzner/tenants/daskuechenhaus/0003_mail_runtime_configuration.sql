@@ -27,8 +27,8 @@ SET
   from_address_secret_ref = NULL
 WHERE email_address = 'info@schober-daskuechenhaus.de'
   AND (
-    imap_username_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_USERNAME'
-    OR smtp_username_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_USERNAME'
+    imap_username_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_USERNAME' -- pragma: allowlist secret
+    OR smtp_username_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_USERNAME' -- pragma: allowlist secret
   );
 
 INSERT INTO app.email_accounts (display_name, email_address, provider)
@@ -42,15 +42,15 @@ SET
 UPDATE app.email_accounts account
 SET
   assigned_user_id = sales_user.id,
-  imap_host_secret_ref = 'DKH_EMAIL_IMAP_HOST',
-  imap_port_secret_ref = 'DKH_EMAIL_IMAP_PORT',
-  imap_username_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_USERNAME',
-  imap_password_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_PASSWORD',
-  smtp_host_secret_ref = 'DKH_EMAIL_SMTP_HOST',
-  smtp_port_secret_ref = 'DKH_EMAIL_SMTP_PORT',
-  smtp_username_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_USERNAME',
-  smtp_password_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_PASSWORD',
-  from_address_secret_ref = 'DKH_MAIL_K_MILONAS_FROM_ADDRESS'
+  imap_host_secret_ref = 'DKH_EMAIL_IMAP_HOST', -- pragma: allowlist secret
+  imap_port_secret_ref = 'DKH_EMAIL_IMAP_PORT', -- pragma: allowlist secret
+  imap_username_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_USERNAME', -- pragma: allowlist secret
+  imap_password_secret_ref = 'DKH_MAIL_K_MILONAS_IMAP_PASSWORD', -- pragma: allowlist secret
+  smtp_host_secret_ref = 'DKH_EMAIL_SMTP_HOST', -- pragma: allowlist secret
+  smtp_port_secret_ref = 'DKH_EMAIL_SMTP_PORT', -- pragma: allowlist secret
+  smtp_username_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_USERNAME', -- pragma: allowlist secret
+  smtp_password_secret_ref = 'DKH_MAIL_K_MILONAS_SMTP_PASSWORD', -- pragma: allowlist secret
+  from_address_secret_ref = 'DKH_MAIL_K_MILONAS_FROM_ADDRESS' -- pragma: allowlist secret
 FROM (
   SELECT u.id
   FROM app.users u
