@@ -7,6 +7,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_JSON_PATH = REPO_ROOT / "package.json"
 WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
+DKH_SITE_WRANGLER_CONFIG_PATH = (
+    REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "wrangler.toml"
+)
+DKH_SITE_WORKER_SOURCE_PATH = (
+    REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "src" / "index.ts"
+)
+DKH_SITE_ACCESS_SCRIPT_PATH = (
+    REPO_ROOT / "scripts" / "cloudflare" / "es_daskuechenhaus_access.py"
+)
 WORKER_SOURCE_PATH = REPO_ROOT / "workers" / "control-api" / "src" / "index.ts"
 WORKER_TEST_PATH = REPO_ROOT / "workers" / "control-api" / "test" / "index.test.ts"
 VITEST_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "vitest.config.ts"
@@ -50,6 +59,52 @@ def test_worker_package_scripts_are_defined() -> None:
         scripts["worker:deploy:dev"]
         == "wrangler deploy --config workers/control-api/wrangler.toml"
     )
+    assert (
+        scripts["dkh-site:typecheck"]
+        == "tsc --noEmit -p workers/es-daskuechenhaus-site/tsconfig.json"
+    )
+    assert (
+        scripts["dkh-site:check"]
+        == "wrangler deploy --dry-run --config workers/es-daskuechenhaus-site/wrangler.toml"
+    )
+
+
+def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
+    config = load_toml(DKH_SITE_WRANGLER_CONFIG_PATH)
+    source = load_text(DKH_SITE_WORKER_SOURCE_PATH)
+
+    assert config["name"] == "es-daskuechenhaus-site"
+    assert config["main"] == "src/index.ts"
+    assert config["workers_dev"] is False
+    assert config["preview_urls"] is False
+    assert config["routes"] == [
+        {
+            "pattern": "es-daskuechenhaus.de/*",
+            "zone_name": "es-daskuechenhaus.de",
+        }
+    ]
+
+    assert 'url.pathname === "/health"' in source
+    assert "Access geschuetzt" in source
+    assert "SECURITY_HEADERS" in source
+    assert "default-src 'none'" in source
+    assert "x-robots-tag" in source
+
+
+def test_es_daskuechenhaus_access_script_requires_explicit_allow_list() -> None:
+    script = load_text(DKH_SITE_ACCESS_SCRIPT_PATH)
+
+    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in script
+    assert "DKH_CLOUDFLARE_ZONE_ID" in script
+    assert "DKH_CLOUDFLARE_API_TOKEN" in script
+    assert "allowed-emails" in script
+    assert "allowed_emails is required when --apply is used" in script
+    assert "100::" in script
+    assert "/dns_records" in script
+    assert "/access/apps" in script
+    assert "mfa_config" in script
+    assert "security_key" in script
+    assert "totp" in script
 
 
 def test_wrangler_config_defines_control_api_bindings() -> None:

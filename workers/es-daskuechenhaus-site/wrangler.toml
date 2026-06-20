@@ -1,0 +1,9 @@
+name = "es-daskuechenhaus-site"
+main = "src/index.ts"
+compatibility_date = "2026-06-20"
+workers_dev = false
+preview_urls = false
+
+routes = [
+  { pattern = "es-daskuechenhaus.de/*", zone_name = "es-daskuechenhaus.de" }
+]
