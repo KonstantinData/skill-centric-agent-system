@@ -1,11 +1,11 @@
 # es-daskuechenhaus.de Protected Site
 
 This runbook describes the protected Cloudflare Worker site for
-`es-daskuechenhaus.de`.
+`es-daskuechenhaus.de` and `www.es-daskuechenhaus.de`.
 
 ## Security Model
 
-- `es-daskuechenhaus.de` is not a public website.
+- `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` are not public websites.
 - Cloudflare Access must protect the hostname before the Worker is deployed.
 - The Access application uses an allow policy for explicit email identities.
 - The deploy workflow refuses production mutation when no allowed email is
@@ -53,8 +53,9 @@ Only run with production mutation after the allowed user list has been reviewed:
 - `apply_deploy`: `true`
 - `confirm_production`: `true`
 
-The workflow configures Cloudflare Access and DNS first, deploys the Worker
-second, and then verifies that anonymous access is blocked.
+The workflow configures Cloudflare Access and DNS for both hostnames first,
+deploys the Worker second, and then verifies that anonymous access is blocked
+on both hostnames.
 
 ## Rollback
 

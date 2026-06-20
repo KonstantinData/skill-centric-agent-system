@@ -34,7 +34,7 @@ jobs:
     environment:
       name: production
     env:
-      HOSTNAME: es-daskuechenhaus.de
+      HOSTNAMES: es-daskuechenhaus.de,www.es-daskuechenhaus.de
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
@@ -98,7 +98,7 @@ jobs:
           mkdir -p es-daskuechenhaus-site-evidence
           {
             printf '# es-daskuechenhaus.de Protected Site Deploy Plan\n\n'
-            printf -- '- Hostname: `%s`\n' "${HOSTNAME}"
+            printf -- '- Hostnames: `%s`\n' "${HOSTNAMES}"
             printf -- '- Apply deploy: `false`\n'
             printf -- '- Worker dry-run: `passed`\n'
             printf -- '- Access policy: requires allowed email addresses before production apply\n'
@@ -117,10 +117,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/cloudflare/es_daskuechenhaus_access.py \
-            --hostname "${HOSTNAME}" \
-            --allowed-emails "${ALLOWED_EMAILS}" \
-            --apply
+          IFS=',' read -r -a hostnames <<< "${HOSTNAMES}"
+          for hostname in "${hostnames[@]}"
+          do
+            hostname="$(echo "${hostname}" | xargs)"
+            if [ -z "${hostname}" ]; then
+              continue
+            fi
+            python scripts/cloudflare/es_daskuechenhaus_access.py \
+              --hostname "${hostname}" \
+              --allowed-emails "${ALLOWED_EMAILS}" \
+              --apply
+          done
 
       - name: Deploy protected site Worker
         if: inputs.apply_deploy == true
@@ -134,19 +142,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          status_code="$(curl -sS -o /tmp/es-dkh-body.html -w '%{http_code}' "https://${HOSTNAME}/")"
-          if [ "${status_code}" = "200" ]; then
-            echo "::error::Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access."
-            exit 1
-          fi
+          IFS=',' read -r -a hostnames <<< "${HOSTNAMES}"
           mkdir -p es-daskuechenhaus-site-evidence
           {
             printf '# es-daskuechenhaus.de Protected Site Deployment Evidence\n\n'
-            printf -- '- Hostname: `%s`\n' "${HOSTNAME}"
+            printf -- '- Hostnames: `%s`\n' "${HOSTNAMES}"
             printf -- '- Worker: `es-daskuechenhaus-site`\n'
             printf -- '- Access app: `configured`\n'
             printf -- '- DNS placeholder: `configured`\n'
-            printf -- '- Anonymous HTTP status: `%s`\n' "${status_code}"
+            for hostname in "${hostnames[@]}"
+            do
+              hostname="$(echo "${hostname}" | xargs)"
+              if [ -z "${hostname}" ]; then
+                continue
+              fi
+              status_code="$(curl -sS -o "/tmp/es-dkh-${hostname}.html" -w '%{http_code}' "https://${hostname}/")"
+              if [ "${status_code}" = "200" ]; then
+                echo "::error::Anonymous access returned HTTP 200 for ${hostname}. Cloudflare Access is not blocking public access." >&2
+                exit 1
+              fi
+              printf -- '- Anonymous HTTP status for `%s`: `%s`\n' "${hostname}" "${status_code}"
+            done
             printf -- '- Health rule: anonymous `200` is not accepted\n'
           } > es-daskuechenhaus-site-evidence/deployment.md
 
