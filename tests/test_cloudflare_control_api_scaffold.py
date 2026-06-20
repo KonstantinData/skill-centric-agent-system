@@ -89,6 +89,8 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     ]
 
     assert 'url.pathname === "/health"' in source
+    assert 'url.pathname === "/index.php"' in source
+    assert 'location' in source
     assert "Access geschuetzt" in source
     assert "SECURITY_HEADERS" in source
     assert "default-src 'none'" in source
