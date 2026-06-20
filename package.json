@@ -9,7 +9,9 @@
     "worker:test": "vitest run --config workers/control-api/vitest.config.ts",
     "worker:types": "wrangler types workers/control-api/src/worker-configuration.d.ts --include-runtime false --config workers/control-api/wrangler.toml",
     "worker:check": "wrangler deploy --dry-run --config workers/control-api/wrangler.toml",
-    "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml"
+    "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml",
+    "dkh-site:typecheck": "tsc --noEmit -p workers/es-daskuechenhaus-site/tsconfig.json",
+    "dkh-site:check": "wrangler deploy --dry-run --config workers/es-daskuechenhaus-site/wrangler.toml"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.17",

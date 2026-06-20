@@ -56,6 +56,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/liquisto-tenant-dns-evidence.md`
 - `docs/runbooks/daskuechenhaus-tenant-onboarding.md`
 - `docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md`
+- `docs/runbooks/es-daskuechenhaus-protected-site.md`
 - `docs/runbooks/liquisto-tenant-admin-bootstrap.md`
 - `docs/runbooks/liquisto-tenant-release-gate.md`
 - `docs/runbooks/liquisto-tenant-rollback-deprovisioning.md`

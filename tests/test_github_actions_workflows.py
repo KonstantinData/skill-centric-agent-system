@@ -29,6 +29,9 @@ TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH = (
 TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-evidence.yml"
 )
+ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
+)
 DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME = (
@@ -74,6 +77,10 @@ def load_tenant_admin_bootstrap_workflow() -> str:
 
 def load_tenant_cloudflare_evidence_workflow() -> str:
     return TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_es_daskuechenhaus_site_deploy_workflow() -> str:
+    return ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -469,6 +476,32 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
     assert "Origin record content: not printed" in workflow
     assert "tenant-cloudflare-evidence/evidence.md" in workflow
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
+
+
+def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
+    assert ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_es_daskuechenhaus_site_deploy_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "allowed_emails:" in workflow
+    assert "apply_deploy:" in workflow
+    assert "confirm_production:" in workflow
+    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "DKH_CLOUDFLARE_ZONE_ID" in workflow
+    assert "DKH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "secrets.CLOUDFLARE_API_TOKEN" not in workflow
+    assert "confirm_production must be true when apply_deploy=true" in workflow
+    assert "allowed_emails is required when apply_deploy=true" in workflow
+    assert "scripts/cloudflare/es_daskuechenhaus_access.py" in workflow
+    assert "npm run dkh-site:typecheck" in workflow
+    assert "npm run dkh-site:check" in workflow
+    assert "npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml" in workflow
+    assert (
+        "Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access."
+        in workflow
+    )
+    assert "es-daskuechenhaus-site-deploy-plan" in workflow
+    assert "es-daskuechenhaus-site-deployment-evidence" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

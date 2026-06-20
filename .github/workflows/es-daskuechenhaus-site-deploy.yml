@@ -1,0 +1,158 @@
+name: es-daskuechenhaus.de Protected Site Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      allowed_emails:
+        description: Comma-separated email addresses allowed through Cloudflare Access
+        required: false
+        type: string
+        default: ""
+      apply_deploy:
+        description: Apply Access, DNS, and Worker deployment
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_deploy=true
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-site-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and optionally deploy protected site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    env:
+      HOSTNAME: es-daskuechenhaus.de
+      APPLY_DEPLOY: ${{ inputs.apply_deploy }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
+      DKH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
+      DKH_CLOUDFLARE_ZONE_ID: ${{ secrets.DKH_CLOUDFLARE_ZONE_ID }}
+      DKH_CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Validate protected deploy inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${DKH_CLOUDFLARE_API_TOKEN}"
+          echo "::add-mask::${ALLOWED_EMAILS}"
+          missing=0
+          for name in DKH_CLOUDFLARE_ACCOUNT_ID DKH_CLOUDFLARE_ZONE_ID DKH_CLOUDFLARE_API_TOKEN
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required GitHub secret: ${name}"
+              missing=1
+            fi
+          done
+          if [ "${APPLY_DEPLOY}" = "true" ]; then
+            if [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+              echo "::error::confirm_production must be true when apply_deploy=true."
+              missing=1
+            fi
+            if [ -z "${ALLOWED_EMAILS// }" ]; then
+              echo "::error::allowed_emails is required when apply_deploy=true."
+              missing=1
+            fi
+          fi
+          exit "${missing}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check protected site Worker
+        run: npm run dkh-site:typecheck
+
+      - name: Dry-run protected site Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+        run: npm run dkh-site:check
+
+      - name: Plan protected Access and DNS changes
+        if: inputs.apply_deploy == false
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p es-daskuechenhaus-site-evidence
+          {
+            printf '# es-daskuechenhaus.de Protected Site Deploy Plan\n\n'
+            printf -- '- Hostname: `%s`\n' "${HOSTNAME}"
+            printf -- '- Apply deploy: `false`\n'
+            printf -- '- Worker dry-run: `passed`\n'
+            printf -- '- Access policy: requires allowed email addresses before production apply\n'
+            printf -- '- Remote mutation: none\n'
+          } > es-daskuechenhaus-site-evidence/deploy-plan.md
+
+      - name: Upload deploy plan
+        if: inputs.apply_deploy == false
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-site-deploy-plan
+          path: es-daskuechenhaus-site-evidence/deploy-plan.md
+
+      - name: Configure Cloudflare Access and DNS
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/cloudflare/es_daskuechenhaus_access.py \
+            --hostname "${HOSTNAME}" \
+            --allowed-emails "${ALLOWED_EMAILS}" \
+            --apply
+
+      - name: Deploy protected site Worker
+        if: inputs.apply_deploy == true
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml
+
+      - name: Verify anonymous access is blocked
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          status_code="$(curl -sS -o /tmp/es-dkh-body.html -w '%{http_code}' "https://${HOSTNAME}/")"
+          if [ "${status_code}" = "200" ]; then
+            echo "::error::Anonymous access returned HTTP 200. Cloudflare Access is not blocking public access."
+            exit 1
+          fi
+          mkdir -p es-daskuechenhaus-site-evidence
+          {
+            printf '# es-daskuechenhaus.de Protected Site Deployment Evidence\n\n'
+            printf -- '- Hostname: `%s`\n' "${HOSTNAME}"
+            printf -- '- Worker: `es-daskuechenhaus-site`\n'
+            printf -- '- Access app: `configured`\n'
+            printf -- '- DNS placeholder: `configured`\n'
+            printf -- '- Anonymous HTTP status: `%s`\n' "${status_code}"
+            printf -- '- Health rule: anonymous `200` is not accepted\n'
+          } > es-daskuechenhaus-site-evidence/deployment.md
+
+      - name: Upload deployment evidence
+        if: inputs.apply_deploy == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-site-deployment-evidence
+          path: es-daskuechenhaus-site-evidence/deployment.md
