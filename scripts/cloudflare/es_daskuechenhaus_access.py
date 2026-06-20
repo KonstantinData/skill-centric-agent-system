@@ -142,7 +142,7 @@ def access_app_payload(hostname: str) -> dict[str, Any]:
         "domain": hostname,
         "type": "self_hosted",
         "session_duration": "8h",
-        "app_launcher_visible": False,
+        "app_launcher_visible": True,
         "auto_redirect_to_identity": False,
         "enable_binding_cookie": True,
         "http_only_cookie_attribute": True,

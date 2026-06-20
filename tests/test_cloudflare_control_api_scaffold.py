@@ -105,6 +105,7 @@ def test_es_daskuechenhaus_access_script_requires_explicit_allow_list() -> None:
     assert "allowed_emails is required when --apply is used" in script
     assert "PRIMARY_HOSTNAME" in script
     assert "access_app_name" in script
+    assert '"app_launcher_visible": True' in script
     assert "100::" in script
     assert "/dns_records" in script
     assert "/access/apps" in script
