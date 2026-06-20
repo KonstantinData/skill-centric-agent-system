@@ -73,8 +73,30 @@ scripts/hetzner/provision_tenant_database.sh
 ```
 
 This step creates only the database, owner/application role, and empty
-`app` and `audit` schemas. The German Daskuechenhaus customer-case schema is
-a follow-up migration.
+`app` and `audit` schemas. Apply the tenant migrations in
+`migrations/hetzner/tenants/daskuechenhaus/` afterwards.
+
+The customer database foundation is versioned in
+`0005_customer_database.sql`. It keeps `app.customer_cases` as the
+customer-folder/case anchor and adds normalized customer tables:
+
+- `app.customers` for customer master data, tax/invoice flags, primary contact
+  channels, ownership, and tags.
+- `app.customer_addresses` for billing, delivery, installation, and other
+  addresses.
+- `app.customer_contacts` for additional contacts under a customer.
+- `app.customer_case_status_phases` for phases 1-10 inside the customer
+  folder.
+- `app.customer_case_participants` for the customer/contact roles on each case.
+- `app.customer_case_project_profiles` for kitchen-project details such as
+  budget, room type, measurement date, and target installation date.
+- `app.customer_case_notes`, `app.customer_case_documents`, and
+  `app.customer_case_audit_events` for the documented customer file.
+
+Customer names and customer emails are deliberately not unique. The system must
+allow different customers with the same name and must also allow operational
+duplicates where one real person appears in different business roles. Only a
+non-empty `customer_number`, when present, is unique.
 
 ## UI Branding
 
