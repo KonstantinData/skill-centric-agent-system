@@ -250,6 +250,60 @@ function adminApiUrl(env: Env, path: string): string {
   return `${env.DKH_ADMIN_API_BASE_URL.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
+function parseDate(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value.replace(" ", "T"));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateTime(value: string | null): string {
+  const parsed = parseDate(value);
+  if (!parsed) {
+    return value ?? "";
+  }
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function truncateText(value: string | null | undefined, maxLength: number): string {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`;
+}
+
+function priorityLabel(priority: string): string {
+  const labels: Record<string, string> = {
+    low: "Niedrig",
+    normal: "Normal",
+    high: "Hoch",
+    urgent: "Dringend",
+  };
+  return labels[priority] ?? priority;
+}
+
+function priorityClass(priority: string): string {
+  if (priority === "urgent") {
+    return " danger";
+  }
+  if (priority === "high") {
+    return " warning";
+  }
+  return "";
+}
+
+function isOverdue(value: string | null): boolean {
+  const due = parseDate(value);
+  return Boolean(due && due.getTime() < Date.now());
+}
+
 async function fetchAdminState(env: Env, request: Request): Promise<AdminState> {
   const response = await fetch(adminApiUrl(env, "/admin/state"), {
     headers: {
@@ -332,7 +386,10 @@ function renderHome(state: OverviewState): string {
   const currentUser = state.current_user.display_name || state.current_user.email || "Angemeldeter Nutzer";
   const openTasks = state.tasks.length;
   const unassignedEmails = state.emails.filter((email) => email.is_unassigned).length;
+  const assignedEmails = state.emails.length - unassignedEmails;
+  const overdueTasks = state.tasks.filter((task) => isOverdue(task.due_at)).length;
   const dueTasks = state.tasks.filter((task) => task.due_at).length;
+  const priorityTasks = state.tasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -345,13 +402,17 @@ function renderHome(state: OverviewState): string {
       --text: #111111;
       --muted: #4f5b4a;
       --line: #d8dfd4;
+      --line-strong: #c1cbb9;
       --green: #76b726;
       --green-dark: #34591b;
       --surface: #ffffff;
       --band: #f4f7f1;
       --soft: #eef6e8;
       --warning: #9a5b00;
+      --warning-bg: #fff6df;
       --danger: #9b1c1c;
+      --danger-bg: #fff0f0;
+      --shadow: 0 10px 24px rgba(24, 38, 18, 0.08);
     }
     * { box-sizing: border-box; }
     body {
@@ -363,18 +424,18 @@ function renderHome(state: OverviewState): string {
     .shell {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: minmax(240px, 320px) 1fr;
+      grid-template-columns: 252px minmax(0, 1fr);
     }
     aside {
       background: var(--surface);
       border-right: 1px solid var(--line);
-      padding: 28px 24px;
+      padding: 24px 18px;
     }
     svg.logo {
       display: block;
-      width: min(100%, 240px);
+      width: min(100%, 208px);
       height: auto;
-      margin-bottom: 36px;
+      margin-bottom: 28px;
     }
     nav {
       display: grid;
@@ -386,20 +447,24 @@ function renderHome(state: OverviewState): string {
       padding: 10px 12px;
       border-left: 3px solid transparent;
     }
+    nav a:hover {
+      background: #f6f8f4;
+    }
     nav a[aria-current="page"] {
       border-left-color: var(--green);
       background: var(--soft);
       font-weight: 700;
     }
     main {
-      padding: 28px 32px 42px;
+      padding: 22px 28px 42px;
+      min-width: 0;
     }
     .topline {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 18px;
-      margin-bottom: 24px;
+      margin-bottom: 14px;
     }
     .badge {
       border: 1px solid #abc98f;
@@ -411,47 +476,79 @@ function renderHome(state: OverviewState): string {
     }
     h1 {
       margin: 0;
-      font-size: clamp(2rem, 3vw, 3.2rem);
-      line-height: 1;
+      font-size: 1.8rem;
+      line-height: 1.1;
       letter-spacing: 0;
     }
     .lede {
-      max-width: 760px;
+      max-width: 920px;
       color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.55;
-      margin: 14px 0 28px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      margin: 8px 0 0;
     }
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(130px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 12px;
+      margin-bottom: 18px;
     }
-    .metric-card,
-    section,
-    .task-form {
+    .metric-card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 14px;
+      padding: 12px 14px;
+      min-height: 78px;
+      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
     }
-    .workgrid {
+    .metric-card.alert {
+      border-color: #e2b8b8;
+      background: var(--danger-bg);
+    }
+    .metric-card.warning {
+      border-color: #e0c48d;
+      background: var(--warning-bg);
+    }
+    .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
-      gap: 14px;
+      grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+      gap: 22px;
       align-items: start;
     }
-    .stack { display: grid; gap: 14px; }
+    .stack { display: grid; gap: 20px; min-width: 0; }
+    .workspace-section {
+      min-width: 0;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-title {
+      display: grid;
+      gap: 2px;
+    }
+    .section-kicker {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
     h2 {
-      margin: 0 0 10px;
+      margin: 0;
       font-size: 1rem;
       letter-spacing: 0;
     }
     h3 {
       margin: 0;
-      font-size: 0.96rem;
+      font-size: 0.95rem;
       letter-spacing: 0;
+      line-height: 1.25;
     }
     p, li, .muted {
       color: var(--muted);
@@ -468,15 +565,30 @@ function renderHome(state: OverviewState): string {
       font-size: 0.82rem;
       margin-top: 4px;
     }
+    .metric-sub {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 6px;
+    }
     .list {
       display: grid;
-      gap: 9px;
+      gap: 8px;
     }
     .item {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 10px;
+      padding: 11px 12px;
       background: #ffffff;
+      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
+    }
+    .item.compact {
+      padding: 9px 10px;
+    }
+    .item.urgent {
+      border-left: 4px solid var(--danger);
+    }
+    .item.high {
+      border-left: 4px solid var(--warning);
     }
     .item-top {
       display: flex;
@@ -497,16 +609,48 @@ function renderHome(state: OverviewState): string {
     }
     .pill.warning {
       border-color: #e0b66b;
-      background: #fff6df;
+      background: var(--warning-bg);
       color: var(--warning);
+    }
+    .pill.danger {
+      border-color: #e1a1a1;
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .count-pill {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .preview {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.38;
     }
     .meta {
       display: flex;
       flex-wrap: wrap;
       gap: 7px;
-      margin-top: 8px;
+      margin-top: 7px;
       color: var(--muted);
-      font-size: 0.84rem;
+      font-size: 0.8rem;
+    }
+    .meta span {
+      min-width: 0;
+    }
+    .split-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .task-form {
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
     }
     form {
       display: grid;
@@ -578,12 +722,19 @@ function renderHome(state: OverviewState): string {
       color: var(--muted);
       background: #fbfcfa;
     }
+    .more-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: right;
+    }
     @media (max-width: 780px) {
       .shell { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       main { padding: 24px 18px; }
       .metrics,
-      .workgrid,
+      .workspace,
+      .split-list,
       .form-grid { grid-template-columns: 1fr; }
       .topline { align-items: flex-start; flex-direction: column; }
     }
@@ -604,48 +755,89 @@ function renderHome(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>Uebersicht</h1>
-          <p class="lede">Arbeitszentrale fuer ${escapeHtml(currentUser)}: Aufgaben, E-Mails, Termine, Neuigkeiten, Ziele und aktive Vertretungen.</p>
+          <p class="lede">${escapeHtml(currentUser)} sieht hier die persoenliche Arbeitslage: Aufgaben, E-Mail-Eingaenge, Termine und wichtige Hinweise.</p>
         </div>
         <span class="badge">${state.current_user.is_admin ? "Admin" : "Mitarbeiter"}</span>
       </div>
       <div class="metrics">
-        <div class="metric-card"><div class="metric">${openTasks}</div><div class="metric-label">offene Aufgaben</div></div>
-        <div class="metric-card"><div class="metric">${dueTasks}</div><div class="metric-label">mit Faelligkeit</div></div>
-        <div class="metric-card"><div class="metric">${unassignedEmails}</div><div class="metric-label">nicht zugeordnete E-Mails</div></div>
-        <div class="metric-card"><div class="metric">${state.appointments.length}</div><div class="metric-label">anstehende Termine</div></div>
+        <div class="metric-card${overdueTasks > 0 ? " alert" : ""}"><div class="metric">${openTasks}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${priorityTasks} priorisiert</div></div>
+        <div class="metric-card"><div class="metric">${dueTasks}</div><div class="metric-label">mit Termin</div><div class="metric-sub">faellige Arbeit sichtbar halten</div></div>
+        <div class="metric-card${unassignedEmails > 0 ? " warning" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mails im Eingang</div><div class="metric-sub">${unassignedEmails} zuordnen · ${assignedEmails} verknuepft</div></div>
+        <div class="metric-card"><div class="metric">${state.appointments.length}</div><div class="metric-label">anstehende Termine</div><div class="metric-sub">Kalender und Vertretung</div></div>
       </div>
-      <div class="workgrid">
+      <div class="workspace">
         <div class="stack">
-          <section>
-            <h2>Offene Aufgaben</h2>
+          <section class="workspace-section">
+            <div class="section-head">
+              <div class="section-title">
+                <span class="section-kicker">Heute bearbeiten</span>
+                <h2>Offene Aufgaben</h2>
+              </div>
+              <span class="count-pill">${openTasks} Eintraege</span>
+            </div>
             ${renderOverviewTasks(state)}
           </section>
-          <section>
-            <h2>E-Mail Eingange</h2>
-            ${renderOverviewEmails(state)}
-          </section>
-          <section>
-            <h2>Anstehende Termine</h2>
-            ${renderOverviewAppointments(state)}
+          <section class="workspace-section task-form" id="task-create">
+            <div class="section-head">
+              <div class="section-title">
+                <span class="section-kicker">Schnellanlage</span>
+                <h2>Aufgabe anlegen</h2>
+              </div>
+            </div>
+            ${renderTaskCreateForm(state)}
           </section>
         </div>
         <div class="stack">
-          <section class="task-form">
-            <h2>Aufgabe anlegen</h2>
-            ${renderTaskCreateForm(state)}
+          <section class="workspace-section">
+            <div class="section-head">
+              <div class="section-title">
+                <span class="section-kicker">Kommunikation</span>
+                <h2>E-Mail Eingange</h2>
+              </div>
+              <span class="count-pill">${state.emails.length} Nachrichten</span>
+            </div>
+            ${renderOverviewEmails(state)}
           </section>
-          <section>
-            <h2>Neuigkeiten</h2>
-            ${renderOverviewNews(state)}
-          </section>
-          <section>
-            <h2>Erreichte Ziele</h2>
-            ${renderOverviewGoals(state)}
-          </section>
-          <section>
-            <h2>Aktive Vertretungen</h2>
-            ${renderOverviewDelegations(state)}
-          </section>
+          <div class="split-list">
+            <section class="workspace-section">
+              <div class="section-head">
+                <div class="section-title">
+                  <span class="section-kicker">Kalender</span>
+                  <h2>Anstehende Termine</h2>
+                </div>
+              </div>
+              ${renderOverviewAppointments(state)}
+            </section>
+            <section class="workspace-section">
+              <div class="section-head">
+                <div class="section-title">
+                  <span class="section-kicker">Vertretung</span>
+                  <h2>Aktive Vertretungen</h2>
+                </div>
+              </div>
+              ${renderOverviewDelegations(state)}
+            </section>
+          </div>
+          <div class="split-list">
+            <section class="workspace-section">
+              <div class="section-head">
+                <div class="section-title">
+                  <span class="section-kicker">Information</span>
+                  <h2>Neuigkeiten</h2>
+                </div>
+              </div>
+              ${renderOverviewNews(state)}
+            </section>
+            <section class="workspace-section">
+              <div class="section-head">
+                <div class="section-title">
+                  <span class="section-kicker">Fortschritt</span>
+                  <h2>Erreichte Ziele</h2>
+                </div>
+              </div>
+              ${renderOverviewGoals(state)}
+            </section>
+          </div>
         </div>
       </div>
     </main>
@@ -658,34 +850,54 @@ function renderOverviewTasks(state: OverviewState): string {
   if (state.tasks.length === 0) {
     return '<div class="empty">Keine offenen Aufgaben in deiner aktuellen Ansicht.</div>';
   }
-  return `<div class="list">${state.tasks
+  const visibleTasks = [...state.tasks]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const rightTime = parseDate(right.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return leftTime - rightTime;
+    })
+    .slice(0, 8);
+  const hiddenCount = Math.max(0, state.tasks.length - visibleTasks.length);
+  return `<div class="list">${visibleTasks
     .map((task) => {
       const assigned = task.assigned_users.map((user) => user.name).join(", ") || "nicht zugeordnet";
       const caseLabel = task.case
         ? `${task.case.case_number ? `${task.case.case_number} · ` : ""}${task.case.customer_display_name}`
         : "ohne Vorgang";
-      return `<article class="item">
+      const dueLabel = task.due_at ? formatDateTime(task.due_at) : "";
+      const isLate = isOverdue(task.due_at);
+      const itemClass = task.priority === "urgent" ? " urgent" : task.priority === "high" ? " high" : "";
+      return `<article class="item${itemClass}">
         <div class="item-top">
-          <h3>${escapeHtml(task.title)}</h3>
-          <span class="pill">${escapeHtml(task.status_name)}</span>
+          <h3>${escapeHtml(truncateText(task.title, 96))}</h3>
+          <span class="pill${priorityClass(task.priority)}">${escapeHtml(priorityLabel(task.priority))}</span>
         </div>
-        ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
+        ${task.description ? `<p class="preview">${escapeHtml(truncateText(task.description, 170))}</p>` : ""}
         <div class="meta">
+          <span>${escapeHtml(task.status_name)}</span>
           <span>${escapeHtml(assigned)}</span>
           <span>${escapeHtml(caseLabel)}</span>
-          ${task.due_at ? `<span>Faellig: ${escapeHtml(task.due_at)}</span>` : ""}
+          ${dueLabel ? `<span>${isLate ? "Ueberfaellig" : "Faellig"}: ${escapeHtml(dueLabel)}</span>` : ""}
           ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlage(n)</span>` : ""}
         </div>
       </article>`;
     })
-    .join("")}</div>`;
+    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere Aufgabe(n)</div>` : ""}`;
 }
 
 function renderOverviewEmails(state: OverviewState): string {
   if (state.emails.length === 0) {
     return '<div class="empty">Keine E-Mail-Eingaenge in deiner aktuellen Ansicht.</div>';
   }
-  return `<div class="list">${state.emails
+  const visibleEmails = [...state.emails]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.received_at)?.getTime() ?? 0;
+      const rightTime = parseDate(right.received_at)?.getTime() ?? 0;
+      return rightTime - leftTime;
+    })
+    .slice(0, 10);
+  const hiddenCount = Math.max(0, state.emails.length - visibleEmails.length);
+  return `<div class="list">${visibleEmails
     .map((email) => {
       const sender =
         email.participants.find((participant) => participant.type === "from") ??
@@ -693,21 +905,21 @@ function renderOverviewEmails(state: OverviewState): string {
       const caseLabel =
         email.cases.map((entry) => `${entry.case_number ? `${entry.case_number} · ` : ""}${entry.customer_display_name}`).join(", ") ||
         "";
-      return `<article class="item">
+      return `<article class="item compact">
         <div class="item-top">
-          <h3>${escapeHtml(email.subject)}</h3>
+          <h3>${escapeHtml(truncateText(email.subject || "(ohne Betreff)", 88))}</h3>
           <span class="pill${email.is_unassigned ? " warning" : ""}">${email.is_unassigned ? "zuordnen" : "zugeordnet"}</span>
         </div>
         <div class="meta">
           ${sender ? `<span>${escapeHtml(sender.display_name || sender.email_address)}</span>` : ""}
-          ${email.received_at ? `<span>${escapeHtml(email.received_at)}</span>` : ""}
+          ${email.received_at ? `<span>${escapeHtml(formatDateTime(email.received_at))}</span>` : ""}
           ${caseLabel ? `<span>${escapeHtml(caseLabel)}</span>` : ""}
         </div>
-        ${email.snippet ? `<p>${escapeHtml(email.snippet)}</p>` : ""}
+        ${email.snippet ? `<p class="preview">${escapeHtml(truncateText(email.snippet, 150))}</p>` : ""}
         ${email.is_unassigned ? renderEmailAssignmentForm(email.id) : ""}
       </article>`;
     })
-    .join("")}</div>`;
+    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere E-Mail(s)</div>` : ""}`;
 }
 
 function renderEmailAssignmentForm(emailMessageId: number): string {
@@ -731,10 +943,10 @@ function renderOverviewAppointments(state: OverviewState): string {
   }
   return `<div class="list">${state.appointments
     .map(
-      (appointment) => `<article class="item">
+      (appointment) => `<article class="item compact">
         <div class="item-top">
-          <h3>${escapeHtml(appointment.title)}</h3>
-          <span class="pill">${escapeHtml(appointment.starts_at)}</span>
+          <h3>${escapeHtml(truncateText(appointment.title, 70))}</h3>
+          <span class="pill">${escapeHtml(formatDateTime(appointment.starts_at))}</span>
         </div>
         <div class="meta">
           ${appointment.location ? `<span>${escapeHtml(appointment.location)}</span>` : ""}
@@ -751,12 +963,12 @@ function renderOverviewNews(state: OverviewState): string {
   }
   return `<div class="list">${state.news_items
     .map(
-      (item) => `<article class="item">
+      (item) => `<article class="item compact">
         <div class="item-top">
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3>${escapeHtml(truncateText(item.title, 70))}</h3>
           <span class="pill">${escapeHtml(item.category)}</span>
         </div>
-        ${item.body ? `<p>${escapeHtml(item.body)}</p>` : ""}
+        ${item.body ? `<p class="preview">${escapeHtml(truncateText(item.body, 130))}</p>` : ""}
       </article>`,
     )
     .join("")}</div>`;
@@ -768,13 +980,13 @@ function renderOverviewGoals(state: OverviewState): string {
   }
   return `<div class="list">${state.goal_events
     .map(
-      (event) => `<article class="item">
+      (event) => `<article class="item compact">
         <div class="item-top">
-          <h3>${escapeHtml(event.goal)}</h3>
-          <span class="pill">${escapeHtml(event.achieved_at)}</span>
+          <h3>${escapeHtml(truncateText(event.goal, 70))}</h3>
+          <span class="pill">${escapeHtml(formatDateTime(event.achieved_at))}</span>
         </div>
         <div class="meta">${event.achieved_by ? `<span>${escapeHtml(event.achieved_by)}</span>` : ""}</div>
-        ${event.note ? `<p>${escapeHtml(event.note)}</p>` : ""}
+        ${event.note ? `<p class="preview">${escapeHtml(truncateText(event.note, 130))}</p>` : ""}
       </article>`,
     )
     .join("")}</div>`;
@@ -786,14 +998,14 @@ function renderOverviewDelegations(state: OverviewState): string {
   }
   return `<div class="list">${state.delegations
     .map(
-      (delegation) => `<article class="item">
+      (delegation) => `<article class="item compact">
         <div class="item-top">
-          <h3>${escapeHtml(delegation.represented_user)}</h3>
+          <h3>${escapeHtml(truncateText(delegation.represented_user, 70))}</h3>
           <span class="pill">${escapeHtml(delegation.scope)}</span>
         </div>
         <div class="meta">
-          <span>${escapeHtml(delegation.starts_at)}</span>
-          <span>${escapeHtml(delegation.ends_at)}</span>
+          <span>${escapeHtml(formatDateTime(delegation.starts_at))}</span>
+          <span>${escapeHtml(formatDateTime(delegation.ends_at))}</span>
         </div>
       </article>`,
     )
