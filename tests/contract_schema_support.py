@@ -357,6 +357,11 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
 def assert_tenant_registry_references_are_valid(tenant: dict[str, Any]) -> None:
     tenant_id = tenant["tenant_id"]
     data_sources = {source["id"]: source for source in tenant["data_sources"]}
+    role_capabilities = {
+        capability
+        for role in tenant["role_bundles"]
+        for capability in role["capability_grants"]
+    }
 
     assert tenant["area_id"], "tenant area_id must be set"
     assert tenant["memory"]["area_brain_id"].endswith(tenant_id), (
@@ -379,6 +384,47 @@ def assert_tenant_registry_references_are_valid(tenant: dict[str, Any]) -> None:
             source = data_sources.get(grant["data_source_id"])
             assert source, f"role {role['id']} references missing data source"
             assert source["tenant_id"] == role["tenant_id"]
+
+    ui_profile = tenant.get("ui_profile")
+    if not ui_profile:
+        return
+
+    assert ui_profile["experience_standard"] == "sota-2026-tenant-crm"
+    assert ui_profile["brand_assets"]["asset_scope"] == "tenant-owned"
+    assert ui_profile["brand_assets"]["logo_path"] == ui_profile["logo_path"]
+
+    workspace_areas = {area["id"]: area for area in ui_profile["workspace_areas"]}
+    workspace_routes = {area["route"] for area in ui_profile["workspace_areas"]}
+    navigation = ui_profile["navigation"]
+    navigation_ids = set(navigation["primary_area_ids"]) | set(navigation["admin_area_ids"])
+    missing_navigation_ids = navigation_ids - set(workspace_areas)
+    assert not missing_navigation_ids, (
+        "tenant UI navigation references missing workspace areas: "
+        + ", ".join(sorted(missing_navigation_ids))
+    )
+
+    for area_id in navigation["admin_area_ids"]:
+        assert workspace_areas[area_id]["admin_only"] is True, (
+            f"admin navigation area is not admin-only: {area_id}"
+        )
+
+    command_center = ui_profile["command_center"]
+    assert command_center["enabled"] is True
+    assert "scas-actions" in command_center["surfaces"]
+    assert command_center["default_route"] == "/" or (
+        command_center["default_route"] in workspace_routes
+    ), f"command center default route is not a tenant workspace: {command_center['default_route']}"
+
+    terminology = ui_profile["terminology"]
+    for required_term in ("customer", "case", "task", "email", "cockpit"):
+        assert required_term in terminology, f"missing tenant terminology: {required_term}"
+
+    for skill_pack in ui_profile["scas_skill_packs"]:
+        missing_capabilities = set(skill_pack["required_capabilities"]) - role_capabilities
+        assert not missing_capabilities, (
+            f"skill pack {skill_pack['id']} references ungranted capabilities: "
+            + ", ".join(sorted(missing_capabilities))
+        )
 
 
 def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:

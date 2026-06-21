@@ -219,3 +219,33 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
         "research",
         "tenant-admin",
     ]
+
+
+def test_tenant_ui_profile_rejects_unknown_navigation_area(
+    tenant_registry_schema: dict[str, Any],
+) -> None:
+    daskuechenhaus = load_json(
+        REPO_ROOT / "examples" / "tenants" / "daskuechenhaus.json"
+    )
+    daskuechenhaus["ui_profile"]["navigation"]["primary_area_ids"].append(
+        "foreign-area"
+    )
+
+    assert_valid(tenant_registry_schema, daskuechenhaus)
+    with pytest.raises(AssertionError, match="missing workspace areas"):
+        assert_tenant_registry_references_are_valid(daskuechenhaus)
+
+
+def test_tenant_ui_profile_rejects_ungranted_skill_pack_capability(
+    tenant_registry_schema: dict[str, Any],
+) -> None:
+    daskuechenhaus = load_json(
+        REPO_ROOT / "examples" / "tenants" / "daskuechenhaus.json"
+    )
+    daskuechenhaus["ui_profile"]["scas_skill_packs"][0][
+        "required_capabilities"
+    ].append("foreign-capability")
+
+    assert_valid(tenant_registry_schema, daskuechenhaus)
+    with pytest.raises(AssertionError, match="ungranted capabilities"):
+        assert_tenant_registry_references_are_valid(daskuechenhaus)
