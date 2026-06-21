@@ -643,10 +643,6 @@ function renderCommandCenter(
       <a href="/kunden.php">Vorgaenge <span>${metrics.activeCases} aktiv</span></a>
       ${currentUser.is_admin ? '<a href="/admin.php?modal=users">Team <span>Admin</span></a>' : ""}
     </div>
-    <div class="command-scas">
-      <strong>SCAS</strong>
-      <span>Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung</span>
-    </div>
   </section>`;
 }
 
@@ -685,7 +681,7 @@ function renderCockpitEmails(state: OverviewState): string {
       const fit = email.suggestions[0]?.case;
       const assignment = email.is_unassigned
         ? fit
-          ? `SCAS: wahrscheinlich ${fit.case_number ? `${fit.case_number} · ` : ""}${fit.customer_display_name}`
+          ? `Vorschlag: wahrscheinlich ${fit.case_number ? `${fit.case_number} · ` : ""}${fit.customer_display_name}`
           : "Kein Treffer: Vorgang suchen und bestaetigen"
         : email.cases.map((entry) => entry.customer_display_name).join(", ") || "zugeordnet";
       return `<a href="/emails.php">${escapeHtml(email.subject || "(ohne Betreff)")}</a><span>${escapeHtml(sender?.display_name || sender?.email_address || "Unbekannt")} · ${escapeHtml(assignment)}</span>`;
@@ -772,33 +768,6 @@ function renderCustomerFocus(state: OverviewState): string {
   </div>`;
 }
 
-function renderScasReviewQueue(state: OverviewState): string {
-  const suggestions = state.emails
-    .filter((email) => email.is_unassigned && email.suggestions.length > 0)
-    .slice(0, 6);
-  if (suggestions.length === 0) {
-    return '<div class="empty">Keine SCAS-Vorschlaege warten auf Freigabe.</div>';
-  }
-  return `<div class="review-list">${suggestions
-    .map((email) => {
-      const suggestion = email.suggestions[0];
-      const suggestedCase = suggestion?.case;
-      const confidence = Math.round(Number(suggestion?.confidence ?? 0) * 100);
-      const target = suggestedCase
-        ? `${suggestedCase.case_number ? `${suggestedCase.case_number} · ` : ""}${suggestedCase.customer_display_name}`
-        : "kein Vorgang";
-      return `<article class="review-row">
-        <div>
-          <span class="section-kicker">Freigabe erforderlich</span>
-          <h3>${escapeHtml(truncateText(email.subject || "(ohne Betreff)", 86))}</h3>
-          <p>${escapeHtml(target)} · ${confidence}% · ${escapeHtml(truncateText(suggestion?.reason ?? "SCAS-Vorschlag pruefen.", 120))}</p>
-        </div>
-        <a class="ui-button secondary" href="/emails.php">Pruefen</a>
-      </article>`;
-    })
-    .join("")}</div>`;
-}
-
 function renderAuditTrail(state: OverviewState): string {
   const events = (state.communication_events ?? []).slice(0, 8);
   if (events.length === 0) {
@@ -826,7 +795,7 @@ function renderHome(state: OverviewState): string {
   const urgentTasks = state.tasks.filter((task) => task.priority === "urgent").length;
   const todayTasks = state.tasks.filter((task) => isToday(task.due_at)).length;
   const todayAppointments = state.appointments.filter((appointment) => isToday(appointment.starts_at)).length;
-  const unresolvedSuggestions = state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length;
+  const emailsWithSuggestions = state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length;
   const hasRed = overdueTasks > 0 || urgentTasks > 0 || tasksWithoutAssignee > 0;
   const hasYellow = unassignedEmails > 0 || state.customer_cases.length === 0 || todayTasks > 0 || todayAppointments > 0;
   const overall = hasRed ? "Sofort handeln" : hasYellow ? "Heute steuern" : "Stabil";
@@ -850,7 +819,7 @@ function renderHome(state: OverviewState): string {
           urgency: email.suggestions.length > 0 ? "warning" as const : "normal" as const,
           label: "E-Mail",
           title: email.subject || "(ohne Betreff)",
-          meta: `${sender?.display_name || sender?.email_address || "Unbekannt"} · ${fit ? `SCAS-Vorschlag: ${fit.customer_display_name}` : "Vorgang manuell suchen"}`,
+          meta: `${sender?.display_name || sender?.email_address || "Unbekannt"} · ${fit ? `Vorschlag: ${fit.customer_display_name}` : "Vorgang manuell suchen"}`,
           href: "/emails.php",
           action: "zuordnen",
         };
@@ -954,14 +923,13 @@ function renderHome(state: OverviewState): string {
     }
     .command-center {
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr) minmax(220px, 0.55fr);
+      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
       gap: 10px;
       align-items: stretch;
       margin: 14px 0 18px;
     }
     .command-search,
-    .command-actions,
-    .command-scas {
+    .command-actions {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -974,8 +942,7 @@ function renderHome(state: OverviewState): string {
       align-items: center;
       padding: 8px;
     }
-    .command-search label,
-    .command-scas strong {
+    .command-search label {
       color: var(--green-dark);
       font-size: 0.78rem;
       font-weight: 900;
@@ -1017,16 +984,10 @@ function renderHome(state: OverviewState): string {
     .command-actions a:hover {
       background: var(--soft);
     }
-    .command-actions span,
-    .command-scas span {
+    .command-actions span {
       color: var(--muted);
       font-size: 0.78rem;
       line-height: 1.35;
-    }
-    .command-scas {
-      display: grid;
-      gap: 2px;
-      padding: 9px 10px;
     }
     .status-strip {
       display: grid;
@@ -1205,30 +1166,6 @@ function renderHome(state: OverviewState): string {
       font-weight: 900;
       text-transform: uppercase;
     }
-    .review-list {
-      display: grid;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .review-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px;
-      background: #fbfcfa;
-    }
-    .review-row h3,
-    .review-row p {
-      margin: 3px 0 0;
-    }
-    .review-row p {
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.4;
-    }
     .audit-list {
       display: grid;
       gap: 0;
@@ -1388,7 +1325,6 @@ function renderHome(state: OverviewState): string {
       .status-strip,
       .command-center,
       .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .command-scas { grid-column: 1 / -1; }
       .panel.wide { grid-column: auto; }
     }
     @media (max-width: 780px) {
@@ -1420,7 +1356,7 @@ function renderHome(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>CRM Steuerung</h1>
-          <p class="lede">${escapeHtml(currentUser)} sieht nur entscheidungsrelevante Arbeit: Eskalationen, offene Zustaendigkeiten, E-Mail-Zuordnung, Kundenfortschritt und nachvollziehbare SCAS-Freigaben.</p>
+          <p class="lede">${escapeHtml(currentUser)} sieht nur entscheidungsrelevante Arbeit: Eskalationen, offene Zustaendigkeiten, E-Mail-Zuordnung, Kundenfortschritt und nachvollziehbare Aenderungen.</p>
         </div>
         <span class="badge">${escapeHtml(overall)}</span>
       </div>
@@ -1436,7 +1372,7 @@ function renderHome(state: OverviewState): string {
           <div class="metric-sub">${escapeHtml(overall)}</div>
         </div>
         <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${urgentTasks} dringend</div></div>
-        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mail Eingang</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${unresolvedSuggestions} SCAS-Vorschlaege</div></div>
+        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mail Eingang</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${emailsWithSuggestions} Zuordnungsvorschlaege</div></div>
         <div class="status-card"><div class="metric">${state.customer_cases.length}</div><div class="metric-label">aktive Vorgaenge</div><div class="metric-sub">Kundenarbeit im Blick</div></div>
         <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgaben faellig</div></div>
       </div>
@@ -1444,10 +1380,6 @@ function renderHome(state: OverviewState): string {
         <div class="board-section primary">
           <div class="panel-head"><div><span class="section-kicker">Entscheidungszentrale</span><h2>Jetzt bearbeiten</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
           ${renderDecisionQueue(decisionItems)}
-        </div>
-        <div class="board-section">
-          <div class="panel-head"><div><span class="section-kicker">SCAS Kontrolle</span><h2>Vorschlaege freigeben</h2></div><a class="panel-link" href="/emails.php">E-Mails</a></div>
-          ${renderScasReviewQueue(state)}
         </div>
       </section>
       <div class="cockpit-grid">
@@ -1935,14 +1867,13 @@ function renderWorkspaceStyles(): string {
     }
     .command-center {
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr) minmax(220px, 0.55fr);
+      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
       gap: 10px;
       align-items: stretch;
       margin: 0 0 18px;
     }
     .command-search,
-    .command-actions,
-    .command-scas {
+    .command-actions {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1955,8 +1886,7 @@ function renderWorkspaceStyles(): string {
       align-items: center;
       padding: 8px;
     }
-    .command-search label,
-    .command-scas strong {
+    .command-search label {
       color: var(--green-dark);
       font-size: 0.78rem;
       font-weight: 900;
@@ -1998,16 +1928,10 @@ function renderWorkspaceStyles(): string {
     .command-actions a:hover {
       background: var(--soft);
     }
-    .command-actions span,
-    .command-scas span {
+    .command-actions span {
       color: var(--muted);
       font-size: 0.78rem;
       line-height: 1.35;
-    }
-    .command-scas {
-      display: grid;
-      gap: 2px;
-      padding: 9px 10px;
     }
     .workspace {
       display: grid;
@@ -2341,10 +2265,6 @@ function renderEmailsPage(state: OverviewState): string {
         <section class="workspace-section" id="emails">
           <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
           ${renderOverviewEmails(state, "/emails.php")}
-        </section>
-        <section class="workspace-section">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">SCAS Kontrolle</span><h2>Freigaben</h2></div><span class="count-pill">${state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length} Vorschlaege</span></div>
-          ${renderScasReviewQueue(state)}
         </section>
       </div>
     </main>

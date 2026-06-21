@@ -124,13 +124,11 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
     assert "Kundenfortschritt" in source
-    assert "SCAS Kontrolle" in source
     assert "Audit Trail" in source
     assert "Command Center" in source
     assert "renderCommandCenter" in source
     assert "renderDecisionQueue" in source
     assert "renderCustomerFocus" in source
-    assert "renderScasReviewQueue" in source
     assert "renderAuditTrail" in source
     assert "renderTasksPage" in source
     assert "renderEmailsPage" in source
@@ -140,8 +138,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'id="command-search"' in source
     assert 'name="q"' in source
     assert "customerMatchesQuery" in source
-    assert "SCAS" in source
-    assert "Ausfuehrung nur mit Bestaetigung" in source
+    assert "Ausfuehrung nur mit Bestaetigung" not in source
     assert "filter-note" in source
     assert "Faellige Aufgaben" in source
     assert "Eingang und Zuordnung" in source
@@ -166,6 +163,11 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Funkverkehr" not in source
     assert "Flugplan" not in source
     assert "Blackbox" not in source
+    assert "SCAS Kontrolle" not in source
+    assert "SCAS-Freigaben" not in source
+    assert "SCAS-Vorschlaege" not in source
+    assert "Keine SCAS-Vorschlaege" not in source
+    assert "renderScasReviewQueue" not in source
     assert "Aufgaben und E-Mails werden hier" not in source
     assert "/aufgaben.php#emails" not in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source

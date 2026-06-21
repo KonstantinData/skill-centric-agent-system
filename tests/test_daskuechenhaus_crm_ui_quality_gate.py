@@ -31,7 +31,7 @@ def test_crm_command_center_has_accessible_search_and_scas_status() -> None:
     assert 'id="command-search"' in source
     assert 'type="search"' in source
     assert 'aria-label="Schnellaktionen"' in source
-    assert "Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung" in source
+    assert "Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung" not in source
 
 
 def test_crm_layout_has_responsive_grid_guards() -> None:
@@ -53,11 +53,9 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
     assert "Kundenfortschritt" in source
-    assert "SCAS Kontrolle" in source
     assert "Audit Trail" in source
     assert "renderDecisionQueue" in source
     assert "renderCustomerFocus" in source
-    assert "renderScasReviewQueue" in source
     assert "renderAuditTrail" in source
     assert 'url.pathname === "/emails.php"' in source
     assert "renderEmailsPage" in source
@@ -86,6 +84,11 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "Das Cockpit zeigt",
         "Aufgaben und E-Mails werden hier",
         "/aufgaben.php#emails",
+        "SCAS Kontrolle",
+        "SCAS-Freigaben",
+        "SCAS-Vorschlaege",
+        "Keine SCAS-Vorschlaege",
+        "renderScasReviewQueue",
     ]
 
     for term in forbidden_terms:

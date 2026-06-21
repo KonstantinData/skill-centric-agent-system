@@ -5,16 +5,15 @@ Cloudflare Worker serving the internal `es-daskuechenhaus.de` website.
 Routes:
 
 - `/index.php`: protected user-specific CRM steering surface. It surfaces the
-  decision queue, customer progress, SCAS approval queue, operational workload,
-  and audit trail before lower-priority context. The page includes the tenant
-  command center with global customer/case search entry points, quick actions,
-  and the visible SCAS human-confirmation status.
+  decision queue, customer progress, operational workload, and audit trail
+  before lower-priority context. The page includes the tenant command center
+  with global customer/case search entry points and quick actions.
 - `/aufgaben.php`: protected task work surface. Tasks can be created, edited,
   archived, or moved to the soft-delete trash. It does not render the email
   inbox.
 - `/emails.php`: protected email work surface. Emails can be reviewed, manually
-  assigned to customer cases, confirmed from SCAS suggestions, archived, or
-  moved to the soft-delete trash. It does not render task creation.
+  assigned to customer cases, confirmed from assignment suggestions, archived,
+  or moved to the soft-delete trash. It does not render task creation.
 - `/kunden.php`: protected customer work surface. Customers can be created and
   edited against Hetzner PostgreSQL. Duplicate names and duplicate email
   addresses are allowed; only a non-null customer number is unique. A first
