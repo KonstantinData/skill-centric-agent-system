@@ -234,6 +234,17 @@ jobs:
           sudo -n systemctl restart daskuechenhaus-admin-api.service
           sudo -n systemctl is-active daskuechenhaus-admin-api.service
 
+          for attempt in $(seq 1 20); do
+            if curl -fsS "http://127.0.0.1:8715/health" >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 20 ]; then
+              echo "::error::Admin API did not become reachable on 127.0.0.1:8715."
+              exit 1
+            fi
+            sleep 1
+          done
+
           token="$(sudo -n cat /etc/daskuechenhaus/admin-api-token)"
           curl -fsS \
             -H "x-dkh-admin-api-token: ${token}" \

@@ -590,6 +590,8 @@ def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
     assert "Invalid customer source values block Search-First source constraint" in workflow
     assert "sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1" in workflow
     assert "systemctl restart daskuechenhaus-admin-api.service" in workflow
+    assert "http://127.0.0.1:8715/health" in workflow
+    assert "Admin API did not become reachable on 127.0.0.1:8715" in workflow
     assert "http://127.0.0.1:8715/customers/search?q=abc" in workflow
     assert "Secret values in artifact: `none`" in workflow
 
