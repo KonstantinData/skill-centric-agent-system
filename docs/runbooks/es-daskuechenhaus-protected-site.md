@@ -111,6 +111,9 @@ The API exposes:
 - `GET /overview/state`
 - `POST /overview/tasks`
 - `POST /overview/emails/assign`
+- `GET /customers/state`
+- `GET /customers/search`
+- `POST /customers/save`
 
 The overview data model is created by
 `migrations/hetzner/tenants/daskuechenhaus/0002_overview_workspace.sql`.
@@ -126,6 +129,14 @@ It adds secret-reference columns to `app.email_accounts` and maps the
 `sales` user row. Admin-only user rows do not receive customer-case mailbox
 ownership.
 
+The Search-First customer hard-bounce model is created by
+`migrations/hetzner/tenants/daskuechenhaus/0008_customer_search_first_deduplication.sql`.
+It adds normalized phone columns, customer source constraints, search indexes,
+and active-customer unique indexes for exact email, primary phone, and primary
+mobile matches. The manual `es-daskuechenhaus.de Admin API Deploy` workflow
+runs duplicate and invalid-source preflight checks before applying this
+migration.
+
 Smoke checks:
 
 ```bash
@@ -140,10 +151,14 @@ curl -fsS \
   -H "x-dkh-admin-api-token: $TOKEN" \
   -H "x-access-user-email: k.milonas@schober-daskuechenhaus.de" \
   https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api/overview/state
+curl -fsS \
+  -H "x-dkh-admin-api-token: $TOKEN" \
+  -H "x-access-user-email: k.milonas@schober-daskuechenhaus.de" \
+  "https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api/customers/search?q=abc"
 ```
 
-The unauthenticated request must return `401`. The authenticated request must
-return PostgreSQL-backed admin and overview data.
+The unauthenticated request must return `401`. The authenticated requests must
+return PostgreSQL-backed admin, overview, and customer search data.
 
 ## Mail Importer (Hetzner-only)
 
@@ -244,9 +259,28 @@ Use the manual `es-daskuechenhaus.de Mail Runtime Sync` workflow with
 `apply_sync=false` to validate mail and Hetzner secrets without writing runtime
 configuration.
 
+Use the manual `es-daskuechenhaus.de Admin API Deploy` workflow with
+`apply_deploy=false` to validate Hetzner secrets and produce a plan artifact
+without changing PostgreSQL or the systemd service.
+
 ## Production Apply
 
-Only run with production mutation after the allowed user list has been reviewed:
+Only run with production mutation after the allowed user list has been reviewed
+and the Hetzner Admin API runtime has been updated.
+
+First run the Admin API deploy workflow with:
+
+- `apply_deploy`: `true`
+- `confirm_production`: `true`
+
+This applies the Search-First migration to `tenant_daskuechenhaus`, installs
+`/opt/daskuechenhaus/admin-api/app.py`, restarts
+`daskuechenhaus-admin-api.service`, and verifies
+`GET /customers/search` locally on Hetzner. If duplicate active customer
+emails, primary phone numbers, primary mobile numbers, or invalid lead sources
+exist, the workflow fails before applying the migration.
+
+Then run the protected site deploy workflow with:
 
 - `allowed_emails`: one or more allowed identities
 - `apply_deploy`: `true`

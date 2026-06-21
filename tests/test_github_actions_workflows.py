@@ -35,6 +35,9 @@ ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
 ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-mail-runtime-sync.yml"
 )
+ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-admin-api-deploy.yml"
+)
 DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME = (
@@ -88,6 +91,10 @@ def load_es_daskuechenhaus_site_deploy_workflow() -> str:
 
 def load_es_daskuechenhaus_mail_runtime_sync_workflow() -> str:
     return ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_es_daskuechenhaus_admin_api_deploy_workflow() -> str:
+    return ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -550,6 +557,41 @@ def test_es_daskuechenhaus_mail_runtime_sync_exports_multiline_ssh_key_safely() 
     assert "echo '__SCAS_HETZNER_SSH_KEY__'" in workflow
     assert "value contains reserved delimiter" in workflow
     assert "printf 'TARGET_HETZNER_SSH_KEY=%s" not in workflow
+
+
+def test_es_daskuechenhaus_admin_api_deploy_workflow_is_production_guarded() -> None:
+    assert ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_es_daskuechenhaus_admin_api_deploy_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "apply_deploy:" in workflow
+    assert "confirm_production:" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "SCAS_PROD_HETZNER_HOST" in workflow
+    assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
+    assert "SCAS_PROD_HETZNER_USER" in workflow
+    assert "confirm_production must be true when apply_deploy=true" in workflow
+    assert "TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
+    assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
+    assert "wrangler" not in workflow
+    assert "CLOUDFLARE_API_TOKEN" not in workflow
+
+
+def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
+    workflow = load_es_daskuechenhaus_admin_api_deploy_workflow()
+
+    assert "0008_customer_search_first_deduplication.sql" in workflow
+    assert "daskuechenhaus_admin_api.py" in workflow
+    assert "daskuechenhaus-admin-api.service" in workflow
+    assert "Duplicate active customer emails block Search-First hard-bounce migration" in workflow
+    assert "Duplicate active primary phone numbers block Search-First hard-bounce migration" in workflow
+    assert "Duplicate active primary mobile numbers block Search-First hard-bounce migration" in workflow
+    assert "Invalid customer source values block Search-First source constraint" in workflow
+    assert "sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1" in workflow
+    assert "systemctl restart daskuechenhaus-admin-api.service" in workflow
+    assert "http://127.0.0.1:8715/customers/search?q=abc" in workflow
+    assert "Secret values in artifact: `none`" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:
