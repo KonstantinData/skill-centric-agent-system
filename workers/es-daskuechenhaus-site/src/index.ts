@@ -280,7 +280,7 @@ type TenantBrandAssets = {
   logoPath: string;
   logoRoute: string;
   logoMimeType: string;
-  logoBase64: string;
+  logoBody: string;
   faviconPath: string | null;
   appIconPath: string | null;
   assetScope: "tenant-owned";
@@ -300,10 +300,10 @@ const DKH_TENANT_UI: TenantUiProfile = {
   experienceStandard: "sota-2026-tenant-crm",
   brandAssets: {
     logoPath: "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
-    logoRoute: "/tenant-assets/daskuechenhaus/logo.png",
-    logoMimeType: "image/png",
-    logoBase64:
-      "iVBORw0KGgoAAAANSUhEUgAAAeAAAABvCAMAAAADm+MeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAY1BMVEUAAAD///////////////////////////////////////////////////////////92uCj///+p03m73JSYyl7d7cmQxVCy14bU6bzD4KGhzmt/vDXl8tf2+/LM5K7u9uSHwUPyC2+eAAAAEHRSTlMAQDAgEL+A75+vUGCPcM/fZqHb/AAAAAFiS0dEAf8CLd4AAAAHdElNRQfqBQkGOyYk0UTJAAANCElEQVR42u2dh4KqOBSGQXrnCNjb+z/lphea4Ow4wM2/dx0NaeYjnRyt8v+VZbQwGcAb118AtnezsujYc/y6vxb3OvUXgMGblUUf5vidR2xO3OuUAbxxGcAblwG8ca0PMB0XDYyODOC21gc4gFC89vg1gHWtDzBAJF57/BrAutYHOPYd8drj1wDWtT7Ab/wawLoM4I3LAN64vgg4Dj3Pw12nACxc/IR8dn3PCzt9K4Ow83306vicIAtjWXaKYglj5te2ksjzUhlLghPJ2BK1g1LD10NbxO1m6HoqlrDdDF2OkH+aUic9J9ViRwESP3F385bAFwN4XyHV+F2N3+1/AHiXAxReAJBywLui5eIWECBfSSskBbwLyAUbfObMYnE8gMDDUdnEb5yjjyjS2FISQV4yejNA7NHrCYsbxUuusw2QBF3KUSaChKbUTg97L4Rv4hD5XlAsdtNinFcDSBV+V+F3zeeAUcFE+L63PfBEUXGXkLqEeG5rB0EfYAQ/sfoLPMKl7dA4fAgCXNYZBDxZMtxG3HwavAjIfRIELo27yKl/erskAD6+kBQoU32APUB3SgwFz5xLoktm9gwbBFyIhYkQaFEVoui4S0CKzW630Riwm7Mq1y7wHDL2eRcRv6yoU/LXLQJW8ugGsUlwUXUT+iegyXmA/+5E3UQJ9gKm0+9Y5DHOyZ/8XwecKAOrnLxPlJWKnBVe3hsW95Ocb7vAMyUWl/jNVX+ZwI/YecS54B99Gje77zLCP5L+nTHASubo5fRfBxyB7LViUlSe4sLwR6g37pEPkm+7wAtwW37ZZQowL+SlCHu1RRI0SZ/31TReUPz3N9GFvAWI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",
+    logoRoute: "/tenant-assets/daskuechenhaus/logo.svg",
+    logoMimeType: "image/svg+xml; charset=utf-8",
+    logoBody:
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 88" role="img" aria-label="das kuechenhaus"><rect width="260" height="88" rx="8" fill="#fff"/><path d="M22 20h54v48H22z" fill="#76b726"/><path d="M33 31h32v8H33zm0 15h32v8H33z" fill="#fff"/><text x="92" y="38" fill="#111" font-family="Arial,sans-serif" font-size="18" font-weight="700">das</text><text x="92" y="62" fill="#111" font-family="Arial,sans-serif" font-size="24" font-weight="700">kuechenhaus</text></svg>',
     faviconPath: null,
     appIconPath: null,
     assetScope: "tenant-owned",
@@ -339,7 +339,7 @@ function htmlResponse(body: string, status = 200): Response {
   });
 }
 
-function assetResponse(body: Uint8Array, contentType: string): Response {
+function assetResponse(body: string, contentType: string): Response {
   return new Response(body, {
     headers: {
       ...SECURITY_HEADERS,
@@ -383,15 +383,6 @@ function adminApiUrl(env: Env, path: string): string {
   return `${env.DKH_ADMIN_API_BASE_URL.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
-function base64ToBytes(value: string): Uint8Array {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
 function renderTenantThemeVars(profile: TenantUiProfile): string {
   return `--text: ${profile.theme.text};
       --muted: ${profile.theme.secondaryText};
@@ -416,7 +407,7 @@ function serveTenantAsset(pathname: string): Response | null {
     return htmlResponse("<!doctype html><title>Nicht gefunden</title><h1>Nicht gefunden</h1>", 404);
   }
   return assetResponse(
-    base64ToBytes(DKH_TENANT_UI.brandAssets.logoBase64),
+    DKH_TENANT_UI.brandAssets.logoBody,
     DKH_TENANT_UI.brandAssets.logoMimeType,
   );
 }

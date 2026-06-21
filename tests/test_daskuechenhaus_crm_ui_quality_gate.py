@@ -17,7 +17,7 @@ def test_crm_ui_uses_tenant_owned_branding_without_svg_logo_fallback() -> None:
 
     assert "DKH_TENANT_UI" in source
     assert 'assetScope: "tenant-owned"' in source
-    assert "/tenant-assets/daskuechenhaus/logo.png" in source
+    assert "/tenant-assets/daskuechenhaus/logo.svg" in source
     assert '<img class="tenant-logo"' in source
     assert "LOGO_MARKUP" not in source
     assert "svg.logo" not in source

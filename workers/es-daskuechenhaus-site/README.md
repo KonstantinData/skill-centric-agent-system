@@ -36,7 +36,8 @@ an Allow policy scoped to explicit Daskuechenhaus operators.
 
 Tenant UI assets and theme tokens are loaded from the Daskuechenhaus tenant UI
 profile embedded in the Worker. The protected app serves the tenant-owned logo
-only from `/tenant-assets/daskuechenhaus/logo.png`, sourced from
+only from `/tenant-assets/daskuechenhaus/logo.svg`; the tenant registry still
+points at the canonical source asset
 `assets/images/daskuechenhaus/logo_daskuechenhaus.png`. Unknown
 `/tenant-assets/*` paths return `404`, and the Worker does not fall back to
 assets from another tenant.

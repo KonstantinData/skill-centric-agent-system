@@ -106,7 +106,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "DKH_TENANT_UI" in source
     assert '"sota-2026-tenant-crm"' in source
     assert "assets/images/daskuechenhaus/logo_daskuechenhaus.png" in source
-    assert 'logoRoute: "/tenant-assets/daskuechenhaus/logo.png"' in source
+    assert 'logoRoute: "/tenant-assets/daskuechenhaus/logo.svg"' in source
     assert 'url.pathname.startsWith("/tenant-assets/")' in source
     assert "serveTenantAsset" in source
     assert 'logoPath.startsWith("assets/images/daskuechenhaus/")' in source
