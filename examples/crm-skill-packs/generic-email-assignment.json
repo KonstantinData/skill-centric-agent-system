@@ -1,0 +1,55 @@
+{
+  "contract_version": "0.1.0",
+  "id": "generic-email-assignment",
+  "tenant_id": "example-tenant",
+  "display_name": "Email assignment assistance",
+  "status": "planned",
+  "task_types": [
+    "email-assignment",
+    "case-matching"
+  ],
+  "required_capabilities": [
+    "customer-cases"
+  ],
+  "ui_binding": {
+    "surface_ids": [
+      "scas-actions",
+      "notifications",
+      "quick-actions"
+    ],
+    "entrypoint_label": "Suggest case assignment",
+    "confirmation_required": true,
+    "grants_runtime_authority": false
+  },
+  "composition": {
+    "selection_path": "registry-scoring-policy-graph-profile",
+    "candidate_modules": [
+      "crm-email-case-matching"
+    ],
+    "policies": [
+      "strict-tenant-isolation",
+      "no-cross-tenant-access",
+      "human-confirmation-required"
+    ],
+    "validators": [
+      "tenant-profile-validator",
+      "skill-scope-compatibility-validator",
+      "crm-action-audit-validator"
+    ],
+    "requires_immutable_runtime_profile": true
+  },
+  "audit_evidence": {
+    "required_fields": [
+      "tenant_id",
+      "principal_id",
+      "role_bundle_ids",
+      "task_type",
+      "skill_pack_id",
+      "selected_module_ids",
+      "validator_results",
+      "confirmation_status",
+      "action_result"
+    ],
+    "retention_plane": "hetzner-runtime-plane"
+  }
+}

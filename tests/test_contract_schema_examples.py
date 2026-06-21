@@ -12,6 +12,19 @@ def test_module_example_matches_schema(
     assert_valid(module_schema, module_example)
 
 
+def test_crm_skill_pack_example_matches_schema(
+    crm_skill_pack_schema: dict[str, Any],
+    crm_skill_pack_example: dict[str, Any],
+) -> None:
+    assert_valid(crm_skill_pack_schema, crm_skill_pack_example)
+    assert crm_skill_pack_example["ui_binding"]["confirmation_required"] is True
+    assert crm_skill_pack_example["ui_binding"]["grants_runtime_authority"] is False
+    assert crm_skill_pack_example["composition"]["requires_immutable_runtime_profile"] is True
+    assert crm_skill_pack_example["audit_evidence"]["retention_plane"] == (
+        "hetzner-runtime-plane"
+    )
+
+
 def test_runtime_profile_example_matches_schema_and_version_contract(
     profile_schema: dict[str, Any],
     profile_example: dict[str, Any],

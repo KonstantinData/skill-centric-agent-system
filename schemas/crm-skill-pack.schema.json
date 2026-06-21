@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:crm-skill-pack:0.1.0",
+  "title": "SCAS CRM Skill Pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "id",
+    "tenant_id",
+    "display_name",
+    "status",
+    "task_types",
+    "required_capabilities",
+    "ui_binding",
+    "composition",
+    "audit_evidence"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "0.1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "active",
+        "retired"
+      ]
+    },
+    "task_types": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "required_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "ui_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface_ids",
+        "entrypoint_label",
+        "confirmation_required",
+        "grants_runtime_authority"
+      ],
+      "properties": {
+        "surface_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "global-search",
+              "quick-actions",
+              "notifications",
+              "saved-views",
+              "scas-actions"
+            ]
+          }
+        },
+        "entrypoint_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confirmation_required": {
+          "const": true
+        },
+        "grants_runtime_authority": {
+          "const": false
+        }
+      }
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selection_path",
+        "candidate_modules",
+        "policies",
+        "validators",
+        "requires_immutable_runtime_profile"
+      ],
+      "properties": {
+        "selection_path": {
+          "const": "registry-scoring-policy-graph-profile"
+        },
+        "candidate_modules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "policies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "validators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "requires_immutable_runtime_profile": {
+          "const": true
+        }
+      }
+    },
+    "audit_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_fields",
+        "retention_plane"
+      ],
+      "properties": {
+        "required_fields": {
+          "type": "array",
+          "minItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "tenant_id",
+              "principal_id",
+              "role_bundle_ids",
+              "task_type",
+              "skill_pack_id",
+              "selected_module_ids",
+              "validator_results",
+              "confirmation_status",
+              "action_result"
+            ]
+          },
+          "contains": {
+            "const": "tenant_id"
+          }
+        },
+        "retention_plane": {
+          "const": "hetzner-runtime-plane"
+        }
+      }
+    }
+  }
+}

@@ -18,6 +18,10 @@ COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.s
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
 TENANT_REGISTRY_SCHEMA_PATH = REPO_ROOT / "schemas" / "tenant-registry.schema.json"
+CRM_SKILL_PACK_SCHEMA_PATH = REPO_ROOT / "schemas" / "crm-skill-pack.schema.json"
+CRM_SKILL_PACK_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "crm-skill-packs" / "generic-email-assignment.json"
+)
 MODULE_EXAMPLE_PATH = (
     REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
 )
@@ -115,6 +119,13 @@ def tenant_registry_schema() -> dict[str, Any]:
     return schema
 
 
+@pytest.fixture(scope="module")
+def crm_skill_pack_schema() -> dict[str, Any]:
+    schema = load_json(CRM_SKILL_PACK_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
 @pytest.fixture
 def module_example() -> dict[str, Any]:
     return load_json(MODULE_EXAMPLE_PATH)
@@ -163,6 +174,11 @@ def retrieval_context_response_example() -> dict[str, Any]:
 @pytest.fixture
 def tenant_registry_example() -> dict[str, Any]:
     return load_json(TENANT_REGISTRY_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def crm_skill_pack_example() -> dict[str, Any]:
+    return load_json(CRM_SKILL_PACK_EXAMPLE_PATH)
 
 
 def assert_valid(schema: dict[str, Any], instance: dict[str, Any]) -> None:

@@ -91,6 +91,11 @@ The tenant UI profile must declare:
 - tenant CRM terminology,
 - SCAS skill package bindings.
 
+CRM skill packages must follow
+`docs/policies/scas-crm-skill-pack-contract.md`. A UI binding may expose a
+package in the command center, but it must not grant runtime authority outside
+the normal SCAS composition path.
+
 Missing tenant assets, skill package bindings, or workspace definitions must
 fail closed or degrade to a neutral, explicitly unbranded state. They must not
 fall back to another tenant.
