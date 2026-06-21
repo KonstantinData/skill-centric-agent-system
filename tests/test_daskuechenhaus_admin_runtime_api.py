@@ -82,8 +82,14 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "customer_duplicate_matches" in source
     assert "normalize_phone_number" in source
     assert '"primary_email": str(data.get("primary_email", "")).strip().lower()' in source
-    assert '"primary_phone_normalized": normalize_phone_number(data.get("primary_phone", ""))' in source
-    assert '"primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", ""))' in source
+    assert (
+        '"primary_phone_normalized": normalize_phone_number(data.get("primary_phone", ""))'
+        in source
+    )
+    assert (
+        '"primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", ""))'
+        in source
+    )
     assert '"case_type": str(' in source
     assert '"kitchen_project_b2b"' in source
 
