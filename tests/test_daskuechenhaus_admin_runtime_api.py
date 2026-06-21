@@ -49,10 +49,33 @@ def test_daskuechenhaus_admin_api_exposes_required_overview_routes() -> None:
 
     assert 'parsed.path == "/overview/state"' in source
     assert 'parts == ["overview", "tasks"]' in source
+    assert 'set_task_lifecycle(parts[2], "archive", access_email)' in source
+    assert 'set_task_lifecycle(parts[2], "delete", access_email)' in source
     assert 'parts == ["overview", "emails", "assign"]' in source
+    assert "decide_email_suggestion" in source
+    assert 'parts[4] == "accept"' in source
+    assert 'parts[4] in {"accept", "reject"}' not in source
+    assert 'set_email_lifecycle(parts[2], "archive", access_email)' in source
+    assert 'set_email_lifecycle(parts[2], "delete", access_email)' in source
     assert "current_user_context" in source
     assert "scope_user_ids" in source
     assert "user_delegations" in source
+
+
+def test_daskuechenhaus_admin_api_keeps_cockpit_actions_human_confirmed() -> None:
+    source = API_PATH.read_text(encoding="utf-8")
+
+    assert "resolve_customer_case_id" in source
+    assert "customer_case_search_ambiguous" in source
+    assert "email_assignment_suggestions" in source
+    assert "email_assignment_suggestion_accepted" in source
+    assert "suggestion_decisions" in source
+    assert "other_suggestions" in source
+    assert "is_unassigned = FALSE" in source
+    assert "em.archived_at IS NULL" in source
+    assert "em.deleted_at IS NULL" in source
+    assert "t.archived_at IS NULL" in source
+    assert "t.deleted_at IS NULL" in source
 
 
 def test_daskuechenhaus_admin_api_handles_task_uploads_on_hetzner() -> None:

@@ -78,6 +78,14 @@ type OverviewState = {
     name: string;
     is_terminal: boolean;
   }>;
+  customer_cases: Array<{
+    id: number;
+    case_number: string | null;
+    customer_display_name: string;
+    customer_number: string | null;
+    customer_email: string | null;
+    status_phase: number | null;
+  }>;
   tasks: Array<{
     id: number;
     title: string;
@@ -115,6 +123,16 @@ type OverviewState = {
       id: number;
       case_number: string | null;
       customer_display_name: string;
+    }>;
+    suggestions: Array<{
+      id: number;
+      confidence: number;
+      reason: string | null;
+      case: {
+        id: number;
+        case_number: string | null;
+        customer_display_name: string;
+      } | null;
     }>;
   }>;
   appointments: Array<{
@@ -178,6 +196,7 @@ const EMPTY_OVERVIEW_STATE: OverviewState = {
     { code: "done", name: "Erledigt", is_terminal: true },
     { code: "cancelled", name: "Abgebrochen", is_terminal: true },
   ],
+  customer_cases: [],
   tasks: [],
   emails: [],
   appointments: [],
@@ -269,6 +288,14 @@ function formatDateTime(value: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
+}
+
+function datetimeLocalValue(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  return normalized.slice(0, 16);
 }
 
 function truncateText(value: string | null | undefined, maxLength: number): string {
@@ -596,6 +623,27 @@ function renderHome(state: OverviewState): string {
       gap: 12px;
       align-items: flex-start;
     }
+    .item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    details.editor {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    details.editor summary {
+      color: var(--green-dark);
+      cursor: pointer;
+      font-weight: 800;
+      width: fit-content;
+    }
+    details.editor summary:hover {
+      text-decoration: underline;
+    }
     .pill {
       display: inline-flex;
       align-items: center;
@@ -628,6 +676,12 @@ function renderHome(state: OverviewState): string {
       color: var(--muted);
       font-size: 0.88rem;
       line-height: 1.38;
+    }
+    .field-hint {
+      margin: 0;
+      color: var(--warning);
+      font-size: 0.78rem;
+      font-weight: 700;
     }
     .meta {
       display: flex;
@@ -707,6 +761,22 @@ function renderHome(state: OverviewState): string {
       width: fit-content;
       transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
     }
+    .ui-button.secondary {
+      background: #ffffff;
+      color: var(--green-dark);
+    }
+    .ui-button.danger {
+      border-color: #d8a3a3;
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .inline-form {
+      display: inline;
+    }
+    .inline-form .ui-button {
+      min-height: 34px;
+      padding: 7px 10px;
+    }
     .ui-button:hover {
       filter: brightness(0.96);
       box-shadow: 0 2px 0 rgba(52, 89, 27, 0.2);
@@ -765,6 +835,7 @@ function renderHome(state: OverviewState): string {
         <div class="metric-card${unassignedEmails > 0 ? " warning" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mails im Eingang</div><div class="metric-sub">${unassignedEmails} zuordnen · ${assignedEmails} verknuepft</div></div>
         <div class="metric-card"><div class="metric">${state.appointments.length}</div><div class="metric-label">anstehende Termine</div><div class="metric-sub">Kalender und Vertretung</div></div>
       </div>
+      ${renderCustomerCaseDatalist(state)}
       <div class="workspace">
         <div class="stack">
           <section class="workspace-section">
@@ -880,6 +951,18 @@ function renderOverviewTasks(state: OverviewState): string {
           ${dueLabel ? `<span>${isLate ? "Ueberfaellig" : "Faellig"}: ${escapeHtml(dueLabel)}</span>` : ""}
           ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlage(n)</span>` : ""}
         </div>
+        <div class="item-actions">
+          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/archive?return_to=/index.php">
+            <button class="ui-button secondary" type="submit">Archivieren</button>
+          </form>
+          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/delete?return_to=/index.php">
+            <button class="ui-button danger" type="submit">In Papierkorb</button>
+          </form>
+        </div>
+        <details class="editor">
+          <summary>Bearbeiten</summary>
+          ${renderTaskEditForm(task, state)}
+        </details>
       </article>`;
     })
     .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere Aufgabe(n)</div>` : ""}`;
@@ -916,24 +999,140 @@ function renderOverviewEmails(state: OverviewState): string {
           ${caseLabel ? `<span>${escapeHtml(caseLabel)}</span>` : ""}
         </div>
         ${email.snippet ? `<p class="preview">${escapeHtml(truncateText(email.snippet, 150))}</p>` : ""}
-        ${email.is_unassigned ? renderEmailAssignmentForm(email.id) : ""}
+        ${renderEmailSuggestions(email)}
+        ${email.is_unassigned ? renderEmailAssignmentForm(email) : ""}
+        <div class="item-actions">
+          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/archive?return_to=/index.php">
+            <button class="ui-button secondary" type="submit">Archivieren</button>
+          </form>
+          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/delete?return_to=/index.php">
+            <button class="ui-button danger" type="submit">In Papierkorb</button>
+          </form>
+        </div>
       </article>`;
     })
     .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere E-Mail(s)</div>` : ""}`;
 }
 
-function renderEmailAssignmentForm(emailMessageId: number): string {
+function renderEmailSuggestions(email: OverviewState["emails"][number]): string {
+  if (email.suggestions.length === 0) {
+    return "";
+  }
+  return `<div class="list">${email.suggestions
+    .map((suggestion) => {
+      const suggestedCase = suggestion.case;
+      const confidence = Math.round(Number(suggestion.confidence) * 100);
+      return `<div class="item compact">
+        <div class="item-top">
+          <h3>${suggestedCase ? escapeHtml(`${suggestedCase.case_number ? `${suggestedCase.case_number} · ` : ""}${suggestedCase.customer_display_name}`) : "Kein Vorgang"}</h3>
+          <span class="pill warning">${confidence}% Vorschlag</span>
+        </div>
+        ${suggestion.reason ? `<p class="preview">${escapeHtml(truncateText(suggestion.reason, 120))}</p>` : ""}
+        <div class="item-actions">
+          <form class="inline-form" method="post" action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=/index.php">
+            <button class="ui-button" type="submit">Zuordnung bestaetigen</button>
+          </form>
+        </div>
+      </div>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderEmailAssignmentForm(email: OverviewState["emails"][number]): string {
+  const noSuggestionHint = email.suggestions.length === 0
+    ? '<p class="field-hint">Kein Treffer: Vorgang suchen, auswaehlen und bestaetigen.</p>'
+    : "";
   return `<form method="post" action="/overview-api/emails/assign?return_to=/index.php">
-    <input name="email_message_id" type="hidden" value="${emailMessageId}">
+    <input name="email_message_id" type="hidden" value="${email.id}">
     <div class="form-grid">
-      <label>Vorgangs-Nr.
-        <input name="case_number" type="text" autocomplete="off">
+      <label>Vorgang suchen
+        <input name="customer_case_search" list="customer-case-options" type="search" required autocomplete="off" placeholder="Name, Vorgangs-Nr., Kundennr.">
       </label>
-      <label>Kunde / Vorgang
-        <input name="customer_display_name" type="text" required autocomplete="off">
-      </label>
+      ${noSuggestionHint}
     </div>
     <button class="ui-button" type="submit">E-Mail zuordnen</button>
+  </form>`;
+}
+
+function customerCaseOptionValue(customerCase: OverviewState["customer_cases"][number]): string {
+  const parts = [
+    customerCase.case_number,
+    customerCase.customer_number,
+    customerCase.customer_display_name,
+    customerCase.customer_email,
+  ].filter(Boolean);
+  return `${parts.join(" · ")} [id:${customerCase.id}]`;
+}
+
+function renderCustomerCaseDatalist(state: OverviewState): string {
+  return `<datalist id="customer-case-options">
+    ${state.customer_cases
+      .map(
+        (customerCase) =>
+          `<option value="${escapeHtml(customerCaseOptionValue(customerCase))}"></option>`,
+      )
+      .join("")}
+  </datalist>`;
+}
+
+function renderTaskEditForm(task: OverviewState["tasks"][number], state: OverviewState): string {
+  const assignedUserId = task.assigned_users[0]?.id ?? state.current_user.primary_user_id ?? "";
+  const selectedCase = state.customer_cases.find((customerCase) => customerCase.id === task.case?.id);
+  return `<form method="post" action="/overview-api/tasks/${task.id}?return_to=/index.php" enctype="multipart/form-data">
+    <label>Aufgabe
+      <input name="title" type="text" required value="${escapeHtml(task.title)}">
+    </label>
+    <label>Beschreibung
+      <textarea name="description">${escapeHtml(task.description ?? "")}</textarea>
+    </label>
+    <div class="form-grid">
+      <label>Status
+        <select name="status_code">
+          ${state.task_statuses
+            .map((status) => `<option value="${escapeHtml(status.code)}"${selectedAttribute(task.status, status.code)}>${escapeHtml(status.name)}</option>`)
+            .join("")}
+        </select>
+      </label>
+      <label>Zustaendig
+        <select name="assigned_user_id">
+          ${state.users
+            .map((user) => {
+              const selected = String(user.id) === String(assignedUserId) ? " selected" : "";
+              return `<option value="${user.id}"${selected}>${escapeHtml(`${user.first_name} ${user.last_name}`)}</option>`;
+            })
+            .join("")}
+        </select>
+      </label>
+      <label>Vorgang
+        <input name="customer_case_search" list="customer-case-options" type="search" value="${escapeHtml(selectedCase ? customerCaseOptionValue(selectedCase) : "")}" autocomplete="off">
+      </label>
+      <label>Faellig am
+        <input name="due_at" type="datetime-local" value="${escapeHtml(datetimeLocalValue(task.due_at))}">
+      </label>
+      <label>Erinnerung
+        <input name="reminder_at" type="datetime-local" value="${escapeHtml(datetimeLocalValue(task.reminder_at))}">
+      </label>
+      <label>Prioritaet
+        <select name="priority">
+          <option value="normal"${selectedAttribute(task.priority, "normal")}>Normal</option>
+          <option value="high"${selectedAttribute(task.priority, "high")}>Hoch</option>
+          <option value="urgent"${selectedAttribute(task.priority, "urgent")}>Dringend</option>
+          <option value="low"${selectedAttribute(task.priority, "low")}>Niedrig</option>
+        </select>
+      </label>
+    </div>
+    <label>Anlage ergaenzen
+      <input name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx">
+    </label>
+    <label class="check-row">
+      <input name="reminder_overview_enabled" type="checkbox"${checkedAttribute(task.reminder_overview_enabled)}>
+      Erinnerung auf der Uebersicht
+    </label>
+    <label class="check-row">
+      <input name="reminder_email_enabled" type="checkbox"${checkedAttribute(task.reminder_email_enabled)}>
+      Erinnerung per E-Mail
+    </label>
+    <button class="ui-button" type="submit">Aenderungen speichern</button>
   </form>`;
 }
 
@@ -1042,6 +1241,9 @@ function renderTaskCreateForm(state: OverviewState): string {
       </label>
       <label>Faellig am
         <input name="due_at" type="datetime-local">
+      </label>
+      <label>Vorgang
+        <input name="customer_case_search" list="customer-case-options" type="search" autocomplete="off" placeholder="optional: Name, Vorgangs-Nr., Kundennr.">
       </label>
       <label>Erinnerung
         <input name="reminder_at" type="datetime-local">
