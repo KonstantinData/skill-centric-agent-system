@@ -591,11 +591,12 @@ async function proxyCustomersApi(request: Request, env: Env): Promise<Response> 
   });
 }
 
-function renderSideNav(active: "overview" | "customers" | "tasks" | "admin", isAdmin: boolean): string {
+function renderSideNav(active: "overview" | "customers" | "tasks" | "emails" | "admin", isAdmin: boolean): string {
   return `<nav aria-label="Bereiche">
     <a href="/index.php"${active === "overview" ? ' aria-current="page"' : ""}>Uebersicht</a>
     <a href="/kunden.php"${active === "customers" ? ' aria-current="page"' : ""}>Kunden</a>
     <a href="/aufgaben.php"${active === "tasks" ? ' aria-current="page"' : ""}>Aufgaben</a>
+    <a href="/emails.php"${active === "emails" ? ' aria-current="page"' : ""}>E-Mails</a>
     ${isAdmin ? `<a href="/admin.php"${active === "admin" ? ' aria-current="page"' : ""}>Admin Bereich</a>` : ""}
   </nav>`;
 }
@@ -638,7 +639,7 @@ function renderCommandCenter(
     </form>
     <div class="command-actions" aria-label="Schnellaktionen">
       <a href="/aufgaben.php">Aufgaben <span>${metrics.overdueTasks} ueberfaellig</span></a>
-      <a href="/aufgaben.php#emails">E-Mails <span>${metrics.unassignedEmails} ohne Vorgang</span></a>
+      <a href="/emails.php">E-Mails <span>${metrics.unassignedEmails} ohne Vorgang</span></a>
       <a href="/kunden.php">Vorgaenge <span>${metrics.activeCases} aktiv</span></a>
       ${currentUser.is_admin ? '<a href="/admin.php?modal=users">Team <span>Admin</span></a>' : ""}
     </div>
@@ -687,7 +688,7 @@ function renderCockpitEmails(state: OverviewState): string {
           ? `SCAS: wahrscheinlich ${fit.case_number ? `${fit.case_number} · ` : ""}${fit.customer_display_name}`
           : "Kein Treffer: Vorgang suchen und bestaetigen"
         : email.cases.map((entry) => entry.customer_display_name).join(", ") || "zugeordnet";
-      return `<a href="/aufgaben.php#emails">${escapeHtml(email.subject || "(ohne Betreff)")}</a><span>${escapeHtml(sender?.display_name || sender?.email_address || "Unbekannt")} · ${escapeHtml(assignment)}</span>`;
+      return `<a href="/emails.php">${escapeHtml(email.subject || "(ohne Betreff)")}</a><span>${escapeHtml(sender?.display_name || sender?.email_address || "Unbekannt")} · ${escapeHtml(assignment)}</span>`;
     }),
     "Keine neuen E-Mail-Eingaenge in deiner aktuellen Ansicht.",
   );
@@ -792,7 +793,7 @@ function renderScasReviewQueue(state: OverviewState): string {
           <h3>${escapeHtml(truncateText(email.subject || "(ohne Betreff)", 86))}</h3>
           <p>${escapeHtml(target)} · ${confidence}% · ${escapeHtml(truncateText(suggestion?.reason ?? "SCAS-Vorschlag pruefen.", 120))}</p>
         </div>
-        <a class="ui-button secondary" href="/aufgaben.php#emails">Pruefen</a>
+        <a class="ui-button secondary" href="/emails.php">Pruefen</a>
       </article>`;
     })
     .join("")}</div>`;
@@ -850,7 +851,7 @@ function renderHome(state: OverviewState): string {
           label: "E-Mail",
           title: email.subject || "(ohne Betreff)",
           meta: `${sender?.display_name || sender?.email_address || "Unbekannt"} · ${fit ? `SCAS-Vorschlag: ${fit.customer_display_name}` : "Vorgang manuell suchen"}`,
-          href: "/aufgaben.php#emails",
+          href: "/emails.php",
           action: "zuordnen",
         };
       }),
@@ -1445,7 +1446,7 @@ function renderHome(state: OverviewState): string {
           ${renderDecisionQueue(decisionItems)}
         </div>
         <div class="board-section">
-          <div class="panel-head"><div><span class="section-kicker">SCAS Kontrolle</span><h2>Vorschlaege freigeben</h2></div><a class="panel-link" href="/aufgaben.php#emails">E-Mails</a></div>
+          <div class="panel-head"><div><span class="section-kicker">SCAS Kontrolle</span><h2>Vorschlaege freigeben</h2></div><a class="panel-link" href="/emails.php">E-Mails</a></div>
           ${renderScasReviewQueue(state)}
         </div>
       </section>
@@ -1461,12 +1462,13 @@ function renderHome(state: OverviewState): string {
           ${renderOverviewAppointments(state)}
           <div style="margin-top:10px">${renderOverviewNews(state)}</div>
         </section>
-        <section class="panel wide">
-          <div class="panel-head"><div><span class="section-kicker">Heute arbeiten</span><h2>Aufgaben und E-Mails</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
-          <div class="panel-split">
-            <div>${renderCockpitTasks(state)}</div>
-            <div>${renderCockpitEmails(state)}</div>
-          </div>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Aufgaben</span><h2>Faellige Aufgaben</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
+          ${renderCockpitTasks(state)}
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">E-Mails</span><h2>Eingang und Zuordnung</h2></div><a class="panel-link" href="/emails.php">Oeffnen</a></div>
+          ${renderCockpitEmails(state)}
         </section>
         <section class="panel wide">
           <div class="panel-head"><div><span class="section-kicker">Audit Trail</span><h2>Nachvollziehbare Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
@@ -1476,7 +1478,7 @@ function renderHome(state: OverviewState): string {
       <div class="quick-actions">
         <a class="ui-button" href="/kunden.php">Kunde anlegen</a>
         <a class="ui-button secondary" href="/aufgaben.php">Aufgabe anlegen</a>
-        <a class="ui-button secondary" href="/aufgaben.php#emails">E-Mails zuordnen</a>
+        <a class="ui-button secondary" href="/emails.php">E-Mails zuordnen</a>
       </div>
     </main>
   </div>
@@ -2278,7 +2280,7 @@ function renderTasksPage(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>Aufgaben</h1>
-          <p class="lede">Aufgaben und E-Mails werden hier direkt priorisiert, zugeordnet, bearbeitet und revisionssicher abgeschlossen.</p>
+          <p class="lede">Aufgaben werden hier priorisiert, zugeordnet, bearbeitet und revisionssicher abgeschlossen.</p>
         </div>
         <a class="ui-button" href="#task-create">Aufgabe anlegen</a>
       </div>
@@ -2289,19 +2291,60 @@ function renderTasksPage(state: OverviewState): string {
       })}
       ${renderCustomerCaseDatalist(state)}
       <div class="workspace">
-        <div class="stack">
-          <section class="workspace-section">
-            <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Aufgaben</span></div>
-            ${renderOverviewTasks(state, "/aufgaben.php")}
-          </section>
-          <section class="workspace-section task-form" id="task-create">
-            <div class="section-head"><div class="section-title"><span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2></div></div>
-            ${renderTaskCreateForm(state, "/aufgaben.php")}
-          </section>
+        <section class="workspace-section">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Aufgaben</span></div>
+          ${renderOverviewTasks(state, "/aufgaben.php")}
+        </section>
+        <section class="workspace-section task-form" id="task-create">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2></div></div>
+          ${renderTaskCreateForm(state, "/aufgaben.php")}
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>`;
+}
+
+function renderEmailsPage(state: OverviewState): string {
+  return `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="tenant-id" content="${escapeHtml(DKH_TENANT_UI.tenantId)}">
+  <meta name="experience-standard" content="${escapeHtml(DKH_TENANT_UI.experienceStandard)}">
+  <title>E-Mails | ${escapeHtml(DKH_TENANT_UI.displayName)}</title>
+  <style>${renderWorkspaceStyles()}</style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      ${renderTenantLogo(DKH_TENANT_UI)}
+      ${renderSideNav("emails", state.current_user.is_admin)}
+    </aside>
+    <main>
+      <div class="topline">
+        <div>
+          <h1>E-Mails</h1>
+          <p class="lede">E-Mails werden hier gesichtet, Kundenvorgaengen zugeordnet, archiviert oder revisionssicher entfernt.</p>
         </div>
+        <a class="ui-button" href="#emails">E-Mails pruefen</a>
+      </div>
+      ${renderCommandCenter(state.current_user, {
+        overdueTasks: state.tasks.filter((task) => isOverdue(task.due_at)).length,
+        unassignedEmails: state.emails.filter((email) => email.is_unassigned).length,
+        activeCases: state.customer_cases.length,
+      })}
+      ${renderCustomerCaseDatalist(state)}
+      <div class="workspace">
         <section class="workspace-section" id="emails">
           <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
-          ${renderOverviewEmails(state, "/aufgaben.php#emails")}
+          ${renderOverviewEmails(state, "/emails.php")}
+        </section>
+        <section class="workspace-section">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">SCAS Kontrolle</span><h2>Freigaben</h2></div><span class="count-pill">${state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length} Vorschlaege</span></div>
+          ${renderScasReviewQueue(state)}
         </section>
       </div>
     </main>
@@ -3391,6 +3434,10 @@ export default {
     if (url.pathname === "/aufgaben.php") {
       const state = await fetchOverviewState(env, request);
       return htmlResponse(renderTasksPage(state));
+    }
+    if (url.pathname === "/emails.php") {
+      const state = await fetchOverviewState(env, request);
+      return htmlResponse(renderEmailsPage(state));
     }
     if (url.pathname === "/kunden.php") {
       const state = await fetchCustomersState(env, request);

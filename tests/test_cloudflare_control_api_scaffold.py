@@ -97,6 +97,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname === "/index.php"' in source
     assert 'url.pathname === "/kunden.php"' in source
     assert 'url.pathname === "/aufgaben.php"' in source
+    assert 'url.pathname === "/emails.php"' in source
     assert 'url.pathname === "/admin.php"' in source
     assert 'url.pathname.startsWith("/admin-api/")' in source
     assert 'url.pathname.startsWith("/overview-api/")' in source
@@ -131,6 +132,10 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "renderCustomerFocus" in source
     assert "renderScasReviewQueue" in source
     assert "renderAuditTrail" in source
+    assert "renderTasksPage" in source
+    assert "renderEmailsPage" in source
+    assert 'renderSideNav("tasks"' in source
+    assert 'renderSideNav("emails"' in source
     assert "Naechste Aktion" in source
     assert 'id="command-search"' in source
     assert 'name="q"' in source
@@ -138,13 +143,15 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "SCAS" in source
     assert "Ausfuehrung nur mit Bestaetigung" in source
     assert "filter-note" in source
-    assert "Heute arbeiten" in source
+    assert "Faellige Aufgaben" in source
+    assert "Eingang und Zuordnung" in source
     assert "Team & Termine" in source
     assert "Auslastung und Termine" in source
     assert "Kunde anlegen" in source
     assert "Kunden, Kontaktdaten, Verantwortlichkeiten" in source
     assert "Aufgabe anlegen" in source
     assert "E-Mail-Eingang" in source
+    assert 'href="/emails.php"' in source
     assert "Zuordnung bestaetigen" in source
     assert "Ablehnen" not in source
     assert "In Papierkorb" in source
@@ -159,6 +166,8 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Funkverkehr" not in source
     assert "Flugplan" not in source
     assert "Blackbox" not in source
+    assert "Aufgaben und E-Mails werden hier" not in source
+    assert "/aufgaben.php#emails" not in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
     assert "modal users-modal" in source
     assert "modal settings-modal" in source

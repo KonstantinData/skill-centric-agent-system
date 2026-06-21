@@ -59,7 +59,12 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "renderCustomerFocus" in source
     assert "renderScasReviewQueue" in source
     assert "renderAuditTrail" in source
-    assert "Heute arbeiten" in source
+    assert 'url.pathname === "/emails.php"' in source
+    assert "renderEmailsPage" in source
+    assert 'renderSideNav("emails"' in source
+    assert 'href="/emails.php"' in source
+    assert "Faellige Aufgaben" in source
+    assert "Eingang und Zuordnung" in source
     assert "customerMatchesQuery" in source
     assert "renderCommandCenter(state.current_user" in source
 
@@ -79,6 +84,8 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "E-Mail(s)",
         "Vorgang/Vorgaenge",
         "Das Cockpit zeigt",
+        "Aufgaben und E-Mails werden hier",
+        "/aufgaben.php#emails",
     ]
 
     for term in forbidden_terms:
