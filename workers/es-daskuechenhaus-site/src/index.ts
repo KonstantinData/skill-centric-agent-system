@@ -519,24 +519,14 @@ function renderSideNav(active: "overview" | "customers" | "tasks" | "admin", isA
   </nav>`;
 }
 
-type CockpitSignal = {
+type CockpitRisk = {
   level: "red" | "yellow" | "green";
+  label: string;
   title: string;
   detail: string;
   href: string;
   cta: string;
 };
-
-function renderSignal(signal: CockpitSignal): string {
-  return `<a class="signal ${signal.level}" href="${escapeHtml(signal.href)}">
-    <span class="lamp" aria-hidden="true"></span>
-    <span>
-      <strong>${escapeHtml(signal.title)}</strong>
-      <small>${escapeHtml(signal.detail)}</small>
-    </span>
-    <em>${escapeHtml(signal.cta)}</em>
-  </a>`;
-}
 
 function isToday(value: string | null): boolean {
   const parsed = parseDate(value);
@@ -556,6 +546,22 @@ function renderCockpitList(items: string[], emptyText: string): string {
     return `<div class="empty">${escapeHtml(emptyText)}</div>`;
   }
   return `<ul class="cockpit-list">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+}
+
+function renderRiskQueue(items: CockpitRisk[]): string {
+  return `<div class="risk-queue">${items
+    .map(
+      (item) => `<a class="risk-item ${item.level}" href="${escapeHtml(item.href)}">
+        <span class="risk-lamp" aria-hidden="true"></span>
+        <span class="risk-copy">
+          <span class="risk-label">${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${escapeHtml(item.detail)}</small>
+        </span>
+        <em>${escapeHtml(item.cta)}</em>
+      </a>`,
+    )
+    .join("")}</div>`;
 }
 
 function renderCockpitTasks(state: OverviewState): string {
@@ -646,30 +652,42 @@ function renderHome(state: OverviewState): string {
   const hasRed = overdueTasks > 0 || urgentTasks > 0 || tasksWithoutAssignee > 0;
   const hasYellow = unassignedEmails > 0 || state.customer_cases.length === 0 || todayTasks > 0 || todayAppointments > 0;
   const overall = hasRed ? "Rot: sofort handeln" : hasYellow ? "Gelb: heute beachten" : "Gruen: laeuft";
-  const signals: CockpitSignal[] = [
+  const riskQueue: CockpitRisk[] = [
     {
       level: overdueTasks > 0 ? "red" : "green",
+      label: "Aufgaben",
       title: "Ueberfaellige Aufgaben",
       detail: overdueTasks > 0 ? `${overdueTasks} Aufgabe(n) sind ueberfaellig.` : "Keine ueberfaelligen Aufgaben sichtbar.",
       href: "/aufgaben.php",
       cta: "Aufgaben pruefen",
     },
     {
-      level: unassignedEmails > 0 ? "yellow" : "green",
-      title: "Nicht zugeordnete E-Mails",
-      detail: unassignedEmails > 0 ? `${unassignedEmails} Nachricht(en) brauchen eine Vorgangszuordnung.` : "Alle sichtbaren E-Mails sind zugeordnet.",
-      href: "/aufgaben.php#emails",
-      cta: "E-Mails zuordnen",
-    },
-    {
       level: tasksWithoutAssignee > 0 ? "red" : "green",
+      label: "Verantwortung",
       title: "Aufgaben ohne Zustaendigen",
       detail: tasksWithoutAssignee > 0 ? `${tasksWithoutAssignee} Aufgabe(n) haben keinen Besitzer.` : "Alle sichtbaren Aufgaben haben einen Zustaendigen.",
       href: "/aufgaben.php",
       cta: "Zustaendigkeit klaeren",
     },
     {
+      level: unassignedEmails > 0 ? "yellow" : "green",
+      label: "E-Mail",
+      title: "Nicht zugeordnete E-Mails",
+      detail: unassignedEmails > 0 ? `${unassignedEmails} Nachricht(en) brauchen eine Vorgangszuordnung.` : "Alle sichtbaren E-Mails sind zugeordnet.",
+      href: "/aufgaben.php#emails",
+      cta: "E-Mails zuordnen",
+    },
+    {
+      level: todayAppointments > 0 || todayTasks > 0 ? "yellow" : "green",
+      label: "Heute",
+      title: "Termine und Faelligkeiten",
+      detail: `${todayAppointments} Termin(e) und ${todayTasks} Aufgabe(n) heute sichtbar.`,
+      href: "/aufgaben.php",
+      cta: "Tag pruefen",
+    },
+    {
       level: state.customer_cases.length === 0 ? "yellow" : "green",
+      label: "Vorgaenge",
       title: "Vorgaenge ohne Basis",
       detail: state.customer_cases.length === 0 ? "Es gibt noch keinen sichtbaren Kundenvorgang." : `${state.customer_cases.length} aktive Vorgang/Vorgaenge sichtbar.`,
       href: "/kunden.php",
@@ -776,16 +794,16 @@ function renderHome(state: OverviewState): string {
     }
     .status-strip {
       display: grid;
-      grid-template-columns: minmax(220px, 0.7fr) repeat(3, minmax(130px, 1fr));
-      gap: 12px;
+      grid-template-columns: minmax(220px, 0.9fr) repeat(4, minmax(112px, 1fr));
+      gap: 10px;
       margin: 18px 0;
     }
     .status-card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 12px 14px;
-      min-height: 82px;
+      padding: 10px 12px;
+      min-height: 74px;
     }
     .status-card.red {
       border-color: #e2b8b8;
@@ -800,31 +818,49 @@ function renderHome(state: OverviewState): string {
       background: var(--ok-bg);
     }
     .metric {
-      font-size: 1.8rem;
+      font-size: 1.55rem;
       font-weight: 800;
       line-height: 1.1;
     }
     .metric-label,
     .metric-sub,
-    .signal small,
+    .risk-copy small,
+    .command-link span,
     .cockpit-list span,
     .muted {
       color: var(--muted);
       line-height: 1.45;
     }
-    .signals {
+    .risk-board {
       display: grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
+      grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: stretch;
     }
-    .signal {
+    .risk-panel,
+    .command-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-width: 0;
+    }
+    .risk-panel {
+      border-color: ${hasRed ? "#d79a9a" : hasYellow ? "#d7b66f" : "#a9cfb0"};
+      background: ${hasRed ? "var(--danger-bg)" : hasYellow ? "var(--warning-bg)" : "var(--ok-bg)"};
+    }
+    .risk-queue {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .risk-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 10px;
-      align-items: start;
-      min-height: 128px;
-      padding: 13px;
+      align-items: center;
+      padding: 10px;
       color: var(--text);
       text-decoration: none;
       border: 1px solid var(--line);
@@ -832,46 +868,75 @@ function renderHome(state: OverviewState): string {
       background: var(--surface);
       transition: transform 100ms ease, box-shadow 120ms ease, border-color 120ms ease;
     }
-    .signal:hover {
+    .risk-item:hover {
       transform: translateY(-1px);
       box-shadow: 0 8px 20px rgba(24, 38, 18, 0.08);
     }
-    .signal:active {
+    .risk-item:active {
       transform: translateY(0);
       box-shadow: none;
     }
-    .signal.red { border-color: #e2b8b8; background: var(--danger-bg); }
-    .signal.yellow { border-color: #e0c48d; background: var(--warning-bg); }
-    .signal.green { border-color: #bad7bf; background: var(--ok-bg); }
-    .lamp {
-      width: 14px;
-      height: 14px;
+    .risk-item.red { border-color: #e2b8b8; }
+    .risk-item.yellow { border-color: #e0c48d; }
+    .risk-item.green { border-color: #bad7bf; }
+    .risk-lamp {
+      width: 13px;
+      height: 13px;
       border-radius: 999px;
-      margin-top: 2px;
     }
-    .red .lamp { background: var(--danger); }
-    .yellow .lamp { background: #c77c12; }
-    .green .lamp { background: var(--ok); }
-    .signal strong,
-    .signal small,
-    .signal em {
+    .red .risk-lamp { background: var(--danger); }
+    .yellow .risk-lamp { background: #c77c12; }
+    .green .risk-lamp { background: var(--ok); }
+    .risk-copy,
+    .risk-copy strong,
+    .risk-copy small,
+    .risk-label {
       display: block;
     }
-    .signal strong {
+    .risk-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .risk-copy strong {
+      margin-top: 2px;
       font-size: 0.98rem;
       line-height: 1.25;
     }
-    .signal small {
-      margin-top: 5px;
+    .risk-copy small {
+      margin-top: 3px;
       font-size: 0.82rem;
     }
-    .signal em {
-      grid-column: 2;
-      align-self: end;
+    .risk-item em {
       color: var(--green-dark);
       font-size: 0.8rem;
       font-style: normal;
       font-weight: 800;
+      white-space: nowrap;
+    }
+    .command-links {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .command-link {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfa;
+      padding: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .command-link span {
+      font-size: 0.82rem;
+      font-weight: 600;
     }
     .cockpit-grid {
       display: grid;
@@ -885,6 +950,14 @@ function renderHome(state: OverviewState): string {
       border-radius: 8px;
       padding: 14px;
       min-width: 0;
+    }
+    .panel.wide {
+      grid-column: 1 / -1;
+    }
+    .panel-split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
     .panel-head {
       display: flex;
@@ -1026,18 +1099,22 @@ function renderHome(state: OverviewState): string {
       box-shadow: none;
     }
     @media (max-width: 1100px) {
-      .signals,
+      .risk-board,
       .status-strip,
       .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .panel.wide { grid-column: auto; }
     }
     @media (max-width: 780px) {
       .shell { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       main { padding: 24px 18px; }
-      .signals,
+      .risk-board,
       .status-strip,
-      .cockpit-grid { grid-template-columns: 1fr; }
+      .cockpit-grid,
+      .panel-split { grid-template-columns: 1fr; }
       .topline { align-items: flex-start; flex-direction: column; }
+      .risk-item { grid-template-columns: auto minmax(0, 1fr); }
+      .risk-item em { grid-column: 2; white-space: normal; }
     }
   </style>
 </head>
@@ -1051,7 +1128,7 @@ function renderHome(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>Uebersicht</h1>
-          <p class="lede">${escapeHtml(currentUser)} sieht hier die Instrumententafel: Risiken zuerst, dann Kurs, Kommunikation, Kapazitaet, Flugplan und Dokumentation. Die Detailarbeit liegt in den Seiten des Seitenmenues.</p>
+          <p class="lede">${escapeHtml(currentUser)} sieht hier die Instrumententafel: erst Kontrollverlust, dann Arbeit, Vorgang, Team und Termine. Die Detailarbeit liegt im Seitenmenue.</p>
         </div>
         <span class="badge">${escapeHtml(overall)}</span>
       </div>
@@ -1063,29 +1140,31 @@ function renderHome(state: OverviewState): string {
         </div>
         <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${urgentTasks} dringend</div></div>
         <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">Funkverkehr</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${unresolvedSuggestions} SCAS-Vorschlaege</div></div>
-        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${state.delegations.length} aktive Vertretung(en)</div></div>
+        <div class="status-card"><div class="metric">${state.customer_cases.length}</div><div class="metric-label">aktive Vorgaenge</div><div class="metric-sub">Kundenarbeit im Blick</div></div>
+        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgabe(n) faellig</div></div>
       </div>
-      <section class="signals" aria-label="Warnlampen">
-        ${signals.map(renderSignal).join("")}
+      <section class="risk-board" aria-label="Cockpit Kontrollverlust">
+        <div class="risk-panel">
+          <div class="panel-head"><div><span class="section-kicker">Kontrollverlust</span><h2>Was jetzt kippen kann</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
+          ${renderRiskQueue(riskQueue)}
+        </div>
+        <div class="command-panel">
+          <div class="panel-head"><div><span class="section-kicker">Sofortzugriff</span><h2>Direkt handeln</h2></div></div>
+          <div class="command-links">
+            <a class="command-link" href="/aufgaben.php">Aufgaben <span>${overdueTasks} ueberfaellig</span></a>
+            <a class="command-link" href="/aufgaben.php#emails">E-Mails <span>${unassignedEmails} ohne Vorgang</span></a>
+            <a class="command-link" href="/kunden.php">Kunden/Vorgaenge <span>${state.customer_cases.length} aktiv</span></a>
+            ${state.current_user.is_admin ? '<a class="command-link" href="/admin.php?modal=users">Team/Admin <span>Zustaendigkeit</span></a>' : ""}
+          </div>
+        </div>
       </section>
       <div class="cockpit-grid">
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Kurs & Navigation</span><h2>Heute relevante Arbeit</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
-          ${renderCockpitTasks(state)}
-        </section>
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Funkverkehr</span><h2>E-Mails nach Vorgang</h2></div><a class="panel-link" href="/aufgaben.php#emails">Oeffnen</a></div>
-          ${renderCockpitEmails(state)}
-        </section>
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Treibstoff / Kapazitaet</span><h2>Auslastung und Vertretung</h2></div><a class="panel-link" href="/admin.php?modal=users">Team</a></div>
-          ${renderCapacity(state)}
-          <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
-        </section>
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Flugplan</span><h2>Termine, Faelligkeiten, Neuigkeiten</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
-          ${renderOverviewAppointments(state)}
-          <div style="margin-top:10px">${renderOverviewNews(state)}</div>
+        <section class="panel wide">
+          <div class="panel-head"><div><span class="section-kicker">Heute arbeiten</span><h2>Aufgaben und E-Mails</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
+          <div class="panel-split">
+            <div>${renderCockpitTasks(state)}</div>
+            <div>${renderCockpitEmails(state)}</div>
+          </div>
         </section>
         <section class="panel">
           <div class="panel-head"><div><span class="section-kicker">Vorgaenge</span><h2>Kunden aktiv bewegen</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
@@ -1098,7 +1177,14 @@ function renderHome(state: OverviewState): string {
           )}
         </section>
         <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Blackbox / Dokumentation</span><h2>Letzte dokumentierte Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
+          <div class="panel-head"><div><span class="section-kicker">Team & Termine</span><h2>Kapazitaet, Vertretung, Flugplan</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
+          ${renderCapacity(state)}
+          <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
+          ${renderOverviewAppointments(state)}
+          <div style="margin-top:10px">${renderOverviewNews(state)}</div>
+        </section>
+        <section class="panel wide">
+          <div class="panel-head"><div><span class="section-kicker">Blackbox</span><h2>Letzte dokumentierte Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
           ${renderBlackbox(state)}
         </section>
       </div>

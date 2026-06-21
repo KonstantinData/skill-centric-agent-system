@@ -109,12 +109,14 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'location' in source
     assert "Uebersicht" in source
     assert "Instrumententafel" in source
-    assert "Warnlampen" in source
-    assert "Kurs & Navigation" in source
+    assert "Kontrollverlust" in source
+    assert "Was jetzt kippen kann" in source
+    assert "Sofortzugriff" in source
+    assert "Heute arbeiten" in source
     assert "Funkverkehr" in source
-    assert "Treibstoff / Kapazitaet" in source
-    assert "Flugplan" in source
-    assert "Blackbox / Dokumentation" in source
+    assert "Team & Termine" in source
+    assert "Kapazitaet, Vertretung, Flugplan" in source
+    assert "Blackbox" in source
     assert "Kunde anlegen" in source
     assert "Gleiche Namen oder gleiche E-Mail-Adressen koennen mehrfach vorkommen" in source
     assert "Aufgabe anlegen" in source
