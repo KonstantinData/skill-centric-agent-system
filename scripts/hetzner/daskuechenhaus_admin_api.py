@@ -2148,7 +2148,14 @@ def decide_email_suggestion(suggestion_id: str, decision: str, access_email: str
             customer_case_id,
             email_message_id,
             actor_user_id,
-            title
+            title,
+            tenant_id,
+            skill_pack_id,
+            selected_module_ids,
+            validator_results_json,
+            confirmation_status,
+            action_result_json,
+            role_context_json
           )
           SELECT
             CASE
@@ -2159,7 +2166,50 @@ def decide_email_suggestion(suggestion_id: str, decision: str, access_email: str
             visible_suggestion.suggested_case_id,
             visible_suggestion.email_message_id,
             (data->>'actor_user_id')::bigint,
-            visible_suggestion.subject
+            visible_suggestion.subject,
+            'daskuechenhaus',
+            'daskuechenhaus-email-assignment',
+            ARRAY[
+              'crm-email-case-matching',
+              'crm-email-assignment-reasoning'
+            ]::text[],
+            jsonb_build_array(
+              jsonb_build_object(
+                'validator_id',
+                'tenant-profile-validator',
+                'status',
+                'passed'
+              ),
+              jsonb_build_object(
+                'validator_id',
+                'skill-scope-compatibility-validator',
+                'status',
+                'passed'
+              ),
+              jsonb_build_object(
+                'validator_id',
+                'crm-action-audit-validator',
+                'status',
+                'passed'
+              )
+            ),
+            (data->>'decision'),
+            jsonb_build_object(
+              'decision',
+              data->>'decision',
+              'email_message_id',
+              visible_suggestion.email_message_id,
+              'customer_case_id',
+              visible_suggestion.suggested_case_id
+            ),
+            jsonb_build_object(
+              'principal_email',
+              data->'context'->>'email',
+              'role_bundle_ids',
+              data->'context'->'roles',
+              'scope_user_ids',
+              data->'context'->'scope_user_ids'
+            )
           FROM payload, visible_suggestion
           WHERE EXISTS (SELECT 1 FROM updated_suggestion)
         )

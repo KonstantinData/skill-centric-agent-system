@@ -53,6 +53,11 @@ not applied automatically. The cockpit requires a human operator to confirm the
 suggested assignment. If the suggestion is not useful, the operator searches for
 the correct customer case and assigns it manually.
 
+SCAS-supported CRM actions write audit evidence to Hetzner runtime storage via
+`app.communication_events`. For confirmed email-assignment suggestions this
+includes tenant ID, principal context, role/scope context, skill-pack ID,
+selected module IDs, validator results, confirmation status, and action result.
+
 Personalized mailbox credentials are synced by
 `.github/workflows/es-daskuechenhaus-mail-runtime-sync.yml` to
 `/etc/daskuechenhaus/mail.env` on Hetzner. Cloudflare receives no mail
