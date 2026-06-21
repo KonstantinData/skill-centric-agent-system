@@ -53,7 +53,7 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
     assert "Kundenfortschritt" in source
-    assert "Audit Trail" in source
+    assert "Nachvollziehbare Aenderungen" in source
     assert "renderDecisionQueue" in source
     assert "renderCustomerFocus" in source
     assert "renderAuditTrail" in source
@@ -89,6 +89,11 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "SCAS-Vorschlaege",
         "Keine SCAS-Vorschlaege",
         "renderScasReviewQueue",
+        '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>',
+        '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>',
+        '<span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2>',
+        '<span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2>',
+        "Anlage(n)",
     ]
 
     for term in forbidden_terms:

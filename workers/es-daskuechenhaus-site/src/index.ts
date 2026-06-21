@@ -1378,32 +1378,32 @@ function renderHome(state: OverviewState): string {
       </div>
       <section class="operations-board" aria-label="CRM Entscheidungszentrale">
         <div class="board-section primary">
-          <div class="panel-head"><div><span class="section-kicker">Entscheidungszentrale</span><h2>Jetzt bearbeiten</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
+          <div class="panel-head"><div><h2>Jetzt bearbeiten</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
           ${renderDecisionQueue(decisionItems)}
         </div>
       </section>
       <div class="cockpit-grid">
         <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Kundenfortschritt</span><h2>Aktive Vorgaenge steuern</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
+          <div class="panel-head"><div><h2>Aktive Vorgaenge steuern</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
           ${renderCustomerFocus(state)}
         </section>
         <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Team & Termine</span><h2>Auslastung und Termine</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
+          <div class="panel-head"><div><h2>Team, Auslastung und Termine</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
           ${renderCapacity(state)}
           <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
           ${renderOverviewAppointments(state)}
           <div style="margin-top:10px">${renderOverviewNews(state)}</div>
         </section>
         <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Aufgaben</span><h2>Faellige Aufgaben</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
+          <div class="panel-head"><div><h2>Faellige Aufgaben</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
           ${renderCockpitTasks(state)}
         </section>
         <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">E-Mails</span><h2>Eingang und Zuordnung</h2></div><a class="panel-link" href="/emails.php">Oeffnen</a></div>
+          <div class="panel-head"><div><h2>E-Mail-Eingang und Zuordnung</h2></div><a class="panel-link" href="/emails.php">Oeffnen</a></div>
           ${renderCockpitEmails(state)}
         </section>
         <section class="panel wide">
-          <div class="panel-head"><div><span class="section-kicker">Audit Trail</span><h2>Nachvollziehbare Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
+          <div class="panel-head"><div><h2>Nachvollziehbare Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
           ${renderAuditTrail(state)}
         </section>
       </div>
@@ -1450,7 +1450,7 @@ function renderOverviewTasks(state: OverviewState, returnTo = "/index.php"): str
           <span>${escapeHtml(assigned)}</span>
           <span>${escapeHtml(caseLabel)}</span>
           ${dueLabel ? `<span>${isLate ? "Ueberfaellig" : "Faellig"}: ${escapeHtml(dueLabel)}</span>` : ""}
-          ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlage(n)</span>` : ""}
+          ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlagen</span>` : ""}
         </div>
         <div class="item-actions">
           <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/archive?return_to=${escapeHtml(returnTo)}">
@@ -2216,11 +2216,11 @@ function renderTasksPage(state: OverviewState): string {
       ${renderCustomerCaseDatalist(state)}
       <div class="workspace">
         <section class="workspace-section">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Aufgaben</span></div>
+          <div class="section-head"><div class="section-title"><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Aufgaben</span></div>
           ${renderOverviewTasks(state, "/aufgaben.php")}
         </section>
         <section class="workspace-section task-form" id="task-create">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2></div></div>
+          <div class="section-head"><div class="section-title"><h2>Aufgabe anlegen</h2></div></div>
           ${renderTaskCreateForm(state, "/aufgaben.php")}
         </section>
       </div>
@@ -2263,7 +2263,7 @@ function renderEmailsPage(state: OverviewState): string {
       ${renderCustomerCaseDatalist(state)}
       <div class="workspace">
         <section class="workspace-section" id="emails">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
+          <div class="section-head"><div class="section-title"><h2>E-Mail-Eingang</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
           ${renderOverviewEmails(state, "/emails.php")}
         </section>
       </div>
@@ -2477,11 +2477,11 @@ function renderCustomersPage(
       ${searchQuery ? `<div class="filter-note">Suche: <strong>${escapeHtml(searchQuery)}</strong> · ${visibleCustomers.length} Treffer</div>` : ""}
       <div class="workspace">
         <section class="workspace-section">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${visibleCustomers.length} Kunden</span></div>
+          <div class="section-head"><div class="section-title"><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${visibleCustomers.length} Kunden</span></div>
           ${renderCustomerRows(visibleState)}
         </section>
         <section class="workspace-section task-form">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">${showForm && editCustomer ? "Bearbeiten" : "Anlage"}</span><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
+          <div class="section-head"><div class="section-title"><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
           ${showForm ? renderCustomerForm(state, editCustomer) : '<div class="empty">Waehle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
         </section>
       </div>

@@ -124,7 +124,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
     assert "Kundenfortschritt" in source
-    assert "Audit Trail" in source
+    assert "Nachvollziehbare Aenderungen" in source
     assert "Command Center" in source
     assert "renderCommandCenter" in source
     assert "renderDecisionQueue" in source
@@ -142,7 +142,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "filter-note" in source
     assert "Faellige Aufgaben" in source
     assert "Eingang und Zuordnung" in source
-    assert "Team & Termine" in source
+    assert "Team, Auslastung und Termine" in source
     assert "Auslastung und Termine" in source
     assert "Kunde anlegen" in source
     assert "Kunden, Kontaktdaten, Verantwortlichkeiten" in source
@@ -168,6 +168,13 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "SCAS-Vorschlaege" not in source
     assert "Keine SCAS-Vorschlaege" not in source
     assert "renderScasReviewQueue" not in source
+    assert '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>' not in source
+    assert '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>' not in source
+    assert '<span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2>' not in source
+    assert (
+        '<span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2>'
+        not in source
+    )
     assert "Aufgaben und E-Mails werden hier" not in source
     assert "/aufgaben.php#emails" not in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
