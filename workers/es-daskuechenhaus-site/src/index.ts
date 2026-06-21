@@ -618,6 +618,12 @@ type CockpitRisk = {
   cta: string;
 };
 
+type CommandCenterMetrics = {
+  overdueTasks: number;
+  unassignedEmails: number;
+  activeCases: number;
+};
+
 function isToday(value: string | null): boolean {
   const parsed = parseDate(value);
   if (!parsed) {
@@ -652,6 +658,29 @@ function renderRiskQueue(items: CockpitRisk[]): string {
       </a>`,
     )
     .join("")}</div>`;
+}
+
+function renderCommandCenter(
+  currentUser: OverviewState["current_user"],
+  metrics: CommandCenterMetrics,
+): string {
+  return `<section class="command-center" aria-label="Command Center">
+    <form class="command-search" action="/kunden.php" method="get">
+      <label for="command-search">Suche</label>
+      <input id="command-search" name="q" type="search" autocomplete="off" placeholder="Kunde, Vorgang, E-Mail oder Aufgabe suchen">
+      <button type="submit">Suchen</button>
+    </form>
+    <div class="command-actions" aria-label="Schnellaktionen">
+      <a href="/aufgaben.php">Aufgaben <span>${metrics.overdueTasks} ueberfaellig</span></a>
+      <a href="/aufgaben.php#emails">E-Mails <span>${metrics.unassignedEmails} ohne Vorgang</span></a>
+      <a href="/kunden.php">Vorgaenge <span>${metrics.activeCases} aktiv</span></a>
+      ${currentUser.is_admin ? '<a href="/admin.php?modal=users">Team <span>Admin</span></a>' : ""}
+    </div>
+    <div class="command-scas">
+      <strong>SCAS</strong>
+      <span>Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung</span>
+    </div>
+  </section>`;
 }
 
 function renderCockpitTasks(state: OverviewState): string {
@@ -878,6 +907,82 @@ function renderHome(state: OverviewState): string {
       font-size: 0.95rem;
       line-height: 1.45;
       margin: 8px 0 0;
+    }
+    .command-center {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr) minmax(220px, 0.55fr);
+      gap: 10px;
+      align-items: stretch;
+      margin: 14px 0 18px;
+    }
+    .command-search,
+    .command-actions,
+    .command-scas {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-width: 0;
+    }
+    .command-search {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+    }
+    .command-search label,
+    .command-scas strong {
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .command-search input {
+      min-width: 0;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+    }
+    .command-search button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 10px 12px;
+    }
+    .command-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+    }
+    .command-actions a {
+      display: grid;
+      gap: 2px;
+      color: var(--text);
+      padding: 9px 10px;
+      text-decoration: none;
+      background: #fbfcfa;
+      min-width: 0;
+    }
+    .command-actions a:hover {
+      background: var(--soft);
+    }
+    .command-actions span,
+    .command-scas span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+    .command-scas {
+      display: grid;
+      gap: 2px;
+      padding: 9px 10px;
     }
     .status-strip {
       display: grid;
@@ -1188,7 +1293,9 @@ function renderHome(state: OverviewState): string {
     @media (max-width: 1100px) {
       .risk-board,
       .status-strip,
+      .command-center,
       .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .command-scas { grid-column: 1 / -1; }
       .panel.wide { grid-column: auto; }
     }
     @media (max-width: 780px) {
@@ -1197,8 +1304,11 @@ function renderHome(state: OverviewState): string {
       main { padding: 24px 18px; }
       .risk-board,
       .status-strip,
+      .command-center,
       .cockpit-grid,
       .panel-split { grid-template-columns: 1fr; }
+      .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .command-search { grid-template-columns: 1fr; }
       .topline { align-items: flex-start; flex-direction: column; }
       .risk-item { grid-template-columns: auto minmax(0, 1fr); }
       .risk-item em { grid-column: 2; white-space: normal; }
@@ -1219,6 +1329,11 @@ function renderHome(state: OverviewState): string {
         </div>
         <span class="badge">${escapeHtml(overall)}</span>
       </div>
+      ${renderCommandCenter(state.current_user, {
+        overdueTasks,
+        unassignedEmails,
+        activeCases: state.customer_cases.length,
+      })}
       <div class="status-strip">
         <div class="status-card ${hasRed ? "red" : hasYellow ? "yellow" : "green"}">
           <div class="metric">${escapeHtml(hasRed ? "Rot" : hasYellow ? "Gelb" : "Gruen")}</div>
@@ -1733,6 +1848,82 @@ function renderWorkspaceStyles(): string {
       line-height: 1.45;
       margin: 8px 0 0;
     }
+    .command-center {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr) minmax(220px, 0.55fr);
+      gap: 10px;
+      align-items: stretch;
+      margin: 0 0 18px;
+    }
+    .command-search,
+    .command-actions,
+    .command-scas {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-width: 0;
+    }
+    .command-search {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+    }
+    .command-search label,
+    .command-scas strong {
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .command-search input {
+      min-width: 0;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+    }
+    .command-search button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 10px 12px;
+    }
+    .command-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+    }
+    .command-actions a {
+      display: grid;
+      gap: 2px;
+      color: var(--text);
+      padding: 9px 10px;
+      text-decoration: none;
+      background: #fbfcfa;
+      min-width: 0;
+    }
+    .command-actions a:hover {
+      background: var(--soft);
+    }
+    .command-actions span,
+    .command-scas span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+    .command-scas {
+      display: grid;
+      gap: 2px;
+      padding: 9px 10px;
+    }
     .workspace {
       display: grid;
       grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
@@ -1953,6 +2144,15 @@ function renderWorkspaceStyles(): string {
       color: var(--muted);
       background: #fbfcfa;
     }
+    .filter-note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--green-dark);
+      font-size: 0.9rem;
+      margin: 0 0 18px;
+      padding: 9px 10px;
+    }
     .more-note {
       margin-top: 8px;
       color: var(--muted);
@@ -1962,11 +2162,14 @@ function renderWorkspaceStyles(): string {
     @media (max-width: 920px) {
       .shell,
       .workspace,
+      .command-center,
       .form-grid,
       .row { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       main { padding: 24px 18px; }
       .topline { flex-direction: column; }
+      .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .command-search { grid-template-columns: 1fr; }
     }
   `;
 }
@@ -1996,6 +2199,11 @@ function renderTasksPage(state: OverviewState): string {
         </div>
         <a class="ui-button" href="#task-create">Aufgabe anlegen</a>
       </div>
+      ${renderCommandCenter(state.current_user, {
+        overdueTasks: state.tasks.filter((task) => isOverdue(task.due_at)).length,
+        unassignedEmails: state.emails.filter((email) => email.is_unassigned).length,
+        activeCases: state.customer_cases.length,
+      })}
       ${renderCustomerCaseDatalist(state)}
       <div class="workspace">
         <div class="stack">
@@ -2025,6 +2233,26 @@ function customerValue(customer: CustomerRecord | null, key: keyof CustomerRecor
 
 function addressValue(customer: CustomerRecord | null, key: keyof CustomerAddress): string {
   return escapeHtml(customer?.address?.[key] ?? "");
+}
+
+function customerMatchesQuery(customer: CustomerRecord, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return true;
+  }
+  const searchable = [
+    customer.customer_number,
+    customer.display_name,
+    customer.primary_email,
+    customer.primary_phone,
+    customer.primary_mobile,
+    customer.address?.city,
+    customer.address?.postal_code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return searchable.includes(normalizedQuery);
 }
 
 function renderCustomerRows(state: CustomersState): string {
@@ -2161,7 +2389,14 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
   </form>`;
 }
 
-function renderCustomersPage(state: CustomersState, editCustomerId: string | null, isNew: boolean): string {
+function renderCustomersPage(
+  state: CustomersState,
+  editCustomerId: string | null,
+  isNew: boolean,
+  searchQuery: string,
+): string {
+  const visibleCustomers = state.customers.filter((customer) => customerMatchesQuery(customer, searchQuery));
+  const visibleState: CustomersState = { ...state, customers: visibleCustomers };
   const editCustomer = state.customers.find((customer) => String(customer.id) === editCustomerId) ?? null;
   const showForm = isNew || Boolean(editCustomer);
   return `<!doctype html>
@@ -2188,10 +2423,16 @@ function renderCustomersPage(state: CustomersState, editCustomerId: string | nul
         </div>
         <a class="ui-button" href="/kunden.php?new=1">Kunde anlegen</a>
       </div>
+      ${renderCommandCenter(state.current_user, {
+        overdueTasks: 0,
+        unassignedEmails: 0,
+        activeCases: state.customers.reduce((total, customer) => total + customer.case_count, 0),
+      })}
+      ${searchQuery ? `<div class="filter-note">Suche: <strong>${escapeHtml(searchQuery)}</strong> · ${visibleCustomers.length} Treffer</div>` : ""}
       <div class="workspace">
         <section class="workspace-section">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${state.customers.length} Eintraege</span></div>
-          ${renderCustomerRows(state)}
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${visibleCustomers.length} Eintraege</span></div>
+          ${renderCustomerRows(visibleState)}
         </section>
         <section class="workspace-section task-form">
           <div class="section-head"><div class="section-title"><span class="section-kicker">${showForm && editCustomer ? "Bearbeiten" : "Anlage"}</span><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
@@ -3070,7 +3311,14 @@ export default {
     }
     if (url.pathname === "/kunden.php") {
       const state = await fetchCustomersState(env, request);
-      return htmlResponse(renderCustomersPage(state, url.searchParams.get("edit"), url.searchParams.has("new")));
+      return htmlResponse(
+        renderCustomersPage(
+          state,
+          url.searchParams.get("edit"),
+          url.searchParams.has("new"),
+          url.searchParams.get("q") ?? "",
+        ),
+      );
     }
     if (url.pathname === "/admin.php") {
       const state = await fetchAdminState(env, request);

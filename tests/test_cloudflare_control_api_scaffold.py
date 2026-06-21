@@ -123,6 +123,14 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Kontrollverlust" in source
     assert "Was jetzt kippen kann" in source
     assert "Sofortzugriff" in source
+    assert "Command Center" in source
+    assert "renderCommandCenter" in source
+    assert 'id="command-search"' in source
+    assert 'name="q"' in source
+    assert "customerMatchesQuery" in source
+    assert "SCAS" in source
+    assert "Ausfuehrung nur mit Bestaetigung" in source
+    assert "filter-note" in source
     assert "Heute arbeiten" in source
     assert "Funkverkehr" in source
     assert "Team & Termine" in source
