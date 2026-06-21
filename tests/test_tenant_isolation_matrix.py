@@ -14,6 +14,15 @@ from skill_centric_agent_system.control_plane import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 MODULES_DIR = REPO_ROOT / "registry" / "modules"
+CRM_SKILL_PACKS_DIR = REPO_ROOT / "examples" / "crm-skill-packs"
+DKH_ACTION_AUDIT_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0007_crm_action_audit_evidence.sql"
+)
 
 
 def tenant_paths() -> list[Path]:
@@ -25,6 +34,10 @@ def module_paths() -> list[Path]:
 
 
 def load_tenant(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_json(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -87,3 +100,61 @@ def test_seeded_tenant_scopes_are_disjoint() -> None:
     assert "knowledge-liquisto-docs" != "knowledge-demo-tenant-docs"
     assert "knowledge-liquisto-docs" != "knowledge-daskuechenhaus-docs"
     assert "knowledge-demo-tenant-docs" != "knowledge-daskuechenhaus-docs"
+
+
+def test_tenant_ui_assets_do_not_fallback_across_tenant_directories() -> None:
+    for path in tenant_paths():
+        tenant = load_tenant(path)
+        ui_profile = tenant.get("ui_profile")
+        if not isinstance(ui_profile, dict):
+            continue
+
+        tenant_id = str(tenant["tenant_id"])
+        brand_assets = ui_profile["brand_assets"]
+        logo_path = str(brand_assets["logo_path"])
+        assert brand_assets["asset_scope"] == "tenant-owned"
+        assert logo_path == ui_profile["logo_path"]
+        assert logo_path.startswith(f"assets/images/{tenant_id}/")
+        assert (REPO_ROOT / logo_path).is_file()
+
+        for optional_asset in ("favicon_path", "app_icon_path"):
+            asset_path = brand_assets[optional_asset]
+            if asset_path is not None:
+                assert str(asset_path).startswith(f"assets/images/{tenant_id}/")
+
+
+def test_tenant_crm_skill_pack_bindings_are_tenant_local() -> None:
+    skill_packs = {
+        load_json(path)["id"]: load_json(path)
+        for path in sorted(CRM_SKILL_PACKS_DIR.glob("*.json"))
+    }
+
+    for path in tenant_paths():
+        tenant = load_tenant(path)
+        ui_profile = tenant.get("ui_profile")
+        if not isinstance(ui_profile, dict):
+            continue
+
+        tenant_capabilities = {
+            capability
+            for role in tenant["role_bundles"]
+            for capability in role["capability_grants"]
+        }
+        for binding in ui_profile["scas_skill_packs"]:
+            skill_pack = skill_packs[binding["id"]]
+            assert skill_pack["tenant_id"] == tenant["tenant_id"]
+            assert skill_pack["task_types"] == binding["task_types"]
+            assert skill_pack["required_capabilities"] == binding["required_capabilities"]
+            assert set(skill_pack["required_capabilities"]).issubset(tenant_capabilities)
+            assert skill_pack["ui_binding"]["grants_runtime_authority"] is False
+            assert skill_pack["composition"]["selection_path"] == (
+                "registry-scoring-policy-graph-profile"
+            )
+
+
+def test_daskuechenhaus_crm_audit_evidence_is_tenant_pinned() -> None:
+    migration = DKH_ACTION_AUDIT_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert "tenant_id TEXT NOT NULL DEFAULT 'daskuechenhaus'" in migration
+    assert "hetzner" not in migration.lower()
+    assert "communication_events_skill_pack_idx" in migration
