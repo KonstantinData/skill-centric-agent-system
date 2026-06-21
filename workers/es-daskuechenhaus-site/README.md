@@ -69,4 +69,5 @@ Local checks:
 npm run dkh-site:typecheck
 npm run dkh-site:check
 python -m pytest tests/test_cloudflare_control_api_scaffold.py tests/test_daskuechenhaus_admin_area_schema.py tests/test_daskuechenhaus_admin_runtime_api.py
+python -m pytest tests/test_daskuechenhaus_crm_ui_quality_gate.py tests/test_daskuechenhaus_overview_actions_schema.py
 ```
