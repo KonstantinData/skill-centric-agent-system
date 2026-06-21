@@ -601,6 +601,136 @@ function renderSideNav(active: "overview" | "customers" | "tasks" | "emails" | "
   </nav>`;
 }
 
+type NavTarget = "overview" | "customers" | "tasks" | "emails" | "admin";
+
+function renderBottomNav(active: NavTarget): string {
+  const items: Array<{ key: NavTarget; href: string; label: string; icon: string }> = [
+    {
+      key: "overview",
+      href: "/index.php",
+      label: "Steuerung",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    },
+    {
+      key: "customers",
+      href: "/kunden.php",
+      label: "Kunden",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>',
+    },
+    {
+      key: "tasks",
+      href: "/aufgaben.php",
+      label: "Aufgaben",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    },
+    {
+      key: "emails",
+      href: "/emails.php",
+      label: "E-Mails",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+    },
+  ];
+  return `<nav class="tab-bar" aria-label="Hauptbereiche">${items
+    .map(
+      (item) =>
+        `<a href="${item.href}"${active === item.key ? ' aria-current="page"' : ""}>${item.icon}<span>${escapeHtml(item.label)}</span></a>`,
+    )
+    .join("")}</nav>`;
+}
+
+function renderFab(): string {
+  return `<details class="fab">
+    <summary aria-label="Schnellaktionen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+    <div class="fab-menu" aria-label="Schnellaktionen">
+      <a href="/aufgaben.php#task-create">Aufgabe anlegen</a>
+      <a href="/kunden.php?new=1">Kunde anlegen</a>
+      <a href="/kunden.php">Kunde suchen</a>
+    </div>
+  </details>`;
+}
+
+function renderChromeStyles(): string {
+  return `
+    .tab-bar {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+      box-shadow: 0 -4px 16px rgba(24, 38, 18, 0.10);
+    }
+    .tab-bar a {
+      display: grid;
+      gap: 3px;
+      justify-items: center;
+      align-content: center;
+      min-height: 56px;
+      padding: 7px 4px;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .tab-bar a span { line-height: 1; }
+    .tab-bar a svg { width: 24px; height: 24px; }
+    .tab-bar a[aria-current="page"] { color: var(--green-dark); }
+    .fab {
+      position: fixed;
+      right: clamp(14px, 4vw, 22px);
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      z-index: 25;
+    }
+    .fab > summary {
+      list-style: none;
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: var(--green);
+      color: #102000;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(24, 38, 18, 0.28);
+      transition: transform 140ms ease, background 140ms ease;
+    }
+    .fab > summary::-webkit-details-marker { display: none; }
+    .fab > summary svg { width: 26px; height: 26px; }
+    .fab[open] > summary {
+      background: var(--green-dark);
+      color: #ffffff;
+      transform: rotate(45deg);
+    }
+    .fab-menu {
+      position: absolute;
+      right: 0;
+      bottom: 68px;
+      display: grid;
+      gap: 8px;
+      min-width: 210px;
+    }
+    .fab-menu a {
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 20px rgba(24, 38, 18, 0.14);
+    }
+    @media (min-width: 768px) {
+      .tab-bar { display: none; }
+      .fab { display: none; }
+    }
+  `;
+}
+
 type CommandCenterMetrics = {
   overdueTasks: number;
   unassignedEmails: number;
@@ -756,10 +886,10 @@ function renderCustomerFocus(state: OverviewState): string {
           ? `${nextTask.title}${nextTask.due_at ? ` (${formatDateTime(nextTask.due_at)})` : ""}`
           : "Naechste Aktion anlegen";
         return `<a class="data-row" href="/kunden.php">
-          <span>${escapeHtml(customerCase.case_number ?? "-")}</span>
+          <span data-label="Vorgang">${escapeHtml(customerCase.case_number ?? "-")}</span>
           <strong>${escapeHtml(customerCase.customer_display_name)}</strong>
-          <span>${escapeHtml(phase)}</span>
-          <span>${escapeHtml(truncateText(nextStep, 84))}</span>
+          <span data-label="Phase">${escapeHtml(phase)}</span>
+          <span data-label="Naechste Aktion">${escapeHtml(truncateText(nextStep, 84))}</span>
         </a>`;
       })
       .join("")}
@@ -831,6 +961,7 @@ function renderHome(state: OverviewState): string {
   <meta name="experience-standard" content="${escapeHtml(DKH_TENANT_UI.experienceStandard)}">
   <title>Uebersicht | ${escapeHtml(DKH_TENANT_UI.displayName)}</title>
   <style>
+    ${renderChromeStyles()}
     :root {
       color-scheme: light;
       ${renderTenantThemeVars(DKH_TENANT_UI)}
@@ -851,50 +982,51 @@ function renderHome(state: OverviewState): string {
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--band);
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
     }
     .shell {
       min-height: 100vh;
-      display: grid;
-      grid-template-columns: 252px minmax(0, 1fr);
     }
     aside {
       background: var(--surface);
-      border-right: 1px solid var(--line);
-      padding: 24px 18px;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 18px;
     }
     .tenant-logo {
       display: block;
-      width: min(100%, 208px);
+      width: min(58%, 208px);
       height: auto;
-      margin-bottom: 28px;
+      aspect-ratio: 260 / 88;
+      margin-bottom: 0;
     }
-    nav {
-      display: grid;
+    aside nav {
+      display: none;
       gap: 8px;
     }
-    nav a {
+    aside nav a {
       color: var(--text);
       text-decoration: none;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border-left: 3px solid transparent;
     }
-    nav a:hover {
+    aside nav a:hover {
       background: #f6f8f4;
     }
-    nav a[aria-current="page"] {
+    aside nav a[aria-current="page"] {
       border-left-color: var(--green);
       background: var(--soft);
       font-weight: 700;
     }
     main {
-      padding: 24px 30px 42px;
+      padding: clamp(16px, 4vw, 24px) clamp(14px, 4vw, 30px) 32px;
       min-width: 0;
     }
     .topline {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 18px;
+      gap: 12px;
       margin-bottom: 14px;
     }
     .badge {
@@ -907,7 +1039,7 @@ function renderHome(state: OverviewState): string {
     }
     h1 {
       margin: 0;
-      font-size: 1.8rem;
+      font-size: clamp(1.4rem, 5vw, 1.8rem);
       line-height: 1.1;
       letter-spacing: 0;
     }
@@ -920,7 +1052,7 @@ function renderHome(state: OverviewState): string {
     }
     .command-center {
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
+      grid-template-columns: 1fr;
       gap: 10px;
       align-items: stretch;
       margin: 14px 0 18px;
@@ -934,7 +1066,7 @@ function renderHome(state: OverviewState): string {
     }
     .command-search {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: 1fr;
       gap: 8px;
       align-items: center;
       padding: 8px;
@@ -965,7 +1097,7 @@ function renderHome(state: OverviewState): string {
     }
     .command-actions {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1px;
       overflow: hidden;
     }
@@ -988,7 +1120,7 @@ function renderHome(state: OverviewState): string {
     }
     .status-strip {
       display: grid;
-      grid-template-columns: repeat(5, minmax(128px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin: 18px 0;
     }
@@ -1012,7 +1144,7 @@ function renderHome(state: OverviewState): string {
       background: var(--ok-bg);
     }
     .metric {
-      font-size: 1.55rem;
+      font-size: clamp(1.35rem, 5vw, 1.55rem);
       font-weight: 800;
       line-height: 1.1;
     }
@@ -1027,7 +1159,7 @@ function renderHome(state: OverviewState): string {
     }
     .operations-board {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
+      grid-template-columns: 1fr;
       gap: 16px;
       margin-bottom: 16px;
       align-items: stretch;
@@ -1049,7 +1181,7 @@ function renderHome(state: OverviewState): string {
     }
     .decision-row {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
       gap: 10px;
       align-items: center;
       padding: 10px;
@@ -1106,11 +1238,12 @@ function renderHome(state: OverviewState): string {
       color: var(--green-dark);
       font-size: 0.8rem;
       font-weight: 800;
-      white-space: nowrap;
+      grid-column: 2;
+      white-space: normal;
     }
     .cockpit-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 16px;
       align-items: start;
     }
@@ -1126,7 +1259,7 @@ function renderHome(state: OverviewState): string {
     }
     .panel-split {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 12px;
     }
     .panel-head {
@@ -1146,7 +1279,7 @@ function renderHome(state: OverviewState): string {
     }
     .data-row {
       display: grid;
-      grid-template-columns: minmax(90px, 0.55fr) minmax(140px, 0.95fr) minmax(70px, 0.45fr) minmax(180px, 1.2fr);
+      grid-template-columns: 1fr;
       gap: 12px;
       align-items: center;
       color: var(--text);
@@ -1157,11 +1290,17 @@ function renderHome(state: OverviewState): string {
     .data-row:last-child { border-bottom: 0; }
     .data-row:hover { background: #f8fbf5; }
     .data-head {
+      display: none;
       background: var(--soft);
       color: var(--green-dark);
       font-size: 0.78rem;
       font-weight: 900;
       text-transform: uppercase;
+    }
+    .data-row span[data-label]::before {
+      content: attr(data-label) ": ";
+      color: var(--muted);
+      font-weight: 700;
     }
     .audit-list {
       display: grid;
@@ -1175,8 +1314,8 @@ function renderHome(state: OverviewState): string {
     }
     .audit-list li {
       display: grid;
-      grid-template-columns: 150px minmax(170px, 0.8fr) minmax(220px, 1fr);
-      gap: 12px;
+      grid-template-columns: 1fr;
+      gap: 6px;
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
       background: #ffffff;
@@ -1299,6 +1438,9 @@ function renderHome(state: OverviewState): string {
       color: #111111;
       border-radius: 6px;
       padding: 9px 13px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
       font-weight: 800;
       text-decoration: none;
       cursor: pointer;
@@ -1317,29 +1459,29 @@ function renderHome(state: OverviewState): string {
       transform: translateY(1px);
       box-shadow: none;
     }
-    @media (max-width: 1100px) {
-      .operations-board,
-      .status-strip,
-      .command-center,
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; }
+      .shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }
+      aside { border-right: 1px solid var(--line); border-bottom: 0; padding: 24px 18px; }
+      aside nav { display: grid; }
+      .tenant-logo { width: min(100%, 208px); margin-bottom: 28px; }
+      .topline { flex-direction: row; align-items: center; }
+      .command-center { grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr); }
+      .command-search { grid-template-columns: auto minmax(0, 1fr) auto; }
+      .command-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .status-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .panel.wide { grid-column: auto; }
+      .panel-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .decision-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+      .decision-action { grid-column: auto; white-space: nowrap; }
+      .data-head { display: grid; }
+      .data-row span[data-label]::before { content: none; }
+      .data-row { grid-template-columns: minmax(90px, 0.55fr) minmax(140px, 0.95fr) minmax(70px, 0.45fr) minmax(180px, 1.2fr); }
+      .audit-list li { grid-template-columns: 150px minmax(170px, 0.8fr) minmax(220px, 1fr); }
     }
-    @media (max-width: 780px) {
-      .shell { grid-template-columns: 1fr; }
-      aside { border-right: 0; border-bottom: 1px solid var(--line); }
-      main { padding: 24px 18px; }
-      .operations-board,
-      .status-strip,
-      .command-center,
-      .cockpit-grid,
-      .panel-split,
-      .data-row,
-      .audit-list li { grid-template-columns: 1fr; }
-      .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .command-search { grid-template-columns: 1fr; }
-      .topline { align-items: flex-start; flex-direction: column; }
-      .decision-row { grid-template-columns: auto minmax(0, 1fr); }
-      .decision-action { grid-column: 2; white-space: normal; }
+    @media (min-width: 1100px) {
+      .status-strip { grid-template-columns: repeat(5, minmax(128px, 1fr)); }
+      .operations-board { grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr); }
     }
   </style>
 </head>
@@ -1410,6 +1552,8 @@ function renderHome(state: OverviewState): string {
       </div>
     </main>
   </div>
+  ${renderFab()}
+  ${renderBottomNav("overview")}
 </body>
 </html>`;
 }
@@ -1773,6 +1917,7 @@ function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): st
 
 function renderWorkspaceStyles(): string {
   return `
+    ${renderChromeStyles()}
     :root {
       color-scheme: light;
       ${renderTenantThemeVars(DKH_TENANT_UI)}
@@ -1791,55 +1936,56 @@ function renderWorkspaceStyles(): string {
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--band);
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
     }
     .shell {
       min-height: 100vh;
-      display: grid;
-      grid-template-columns: 252px minmax(0, 1fr);
     }
     aside {
       background: var(--surface);
-      border-right: 1px solid var(--line);
-      padding: 24px 18px;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 18px;
     }
     .tenant-logo {
       display: block;
-      width: min(100%, 208px);
+      width: min(58%, 208px);
       height: auto;
-      margin-bottom: 28px;
+      aspect-ratio: 260 / 88;
+      margin-bottom: 0;
     }
-    nav {
-      display: grid;
+    aside nav {
+      display: none;
       gap: 8px;
     }
-    nav a {
+    aside nav a {
       color: var(--text);
       text-decoration: none;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border-left: 3px solid transparent;
     }
-    nav a:hover {
+    aside nav a:hover {
       background: #f6f8f4;
     }
-    nav a[aria-current="page"] {
+    aside nav a[aria-current="page"] {
       border-left-color: var(--green);
       background: var(--soft);
       font-weight: 700;
     }
     main {
-      padding: 24px 30px 42px;
+      padding: clamp(16px, 4vw, 24px) clamp(14px, 4vw, 30px) 32px;
       min-width: 0;
     }
     .topline {
       display: flex;
+      flex-direction: column;
       justify-content: space-between;
-      gap: 18px;
+      gap: 12px;
       align-items: flex-start;
       margin-bottom: 18px;
     }
     h1 {
       margin: 0;
-      font-size: 1.8rem;
+      font-size: clamp(1.4rem, 5vw, 1.8rem);
       line-height: 1.1;
       letter-spacing: 0;
     }
@@ -1863,7 +2009,7 @@ function renderWorkspaceStyles(): string {
     }
     .command-center {
       display: grid;
-      grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
+      grid-template-columns: 1fr;
       gap: 10px;
       align-items: stretch;
       margin: 0 0 18px;
@@ -1877,7 +2023,7 @@ function renderWorkspaceStyles(): string {
     }
     .command-search {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: 1fr;
       gap: 8px;
       align-items: center;
       padding: 8px;
@@ -1908,7 +2054,7 @@ function renderWorkspaceStyles(): string {
     }
     .command-actions {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1px;
       overflow: hidden;
     }
@@ -1931,7 +2077,7 @@ function renderWorkspaceStyles(): string {
     }
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+      grid-template-columns: 1fr;
       gap: 22px;
       align-items: start;
     }
@@ -2052,7 +2198,7 @@ function renderWorkspaceStyles(): string {
     form { display: grid; gap: 10px; }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 10px;
     }
     label {
@@ -2095,6 +2241,9 @@ function renderWorkspaceStyles(): string {
       color: #111111;
       border-radius: 6px;
       padding: 9px 13px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
       font-weight: 800;
       text-decoration: none;
       cursor: pointer;
@@ -2131,7 +2280,7 @@ function renderWorkspaceStyles(): string {
     }
     .row {
       display: grid;
-      grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.7fr) minmax(170px, 1fr) minmax(110px, 0.45fr);
+      grid-template-columns: 1fr;
       gap: 12px;
       align-items: center;
       padding: 12px;
@@ -2164,17 +2313,77 @@ function renderWorkspaceStyles(): string {
       font-size: 0.82rem;
       text-align: right;
     }
-    @media (max-width: 920px) {
-      .shell,
-      .workspace,
-      .command-center,
-      .form-grid,
-      .row { grid-template-columns: 1fr; }
-      aside { border-right: 0; border-bottom: 1px solid var(--line); }
-      main { padding: 24px 18px; }
-      .topline { flex-direction: column; }
-      .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .command-search { grid-template-columns: 1fr; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
+      overflow: hidden;
+    }
+    .card + .card { margin-top: 8px; }
+    .card > summary {
+      list-style: none;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+      padding: 12px 14px;
+    }
+    .card > summary::-webkit-details-marker { display: none; }
+    .card > summary .card-title {
+      font-weight: 800;
+      font-size: 0.98rem;
+      overflow-wrap: anywhere;
+    }
+    .card > summary .card-sub {
+      color: var(--muted);
+      font-size: 0.84rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+    }
+    .card[open] > summary { border-bottom: 1px solid var(--line); }
+    .card-body {
+      display: grid;
+      gap: 10px;
+      padding: 12px 14px;
+    }
+    .contact-actions {
+      display: grid;
+      gap: 8px;
+    }
+    .contact-actions a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfa;
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+    .contact-actions a small {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; }
+      .shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }
+      aside { border-right: 1px solid var(--line); border-bottom: 0; padding: 24px 18px; }
+      aside nav { display: grid; }
+      .tenant-logo { width: min(100%, 208px); margin-bottom: 28px; }
+      main { padding: 24px 30px 42px; }
+      .topline { flex-direction: row; align-items: center; }
+      .command-center { grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr); }
+      .command-search { grid-template-columns: auto minmax(0, 1fr) auto; }
+      .command-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (min-width: 960px) {
+      .workspace { grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); }
     }
   `;
 }
@@ -2222,6 +2431,8 @@ function renderTasksPage(state: OverviewState): string {
       </div>
     </main>
   </div>
+  ${renderFab()}
+  ${renderBottomNav("tasks")}
 </body>
 </html>`;
 }
@@ -2265,6 +2476,8 @@ function renderEmailsPage(state: OverviewState): string {
       </div>
     </main>
   </div>
+  ${renderFab()}
+  ${renderBottomNav("emails")}
 </body>
 </html>`;
 }
@@ -2297,21 +2510,80 @@ function customerMatchesQuery(customer: CustomerRecord, query: string): boolean 
   return searchable.includes(normalizedQuery);
 }
 
+function telHref(value: string): string {
+  const trimmed = value.trim();
+  const prefix = trimmed.startsWith("+") ? "+" : "";
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  return `${prefix}${digits}`;
+}
+
+function formatAddressLine(address: CustomerAddress | null): string {
+  if (!address) {
+    return "";
+  }
+  const street = [address.street, address.house_number].filter(Boolean).join(" ");
+  const city = [address.postal_code, address.city].filter(Boolean).join(" ");
+  return [street, address.address_extra, city, address.country].filter(Boolean).join(", ");
+}
+
+function renderContactLinks(customer: CustomerRecord): string {
+  const phoneIcon =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+  const mailIcon =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
+  const mapIcon =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+  const links: string[] = [];
+  if (customer.primary_phone) {
+    links.push(
+      `<a href="tel:${escapeHtml(telHref(customer.primary_phone))}">${phoneIcon}<span>Anrufen <small>${escapeHtml(customer.primary_phone)}</small></span></a>`,
+    );
+  }
+  if (customer.primary_mobile) {
+    links.push(
+      `<a href="tel:${escapeHtml(telHref(customer.primary_mobile))}">${phoneIcon}<span>Mobil <small>${escapeHtml(customer.primary_mobile)}</small></span></a>`,
+    );
+  }
+  if (customer.primary_email) {
+    links.push(
+      `<a href="mailto:${escapeHtml(customer.primary_email)}">${mailIcon}<span>E-Mail <small>${escapeHtml(customer.primary_email)}</small></span></a>`,
+    );
+  }
+  const addressLine = formatAddressLine(customer.address);
+  if (addressLine) {
+    links.push(
+      `<a href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(addressLine)}" target="_blank" rel="noopener">${mapIcon}<span>Route <small>${escapeHtml(addressLine)}</small></span></a>`,
+    );
+  }
+  if (links.length === 0) {
+    return '<p class="muted">Keine Kontaktdaten hinterlegt.</p>';
+  }
+  return `<div class="contact-actions">${links.join("")}</div>`;
+}
+
 function renderCustomerRows(state: CustomersState): string {
   if (state.customers.length === 0) {
     return '<div class="empty">Noch keine Kunden angelegt.</div>';
   }
-  return `<div class="table">
-    <div class="row header"><span>Kunde</span><span>Kontakt</span><span>Vorgaenge</span><span>Aktion</span></div>
+  return `<div class="card-list">
     ${state.customers
-      .map(
-        (customer) => `<div class="row">
-          <span><strong>${escapeHtml(customer.display_name)}</strong>${customer.customer_number ? `<br><small>${escapeHtml(customer.customer_number)}</small>` : ""}</span>
-          <span>${escapeHtml(customer.primary_email ?? customer.primary_phone ?? customer.primary_mobile ?? "-")}</span>
-          <span>${customer.case_count} Vorgaenge</span>
-          <span><a class="ui-button secondary" href="/kunden.php?edit=${customer.id}">Bearbeiten</a></span>
-        </div>`,
-      )
+      .map((customer) => {
+        const primaryContact =
+          customer.primary_phone ?? customer.primary_mobile ?? customer.primary_email ?? "Kein Kontakt";
+        return `<details class="card">
+          <summary>
+            <span class="card-title">${escapeHtml(customer.display_name)}${customer.customer_number ? ` · ${escapeHtml(customer.customer_number)}` : ""}</span>
+            <span class="card-sub">
+              <span>${customer.case_count} Vorgaenge</span>
+              <span>${escapeHtml(primaryContact)}</span>
+            </span>
+          </summary>
+          <div class="card-body">
+            ${renderContactLinks(customer)}
+            <a class="ui-button secondary" href="/kunden.php?edit=${customer.id}">Bearbeiten</a>
+          </div>
+        </details>`;
+      })
       .join("")}
   </div>`;
 }
@@ -2483,6 +2755,8 @@ function renderCustomersPage(
       </div>
     </main>
   </div>
+  ${renderFab()}
+  ${renderBottomNav("customers")}
 </body>
 </html>`;
 }
@@ -2508,6 +2782,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
   <meta name="experience-standard" content="${escapeHtml(DKH_TENANT_UI.experienceStandard)}">
   <title>Admin Bereich | ${escapeHtml(DKH_TENANT_UI.displayName)}</title>
   <style>
+    ${renderChromeStyles()}
     :root {
       color-scheme: light;
       ${renderTenantThemeVars(DKH_TENANT_UI)}
@@ -2522,40 +2797,40 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--band);
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
     }
     .shell {
       min-height: 100vh;
-      display: grid;
-      grid-template-columns: minmax(240px, 320px) 1fr;
     }
     aside {
       background: var(--surface);
-      border-right: 1px solid var(--line);
-      padding: 28px 24px;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 18px;
     }
     .tenant-logo {
       display: block;
-      width: min(100%, 240px);
+      width: min(58%, 240px);
       height: auto;
-      margin-bottom: 36px;
+      aspect-ratio: 260 / 88;
+      margin-bottom: 0;
     }
-    nav {
-      display: grid;
+    aside nav {
+      display: none;
       gap: 8px;
     }
-    nav a {
+    aside nav a {
       color: var(--text);
       text-decoration: none;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border-left: 3px solid transparent;
     }
-    nav a[aria-current="page"] {
+    aside nav a[aria-current="page"] {
       border-left-color: var(--green);
       background: var(--soft);
       font-weight: 700;
     }
     main {
-      padding: 30px 34px 44px;
+      padding: clamp(16px, 4vw, 30px) clamp(14px, 4vw, 34px) 40px;
     }
     h1 {
       margin: 0;
@@ -2577,7 +2852,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
     }
     .tile-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      grid-template-columns: 1fr;
       gap: 14px;
       max-width: 1040px;
     }
@@ -2702,7 +2977,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
     }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 12px;
     }
     label,
@@ -2752,12 +3027,13 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       color: var(--muted);
       display: grid;
       gap: 10px;
-      grid-template-columns: 1.4fr 1fr 0.8fr;
+      grid-template-columns: 1fr;
       min-height: 50px;
       padding: 10px 12px;
     }
     .row:last-child { border-bottom: 0; }
     .row.header {
+      display: none;
       background: var(--soft);
       color: #25311f;
       font-weight: 800;
@@ -2770,6 +3046,8 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       color: #102000;
       cursor: pointer;
       display: inline-flex;
+      align-items: center;
+      min-height: 44px;
       font: inherit;
       font-weight: 800;
       padding: 8px 11px;
@@ -2873,13 +3151,17 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       font-size: 0.9rem;
       margin: 0;
     }
-    @media (max-width: 900px) {
-      .shell { grid-template-columns: 1fr; }
-      aside { border-bottom: 1px solid var(--line); border-right: 0; }
-      main { padding: 24px 18px; }
-      .tile-grid { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr; }
-      .row { grid-template-columns: 1fr; }
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; }
+      .shell { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; }
+      aside { border-right: 1px solid var(--line); border-bottom: 0; padding: 28px 24px; }
+      aside nav { display: grid; }
+      .tenant-logo { width: min(100%, 240px); margin-bottom: 36px; }
+      main { padding: 30px 34px 44px; }
+      .tile-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .row { grid-template-columns: 1.4fr 1fr 0.8fr; }
+      .row.header { display: grid; }
     }
   </style>
 </head>
@@ -3144,6 +3426,8 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       </div>
     </main>
   </div>
+  ${renderFab()}
+  ${renderBottomNav("admin")}
 </body>
 </html>`;
 }

@@ -34,16 +34,43 @@ def test_crm_command_center_has_accessible_search_and_scas_status() -> None:
     assert "Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung" not in source
 
 
-def test_crm_layout_has_responsive_grid_guards() -> None:
+def test_crm_layout_is_mobile_first_with_min_width_guards() -> None:
     source = load_worker_source()
 
-    assert "@media (max-width: 1100px)" in source
-    assert "@media (max-width: 920px)" in source
-    assert "@media (max-width: 780px)" in source
-    assert ".command-search { grid-template-columns: 1fr; }" in source
-    assert ".command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in source
-    assert ".shell { grid-template-columns: 1fr; }" in source
-    assert ".decision-row { grid-template-columns: auto minmax(0, 1fr); }" in source
+    # Mobile-first: layout grows via min-width only, no max-width fallbacks remain.
+    assert "@media (min-width: 768px)" in source
+    assert "@media (min-width: 1100px)" in source
+    assert "@media (max-width:" not in source
+
+    # Desktop multi-column layout is restored inside the min-width guards.
+    assert ".shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }" in source
+
+
+def test_crm_has_app_like_bottom_navigation_and_fab() -> None:
+    source = load_worker_source()
+
+    assert "renderBottomNav(" in source
+    assert "renderFab(" in source
+    assert 'class="tab-bar"' in source
+    assert "aria-label=\"Hauptbereiche\"" in source
+    # Bottom nav and FAB are mobile-only and respect the safe area.
+    assert ".tab-bar { display: none; }" in source
+    assert ".fab { display: none; }" in source
+    assert "env(safe-area-inset-bottom)" in source
+
+
+def test_crm_uses_cards_native_links_and_cls_safe_media() -> None:
+    source = load_worker_source()
+
+    # Wide customer table collapses into progressive-disclosure cards.
+    assert "renderContactLinks(" in source
+    assert '<details class="card">' in source
+    # Native mobile protocols for one-tap contact actions.
+    assert "tel:" in source
+    assert "mailto:" in source
+    assert "maps/search" in source
+    # Fixed aspect ratio keeps cumulative layout shift at zero.
+    assert "aspect-ratio: 260 / 88" in source
 
 
 def test_crm_surface_keeps_outcome_first_paths_visible() -> None:

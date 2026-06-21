@@ -65,6 +65,21 @@ Personalized mailbox credentials are synced by
 `/etc/daskuechenhaus/mail.env` on Hetzner. Cloudflare receives no mail
 credentials; PostgreSQL stores only secret reference names for each mailbox.
 
+The CRM surface is mobile-first: the base CSS targets a 390px smartphone and
+grows through `min-width` media queries to tablet (768px) and desktop. Small
+screens use an app-like bottom tab bar plus a floating action button instead of
+the desktop sidebar, customer tables collapse into progressive-disclosure cards,
+and phone/e-mail/address fields use native `tel:`/`mailto:`/maps links. All
+interactivity is pure HTML/CSS (`<details>`, the CSS-only admin tab/modal hack)
+because the hardened CSP forbids client-side JavaScript.
+
+Three brief items are intentionally deferred to a separate phase because they
+require client-side JavaScript and a relaxed CSP (and, for dictation, the
+currently disabled `microphone` permission): offline-first caching
+(IndexedDB/Service Worker), true skeleton loaders (the pages are fully
+server-rendered, so there is no client-side data fetch to mask), and voice
+note dictation.
+
 Local checks:
 
 ```powershell
