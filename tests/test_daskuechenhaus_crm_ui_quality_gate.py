@@ -31,7 +31,7 @@ def test_crm_command_center_has_accessible_search_and_scas_status() -> None:
     assert 'id="command-search"' in source
     assert 'type="search"' in source
     assert 'aria-label="Schnellaktionen"' in source
-    assert "Vorschlaege sichtbar, Ausfuehrung nur mit Bestaetigung" not in source
+    assert "Vorschläge sichtbar, Ausführung nur mit Bestätigung" not in source
 
 
 def test_crm_layout_is_mobile_first_with_min_width_guards() -> None:
@@ -86,8 +86,8 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "<h1>Steuerung</h1>" in source
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
-    assert "Aktive Vorgaenge steuern" in source
-    assert "Nachvollziehbare Aenderungen" in source
+    assert "Aktive Vorgänge steuern" in source
+    assert "Nachvollziehbare Änderungen" in source
     assert "renderDecisionQueue" in source
     assert "renderCustomerFocus" in source
     assert "renderAuditTrail" in source
@@ -95,7 +95,7 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "renderEmailsPage" in source
     assert 'renderSideNav("emails"' in source
     assert 'href="/emails.php"' in source
-    assert "Faellige Aufgaben" in source
+    assert "Fällige Aufgaben" in source
     assert "Eingang und Zuordnung" in source
     assert "customerMatchesQuery" in source
     assert "renderCommandCenter({" in source
@@ -114,7 +114,7 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "EXIT",
         "Aufgabe(n)",
         "E-Mail(s)",
-        "Vorgang/Vorgaenge",
+        "Vorgang/Vorgänge",
         "Das Cockpit zeigt",
         "CRM Steuerung",
         "entscheidungsrelevante Arbeit",
@@ -124,8 +124,8 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "/aufgaben.php#emails",
         "SCAS Kontrolle",
         "SCAS-Freigaben",
-        "SCAS-Vorschlaege",
-        "Keine SCAS-Vorschlaege",
+        "SCAS-Vorschläge",
+        "Keine SCAS-Vorschläge",
         "renderScasReviewQueue",
         '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>',
         '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>',
@@ -136,3 +136,45 @@ def test_crm_surface_rejects_non_production_language() -> None:
 
     for term in forbidden_terms:
         assert term not in source
+
+
+def test_crm_visible_german_copy_uses_umlauts() -> None:
+    source = load_worker_source()
+
+    legacy_visible_spellings = [
+        "Uebersicht",
+        "Naechste Aktion",
+        "Faellige Aufgaben",
+        "Aktive Vorgaenge",
+        "Nachvollziehbare Aenderungen",
+        "Zuordnung bestaetigen",
+        "Aenderungen speichern",
+        "E-Mails pruefen",
+        "Zurueck",
+        "Schliessen",
+        "Strasse",
+        "Geschaeftsfuehrer",
+        "Mitarbeiteruebersicht",
+        "API-Schluessel",
+        "Kuechenplanung",
+        "Oeffnen",
+        "ueberfaellig",
+        "Rueckmeldung",
+        "moeglich",
+        "Zustaendig",
+        "Zustaendigkeit",
+        "E-Mail-Eingaenge",
+        "Kundenvorgaenge",
+        "Prioritaet",
+        "Zuordnungsvorschlaege",
+        "faellig",
+        "Faellig",
+        "Ueberfaellig",
+        "Anlage ergaenzen",
+        "Waehle",
+        "das kuechenhaus",
+        "Blumenstrasse",
+    ]
+
+    for spelling in legacy_visible_spellings:
+        assert spelling not in source

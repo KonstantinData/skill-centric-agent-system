@@ -119,12 +119,12 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
     assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
     assert 'location' in source
-    assert "Uebersicht" in source
+    assert "Übersicht" in source
     assert "<h1>Steuerung</h1>" in source
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
-    assert "Aktive Vorgaenge steuern" in source
-    assert "Nachvollziehbare Aenderungen" in source
+    assert "Aktive Vorgänge steuern" in source
+    assert "Nachvollziehbare Änderungen" in source
     assert "Command Center" in source
     assert "renderCommandCenter" in source
     assert "renderDecisionQueue" in source
@@ -134,13 +134,13 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "renderEmailsPage" in source
     assert 'renderSideNav("tasks"' in source
     assert 'renderSideNav("emails"' in source
-    assert "Naechste Aktion" in source
+    assert "Nächste Aktion" in source
     assert 'id="command-search"' in source
     assert 'name="q"' in source
     assert "customerMatchesQuery" in source
-    assert "Ausfuehrung nur mit Bestaetigung" not in source
+    assert "Ausführung nur mit Bestätigung" not in source
     assert "filter-note" in source
-    assert "Faellige Aufgaben" in source
+    assert "Fällige Aufgaben" in source
     assert "Eingang und Zuordnung" in source
     assert "Team, Auslastung und Termine" in source
     assert "Auslastung und Termine" in source
@@ -149,7 +149,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Aufgabe anlegen" in source
     assert "E-Mail-Eingang" in source
     assert 'href="/emails.php"' in source
-    assert "Zuordnung bestaetigen" in source
+    assert "Zuordnung bestätigen" in source
     assert "Ablehnen" not in source
     assert "In Papierkorb" in source
     assert "Archivieren" in source
@@ -169,8 +169,8 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'href="/admin.php?modal=users"' not in source
     assert "SCAS Kontrolle" not in source
     assert "SCAS-Freigaben" not in source
-    assert "SCAS-Vorschlaege" not in source
-    assert "Keine SCAS-Vorschlaege" not in source
+    assert "SCAS-Vorschläge" not in source
+    assert "Keine SCAS-Vorschläge" not in source
     assert "renderScasReviewQueue" not in source
     assert '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>' not in source
     assert '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>' not in source
@@ -197,7 +197,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'id="employee-workdays"' in source
     assert "employee-roles-panel" in source
     assert "employee-workdays-panel" in source
-    assert "Mitarbeiteruebersicht" in source
+    assert "Mitarbeiterübersicht" in source
     assert 'method="post"' in source
     assert 'href="/admin.php?modal=users&edit=${user.id}"' in source
     assert "fetchAdminState" in source

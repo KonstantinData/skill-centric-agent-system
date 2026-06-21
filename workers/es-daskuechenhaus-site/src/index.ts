@@ -246,7 +246,7 @@ const EMPTY_OVERVIEW_STATE: OverviewState = {
     { code: "new", name: "Neu", is_terminal: false },
     { code: "planned", name: "Geplant", is_terminal: false },
     { code: "in_progress", name: "In Arbeit", is_terminal: false },
-    { code: "waiting", name: "Wartet auf Rueckmeldung", is_terminal: false },
+    { code: "waiting", name: "Wartet auf Rückmeldung", is_terminal: false },
     { code: "done", name: "Erledigt", is_terminal: true },
     { code: "cancelled", name: "Abgebrochen", is_terminal: true },
   ],
@@ -296,14 +296,14 @@ type TenantUiProfile = {
 
 const DKH_TENANT_UI: TenantUiProfile = {
   tenantId: "daskuechenhaus",
-  displayName: "das kuechenhaus",
+  displayName: "das küchenhaus",
   experienceStandard: "sota-2026-tenant-crm",
   brandAssets: {
     logoPath: "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
     logoRoute: "/tenant-assets/daskuechenhaus/logo.svg",
     logoMimeType: "image/svg+xml; charset=utf-8",
     logoBody:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 88" role="img" aria-label="das kuechenhaus"><rect width="260" height="88" rx="8" fill="#fff"/><path d="M22 20h54v48H22z" fill="#76b726"/><path d="M33 31h32v8H33zm0 15h32v8H33z" fill="#fff"/><text x="92" y="38" fill="#111" font-family="Arial,sans-serif" font-size="18" font-weight="700">das</text><text x="92" y="62" fill="#111" font-family="Arial,sans-serif" font-size="24" font-weight="700">kuechenhaus</text></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 88" role="img" aria-label="das küchenhaus"><rect width="260" height="88" rx="8" fill="#fff"/><path d="M22 20h54v48H22z" fill="#76b726"/><path d="M33 31h32v8H33zm0 15h32v8H33z" fill="#fff"/><text x="92" y="38" fill="#111" font-family="Arial,sans-serif" font-size="18" font-weight="700">das</text><text x="92" y="62" fill="#111" font-family="Arial,sans-serif" font-size="24" font-weight="700">küchenhaus</text></svg>',
     faviconPath: null,
     appIconPath: null,
     assetScope: "tenant-owned",
@@ -526,7 +526,7 @@ async function proxyAdminApi(request: Request, env: Env): Promise<Response> {
   });
   if (request.method !== "GET") {
     if (!response.ok) {
-      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht moeglich</h1>", response.status);
+      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht möglich</h1>", response.status);
     }
     return redirectResponse(url.searchParams.get("return_to") ?? "/admin.php?modal=users");
   }
@@ -552,7 +552,7 @@ async function proxyOverviewApi(request: Request, env: Env): Promise<Response> {
   });
   if (request.method !== "GET") {
     if (!response.ok) {
-      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht moeglich</h1>", response.status);
+      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht möglich</h1>", response.status);
     }
     return redirectResponse(url.searchParams.get("return_to") ?? "/index.php");
   }
@@ -578,7 +578,7 @@ async function proxyCustomersApi(request: Request, env: Env): Promise<Response> 
   });
   if (request.method !== "GET") {
     if (!response.ok) {
-      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht moeglich</h1>", response.status);
+      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht möglich</h1>", response.status);
     }
     return redirectResponse(url.searchParams.get("return_to") ?? "/kunden.php");
   }
@@ -593,7 +593,7 @@ async function proxyCustomersApi(request: Request, env: Env): Promise<Response> 
 
 function renderSideNav(active: "overview" | "customers" | "tasks" | "emails" | "admin", isAdmin: boolean): string {
   return `<nav aria-label="Bereiche">
-    <a href="/index.php"${active === "overview" ? ' aria-current="page"' : ""}>Uebersicht</a>
+    <a href="/index.php"${active === "overview" ? ' aria-current="page"' : ""}>Übersicht</a>
     <a href="/kunden.php"${active === "customers" ? ' aria-current="page"' : ""}>Kunden</a>
     <a href="/aufgaben.php"${active === "tasks" ? ' aria-current="page"' : ""}>Aufgaben</a>
     <a href="/emails.php"${active === "emails" ? ' aria-current="page"' : ""}>E-Mails</a>
@@ -767,9 +767,9 @@ function renderCommandCenter(
       <button type="submit">Suchen</button>
     </form>
     <div class="command-actions" aria-label="Schnellaktionen">
-      <a href="/aufgaben.php">Aufgaben <span>${metrics.overdueTasks} ueberfaellig</span></a>
+      <a href="/aufgaben.php">Aufgaben <span>${metrics.overdueTasks} überfällig</span></a>
       <a href="/emails.php">E-Mails <span>${metrics.unassignedEmails} ohne Vorgang</span></a>
-      <a href="/kunden.php">Vorgaenge <span>${metrics.activeCases} aktiv</span></a>
+      <a href="/kunden.php">Vorgänge <span>${metrics.activeCases} aktiv</span></a>
     </div>
   </section>`;
 }
@@ -784,7 +784,7 @@ function renderCockpitTasks(state: OverviewState): string {
     .slice(0, 5);
   return renderCockpitList(
     relevantTasks.map((task) => {
-      const assigned = task.assigned_users.map((user) => user.name).join(", ") || "ohne Zustaendigen";
+      const assigned = task.assigned_users.map((user) => user.name).join(", ") || "ohne Zuständigen";
       const caseLabel = task.case?.customer_display_name ?? "ohne Vorgang";
       const dueLabel = task.due_at ? ` · ${formatDateTime(task.due_at)}` : "";
       return `<a href="/aufgaben.php">${escapeHtml(task.title)}</a><span>${escapeHtml(caseLabel)} · ${escapeHtml(assigned)}${escapeHtml(dueLabel)}</span>`;
@@ -810,11 +810,11 @@ function renderCockpitEmails(state: OverviewState): string {
       const assignment = email.is_unassigned
         ? fit
           ? `Vorschlag: wahrscheinlich ${fit.case_number ? `${fit.case_number} · ` : ""}${fit.customer_display_name}`
-          : "Kein Treffer: Vorgang suchen und bestaetigen"
+          : "Kein Treffer: Vorgang suchen und bestätigen"
         : email.cases.map((entry) => entry.customer_display_name).join(", ") || "zugeordnet";
       return `<a href="/emails.php">${escapeHtml(email.subject || "(ohne Betreff)")}</a><span>${escapeHtml(sender?.display_name || sender?.email_address || "Unbekannt")} · ${escapeHtml(assignment)}</span>`;
     }),
-    "Keine neuen E-Mail-Eingaenge in deiner aktuellen Ansicht.",
+    "Keine neuen E-Mail-Eingänge in deiner aktuellen Ansicht.",
   );
 }
 
@@ -822,7 +822,7 @@ function renderCapacity(state: OverviewState): string {
   const loads = new Map<string, number>();
   for (const task of state.tasks) {
     if (task.assigned_users.length === 0) {
-      loads.set("Ohne Zustaendigen", (loads.get("Ohne Zustaendigen") ?? 0) + 1);
+      loads.set("Ohne Zuständigen", (loads.get("Ohne Zuständigen") ?? 0) + 1);
     }
     for (const user of task.assigned_users) {
       loads.set(user.name, (loads.get(user.name) ?? 0) + 1);
@@ -868,10 +868,10 @@ function renderDecisionQueue(items: DecisionItem[]): string {
 
 function renderCustomerFocus(state: OverviewState): string {
   if (state.customer_cases.length === 0) {
-    return '<div class="empty">Noch keine aktiven Kundenvorgaenge sichtbar.</div>';
+    return '<div class="empty">Noch keine aktiven Kundenvorgänge sichtbar.</div>';
   }
   return `<div class="data-table customer-focus">
-    <div class="data-row data-head"><span>Vorgang</span><span>Kunde</span><span>Phase</span><span>Naechste Aktion</span></div>
+    <div class="data-row data-head"><span>Vorgang</span><span>Kunde</span><span>Phase</span><span>Nächste Aktion</span></div>
     ${state.customer_cases
       .slice(0, 7)
       .map((customerCase) => {
@@ -884,12 +884,12 @@ function renderCustomerFocus(state: OverviewState): string {
         const phase = customerCase.status_phase ? `Phase ${customerCase.status_phase}` : "offen";
         const nextStep = nextTask
           ? `${nextTask.title}${nextTask.due_at ? ` (${formatDateTime(nextTask.due_at)})` : ""}`
-          : "Naechste Aktion anlegen";
+          : "Nächste Aktion anlegen";
         return `<a class="data-row" href="/kunden.php">
           <span data-label="Vorgang">${escapeHtml(customerCase.case_number ?? "-")}</span>
           <strong>${escapeHtml(customerCase.customer_display_name)}</strong>
           <span data-label="Phase">${escapeHtml(phase)}</span>
-          <span data-label="Naechste Aktion">${escapeHtml(truncateText(nextStep, 84))}</span>
+          <span data-label="Nächste Aktion">${escapeHtml(truncateText(nextStep, 84))}</span>
         </a>`;
       })
       .join("")}
@@ -899,7 +899,7 @@ function renderCustomerFocus(state: OverviewState): string {
 function renderAuditTrail(state: OverviewState): string {
   const events = (state.communication_events ?? []).slice(0, 8);
   if (events.length === 0) {
-    return '<div class="empty">Noch kein Audit-Trail fuer sichtbare Vorgaenge vorhanden.</div>';
+    return '<div class="empty">Noch kein Audit-Trail für sichtbare Vorgänge vorhanden.</div>';
   }
   return `<ol class="audit-list">${events
     .map((event) => {
@@ -931,7 +931,7 @@ function renderHome(state: OverviewState): string {
       .filter((task) => isOverdue(task.due_at) || task.priority === "urgent" || task.assigned_users.length === 0)
       .map((task) => ({
         urgency: isOverdue(task.due_at) || task.priority === "urgent" ? "critical" as const : "warning" as const,
-        label: task.assigned_users.length === 0 ? "Zustaendigkeit" : "Aufgabe",
+        label: task.assigned_users.length === 0 ? "Zuständigkeit" : "Aufgabe",
         title: task.title,
         meta: `${task.case?.customer_display_name ?? "ohne Vorgang"} · ${task.assigned_users.map((user) => user.name).join(", ") || "nicht zugeordnet"}${task.due_at ? ` · ${formatDateTime(task.due_at)}` : ""}`,
         href: "/aufgaben.php",
@@ -959,7 +959,7 @@ function renderHome(state: OverviewState): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="tenant-id" content="${escapeHtml(DKH_TENANT_UI.tenantId)}">
   <meta name="experience-standard" content="${escapeHtml(DKH_TENANT_UI.experienceStandard)}">
-  <title>Uebersicht | ${escapeHtml(DKH_TENANT_UI.displayName)}</title>
+  <title>Übersicht | ${escapeHtml(DKH_TENANT_UI.displayName)}</title>
   <style>
     ${renderChromeStyles()}
     :root {
@@ -1506,13 +1506,13 @@ function renderHome(state: OverviewState): string {
       <div class="status-strip">
         <div class="status-card ${hasRed ? "red" : hasYellow ? "yellow" : "green"}">
           <div class="metric">${escapeHtml(overall)}</div>
-          <div class="metric-label">Prioritaet</div>
+          <div class="metric-label">Priorität</div>
           <div class="metric-sub">${escapeHtml(overall)}</div>
         </div>
-        <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${urgentTasks} dringend</div></div>
-        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mail Eingang</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${emailsWithSuggestions} Zuordnungsvorschlaege</div></div>
-        <div class="status-card"><div class="metric">${state.customer_cases.length}</div><div class="metric-label">aktive Vorgaenge</div><div class="metric-sub">Kundenarbeit im Blick</div></div>
-        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgaben faellig</div></div>
+        <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} überfällig · ${urgentTasks} dringend</div></div>
+        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mail Eingang</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${emailsWithSuggestions} Zuordnungsvorschläge</div></div>
+        <div class="status-card"><div class="metric">${state.customer_cases.length}</div><div class="metric-label">aktive Vorgänge</div><div class="metric-sub">Kundenarbeit im Blick</div></div>
+        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgaben fällig</div></div>
       </div>
       <section class="operations-board" aria-label="CRM Entscheidungszentrale">
         <div class="board-section primary">
@@ -1522,7 +1522,7 @@ function renderHome(state: OverviewState): string {
       </section>
       <div class="cockpit-grid">
         <section class="panel">
-          <div class="panel-head"><div><h2>Aktive Vorgaenge steuern</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
+          <div class="panel-head"><div><h2>Aktive Vorgänge steuern</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
           ${renderCustomerFocus(state)}
         </section>
         <section class="panel">
@@ -1533,15 +1533,15 @@ function renderHome(state: OverviewState): string {
           <div style="margin-top:10px">${renderOverviewNews(state)}</div>
         </section>
         <section class="panel">
-          <div class="panel-head"><div><h2>Faellige Aufgaben</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
+          <div class="panel-head"><div><h2>Fällige Aufgaben</h2></div><a class="panel-link" href="/aufgaben.php">Öffnen</a></div>
           ${renderCockpitTasks(state)}
         </section>
         <section class="panel">
-          <div class="panel-head"><div><h2>E-Mail-Eingang und Zuordnung</h2></div><a class="panel-link" href="/emails.php">Oeffnen</a></div>
+          <div class="panel-head"><div><h2>E-Mail-Eingang und Zuordnung</h2></div><a class="panel-link" href="/emails.php">Öffnen</a></div>
           ${renderCockpitEmails(state)}
         </section>
         <section class="panel wide">
-          <div class="panel-head"><div><h2>Nachvollziehbare Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
+          <div class="panel-head"><div><h2>Nachvollziehbare Änderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
           ${renderAuditTrail(state)}
         </section>
       </div>
@@ -1589,7 +1589,7 @@ function renderOverviewTasks(state: OverviewState, returnTo = "/index.php"): str
           <span>${escapeHtml(task.status_name)}</span>
           <span>${escapeHtml(assigned)}</span>
           <span>${escapeHtml(caseLabel)}</span>
-          ${dueLabel ? `<span>${isLate ? "Ueberfaellig" : "Faellig"}: ${escapeHtml(dueLabel)}</span>` : ""}
+          ${dueLabel ? `<span>${isLate ? "Überfällig" : "Fällig"}: ${escapeHtml(dueLabel)}</span>` : ""}
           ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlagen</span>` : ""}
         </div>
         <div class="item-actions">
@@ -1611,7 +1611,7 @@ function renderOverviewTasks(state: OverviewState, returnTo = "/index.php"): str
 
 function renderOverviewEmails(state: OverviewState, returnTo = "/index.php"): string {
   if (state.emails.length === 0) {
-    return '<div class="empty">Keine E-Mail-Eingaenge in deiner aktuellen Ansicht.</div>';
+    return '<div class="empty">Keine E-Mail-Eingänge in deiner aktuellen Ansicht.</div>';
   }
   const visibleEmails = [...state.emails]
     .sort((left, right) => {
@@ -1671,7 +1671,7 @@ function renderEmailSuggestions(email: OverviewState["emails"][number], returnTo
         ${suggestion.reason ? `<p class="preview">${escapeHtml(truncateText(suggestion.reason, 120))}</p>` : ""}
         <div class="item-actions">
           <form class="inline-form" method="post" action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=${escapeHtml(returnTo)}">
-            <button class="ui-button" type="submit">Zuordnung bestaetigen</button>
+            <button class="ui-button" type="submit">Zuordnung bestätigen</button>
           </form>
         </div>
       </div>`;
@@ -1681,7 +1681,7 @@ function renderEmailSuggestions(email: OverviewState["emails"][number], returnTo
 
 function renderEmailAssignmentForm(email: OverviewState["emails"][number], returnTo = "/index.php"): string {
   const noSuggestionHint = email.suggestions.length === 0
-    ? '<p class="field-hint">Kein Treffer: Vorgang suchen, auswaehlen und bestaetigen.</p>'
+    ? '<p class="field-hint">Kein Treffer: Vorgang suchen, auswählen und bestätigen.</p>'
     : "";
   return `<form method="post" action="/overview-api/emails/assign?return_to=${escapeHtml(returnTo)}">
     <input name="email_message_id" type="hidden" value="${email.id}">
@@ -1734,7 +1734,7 @@ function renderTaskEditForm(task: OverviewState["tasks"][number], state: Overvie
             .join("")}
         </select>
       </label>
-      <label>Zustaendig
+      <label>Zuständig
         <select name="assigned_user_id">
           ${state.users
             .map((user) => {
@@ -1747,13 +1747,13 @@ function renderTaskEditForm(task: OverviewState["tasks"][number], state: Overvie
       <label>Vorgang
         <input name="customer_case_search" list="customer-case-options" type="search" value="${escapeHtml(selectedCase ? customerCaseOptionValue(selectedCase) : "")}" autocomplete="off">
       </label>
-      <label>Faellig am
+      <label>Fällig am
         <input name="due_at" type="datetime-local" value="${escapeHtml(datetimeLocalValue(task.due_at))}">
       </label>
       <label>Erinnerung
         <input name="reminder_at" type="datetime-local" value="${escapeHtml(datetimeLocalValue(task.reminder_at))}">
       </label>
-      <label>Prioritaet
+      <label>Priorität
         <select name="priority">
           <option value="normal"${selectedAttribute(task.priority, "normal")}>Normal</option>
           <option value="high"${selectedAttribute(task.priority, "high")}>Hoch</option>
@@ -1762,18 +1762,18 @@ function renderTaskEditForm(task: OverviewState["tasks"][number], state: Overvie
         </select>
       </label>
     </div>
-    <label>Anlage ergaenzen
+    <label>Anlage ergänzen
       <input name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx">
     </label>
     <label class="check-row">
       <input name="reminder_overview_enabled" type="checkbox"${checkedAttribute(task.reminder_overview_enabled)}>
-      Erinnerung auf der Uebersicht
+      Erinnerung auf der Übersicht
     </label>
     <label class="check-row">
       <input name="reminder_email_enabled" type="checkbox"${checkedAttribute(task.reminder_email_enabled)}>
       Erinnerung per E-Mail
     </label>
-    <button class="ui-button" type="submit">Aenderungen speichern</button>
+    <button class="ui-button" type="submit">Änderungen speichern</button>
   </form>`;
 }
 
@@ -1870,7 +1870,7 @@ function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): st
             .join("")}
         </select>
       </label>
-      <label>Zustaendig
+      <label>Zuständig
         <select name="assigned_user_id">
           ${state.users
             .map((user) => {
@@ -1880,7 +1880,7 @@ function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): st
             .join("")}
         </select>
       </label>
-      <label>Faellig am
+      <label>Fällig am
         <input name="due_at" type="datetime-local">
       </label>
       <label>Vorgang
@@ -1891,7 +1891,7 @@ function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): st
       </label>
     </div>
     <div class="form-grid">
-      <label>Prioritaet
+      <label>Priorität
         <select name="priority">
           <option value="normal">Normal</option>
           <option value="high">Hoch</option>
@@ -1905,7 +1905,7 @@ function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): st
     </div>
     <label class="check-row">
       <input name="reminder_overview_enabled" type="checkbox" checked>
-      Erinnerung auf der Uebersicht
+      Erinnerung auf der Übersicht
     </label>
     <label class="check-row">
       <input name="reminder_email_enabled" type="checkbox">
@@ -2458,9 +2458,9 @@ function renderEmailsPage(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>E-Mails</h1>
-          <p class="lede">E-Mails werden hier gesichtet, Kundenvorgaengen zugeordnet, archiviert oder revisionssicher entfernt.</p>
+          <p class="lede">E-Mails werden hier gesichtet, Kundenvorgängen zugeordnet, archiviert oder revisionssicher entfernt.</p>
         </div>
-        <a class="ui-button" href="#emails">E-Mails pruefen</a>
+        <a class="ui-button" href="#emails">E-Mails prüfen</a>
       </div>
       ${renderCommandCenter({
         overdueTasks: state.tasks.filter((task) => isOverdue(task.due_at)).length,
@@ -2574,7 +2574,7 @@ function renderCustomerRows(state: CustomersState): string {
           <summary>
             <span class="card-title">${escapeHtml(customer.display_name)}${customer.customer_number ? ` · ${escapeHtml(customer.customer_number)}` : ""}</span>
             <span class="card-sub">
-              <span>${customer.case_count} Vorgaenge</span>
+              <span>${customer.case_count} Vorgänge</span>
               <span>${escapeHtml(primaryContact)}</span>
             </span>
           </summary>
@@ -2648,7 +2648,7 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
             .join("")}
         </select>
       </label>
-      <label>Strasse
+      <label>Straße
         <input name="street" type="text" value="${addressValue(customer, "street")}">
       </label>
       <label>Hausnummer
@@ -2675,7 +2675,7 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
           <input name="case_number" type="text">
         </label>
         <label>Vorgangstitel
-          <input name="case_title" type="text" placeholder="z. B. Kuechenplanung">
+          <input name="case_title" type="text" placeholder="z. B. Küchenplanung">
         </label>
         <label>Statusphase
           <select name="status_phase_id">
@@ -2697,7 +2697,7 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
       </div>
     </details>
     <div class="item-actions">
-      <a class="ui-button secondary" href="/kunden.php">Zurueck</a>
+      <a class="ui-button secondary" href="/kunden.php">Zurück</a>
       <button class="ui-button" type="submit">Speichern</button>
     </div>
   </form>`;
@@ -2750,7 +2750,7 @@ function renderCustomersPage(
         </section>
         <section class="workspace-section task-form">
           <div class="section-head"><div class="section-title"><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
-          ${showForm ? renderCustomerForm(state, editCustomer) : '<div class="empty">Waehle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
+          ${showForm ? renderCustomerForm(state, editCustomer) : '<div class="empty">Wähle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
         </section>
       </div>
     </main>
@@ -3173,7 +3173,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
     </aside>
     <main>
       <h1>Admin Bereich</h1>
-      <p class="lede">Zentrale Verwaltung fuer Mitarbeiter, Firmenstammdaten und Integrationen.</p>
+      <p class="lede">Zentrale Verwaltung für Mitarbeiter, Firmenstammdaten und Integrationen.</p>
 
       <input class="tab-control" id="modal-none" name="modal" type="radio"${modalNone}>
       <input class="tab-control" id="modal-users" name="modal" type="radio"${modalUsers}>
@@ -3183,7 +3183,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       <div class="tile-grid">
         <label class="tile" for="modal-users" role="button" tabindex="0">
           <strong>Benutzer</strong>
-          <span>Mitarbeiteruebersicht, Neuanlage und Bearbeitung.</span>
+          <span>Mitarbeiterübersicht, Neuanlage und Bearbeitung.</span>
         </label>
         <label class="tile" for="modal-settings" role="button" tabindex="0">
           <strong>Firmenstammdaten</strong>
@@ -3191,7 +3191,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
         </label>
         <label class="tile" for="modal-integrations" role="button" tabindex="0">
           <strong>Integrationen</strong>
-          <span>Externe Dienste konfigurieren, ohne API-Schluessel im Klartext zu speichern.</span>
+          <span>Externe Dienste konfigurieren, ohne API-Schlüssel im Klartext zu speichern.</span>
         </label>
       </div>
 
@@ -3201,9 +3201,9 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
           <div class="modal-header">
             <div>
               <h2 id="users-title">Benutzer</h2>
-              <p>Mitarbeiter verwalten. Rollen und Arbeitszeiten gehoeren zum jeweils ausgewaehlten Mitarbeiter.</p>
+              <p>Mitarbeiter verwalten. Rollen und Arbeitszeiten gehören zum jeweils ausgewählten Mitarbeiter.</p>
             </div>
-            <label class="close" for="modal-none" aria-label="Schliessen">x</label>
+            <label class="close" for="modal-none" aria-label="Schließen">x</label>
           </div>
           <div class="modal-body">
             <input class="tab-control" id="employee-overview" name="employee-mode" type="radio"${employeeOverviewChecked}>
@@ -3274,7 +3274,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
                       </label>
                     </div>
                     <div class="actions">
-                      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
+                      <label class="ui-action secondary" for="employee-overview">Zurück</label>
                       <button type="submit">Speichern</button>
                     </div>
                   </form>
@@ -3299,9 +3299,9 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
                     <div class="workdays">
                       ${[1, 2, 3, 4, 5, 6].map((weekday) => renderWorkday(weekday, primaryUser?.workdays.find((day) => day.weekday === weekday))).join("")}
                     </div>
-                    <p class="hint">Sonntag ist nicht als Arbeitstag vorgesehen. Das zweite Zeitfenster bleibt leer, wenn keine Pause oder kein Nachmittagsblock benoetigt wird.</p>
+                    <p class="hint">Sonntag ist nicht als Arbeitstag vorgesehen. Das zweite Zeitfenster bleibt leer, wenn keine Pause oder kein Nachmittagsblock benötigt wird.</p>
                     <div class="actions">
-                      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
+                      <label class="ui-action secondary" for="employee-overview">Zurück</label>
                       <button type="submit">Speichern</button>
                     </div>
                   </form>
@@ -3318,21 +3318,21 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
           <div class="modal-header">
             <div>
               <h2 id="settings-title">Firmenstammdaten</h2>
-              <p>Stammdaten fuer zentrale Firmenangaben.</p>
+              <p>Stammdaten für zentrale Firmenangaben.</p>
             </div>
-            <label class="close" for="modal-none" aria-label="Schliessen">x</label>
+            <label class="close" for="modal-none" aria-label="Schließen">x</label>
           </div>
           <div class="modal-body">
             <form method="post" action="/admin-api/company-settings?return_to=/admin.php?modal=settings">
               <div class="form-grid">
                 <label>Firmenname
-                  <input name="company_name" value="${escapeHtml(company.company_name ?? "das kuechenhaus")}" required>
+                  <input name="company_name" value="${escapeHtml(company.company_name ?? "das küchenhaus")}" required>
                 </label>
                 <label>Rechtlicher Name
-                  <input name="legal_name" value="${escapeHtml(company.legal_name ?? "das kuechenhaus ralph schober GmbH")}" required>
+                  <input name="legal_name" value="${escapeHtml(company.legal_name ?? "das küchenhaus ralph schober GmbH")}" required>
                 </label>
-                <label>Strasse
-                  <input name="street" value="${escapeHtml(company.street ?? "Blumenstrasse 17")}">
+                <label>Straße
+                  <input name="street" value="${escapeHtml(company.street ?? "Blumenstraße 17")}">
                 </label>
                 <label>PLZ
                   <input name="postal_code" value="${escapeHtml(company.postal_code ?? "73728")}">
@@ -3361,7 +3361,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
                 <label>Handelsregister
                   <input name="commercial_register" value="${escapeHtml(company.commercial_register ?? "Amtsgericht Stuttgart, HR 730338")}">
                 </label>
-                <label>Geschaeftsfuehrer
+                <label>Geschäftsführer
                   <input name="managing_director" value="${escapeHtml(company.managing_director ?? "Ralph Schober")}">
                 </label>
               </div>
@@ -3382,7 +3382,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
               <h2 id="integrations-title">Integrationen</h2>
               <p>Anbindungen mit Status, Konfiguration und Secret-Referenz.</p>
             </div>
-            <label class="close" for="modal-none" aria-label="Schliessen">x</label>
+            <label class="close" for="modal-none" aria-label="Schließen">x</label>
           </div>
           <div class="modal-body">
             ${integrationRows}
@@ -3559,7 +3559,7 @@ function renderEmployeeForm(action: string, title: string, roles: Role[], values
     </div>
     <input name="external_identity_provider" type="hidden" value="cloudflare_access">
     <div class="actions">
-      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
+      <label class="ui-action secondary" for="employee-overview">Zurück</label>
       <button type="submit">Speichern</button>
     </div>
   </form>`;
