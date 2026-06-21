@@ -281,6 +281,7 @@ type TenantBrandAssets = {
   logoRoute: string;
   logoMimeType: string;
   logoBody: string;
+  customerSearchScriptRoute: string;
   faviconPath: string | null;
   appIconPath: string | null;
   assetScope: "tenant-owned";
@@ -304,6 +305,7 @@ const DKH_TENANT_UI: TenantUiProfile = {
     logoMimeType: "image/svg+xml; charset=utf-8",
     logoBody:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 88" role="img" aria-label="das küchenhaus"><rect width="260" height="88" rx="8" fill="#fff"/><path d="M22 20h54v48H22z" fill="#76b726"/><path d="M33 31h32v8H33zm0 15h32v8H33z" fill="#fff"/><text x="92" y="38" fill="#111" font-family="Arial,sans-serif" font-size="18" font-weight="700">das</text><text x="92" y="62" fill="#111" font-family="Arial,sans-serif" font-size="24" font-weight="700">küchenhaus</text></svg>',
+    customerSearchScriptRoute: "/tenant-assets/daskuechenhaus/customer-search.v1.js",
     faviconPath: null,
     appIconPath: null,
     assetScope: "tenant-owned",
@@ -320,7 +322,7 @@ const DKH_TENANT_UI: TenantUiProfile = {
 
 const SECURITY_HEADERS: Record<string, string> = {
   "content-security-policy":
-    "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   "referrer-policy": "no-referrer",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
@@ -328,6 +330,97 @@ const SECURITY_HEADERS: Record<string, string> = {
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
   "cache-control": "no-store",
 };
+
+const CUSTOMER_SEARCH_SCRIPT = `
+(() => {
+  const root = document.querySelector("[data-customer-search-first]");
+  if (!root) return;
+
+  const input = root.querySelector("[data-customer-search-input]");
+  const results = root.querySelector("[data-customer-search-results]");
+  const emptyState = root.querySelector("[data-customer-search-empty]");
+  const hint = root.querySelector("[data-customer-search-hint]");
+  let controller = null;
+  let lastQuery = "";
+
+  const setResults = (items) => {
+    results.innerHTML = "";
+    if (!items.length) {
+      results.hidden = true;
+      return;
+    }
+    const list = document.createElement("div");
+    list.className = "suggest-list";
+    for (const customer of items) {
+      const row = document.createElement("article");
+      row.className = "suggest-row";
+
+      const copy = document.createElement("div");
+      copy.className = "suggest-copy";
+      const title = document.createElement("strong");
+      title.textContent = customer.display_name || "Unbenannter Kunde";
+      const meta = document.createElement("span");
+      const type = customer.customer_type === "company" ? "Firma" : "Privat";
+      const location = [customer.postal_code, customer.city].filter(Boolean).join(" ");
+      meta.textContent = [type, location, customer.primary_email].filter(Boolean).join(" · ");
+      copy.append(title, meta);
+
+      const action = document.createElement("a");
+      action.className = "ui-button secondary";
+      action.href = "/kunden.php?edit=" + encodeURIComponent(customer.customer_id) + "#customer-project";
+      action.textContent = "Neues Projekt anlegen";
+
+      row.append(copy, action);
+      list.append(row);
+    }
+    results.append(list);
+    results.hidden = false;
+  };
+
+  const resetSearch = () => {
+    results.hidden = true;
+    results.innerHTML = "";
+    emptyState.hidden = true;
+    hint.textContent = "Geben Sie mindestens drei Zeichen ein.";
+  };
+
+  const runSearch = async () => {
+    const query = input.value.trim();
+    lastQuery = query;
+    if (query.length < 3) {
+      if (controller) controller.abort();
+      resetSearch();
+      return;
+    }
+    if (controller) controller.abort();
+    controller = new AbortController();
+    hint.textContent = "Suche läuft...";
+    try {
+      const response = await fetch("/api/customers/search?q=" + encodeURIComponent(query), {
+        headers: { "accept": "application/json" },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("search_failed");
+      const payload = await response.json();
+      if (input.value.trim() !== lastQuery) return;
+      const items = Array.isArray(payload.customers) ? payload.customers : [];
+      setResults(items);
+      emptyState.hidden = items.length > 0;
+      hint.textContent = items.length > 0
+        ? items.length + " Treffer gefunden."
+        : "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      results.hidden = true;
+      emptyState.hidden = true;
+      hint.textContent = "Suche aktuell nicht verfügbar.";
+    }
+  };
+
+  input.addEventListener("input", runSearch);
+  input.focus({ preventScroll: true });
+})();
+`.trim();
 
 function htmlResponse(body: string, status = 200): Response {
   return new Response(body, {
@@ -397,14 +490,17 @@ function renderTenantLogo(profile: TenantUiProfile): string {
 }
 
 function serveTenantAsset(pathname: string): Response | null {
-  if (pathname !== DKH_TENANT_UI.brandAssets.logoRoute) {
-    return null;
-  }
   if (
     DKH_TENANT_UI.brandAssets.assetScope !== "tenant-owned" ||
     !DKH_TENANT_UI.brandAssets.logoPath.startsWith("assets/images/daskuechenhaus/")
   ) {
     return htmlResponse("<!doctype html><title>Nicht gefunden</title><h1>Nicht gefunden</h1>", 404);
+  }
+  if (pathname === DKH_TENANT_UI.brandAssets.customerSearchScriptRoute) {
+    return assetResponse(CUSTOMER_SEARCH_SCRIPT, "application/javascript; charset=utf-8");
+  }
+  if (pathname !== DKH_TENANT_UI.brandAssets.logoRoute) {
+    return null;
   }
   return assetResponse(
     DKH_TENANT_UI.brandAssets.logoBody,
@@ -582,6 +678,28 @@ async function proxyCustomersApi(request: Request, env: Env): Promise<Response> 
     }
     return redirectResponse(url.searchParams.get("return_to") ?? "/kunden.php");
   }
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      ...SECURITY_HEADERS,
+      "content-type": response.headers.get("content-type") ?? "application/json; charset=utf-8",
+    },
+  });
+}
+
+async function proxyCustomerSearchApi(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") {
+    return htmlResponse("<!doctype html><title>Nicht erlaubt</title><h1>Nicht erlaubt</h1>", 405);
+  }
+  const url = new URL(request.url);
+  const response = await fetch(adminApiUrl(env, `/customers/search${url.search}`), {
+    method: "GET",
+    headers: {
+      "x-dkh-admin-api-token": env.DKH_ADMIN_API_TOKEN,
+      "x-access-user-email": accessEmail(request),
+      accept: "application/json",
+    },
+  });
   return new Response(response.body, {
     status: response.status,
     headers: {
@@ -2369,6 +2487,103 @@ function renderWorkspaceStyles(): string {
       color: var(--muted);
       font-weight: 600;
     }
+    .customer-hero {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 14px 42px rgba(17, 24, 39, 0.08);
+      padding: clamp(22px, 5vw, 40px);
+      margin-bottom: 18px;
+    }
+    .customer-hero h1 {
+      font-size: clamp(32px, 6vw, 54px);
+      line-height: 0.98;
+      margin: 0 0 12px;
+    }
+    .customer-search-first {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .customer-search-box {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 36px rgba(17, 24, 39, 0.07);
+      padding: clamp(16px, 4vw, 24px);
+    }
+    .customer-search-box label {
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .customer-search-box input {
+      border: 1px solid #b8c6b1;
+      border-radius: 8px;
+      color: var(--text);
+      font: inherit;
+      font-size: clamp(17px, 4vw, 22px);
+      min-height: 58px;
+      padding: 13px 15px;
+      width: 100%;
+    }
+    .search-hint {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      margin: 10px 0 0;
+    }
+    .suggest-results[hidden],
+    .no-results-actions[hidden] {
+      display: none;
+    }
+    .suggest-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .suggest-row,
+    .create-choice {
+      align-items: start;
+      background: #fbfcfa;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+    .suggest-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .suggest-copy strong {
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+    .suggest-copy span {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .no-results-actions {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+      margin-top: 12px;
+    }
+    .create-choice h2 {
+      font-size: 20px;
+      margin: 0;
+    }
+    .create-choice p {
+      color: var(--muted);
+      margin: 0;
+    }
     @media (min-width: 768px) {
       body { padding-bottom: 0; }
       .shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }
@@ -2381,6 +2596,9 @@ function renderWorkspaceStyles(): string {
       .command-search { grid-template-columns: auto minmax(0, 1fr) auto; }
       .command-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .suggest-row,
+      .create-choice { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+      .no-results-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (min-width: 960px) {
       .workspace { grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); }
@@ -2588,7 +2806,11 @@ function renderCustomerRows(state: CustomersState): string {
   </div>`;
 }
 
-function renderCustomerForm(state: CustomersState, customer: CustomerRecord | null): string {
+function renderCustomerForm(
+  state: CustomersState,
+  customer: CustomerRecord | null,
+  initialCustomerType: "private" | "company" = "private",
+): string {
   const isEdit = Boolean(customer);
   const action = isEdit
     ? `/customers-api/customers/${customer?.id}?return_to=/kunden.php?edit=${customer?.id}`
@@ -2598,8 +2820,8 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
     <div class="form-grid">
       <label>Kundentyp
         <select name="customer_type">
-          <option value="private"${selectedAttribute(customer?.customer_type, "private")}>Privatkunde</option>
-          <option value="company"${selectedAttribute(customer?.customer_type, "company")}>Firma</option>
+          <option value="private"${selectedAttribute(customer?.customer_type ?? initialCustomerType, "private")}>Privatkunde</option>
+          <option value="company"${selectedAttribute(customer?.customer_type ?? initialCustomerType, "company")}>Firma</option>
         </select>
       </label>
       <label>Kundennummer
@@ -2664,7 +2886,7 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
     <label>Notizen
       <textarea name="notes">${customerValue(customer, "notes")}</textarea>
     </label>
-    <details class="editor"${isEdit ? "" : " open"}>
+    <details class="editor" id="customer-project"${isEdit ? "" : " open"}>
       <summary>Vorgang direkt anlegen</summary>
       <label class="check-row">
         <input name="create_case" type="checkbox"${isEdit ? "" : " checked"}>
@@ -2703,11 +2925,51 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
   </form>`;
 }
 
+function renderCustomerSearchFirst(): string {
+  return `<section class="customer-hero" aria-labelledby="customers-title">
+    <h1 id="customers-title">Kunden</h1>
+    <p class="lede">Verwalten Sie hier Ihre Kundenkontakte. Bitte wählen Sie den passenden Bereich, um einen Neukunden anzulegen oder ein neues Küchenprojekt für einen Bestandskunden zu erfassen.</p>
+  </section>
+  <section class="customer-search-first" data-customer-search-first aria-label="Kundensuche">
+    <div class="customer-search-box">
+      <label for="customer-search-first-input">Kunde zuerst suchen
+        <input
+          id="customer-search-first-input"
+          name="customer_search"
+          type="search"
+          autocomplete="off"
+          autofocus
+          placeholder="Name, Firma, E-Mail, Telefon oder Kundennummer eingeben..."
+          data-customer-search-input>
+      </label>
+      <p class="search-hint" data-customer-search-hint>Geben Sie mindestens drei Zeichen ein.</p>
+      <div class="suggest-results" data-customer-search-results hidden></div>
+      <div class="no-results-actions" data-customer-search-empty hidden>
+        <article class="create-choice">
+          <div>
+            <h2>Privatkunde anlegen</h2>
+            <p>Privatperson inklusive erstem Küchenprojekt erfassen.</p>
+          </div>
+          <a class="ui-button" href="/kunden.php?new=1&type=private">Privatkunde anlegen</a>
+        </article>
+        <article class="create-choice">
+          <div>
+            <h2>Objektkunde anlegen</h2>
+            <p>Firma, Bauträger oder Architekt inklusive Projekt erfassen.</p>
+          </div>
+          <a class="ui-button" href="/kunden.php?new=1&type=company">Objektkunde anlegen</a>
+        </article>
+      </div>
+    </div>
+  </section>`;
+}
+
 function renderCustomersPage(
   state: CustomersState,
   editCustomerId: string | null,
   isNew: boolean,
   searchQuery: string,
+  newCustomerType: "private" | "company",
 ): string {
   const visibleCustomers = state.customers.filter((customer) => customerMatchesQuery(customer, searchQuery));
   const visibleState: CustomersState = { ...state, customers: visibleCustomers };
@@ -2730,13 +2992,7 @@ function renderCustomersPage(
       ${renderSideNav("customers", state.current_user.is_admin)}
     </aside>
     <main>
-      <div class="topline">
-        <div>
-          <h1>Kunden</h1>
-          <p class="lede">Kunden, Kontaktdaten, Verantwortlichkeiten und Vorgangsstart werden hier eindeutig gepflegt.</p>
-        </div>
-        <a class="ui-button" href="/kunden.php?new=1">Kunde anlegen</a>
-      </div>
+      ${renderCustomerSearchFirst()}
       ${renderCommandCenter({
         overdueTasks: 0,
         unassignedEmails: 0,
@@ -2750,13 +3006,14 @@ function renderCustomersPage(
         </section>
         <section class="workspace-section task-form">
           <div class="section-head"><div class="section-title"><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
-          ${showForm ? renderCustomerForm(state, editCustomer) : '<div class="empty">Wähle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
+          ${showForm ? renderCustomerForm(state, editCustomer, newCustomerType) : '<div class="empty">Wähle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
         </section>
       </div>
     </main>
   </div>
   ${renderFab()}
   ${renderBottomNav("customers")}
+  <script src="${escapeHtml(DKH_TENANT_UI.brandAssets.customerSearchScriptRoute)}" defer></script>
 </body>
 </html>`;
 }
@@ -3624,6 +3881,9 @@ export default {
     if (url.pathname.startsWith("/overview-api/")) {
       return proxyOverviewApi(request, env);
     }
+    if (url.pathname === "/api/customers/search") {
+      return proxyCustomerSearchApi(request, env);
+    }
     if (url.pathname.startsWith("/customers-api/")) {
       return proxyCustomersApi(request, env);
     }
@@ -3647,6 +3907,7 @@ export default {
           url.searchParams.get("edit"),
           url.searchParams.has("new"),
           url.searchParams.get("q") ?? "",
+          url.searchParams.get("type") === "company" ? "company" : "private",
         ),
       );
     }

@@ -69,15 +69,18 @@ The CRM surface is mobile-first: the base CSS targets a 390px smartphone and
 grows through `min-width` media queries to tablet (768px) and desktop. Small
 screens use an app-like bottom tab bar plus a floating action button instead of
 the desktop sidebar, customer tables collapse into progressive-disclosure cards,
-and phone/e-mail/address fields use native `tel:`/`mailto:`/maps links. All
-interactivity is pure HTML/CSS (`<details>`, the CSS-only admin tab/modal hack)
-because the hardened CSP forbids client-side JavaScript.
+and phone/e-mail/address fields use native `tel:`/`mailto:`/maps links. Most
+interactivity remains pure HTML/CSS (`<details>`, the CSS-only admin tab/modal
+hack). The customer workspace intentionally allows one tenant-owned, versioned
+Vanilla JS asset from `/tenant-assets/daskuechenhaus/customer-search.v1.js`
+under `script-src 'self'` and `connect-src 'self'`. That script powers the
+Search-First customer lookup only; no inline scripts or external CDNs are
+allowed.
 
 Three brief items are intentionally deferred to a separate phase because they
-require client-side JavaScript and a relaxed CSP (and, for dictation, the
-currently disabled `microphone` permission): offline-first caching
-(IndexedDB/Service Worker), true skeleton loaders (the pages are fully
-server-rendered, so there is no client-side data fetch to mask), and voice
+require broader client-side runtime capability and, for dictation, the currently
+disabled `microphone` permission: offline-first caching (IndexedDB/Service
+Worker), true skeleton loaders beyond the Search-First suggest panel, and voice
 note dictation.
 
 Local checks:

@@ -66,9 +66,11 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     source = API_PATH.read_text(encoding="utf-8")
 
     assert 'parsed.path == "/customers/state"' in source
+    assert 'parsed.path == "/customers/search"' in source
     assert 'parts == ["customers", "customers"]' in source
     assert 'parts[:2] == ["customers", "customers"]' in source
     assert "customers_state" in source
+    assert "search_customers" in source
     assert "save_customer" in source
     assert "customer_display_name" in source
     assert "app.customers" in source
@@ -76,7 +78,14 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "app.customer_cases" in source
     assert "customer_name_required" in source
     assert "customer_not_found" in source
+    assert "customer_duplicate_found" in source
+    assert "customer_duplicate_matches" in source
+    assert "normalize_phone_number" in source
     assert '"primary_email": str(data.get("primary_email", "")).strip().lower()' in source
+    assert '"primary_phone_normalized": normalize_phone_number(data.get("primary_phone", ""))' in source
+    assert '"primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", ""))' in source
+    assert '"case_type": str(' in source
+    assert '"kitchen_project_b2b"' in source
 
 
 def test_daskuechenhaus_admin_api_keeps_cockpit_actions_human_confirmed() -> None:

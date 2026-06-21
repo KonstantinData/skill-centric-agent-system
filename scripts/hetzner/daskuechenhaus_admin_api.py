@@ -598,6 +598,24 @@ def normalize_bool(value: Any) -> str:
     return "true" if str(value).lower() in {"1", "true", "on", "yes"} else "false"
 
 
+def normalize_phone_number(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    cleaned = re.sub(r"[^\d+]", "", raw)
+    if cleaned.startswith("00"):
+        cleaned = f"+{cleaned[2:]}"
+    if cleaned.startswith("+"):
+        digits = re.sub(r"\D", "", cleaned[1:])
+        return f"+{digits}" if digits else ""
+    digits = re.sub(r"\D", "", cleaned)
+    if not digits:
+        return ""
+    if digits.startswith("0"):
+        return f"+49{digits[1:]}"
+    return f"+{digits}"
+
+
 def request_payload(handler: BaseHTTPRequestHandler) -> tuple[dict[str, Any], list[FileUpload]]:
     length = int(handler.headers.get("content-length", "0"))
     raw_body = handler.rfile.read(length) if length else b""
@@ -1116,6 +1134,179 @@ def customers_state(access_email: str) -> dict[str, Any]:
     )
 
 
+def search_customers(query: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    search_value = query.strip()
+    phone_value = normalize_phone_number(search_value)
+    if len(search_value) < 3:
+        return {"ok": True, "customers": []}
+    return psql_json(
+        """
+        WITH context AS (
+          SELECT :'context'::jsonb AS data
+        ),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customers AS (
+          SELECT DISTINCT c.*
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+        ),
+        matches AS (
+          SELECT
+            c.id,
+            c.display_name,
+            c.customer_type,
+            c.customer_number,
+            c.primary_email,
+            ca.postal_code,
+            ca.city,
+            CASE
+              WHEN lower(COALESCE(c.primary_email, '')) = lower(:'search_value') THEN 0
+              WHEN COALESCE(c.primary_phone_normalized, '') = :'phone_value' THEN 1
+              WHEN COALESCE(c.primary_mobile_normalized, '') = :'phone_value' THEN 1
+              WHEN lower(COALESCE(c.customer_number, '')) = lower(:'search_value') THEN 2
+              WHEN lower(c.display_name) = lower(:'search_value') THEN 3
+              ELSE 9
+            END AS rank
+          FROM visible_customers c
+          LEFT JOIN LATERAL (
+            SELECT postal_code, city
+            FROM app.customer_addresses ca
+            WHERE ca.customer_id = c.id
+            ORDER BY ca.is_primary DESC, ca.id
+            LIMIT 1
+          ) ca ON TRUE
+          WHERE
+            c.display_name ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.company_name, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_phone_normalized, '') = :'phone_value'
+            OR COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
+            OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'customers', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'customer_id', id,
+                'display_name', display_name,
+                'customer_type', customer_type,
+                'customer_number', customer_number,
+                'city', city,
+                'postal_code', postal_code,
+                'primary_email', primary_email
+              )
+              ORDER BY rank, display_name, id
+            )
+            FROM (
+              SELECT *
+              FROM matches
+              ORDER BY rank, display_name, id
+              LIMIT 8
+            ) limited_matches
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {
+            "context": json.dumps(context),
+            "search_value": search_value,
+            "phone_value": phone_value,
+        },
+    )
+
+
+def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        candidates AS (
+          SELECT DISTINCT
+            c.id,
+            c.display_name,
+            CASE
+              WHEN NULLIF(data->>'primary_email', '') IS NOT NULL
+                AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
+                THEN 'email'
+              WHEN NULLIF(data->>'primary_phone_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_phone_normalized, '') = data->>'primary_phone_normalized'
+                THEN 'phone'
+              WHEN NULLIF(data->>'primary_mobile_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_mobile_normalized, '') = data->>'primary_mobile_normalized'
+                THEN 'mobile'
+              WHEN NULLIF(data->>'postal_code', '') IS NOT NULL
+                AND lower(c.display_name) = lower(data->>'display_name')
+                AND EXISTS (
+                  SELECT 1
+                  FROM app.customer_addresses ca
+                  WHERE ca.customer_id = c.id
+                    AND ca.postal_code = data->>'postal_code'
+                )
+                THEN 'name_postal_code'
+              ELSE 'unknown'
+            END AS match_type
+          FROM app.customers c, payload
+          WHERE c.is_active = TRUE
+            AND c.id <> COALESCE(NULLIF(data->>'customer_id', '')::bigint, 0)
+            AND (
+              (
+                NULLIF(data->>'primary_email', '') IS NOT NULL
+                AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
+              )
+              OR (
+                NULLIF(data->>'primary_phone_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_phone_normalized, '') = data->>'primary_phone_normalized'
+              )
+              OR (
+                NULLIF(data->>'primary_mobile_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_mobile_normalized, '') = data->>'primary_mobile_normalized'
+              )
+              OR (
+                NULLIF(data->>'postal_code', '') IS NOT NULL
+                AND lower(c.display_name) = lower(data->>'display_name')
+                AND EXISTS (
+                  SELECT 1
+                  FROM app.customer_addresses ca
+                  WHERE ca.customer_id = c.id
+                    AND ca.postal_code = data->>'postal_code'
+                )
+              )
+            )
+          ORDER BY c.display_name, c.id
+          LIMIT 5
+        )
+        SELECT jsonb_build_object(
+          'matches', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'customer_id', id,
+                'display_name', display_name,
+                'match_type', match_type
+              )
+              ORDER BY display_name, id
+            )
+            FROM candidates
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    matches = result.get("matches") if result else []
+    return matches if isinstance(matches, list) else []
+
+
 def save_customer(
     data: dict[str, Any],
     access_email: str,
@@ -1138,7 +1329,9 @@ def save_customer(
         "display_name": display_name,
         "primary_email": str(data.get("primary_email", "")).strip().lower(),
         "primary_phone": str(data.get("primary_phone", "")).strip(),
+        "primary_phone_normalized": normalize_phone_number(data.get("primary_phone", "")),
         "primary_mobile": str(data.get("primary_mobile", "")).strip(),
+        "primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", "")),
         "preferred_contact_channel": str(data.get("preferred_contact_channel", "email")).strip()
         or "email",
         "notes": str(data.get("notes", "")).strip(),
@@ -1150,6 +1343,14 @@ def save_customer(
         "create_case": normalize_bool(data.get("create_case")),
         "case_number": str(data.get("case_number", "")).strip(),
         "case_title": str(data.get("case_title", "")).strip(),
+        "case_type": str(
+            data.get(
+                "case_type",
+                "kitchen_project_b2b"
+                if str(data.get("customer_type", "private")).strip() == "company"
+                else "kitchen_project",
+            )
+        ).strip(),
         "status_phase_id": str(data.get("status_phase_id") or "1"),
         "responsible_user_id": str(
             data.get("responsible_user_id") or data.get("owner_user_id") or actor_user_id
@@ -1157,6 +1358,9 @@ def save_customer(
         "actor_user_id": actor_user_id,
         "context": context,
     }
+    duplicate_matches = customer_duplicate_matches(payload)
+    if duplicate_matches:
+        raise ApiError(HTTPStatus.CONFLICT, "customer_duplicate_found")
     result = psql_json(
         """
         WITH payload AS (SELECT :'payload'::jsonb AS data),
@@ -1189,7 +1393,9 @@ def save_customer(
             display_name = data->>'display_name',
             primary_email = NULLIF(data->>'primary_email', ''),
             primary_phone = NULLIF(data->>'primary_phone', ''),
+            primary_phone_normalized = NULLIF(data->>'primary_phone_normalized', ''),
             primary_mobile = NULLIF(data->>'primary_mobile', ''),
+            primary_mobile_normalized = NULLIF(data->>'primary_mobile_normalized', ''),
             preferred_contact_channel = data->>'preferred_contact_channel',
             notes = NULLIF(data->>'notes', ''),
             owner_user_id = NULLIF(data->>'owner_user_id', '')::bigint,
@@ -1210,7 +1416,9 @@ def save_customer(
             display_name,
             primary_email,
             primary_phone,
+            primary_phone_normalized,
             primary_mobile,
+            primary_mobile_normalized,
             preferred_contact_channel,
             notes,
             owner_user_id,
@@ -1227,7 +1435,9 @@ def save_customer(
             data->>'display_name',
             NULLIF(data->>'primary_email', ''),
             NULLIF(data->>'primary_phone', ''),
+            NULLIF(data->>'primary_phone_normalized', ''),
             NULLIF(data->>'primary_mobile', ''),
+            NULLIF(data->>'primary_mobile_normalized', ''),
             data->>'preferred_contact_channel',
             NULLIF(data->>'notes', ''),
             NULLIF(data->>'owner_user_id', '')::bigint,
@@ -1300,6 +1510,7 @@ def save_customer(
             owner_user_id,
             customer_id,
             case_title,
+            case_type,
             status_phase_id,
             created_by_user_id,
             responsible_user_id
@@ -1311,6 +1522,7 @@ def save_customer(
             NULLIF(data->>'responsible_user_id', '')::bigint,
             (SELECT id FROM target_customer),
             NULLIF(data->>'case_title', ''),
+            data->>'case_type',
             NULLIF(data->>'status_phase_id', '')::smallint,
             (data->>'actor_user_id')::bigint,
             NULLIF(data->>'responsible_user_id', '')::bigint
@@ -2259,6 +2471,11 @@ class Handler(BaseHTTPRequestHandler):
             if self.command == "GET" and parsed.path == "/customers/state":
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
                 self.write_json(customers_state(access_email))
+                return
+            if self.command == "GET" and parsed.path == "/customers/search":
+                access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                query = parse_qs(parsed.query).get("q", [""])[0]
+                self.write_json(search_customers(query, access_email))
                 return
             if self.command == "POST":
                 data, files = request_payload(self)

@@ -80,6 +80,27 @@ def test_crm_uses_cards_native_links_and_cls_safe_media() -> None:
     assert "aspect-ratio: 260 / 88" in source
 
 
+def test_customer_page_enforces_search_first_entry() -> None:
+    source = load_worker_source()
+
+    assert "renderCustomerSearchFirst" in source
+    assert 'data-customer-search-first' in source
+    assert 'data-customer-search-input' in source
+    assert 'data-customer-search-results' in source
+    assert 'data-customer-search-empty hidden' in source
+    assert "Name, Firma, E-Mail, Telefon oder Kundennummer eingeben..." in source
+    assert "Neues Projekt anlegen" in source
+    assert "Privatkunde anlegen" in source
+    assert "Objektkunde anlegen" in source
+    assert 'href="/kunden.php?new=1&type=private"' in source
+    assert 'href="/kunden.php?new=1&type=company"' in source
+    assert "CUSTOMER_SEARCH_SCRIPT" in source
+    assert "/api/customers/search?q=" in source
+    assert "script-src 'self'" in source
+    assert "connect-src 'self'" in source
+    assert "customer-search.v1.js" in source
+
+
 def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     source = load_worker_source()
 

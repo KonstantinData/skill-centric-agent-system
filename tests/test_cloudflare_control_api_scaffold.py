@@ -102,12 +102,14 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.startsWith("/admin-api/")' in source
     assert 'url.pathname.startsWith("/overview-api/")' in source
     assert 'url.pathname.startsWith("/customers-api/")' in source
+    assert 'url.pathname === "/api/customers/search"' in source
     assert "DKH_ADMIN_API_TOKEN" in source
     assert "DKH_ADMIN_API_BASE_URL" in source
     assert "DKH_TENANT_UI" in source
     assert '"sota-2026-tenant-crm"' in source
     assert "assets/images/daskuechenhaus/logo_daskuechenhaus.png" in source
     assert 'logoRoute: "/tenant-assets/daskuechenhaus/logo.svg"' in source
+    assert 'customerSearchScriptRoute: "/tenant-assets/daskuechenhaus/customer-search.v1.js"' in source
     assert 'url.pathname.startsWith("/tenant-assets/")' in source
     assert "serveTenantAsset" in source
     assert 'logoPath.startsWith("assets/images/daskuechenhaus/")' in source
@@ -118,6 +120,8 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
     assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
     assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
+    assert "proxyCustomerSearchApi" in source
+    assert '`/customers/search${url.search}`' in source
     assert 'location' in source
     assert "Übersicht" in source
     assert "<h1>Steuerung</h1>" in source
@@ -144,8 +148,14 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Eingang und Zuordnung" in source
     assert "Team, Auslastung und Termine" in source
     assert "Auslastung und Termine" in source
-    assert "Kunde anlegen" in source
-    assert "Kunden, Kontaktdaten, Verantwortlichkeiten" in source
+    assert "Kunden" in source
+    assert (
+        "Verwalten Sie hier Ihre Kundenkontakte. Bitte wählen Sie den passenden Bereich, "
+        "um einen Neukunden anzulegen oder ein neues Küchenprojekt für einen Bestandskunden zu erfassen."
+    ) in source
+    assert "Name, Firma, E-Mail, Telefon oder Kundennummer eingeben..." in source
+    assert "Privatkunde anlegen" in source
+    assert "Objektkunde anlegen" in source
     assert "Aufgabe anlegen" in source
     assert "E-Mail-Eingang" in source
     assert 'href="/emails.php"' in source
@@ -211,6 +221,8 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'name="secret_reference"' in source
     assert "SECURITY_HEADERS" in source
     assert "default-src 'none'" in source
+    assert "script-src 'self'" in source
+    assert "connect-src 'self'" in source
     assert "x-robots-tag" in source
 
 
