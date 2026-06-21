@@ -31,6 +31,13 @@ The site is intentionally not designed for public anonymous access. Production
 deployment must be paired with a Cloudflare Access self-hosted application and
 an Allow policy scoped to explicit Daskuechenhaus operators.
 
+Tenant UI assets and theme tokens are loaded from the Daskuechenhaus tenant UI
+profile embedded in the Worker. The protected app serves the tenant-owned logo
+only from `/tenant-assets/daskuechenhaus/logo.png`, sourced from
+`assets/images/daskuechenhaus/logo_daskuechenhaus.png`. Unknown
+`/tenant-assets/*` paths return `404`, and the Worker does not fall back to
+assets from another tenant.
+
 Runtime data remains in Hetzner PostgreSQL `tenant_daskuechenhaus`. The Worker
 requires `DKH_ADMIN_API_TOKEN` as a secret and uses
 `DKH_ADMIN_API_BASE_URL` from `wrangler.toml`.

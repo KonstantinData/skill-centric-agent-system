@@ -103,6 +103,17 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.startsWith("/customers-api/")' in source
     assert "DKH_ADMIN_API_TOKEN" in source
     assert "DKH_ADMIN_API_BASE_URL" in source
+    assert "DKH_TENANT_UI" in source
+    assert '"sota-2026-tenant-crm"' in source
+    assert "assets/images/daskuechenhaus/logo_daskuechenhaus.png" in source
+    assert 'logoRoute: "/tenant-assets/daskuechenhaus/logo.png"' in source
+    assert 'url.pathname.startsWith("/tenant-assets/")' in source
+    assert "serveTenantAsset" in source
+    assert 'logoPath.startsWith("assets/images/daskuechenhaus/")' in source
+    assert "renderTenantThemeVars(DKH_TENANT_UI)" in source
+    assert "renderTenantLogo(DKH_TENANT_UI)" in source
+    assert "LOGO_MARKUP" not in source
+    assert "svg.logo" not in source
     assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
     assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
     assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
