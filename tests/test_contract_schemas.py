@@ -216,6 +216,13 @@ def test_runtime_profile_rejects_unselected_version_pin(
                 "ui_profile",
                 {
                     "logo_path": None,
+                    "experience_standard": "sota-2026-tenant-crm",
+                    "brand_assets": {
+                        "logo_path": None,
+                        "favicon_path": None,
+                        "app_icon_path": None,
+                        "asset_scope": "tenant-owned",
+                    },
                     "landing": {
                         "type": "internal-operations-dashboard",
                         "area_presentation": "tiles",
@@ -227,6 +234,26 @@ def test_runtime_profile_rejects_unselected_version_pin(
                         "secondary_text": "#333",
                         "accent": "#76b726",
                         "border": "#76b726",
+                    },
+                    "navigation": {
+                        "primary_area_ids": ["research"],
+                        "admin_area_ids": [],
+                    },
+                    "command_center": {
+                        "enabled": True,
+                        "surfaces": ["global-search", "scas-actions"],
+                        "default_route": "/",
+                    },
+                    "scas_skill_packs": [
+                        {
+                            "id": "demo-research-assistance",
+                            "task_types": ["tenant-research"],
+                            "required_capabilities": ["research"],
+                            "status": "planned",
+                        }
+                    ],
+                    "terminology": {
+                        "customer": "Customer"
                     },
                     "workspace_areas": [
                         {

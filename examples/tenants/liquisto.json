@@ -186,9 +186,55 @@
   ],
   "ui_profile": {
     "logo_path": "assets/images/liquisto/liquisto_logo.png",
+    "experience_standard": "sota-2026-tenant-crm",
+    "brand_assets": {
+      "logo_path": "assets/images/liquisto/liquisto_logo.png",
+      "favicon_path": null,
+      "app_icon_path": null,
+      "asset_scope": "tenant-owned"
+    },
     "landing": {
       "type": "internal-operations-dashboard",
       "area_presentation": "tiles"
+    },
+    "navigation": {
+      "primary_area_ids": [
+        "research"
+      ],
+      "admin_area_ids": [
+        "tenant-admin"
+      ]
+    },
+    "command_center": {
+      "enabled": true,
+      "surfaces": [
+        "global-search",
+        "quick-actions",
+        "notifications",
+        "saved-views",
+        "scas-actions"
+      ],
+      "default_route": "/"
+    },
+    "scas_skill_packs": [
+      {
+        "id": "liquisto-research-assistance",
+        "task_types": [
+          "tenant-research",
+          "document-synthesis"
+        ],
+        "required_capabilities": [
+          "research"
+        ],
+        "status": "planned"
+      }
+    ],
+    "terminology": {
+      "customer": "Customer",
+      "case": "Case",
+      "task": "Task",
+      "email": "Email",
+      "cockpit": "Cockpit"
     },
     "workspace_areas": [
       {

@@ -118,7 +118,22 @@ def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
         "type": "internal-operations-dashboard",
         "area_presentation": "tiles",
     }
+    assert liquisto["ui_profile"]["experience_standard"] == "sota-2026-tenant-crm"
     assert (REPO_ROOT / liquisto["ui_profile"]["logo_path"]).is_file()
+    assert liquisto["ui_profile"]["brand_assets"] == {
+        "logo_path": "assets/images/liquisto/liquisto_logo.png",
+        "favicon_path": None,
+        "app_icon_path": None,
+        "asset_scope": "tenant-owned",
+    }
+    assert liquisto["ui_profile"]["navigation"] == {
+        "primary_area_ids": ["research"],
+        "admin_area_ids": ["tenant-admin"],
+    }
+    assert "scas-actions" in liquisto["ui_profile"]["command_center"]["surfaces"]
+    assert liquisto["ui_profile"]["scas_skill_packs"][0]["id"] == (
+        "liquisto-research-assistance"
+    )
     assert [area["id"] for area in liquisto["ui_profile"]["workspace_areas"]] == [
         "research",
         "tenant-admin",
@@ -153,7 +168,16 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
         daskuechenhaus["ui_profile"]["logo_path"]
         == "assets/images/daskuechenhaus/logo_daskuechenhaus.png"
     )
+    assert daskuechenhaus["ui_profile"]["experience_standard"] == (
+        "sota-2026-tenant-crm"
+    )
     assert (REPO_ROOT / daskuechenhaus["ui_profile"]["logo_path"]).is_file()
+    assert daskuechenhaus["ui_profile"]["brand_assets"] == {
+        "logo_path": "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
+        "favicon_path": None,
+        "app_icon_path": None,
+        "asset_scope": "tenant-owned",
+    }
     assert daskuechenhaus["ui_profile"]["theme"] == {
         "background": "#fff",
         "surface": "#fff",
@@ -162,6 +186,26 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
         "accent": "#76b726",
         "border": "#76b726",
     }
+    assert daskuechenhaus["ui_profile"]["navigation"] == {
+        "primary_area_ids": ["customer-cases", "research"],
+        "admin_area_ids": ["tenant-admin"],
+    }
+    assert daskuechenhaus["ui_profile"]["command_center"] == {
+        "enabled": True,
+        "surfaces": [
+            "global-search",
+            "quick-actions",
+            "notifications",
+            "saved-views",
+            "scas-actions",
+        ],
+        "default_route": "/",
+    }
+    assert [pack["id"] for pack in daskuechenhaus["ui_profile"]["scas_skill_packs"]] == [
+        "daskuechenhaus-email-assignment",
+        "daskuechenhaus-next-step-planning",
+    ]
+    assert daskuechenhaus["ui_profile"]["terminology"]["case"] == "Vorgang"
     assert daskuechenhaus["admin_model"]["initial_owner"] is None
     assert daskuechenhaus["memory"]["shared_promotion_allowed"] is False
     admin_role = next(
