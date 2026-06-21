@@ -124,6 +124,30 @@ A tenant CRM web app is SOTA 2026 compliant when:
 8. Tests cover tenant profile schema, fixture examples, and fail-closed
    isolation for UI profiles, assets, data scopes, and skill packages.
 
+## Definition of Done
+
+The SOTA 2026 tenant CRM tool work is done only when all parent and subtask
+outcomes are complete:
+
+1. The SOTA CRM web app standard is versioned in the repository and referenced
+   by tenant registry examples.
+2. Each tenant has an explicit `ui_profile` for assets, theme, navigation,
+   command center surfaces, terminology, and SCAS skill package bindings.
+3. Tenant-owned assets are loaded through a tenant-scoped path and never fall
+   back to another tenant.
+4. The tenant app shell is a professional CRM command center with outcome-first
+   cockpit, role-filtered navigation, search or command entry points, work
+   queues, quick actions, and detail workspaces.
+5. SCAS CRM skill packages are defined per tenant and selected only through
+   registry discovery, scoring, policy filtering, dependency validation, and
+   immutable runtime profile validation.
+6. Side-effecting CRM actions expose status, reason, confirmation path, and
+   audit evidence before or after execution according to tenant policy.
+7. Visual, responsive, accessibility, schema, contract, isolation, and security
+   gates pass for the changed tenant surfaces.
+8. Documentation, examples, tests, and Notion task tracking are reconciled
+   before handoff or merge.
+
 ## Non-goals
 
 - Build a separate multi-agent CRM runtime.
