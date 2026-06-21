@@ -46,6 +46,13 @@ def test_crm_layout_is_mobile_first_with_min_width_guards() -> None:
     assert ".shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }" in source
 
 
+def test_crm_touch_targets_meet_mobile_contract() -> None:
+    source = load_worker_source()
+
+    assert "min-height: 48px" in source
+    assert "min-height: 44px" not in source
+
+
 def test_crm_has_app_like_bottom_navigation_and_fab() -> None:
     source = load_worker_source()
 

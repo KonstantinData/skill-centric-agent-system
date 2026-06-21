@@ -1438,7 +1438,7 @@ function renderHome(state: OverviewState): string {
       color: #111111;
       border-radius: 6px;
       padding: 9px 13px;
-      min-height: 44px;
+      min-height: 48px;
       display: inline-flex;
       align-items: center;
       font-weight: 800;
@@ -2241,7 +2241,7 @@ function renderWorkspaceStyles(): string {
       color: #111111;
       border-radius: 6px;
       padding: 9px 13px;
-      min-height: 44px;
+      min-height: 48px;
       display: inline-flex;
       align-items: center;
       font-weight: 800;
@@ -3047,7 +3047,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      min-height: 44px;
+      min-height: 48px;
       font: inherit;
       font-weight: 800;
       padding: 8px 11px;
