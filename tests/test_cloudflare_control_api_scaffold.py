@@ -119,12 +119,19 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
     assert 'location' in source
     assert "Uebersicht" in source
-    assert "Instrumententafel" in source
-    assert "Kontrollverlust" in source
-    assert "Was jetzt kippen kann" in source
-    assert "Sofortzugriff" in source
+    assert "CRM Steuerung" in source
+    assert "Entscheidungszentrale" in source
+    assert "Jetzt bearbeiten" in source
+    assert "Kundenfortschritt" in source
+    assert "SCAS Kontrolle" in source
+    assert "Audit Trail" in source
     assert "Command Center" in source
     assert "renderCommandCenter" in source
+    assert "renderDecisionQueue" in source
+    assert "renderCustomerFocus" in source
+    assert "renderScasReviewQueue" in source
+    assert "renderAuditTrail" in source
+    assert "Naechste Aktion" in source
     assert 'id="command-search"' in source
     assert 'name="q"' in source
     assert "customerMatchesQuery" in source
@@ -132,14 +139,12 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Ausfuehrung nur mit Bestaetigung" in source
     assert "filter-note" in source
     assert "Heute arbeiten" in source
-    assert "Funkverkehr" in source
     assert "Team & Termine" in source
-    assert "Kapazitaet, Vertretung, Flugplan" in source
-    assert "Blackbox" in source
+    assert "Auslastung und Termine" in source
     assert "Kunde anlegen" in source
-    assert "Gleiche Namen oder gleiche E-Mail-Adressen koennen mehrfach vorkommen" in source
+    assert "Kunden, Kontaktdaten, Verantwortlichkeiten" in source
     assert "Aufgabe anlegen" in source
-    assert "E-Mail Eingange" in source
+    assert "E-Mail-Eingang" in source
     assert "Zuordnung bestaetigen" in source
     assert "Ablehnen" not in source
     assert "In Papierkorb" in source
@@ -148,6 +153,12 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'name="customer_case_search"' in source
     assert 'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=' in source
     assert "Kein Treffer" in source
+    assert "Instrumententafel" not in source
+    assert "Kontrollverlust" not in source
+    assert "Was jetzt kippen kann" not in source
+    assert "Funkverkehr" not in source
+    assert "Flugplan" not in source
+    assert "Blackbox" not in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
     assert "modal users-modal" in source
     assert "modal settings-modal" in source
@@ -157,7 +168,6 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Verkauf" in source
     assert "Cloudflare Subject" not in source
     assert "Neuer Mitarbeiter" not in source
-    assert "Naechster Schritt" not in source
     assert "Worker eine gesicherte API" not in source
     assert 'id="admin-workdays"' not in source
     assert 'for="admin-workdays"' not in source

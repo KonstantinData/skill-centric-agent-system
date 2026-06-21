@@ -746,7 +746,7 @@ function renderCustomerFocus(state: OverviewState): string {
     return '<div class="empty">Noch keine aktiven Kundenvorgaenge sichtbar.</div>';
   }
   return `<div class="data-table customer-focus">
-    <div class="data-row data-head"><span>Vorgang</span><span>Kunde</span><span>Phase</span><span>Naechster Schritt</span></div>
+    <div class="data-row data-head"><span>Vorgang</span><span>Kunde</span><span>Phase</span><span>Naechste Aktion</span></div>
     ${state.customer_cases
       .slice(0, 7)
       .map((customerCase) => {
@@ -759,7 +759,7 @@ function renderCustomerFocus(state: OverviewState): string {
         const phase = customerCase.status_phase ? `Phase ${customerCase.status_phase}` : "offen";
         const nextStep = nextTask
           ? `${nextTask.title}${nextTask.due_at ? ` (${formatDateTime(nextTask.due_at)})` : ""}`
-          : "Naechste Aufgabe anlegen";
+          : "Naechste Aktion anlegen";
         return `<a class="data-row" href="/kunden.php">
           <span>${escapeHtml(customerCase.case_number ?? "-")}</span>
           <strong>${escapeHtml(customerCase.customer_display_name)}</strong>
