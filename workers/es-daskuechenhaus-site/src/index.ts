@@ -164,6 +164,60 @@ type OverviewState = {
     ends_at: string;
     scope: string;
   }>;
+  communication_events?: Array<{
+    id: number;
+    event_type: string;
+    title: string;
+    body: string | null;
+    occurred_at: string;
+    customer_case: {
+      id: number;
+      case_number: string | null;
+      customer_display_name: string;
+    } | null;
+    actor: string | null;
+  }>;
+};
+
+type CustomerAddress = {
+  street: string | null;
+  house_number: string | null;
+  address_extra: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
+};
+
+type CustomerRecord = {
+  id: number;
+  customer_number: string | null;
+  customer_type: string;
+  display_name: string;
+  salutation: string | null;
+  title: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
+  primary_mobile: string | null;
+  preferred_contact_channel: string;
+  notes: string | null;
+  owner_user_id: number | null;
+  address: CustomerAddress | null;
+  case_count: number;
+  updated_at: string | null;
+};
+
+type CustomersState = {
+  current_user: OverviewState["current_user"];
+  users: OverviewState["users"];
+  customers: CustomerRecord[];
+  status_phases: Array<{
+    phase: number;
+    name: string;
+    is_terminal: boolean;
+  }>;
 };
 
 const EMPTY_STATE: AdminState = {
@@ -203,6 +257,14 @@ const EMPTY_OVERVIEW_STATE: OverviewState = {
   news_items: [],
   goal_events: [],
   delegations: [],
+  communication_events: [],
+};
+
+const EMPTY_CUSTOMERS_STATE: CustomersState = {
+  current_user: EMPTY_OVERVIEW_STATE.current_user,
+  users: [],
+  customers: [],
+  status_phases: [],
 };
 
 const LOGO_MARKUP = `
@@ -357,6 +419,19 @@ async function fetchOverviewState(env: Env, request: Request): Promise<OverviewS
   return (await response.json()) as OverviewState;
 }
 
+async function fetchCustomersState(env: Env, request: Request): Promise<CustomersState> {
+  const response = await fetch(adminApiUrl(env, "/customers/state"), {
+    headers: {
+      "x-dkh-admin-api-token": env.DKH_ADMIN_API_TOKEN,
+      "x-access-user-email": accessEmail(request),
+    },
+  });
+  if (!response.ok) {
+    return EMPTY_CUSTOMERS_STATE;
+  }
+  return (await response.json()) as CustomersState;
+}
+
 async function proxyAdminApi(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const response = await fetch(adminApiUrl(env, url.pathname.replace(/^\/admin-api/, "/admin")), {
@@ -409,14 +484,198 @@ async function proxyOverviewApi(request: Request, env: Env): Promise<Response> {
   });
 }
 
+async function proxyCustomersApi(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const response = await fetch(adminApiUrl(env, url.pathname.replace(/^\/customers-api/, "/customers")), {
+    method: request.method,
+    headers: {
+      "content-type": request.headers.get("content-type") ?? "application/x-www-form-urlencoded",
+      "x-dkh-admin-api-token": env.DKH_ADMIN_API_TOKEN,
+      "x-access-user-email": accessEmail(request),
+    },
+    body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
+  });
+  if (request.method !== "GET") {
+    if (!response.ok) {
+      return htmlResponse("<!doctype html><title>Fehler</title><h1>Speichern nicht moeglich</h1>", response.status);
+    }
+    return redirectResponse(url.searchParams.get("return_to") ?? "/kunden.php");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      ...SECURITY_HEADERS,
+      "content-type": response.headers.get("content-type") ?? "application/json; charset=utf-8",
+    },
+  });
+}
+
+function renderSideNav(active: "overview" | "customers" | "tasks" | "admin", isAdmin: boolean): string {
+  return `<nav aria-label="Bereiche">
+    <a href="/index.php"${active === "overview" ? ' aria-current="page"' : ""}>Uebersicht</a>
+    <a href="/kunden.php"${active === "customers" ? ' aria-current="page"' : ""}>Kunden</a>
+    <a href="/aufgaben.php"${active === "tasks" ? ' aria-current="page"' : ""}>Aufgaben</a>
+    ${isAdmin ? `<a href="/admin.php"${active === "admin" ? ' aria-current="page"' : ""}>Admin Bereich</a>` : ""}
+  </nav>`;
+}
+
+type CockpitSignal = {
+  level: "red" | "yellow" | "green";
+  title: string;
+  detail: string;
+  href: string;
+  cta: string;
+};
+
+function renderSignal(signal: CockpitSignal): string {
+  return `<a class="signal ${signal.level}" href="${escapeHtml(signal.href)}">
+    <span class="lamp" aria-hidden="true"></span>
+    <span>
+      <strong>${escapeHtml(signal.title)}</strong>
+      <small>${escapeHtml(signal.detail)}</small>
+    </span>
+    <em>${escapeHtml(signal.cta)}</em>
+  </a>`;
+}
+
+function isToday(value: string | null): boolean {
+  const parsed = parseDate(value);
+  if (!parsed) {
+    return false;
+  }
+  const now = new Date();
+  return (
+    parsed.getFullYear() === now.getFullYear() &&
+    parsed.getMonth() === now.getMonth() &&
+    parsed.getDate() === now.getDate()
+  );
+}
+
+function renderCockpitList(items: string[], emptyText: string): string {
+  if (items.length === 0) {
+    return `<div class="empty">${escapeHtml(emptyText)}</div>`;
+  }
+  return `<ul class="cockpit-list">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+}
+
+function renderCockpitTasks(state: OverviewState): string {
+  const relevantTasks = [...state.tasks]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const rightTime = parseDate(right.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return leftTime - rightTime;
+    })
+    .slice(0, 5);
+  return renderCockpitList(
+    relevantTasks.map((task) => {
+      const assigned = task.assigned_users.map((user) => user.name).join(", ") || "ohne Zustaendigen";
+      const caseLabel = task.case?.customer_display_name ?? "ohne Vorgang";
+      const dueLabel = task.due_at ? ` · ${formatDateTime(task.due_at)}` : "";
+      return `<a href="/aufgaben.php">${escapeHtml(task.title)}</a><span>${escapeHtml(caseLabel)} · ${escapeHtml(assigned)}${escapeHtml(dueLabel)}</span>`;
+    }),
+    "Keine offenen Aufgaben in deiner aktuellen Ansicht.",
+  );
+}
+
+function renderCockpitEmails(state: OverviewState): string {
+  const relevantEmails = [...state.emails]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.received_at)?.getTime() ?? 0;
+      const rightTime = parseDate(right.received_at)?.getTime() ?? 0;
+      return rightTime - leftTime;
+    })
+    .slice(0, 5);
+  return renderCockpitList(
+    relevantEmails.map((email) => {
+      const sender =
+        email.participants.find((participant) => participant.type === "from") ??
+        email.participants[0];
+      const fit = email.suggestions[0]?.case;
+      const assignment = email.is_unassigned
+        ? fit
+          ? `SCAS: wahrscheinlich ${fit.case_number ? `${fit.case_number} · ` : ""}${fit.customer_display_name}`
+          : "Kein Treffer: Vorgang suchen und bestaetigen"
+        : email.cases.map((entry) => entry.customer_display_name).join(", ") || "zugeordnet";
+      return `<a href="/aufgaben.php#emails">${escapeHtml(email.subject || "(ohne Betreff)")}</a><span>${escapeHtml(sender?.display_name || sender?.email_address || "Unbekannt")} · ${escapeHtml(assignment)}</span>`;
+    }),
+    "Keine neuen E-Mail-Eingaenge in deiner aktuellen Ansicht.",
+  );
+}
+
+function renderCapacity(state: OverviewState): string {
+  const loads = new Map<string, number>();
+  for (const task of state.tasks) {
+    if (task.assigned_users.length === 0) {
+      loads.set("Ohne Zustaendigen", (loads.get("Ohne Zustaendigen") ?? 0) + 1);
+    }
+    for (const user of task.assigned_users) {
+      loads.set(user.name, (loads.get(user.name) ?? 0) + 1);
+    }
+  }
+  return renderCockpitList(
+    [...loads.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 6)
+      .map(([name, count]) => `<a href="/aufgaben.php">${escapeHtml(name)}</a><span>${count} offene Aufgabe(n)</span>`),
+    "Keine Aufgabenlast in der aktuellen Ansicht.",
+  );
+}
+
+function renderBlackbox(state: OverviewState): string {
+  const events = (state.communication_events ?? []).slice(0, 6);
+  return renderCockpitList(
+    events.map((event) => {
+      const caseLabel = event.customer_case
+        ? `${event.customer_case.case_number ? `${event.customer_case.case_number} · ` : ""}${event.customer_case.customer_display_name}`
+        : "ohne Vorgang";
+      return `<a href="/kunden.php">${escapeHtml(event.title)}</a><span>${escapeHtml(caseLabel)} · ${escapeHtml(event.actor ?? "System")} · ${escapeHtml(formatDateTime(event.occurred_at))}</span>`;
+    }),
+    "Noch keine dokumentierten Aenderungen in deiner aktuellen Ansicht.",
+  );
+}
+
 function renderHome(state: OverviewState): string {
   const currentUser = state.current_user.display_name || state.current_user.email || "Angemeldeter Nutzer";
-  const openTasks = state.tasks.length;
-  const unassignedEmails = state.emails.filter((email) => email.is_unassigned).length;
-  const assignedEmails = state.emails.length - unassignedEmails;
   const overdueTasks = state.tasks.filter((task) => isOverdue(task.due_at)).length;
-  const dueTasks = state.tasks.filter((task) => task.due_at).length;
-  const priorityTasks = state.tasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
+  const unassignedEmails = state.emails.filter((email) => email.is_unassigned).length;
+  const tasksWithoutAssignee = state.tasks.filter((task) => task.assigned_users.length === 0).length;
+  const urgentTasks = state.tasks.filter((task) => task.priority === "urgent").length;
+  const todayTasks = state.tasks.filter((task) => isToday(task.due_at)).length;
+  const todayAppointments = state.appointments.filter((appointment) => isToday(appointment.starts_at)).length;
+  const unresolvedSuggestions = state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length;
+  const hasRed = overdueTasks > 0 || urgentTasks > 0 || tasksWithoutAssignee > 0;
+  const hasYellow = unassignedEmails > 0 || state.customer_cases.length === 0 || todayTasks > 0 || todayAppointments > 0;
+  const overall = hasRed ? "Rot: sofort handeln" : hasYellow ? "Gelb: heute beachten" : "Gruen: laeuft";
+  const signals: CockpitSignal[] = [
+    {
+      level: overdueTasks > 0 ? "red" : "green",
+      title: "Ueberfaellige Aufgaben",
+      detail: overdueTasks > 0 ? `${overdueTasks} Aufgabe(n) sind ueberfaellig.` : "Keine ueberfaelligen Aufgaben sichtbar.",
+      href: "/aufgaben.php",
+      cta: "Aufgaben pruefen",
+    },
+    {
+      level: unassignedEmails > 0 ? "yellow" : "green",
+      title: "Nicht zugeordnete E-Mails",
+      detail: unassignedEmails > 0 ? `${unassignedEmails} Nachricht(en) brauchen eine Vorgangszuordnung.` : "Alle sichtbaren E-Mails sind zugeordnet.",
+      href: "/aufgaben.php#emails",
+      cta: "E-Mails zuordnen",
+    },
+    {
+      level: tasksWithoutAssignee > 0 ? "red" : "green",
+      title: "Aufgaben ohne Zustaendigen",
+      detail: tasksWithoutAssignee > 0 ? `${tasksWithoutAssignee} Aufgabe(n) haben keinen Besitzer.` : "Alle sichtbaren Aufgaben haben einen Zustaendigen.",
+      href: "/aufgaben.php",
+      cta: "Zustaendigkeit klaeren",
+    },
+    {
+      level: state.customer_cases.length === 0 ? "yellow" : "green",
+      title: "Vorgaenge ohne Basis",
+      detail: state.customer_cases.length === 0 ? "Es gibt noch keinen sichtbaren Kundenvorgang." : `${state.customer_cases.length} aktive Vorgang/Vorgaenge sichtbar.`,
+      href: "/kunden.php",
+      cta: "Kunden oeffnen",
+    },
+  ];
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -439,7 +698,8 @@ function renderHome(state: OverviewState): string {
       --warning-bg: #fff6df;
       --danger: #9b1c1c;
       --danger-bg: #fff0f0;
-      --shadow: 0 10px 24px rgba(24, 38, 18, 0.08);
+      --ok: #276738;
+      --ok-bg: #edf8ef;
     }
     * { box-sizing: border-box; }
     body {
@@ -483,7 +743,7 @@ function renderHome(state: OverviewState): string {
       font-weight: 700;
     }
     main {
-      padding: 22px 28px 42px;
+      padding: 24px 30px 42px;
       min-width: 0;
     }
     .topline {
@@ -514,88 +774,180 @@ function renderHome(state: OverviewState): string {
       line-height: 1.45;
       margin: 8px 0 0;
     }
-    .metrics {
+    .status-strip {
       display: grid;
-      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      grid-template-columns: minmax(220px, 0.7fr) repeat(3, minmax(130px, 1fr));
       gap: 12px;
-      margin-bottom: 18px;
+      margin: 18px 0;
     }
-    .metric-card {
+    .status-card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 12px 14px;
-      min-height: 78px;
-      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
+      min-height: 82px;
     }
-    .metric-card.alert {
+    .status-card.red {
       border-color: #e2b8b8;
       background: var(--danger-bg);
     }
-    .metric-card.warning {
+    .status-card.yellow {
       border-color: #e0c48d;
       background: var(--warning-bg);
     }
-    .workspace {
+    .status-card.green {
+      border-color: #bad7bf;
+      background: var(--ok-bg);
+    }
+    .metric {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    .metric-label,
+    .metric-sub,
+    .signal small,
+    .cockpit-list span,
+    .muted {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .signals {
       display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
-      gap: 22px;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .signal {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-height: 128px;
+      padding: 13px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      transition: transform 100ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+    .signal:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(24, 38, 18, 0.08);
+    }
+    .signal:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+    .signal.red { border-color: #e2b8b8; background: var(--danger-bg); }
+    .signal.yellow { border-color: #e0c48d; background: var(--warning-bg); }
+    .signal.green { border-color: #bad7bf; background: var(--ok-bg); }
+    .lamp {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      margin-top: 2px;
+    }
+    .red .lamp { background: var(--danger); }
+    .yellow .lamp { background: #c77c12; }
+    .green .lamp { background: var(--ok); }
+    .signal strong,
+    .signal small,
+    .signal em {
+      display: block;
+    }
+    .signal strong {
+      font-size: 0.98rem;
+      line-height: 1.25;
+    }
+    .signal small {
+      margin-top: 5px;
+      font-size: 0.82rem;
+    }
+    .signal em {
+      grid-column: 2;
+      align-self: end;
+      color: var(--green-dark);
+      font-size: 0.8rem;
+      font-style: normal;
+      font-weight: 800;
+    }
+    .cockpit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
       align-items: start;
     }
-    .stack { display: grid; gap: 20px; min-width: 0; }
-    .workspace-section {
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
       min-width: 0;
     }
-    .section-head {
+    .panel-head {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      gap: 14px;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      gap: 12px;
+      align-items: start;
+      padding-bottom: 10px;
       border-bottom: 1px solid var(--line);
-    }
-    .section-title {
-      display: grid;
-      gap: 2px;
-    }
-    .section-kicker {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      margin-bottom: 10px;
     }
     h2 {
       margin: 0;
       font-size: 1rem;
       letter-spacing: 0;
     }
-    h3 {
-      margin: 0;
-      font-size: 0.95rem;
-      letter-spacing: 0;
-      line-height: 1.25;
-    }
-    p, li, .muted {
-      color: var(--muted);
-      line-height: 1.45;
-    }
-    .metric {
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--green-dark);
-      line-height: 1.1;
-    }
-    .metric-label {
-      color: var(--muted);
-      font-size: 0.82rem;
-      margin-top: 4px;
-    }
-    .metric-sub {
+    .section-kicker {
       color: var(--muted);
       font-size: 0.75rem;
-      margin-top: 6px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .panel-link {
+      color: var(--green-dark);
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .panel-link:hover {
+      text-decoration: underline;
+    }
+    .cockpit-list {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .cockpit-list li {
+      display: grid;
+      gap: 3px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfa;
+    }
+    .cockpit-list a {
+      color: var(--text);
+      font-weight: 800;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+    .cockpit-list a:hover {
+      color: var(--green-dark);
+      text-decoration: underline;
+    }
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      color: var(--muted);
+      background: #fbfcfa;
     }
     .list {
       display: grid;
@@ -604,18 +956,8 @@ function renderHome(state: OverviewState): string {
     .item {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 11px 12px;
-      background: #ffffff;
-      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
-    }
-    .item.compact {
       padding: 9px 10px;
-    }
-    .item.urgent {
-      border-left: 4px solid var(--danger);
-    }
-    .item.high {
-      border-left: 4px solid var(--warning);
+      background: #ffffff;
     }
     .item-top {
       display: flex;
@@ -623,26 +965,10 @@ function renderHome(state: OverviewState): string {
       gap: 12px;
       align-items: flex-start;
     }
-    .item-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
-      margin-top: 10px;
-      align-items: center;
-    }
-    details.editor {
-      margin-top: 10px;
-      border-top: 1px solid var(--line);
-      padding-top: 10px;
-    }
-    details.editor summary {
-      color: var(--green-dark);
-      cursor: pointer;
-      font-weight: 800;
-      width: fit-content;
-    }
-    details.editor summary:hover {
-      text-decoration: underline;
+    .item-top h3 {
+      margin: 0;
+      font-size: 0.92rem;
+      letter-spacing: 0;
     }
     .pill {
       display: inline-flex;
@@ -650,38 +976,10 @@ function renderHome(state: OverviewState): string {
       border: 1px solid #abc98f;
       background: var(--soft);
       color: var(--green-dark);
-      font-size: 0.78rem;
-      font-weight: 700;
+      font-size: 0.75rem;
+      font-weight: 800;
       padding: 3px 7px;
       white-space: nowrap;
-    }
-    .pill.warning {
-      border-color: #e0b66b;
-      background: var(--warning-bg);
-      color: var(--warning);
-    }
-    .pill.danger {
-      border-color: #e1a1a1;
-      background: var(--danger-bg);
-      color: var(--danger);
-    }
-    .count-pill {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .preview {
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.38;
-    }
-    .field-hint {
-      margin: 0;
-      color: var(--warning);
-      font-size: 0.78rem;
-      font-weight: 700;
     }
     .meta {
       display: flex;
@@ -691,63 +989,17 @@ function renderHome(state: OverviewState): string {
       color: var(--muted);
       font-size: 0.8rem;
     }
-    .meta span {
-      min-width: 0;
-    }
-    .split-list {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .task-form {
-      background: var(--surface);
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      padding: 14px;
-      box-shadow: var(--shadow);
-    }
-    form {
-      display: grid;
-      gap: 10px;
-    }
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    label {
-      display: grid;
-      gap: 5px;
+    .preview {
+      margin: 7px 0 0;
       color: var(--muted);
-      font-size: 0.88rem;
-      font-weight: 650;
+      font-size: 0.86rem;
+      line-height: 1.38;
     }
-    input,
-    select,
-    textarea {
-      width: 100%;
-      min-height: 38px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px 9px;
-      color: var(--text);
-      background: #ffffff;
-      font: inherit;
-    }
-    textarea {
-      min-height: 72px;
-      resize: vertical;
-    }
-    .check-row {
+    .quick-actions {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-      font-weight: 600;
-    }
-    .check-row input {
-      width: auto;
-      min-height: 0;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 18px;
     }
     .ui-button {
       border: 1px solid #75a83b;
@@ -765,18 +1017,6 @@ function renderHome(state: OverviewState): string {
       background: #ffffff;
       color: var(--green-dark);
     }
-    .ui-button.danger {
-      border-color: #d8a3a3;
-      background: var(--danger-bg);
-      color: var(--danger);
-    }
-    .inline-form {
-      display: inline;
-    }
-    .inline-form .ui-button {
-      min-height: 34px;
-      padding: 7px 10px;
-    }
     .ui-button:hover {
       filter: brightness(0.96);
       box-shadow: 0 2px 0 rgba(52, 89, 27, 0.2);
@@ -785,27 +1025,18 @@ function renderHome(state: OverviewState): string {
       transform: translateY(1px);
       box-shadow: none;
     }
-    .empty {
-      border: 1px dashed var(--line);
-      border-radius: 8px;
-      padding: 14px;
-      color: var(--muted);
-      background: #fbfcfa;
-    }
-    .more-note {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      text-align: right;
+    @media (max-width: 1100px) {
+      .signals,
+      .status-strip,
+      .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 780px) {
       .shell { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       main { padding: 24px 18px; }
-      .metrics,
-      .workspace,
-      .split-list,
-      .form-grid { grid-template-columns: 1fr; }
+      .signals,
+      .status-strip,
+      .cockpit-grid { grid-template-columns: 1fr; }
       .topline { align-items: flex-start; flex-direction: column; }
     }
   </style>
@@ -814,102 +1045,67 @@ function renderHome(state: OverviewState): string {
   <div class="shell">
     <aside>
       ${LOGO_MARKUP}
-      <nav aria-label="Bereiche">
-        <a href="/index.php" aria-current="page">Uebersicht</a>
-        ${state.current_user.is_admin ? '<a href="/admin.php">Admin Bereich</a>' : ""}
-        <a href="/aufgaben">Aufgaben</a>
-        <a href="/status">Status</a>
-      </nav>
+      ${renderSideNav("overview", state.current_user.is_admin)}
     </aside>
     <main>
       <div class="topline">
         <div>
           <h1>Uebersicht</h1>
-          <p class="lede">${escapeHtml(currentUser)} sieht hier die persoenliche Arbeitslage: Aufgaben, E-Mail-Eingaenge, Termine und wichtige Hinweise.</p>
+          <p class="lede">${escapeHtml(currentUser)} sieht hier die Instrumententafel: Risiken zuerst, dann Kurs, Kommunikation, Kapazitaet, Flugplan und Dokumentation. Die Detailarbeit liegt in den Seiten des Seitenmenues.</p>
         </div>
-        <span class="badge">${state.current_user.is_admin ? "Admin" : "Mitarbeiter"}</span>
+        <span class="badge">${escapeHtml(overall)}</span>
       </div>
-      <div class="metrics">
-        <div class="metric-card${overdueTasks > 0 ? " alert" : ""}"><div class="metric">${openTasks}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${priorityTasks} priorisiert</div></div>
-        <div class="metric-card"><div class="metric">${dueTasks}</div><div class="metric-label">mit Termin</div><div class="metric-sub">faellige Arbeit sichtbar halten</div></div>
-        <div class="metric-card${unassignedEmails > 0 ? " warning" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mails im Eingang</div><div class="metric-sub">${unassignedEmails} zuordnen · ${assignedEmails} verknuepft</div></div>
-        <div class="metric-card"><div class="metric">${state.appointments.length}</div><div class="metric-label">anstehende Termine</div><div class="metric-sub">Kalender und Vertretung</div></div>
+      <div class="status-strip">
+        <div class="status-card ${hasRed ? "red" : hasYellow ? "yellow" : "green"}">
+          <div class="metric">${escapeHtml(hasRed ? "Rot" : hasYellow ? "Gelb" : "Gruen")}</div>
+          <div class="metric-label">Geschaeftslage</div>
+          <div class="metric-sub">${escapeHtml(overall)}</div>
+        </div>
+        <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${urgentTasks} dringend</div></div>
+        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">Funkverkehr</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${unresolvedSuggestions} SCAS-Vorschlaege</div></div>
+        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${state.delegations.length} aktive Vertretung(en)</div></div>
       </div>
-      ${renderCustomerCaseDatalist(state)}
-      <div class="workspace">
-        <div class="stack">
-          <section class="workspace-section">
-            <div class="section-head">
-              <div class="section-title">
-                <span class="section-kicker">Heute bearbeiten</span>
-                <h2>Offene Aufgaben</h2>
-              </div>
-              <span class="count-pill">${openTasks} Eintraege</span>
-            </div>
-            ${renderOverviewTasks(state)}
-          </section>
-          <section class="workspace-section task-form" id="task-create">
-            <div class="section-head">
-              <div class="section-title">
-                <span class="section-kicker">Schnellanlage</span>
-                <h2>Aufgabe anlegen</h2>
-              </div>
-            </div>
-            ${renderTaskCreateForm(state)}
-          </section>
-        </div>
-        <div class="stack">
-          <section class="workspace-section">
-            <div class="section-head">
-              <div class="section-title">
-                <span class="section-kicker">Kommunikation</span>
-                <h2>E-Mail Eingange</h2>
-              </div>
-              <span class="count-pill">${state.emails.length} Nachrichten</span>
-            </div>
-            ${renderOverviewEmails(state)}
-          </section>
-          <div class="split-list">
-            <section class="workspace-section">
-              <div class="section-head">
-                <div class="section-title">
-                  <span class="section-kicker">Kalender</span>
-                  <h2>Anstehende Termine</h2>
-                </div>
-              </div>
-              ${renderOverviewAppointments(state)}
-            </section>
-            <section class="workspace-section">
-              <div class="section-head">
-                <div class="section-title">
-                  <span class="section-kicker">Vertretung</span>
-                  <h2>Aktive Vertretungen</h2>
-                </div>
-              </div>
-              ${renderOverviewDelegations(state)}
-            </section>
-          </div>
-          <div class="split-list">
-            <section class="workspace-section">
-              <div class="section-head">
-                <div class="section-title">
-                  <span class="section-kicker">Information</span>
-                  <h2>Neuigkeiten</h2>
-                </div>
-              </div>
-              ${renderOverviewNews(state)}
-            </section>
-            <section class="workspace-section">
-              <div class="section-head">
-                <div class="section-title">
-                  <span class="section-kicker">Fortschritt</span>
-                  <h2>Erreichte Ziele</h2>
-                </div>
-              </div>
-              ${renderOverviewGoals(state)}
-            </section>
-          </div>
-        </div>
+      <section class="signals" aria-label="Warnlampen">
+        ${signals.map(renderSignal).join("")}
+      </section>
+      <div class="cockpit-grid">
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Kurs & Navigation</span><h2>Heute relevante Arbeit</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
+          ${renderCockpitTasks(state)}
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Funkverkehr</span><h2>E-Mails nach Vorgang</h2></div><a class="panel-link" href="/aufgaben.php#emails">Oeffnen</a></div>
+          ${renderCockpitEmails(state)}
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Treibstoff / Kapazitaet</span><h2>Auslastung und Vertretung</h2></div><a class="panel-link" href="/admin.php?modal=users">Team</a></div>
+          ${renderCapacity(state)}
+          <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Flugplan</span><h2>Termine, Faelligkeiten, Neuigkeiten</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
+          ${renderOverviewAppointments(state)}
+          <div style="margin-top:10px">${renderOverviewNews(state)}</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Vorgaenge</span><h2>Kunden aktiv bewegen</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
+          ${renderCockpitList(
+            state.customer_cases.slice(0, 6).map((customerCase) => {
+              const phase = customerCase.status_phase ? `Phase ${customerCase.status_phase}` : "ohne Phase";
+              return `<a href="/kunden.php">${escapeHtml(customerCase.case_number ?? customerCase.customer_display_name)}</a><span>${escapeHtml(customerCase.customer_display_name)} · ${escapeHtml(phase)}</span>`;
+            }),
+            "Noch keine sichtbaren Kundenvorgaenge. Lege Kunden und Vorgaenge im Kundenbereich an.",
+          )}
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Blackbox / Dokumentation</span><h2>Letzte dokumentierte Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
+          ${renderBlackbox(state)}
+        </section>
+      </div>
+      <div class="quick-actions">
+        <a class="ui-button" href="/kunden.php">Kunde anlegen</a>
+        <a class="ui-button secondary" href="/aufgaben.php">Aufgabe anlegen</a>
+        <a class="ui-button secondary" href="/aufgaben.php#emails">E-Mails zuordnen</a>
       </div>
     </main>
   </div>
@@ -917,7 +1113,7 @@ function renderHome(state: OverviewState): string {
 </html>`;
 }
 
-function renderOverviewTasks(state: OverviewState): string {
+function renderOverviewTasks(state: OverviewState, returnTo = "/index.php"): string {
   if (state.tasks.length === 0) {
     return '<div class="empty">Keine offenen Aufgaben in deiner aktuellen Ansicht.</div>';
   }
@@ -952,23 +1148,23 @@ function renderOverviewTasks(state: OverviewState): string {
           ${task.attachment_count > 0 ? `<span>${task.attachment_count} Anlage(n)</span>` : ""}
         </div>
         <div class="item-actions">
-          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/archive?return_to=/index.php">
+          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/archive?return_to=${escapeHtml(returnTo)}">
             <button class="ui-button secondary" type="submit">Archivieren</button>
           </form>
-          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/delete?return_to=/index.php">
+          <form class="inline-form" method="post" action="/overview-api/tasks/${task.id}/delete?return_to=${escapeHtml(returnTo)}">
             <button class="ui-button danger" type="submit">In Papierkorb</button>
           </form>
         </div>
         <details class="editor">
           <summary>Bearbeiten</summary>
-          ${renderTaskEditForm(task, state)}
+          ${renderTaskEditForm(task, state, returnTo)}
         </details>
       </article>`;
     })
     .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere Aufgabe(n)</div>` : ""}`;
 }
 
-function renderOverviewEmails(state: OverviewState): string {
+function renderOverviewEmails(state: OverviewState, returnTo = "/index.php"): string {
   if (state.emails.length === 0) {
     return '<div class="empty">Keine E-Mail-Eingaenge in deiner aktuellen Ansicht.</div>';
   }
@@ -999,13 +1195,13 @@ function renderOverviewEmails(state: OverviewState): string {
           ${caseLabel ? `<span>${escapeHtml(caseLabel)}</span>` : ""}
         </div>
         ${email.snippet ? `<p class="preview">${escapeHtml(truncateText(email.snippet, 150))}</p>` : ""}
-        ${renderEmailSuggestions(email)}
-        ${email.is_unassigned ? renderEmailAssignmentForm(email) : ""}
+        ${renderEmailSuggestions(email, returnTo)}
+        ${email.is_unassigned ? renderEmailAssignmentForm(email, returnTo) : ""}
         <div class="item-actions">
-          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/archive?return_to=/index.php">
+          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/archive?return_to=${escapeHtml(returnTo)}">
             <button class="ui-button secondary" type="submit">Archivieren</button>
           </form>
-          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/delete?return_to=/index.php">
+          <form class="inline-form" method="post" action="/overview-api/emails/${email.id}/delete?return_to=${escapeHtml(returnTo)}">
             <button class="ui-button danger" type="submit">In Papierkorb</button>
           </form>
         </div>
@@ -1014,7 +1210,7 @@ function renderOverviewEmails(state: OverviewState): string {
     .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere E-Mail(s)</div>` : ""}`;
 }
 
-function renderEmailSuggestions(email: OverviewState["emails"][number]): string {
+function renderEmailSuggestions(email: OverviewState["emails"][number], returnTo = "/index.php"): string {
   if (email.suggestions.length === 0) {
     return "";
   }
@@ -1029,7 +1225,7 @@ function renderEmailSuggestions(email: OverviewState["emails"][number]): string 
         </div>
         ${suggestion.reason ? `<p class="preview">${escapeHtml(truncateText(suggestion.reason, 120))}</p>` : ""}
         <div class="item-actions">
-          <form class="inline-form" method="post" action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=/index.php">
+          <form class="inline-form" method="post" action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=${escapeHtml(returnTo)}">
             <button class="ui-button" type="submit">Zuordnung bestaetigen</button>
           </form>
         </div>
@@ -1038,11 +1234,11 @@ function renderEmailSuggestions(email: OverviewState["emails"][number]): string 
     .join("")}</div>`;
 }
 
-function renderEmailAssignmentForm(email: OverviewState["emails"][number]): string {
+function renderEmailAssignmentForm(email: OverviewState["emails"][number], returnTo = "/index.php"): string {
   const noSuggestionHint = email.suggestions.length === 0
     ? '<p class="field-hint">Kein Treffer: Vorgang suchen, auswaehlen und bestaetigen.</p>'
     : "";
-  return `<form method="post" action="/overview-api/emails/assign?return_to=/index.php">
+  return `<form method="post" action="/overview-api/emails/assign?return_to=${escapeHtml(returnTo)}">
     <input name="email_message_id" type="hidden" value="${email.id}">
     <div class="form-grid">
       <label>Vorgang suchen
@@ -1075,10 +1271,10 @@ function renderCustomerCaseDatalist(state: OverviewState): string {
   </datalist>`;
 }
 
-function renderTaskEditForm(task: OverviewState["tasks"][number], state: OverviewState): string {
+function renderTaskEditForm(task: OverviewState["tasks"][number], state: OverviewState, returnTo = "/index.php"): string {
   const assignedUserId = task.assigned_users[0]?.id ?? state.current_user.primary_user_id ?? "";
   const selectedCase = state.customer_cases.find((customerCase) => customerCase.id === task.case?.id);
-  return `<form method="post" action="/overview-api/tasks/${task.id}?return_to=/index.php" enctype="multipart/form-data">
+  return `<form method="post" action="/overview-api/tasks/${task.id}?return_to=${escapeHtml(returnTo)}" enctype="multipart/form-data">
     <label>Aufgabe
       <input name="title" type="text" required value="${escapeHtml(task.title)}">
     </label>
@@ -1211,9 +1407,9 @@ function renderOverviewDelegations(state: OverviewState): string {
     .join("")}</div>`;
 }
 
-function renderTaskCreateForm(state: OverviewState): string {
+function renderTaskCreateForm(state: OverviewState, returnTo = "/index.php"): string {
   const primaryUserId = state.current_user.primary_user_id ?? "";
-  return `<form method="post" action="/overview-api/tasks?return_to=/index.php" enctype="multipart/form-data">
+  return `<form method="post" action="/overview-api/tasks?return_to=${escapeHtml(returnTo)}" enctype="multipart/form-data">
     <label>Aufgabe
       <input name="title" type="text" required placeholder="Was ist zu erledigen?">
     </label>
@@ -1272,6 +1468,568 @@ function renderTaskCreateForm(state: OverviewState): string {
     </label>
     <button class="ui-button" type="submit">Aufgabe anlegen</button>
   </form>`;
+}
+
+function renderWorkspaceStyles(): string {
+  return `
+    :root {
+      color-scheme: light;
+      --text: #111111;
+      --muted: #4f5b4a;
+      --line: #d8dfd4;
+      --line-strong: #c1cbb9;
+      --green: #76b726;
+      --green-dark: #34591b;
+      --surface: #ffffff;
+      --band: #f4f7f1;
+      --soft: #eef6e8;
+      --warning: #9a5b00;
+      --warning-bg: #fff6df;
+      --danger: #9b1c1c;
+      --danger-bg: #fff0f0;
+      --shadow: 0 10px 24px rgba(24, 38, 18, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--band);
+    }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 252px minmax(0, 1fr);
+    }
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      padding: 24px 18px;
+    }
+    svg.logo {
+      display: block;
+      width: min(100%, 208px);
+      height: auto;
+      margin-bottom: 28px;
+    }
+    nav {
+      display: grid;
+      gap: 8px;
+    }
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      padding: 10px 12px;
+      border-left: 3px solid transparent;
+    }
+    nav a:hover {
+      background: #f6f8f4;
+    }
+    nav a[aria-current="page"] {
+      border-left-color: var(--green);
+      background: var(--soft);
+      font-weight: 700;
+    }
+    main {
+      padding: 24px 30px 42px;
+      min-width: 0;
+    }
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+    .lede {
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+      margin: 8px 0 0;
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+      gap: 22px;
+      align-items: start;
+    }
+    .stack { display: grid; gap: 20px; min-width: 0; }
+    .workspace-section,
+    .task-form {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .task-form {
+      border-color: var(--line-strong);
+      box-shadow: var(--shadow);
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-title { display: grid; gap: 2px; }
+    .section-kicker {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .list {
+      display: grid;
+      gap: 8px;
+    }
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #ffffff;
+      box-shadow: 0 1px 0 rgba(24, 38, 18, 0.03);
+    }
+    .item.compact { padding: 9px 10px; }
+    .item.urgent { border-left: 4px solid var(--danger); }
+    .item.high { border-left: 4px solid var(--warning); }
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    details.editor {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    details.editor summary {
+      color: var(--green-dark);
+      cursor: pointer;
+      font-weight: 800;
+      width: fit-content;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #abc98f;
+      background: var(--soft);
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      white-space: nowrap;
+    }
+    .pill.warning {
+      border-color: #e0b66b;
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+    .pill.danger {
+      border-color: #e1a1a1;
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .count-pill,
+    .preview,
+    .meta,
+    .muted,
+    p {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .preview {
+      margin: 7px 0 0;
+      font-size: 0.88rem;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 7px;
+      font-size: 0.8rem;
+    }
+    .field-hint {
+      margin: 0;
+      color: var(--warning);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    form { display: grid; gap: 10px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 9px;
+      color: var(--text);
+      background: #ffffff;
+      font: inherit;
+    }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .check-row input {
+      width: auto;
+      min-height: 0;
+    }
+    .ui-button {
+      border: 1px solid #75a83b;
+      background: var(--green);
+      color: #111111;
+      border-radius: 6px;
+      padding: 9px 13px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      width: fit-content;
+      transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+    }
+    .ui-button.secondary {
+      background: #ffffff;
+      color: var(--green-dark);
+    }
+    .ui-button.danger {
+      border-color: #d8a3a3;
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .inline-form { display: inline; }
+    .inline-form .ui-button {
+      min-height: 34px;
+      padding: 7px 10px;
+    }
+    .ui-button:hover {
+      filter: brightness(0.96);
+      box-shadow: 0 2px 0 rgba(52, 89, 27, 0.2);
+    }
+    .ui-button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+    .table {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.7fr) minmax(170px, 1fr) minmax(110px, 0.45fr);
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .row:last-child { border-bottom: 0; }
+    .row.header {
+      background: var(--soft);
+      font-weight: 800;
+    }
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      color: var(--muted);
+      background: #fbfcfa;
+    }
+    .more-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: right;
+    }
+    @media (max-width: 920px) {
+      .shell,
+      .workspace,
+      .form-grid,
+      .row { grid-template-columns: 1fr; }
+      aside { border-right: 0; border-bottom: 1px solid var(--line); }
+      main { padding: 24px 18px; }
+      .topline { flex-direction: column; }
+    }
+  `;
+}
+
+function renderTasksPage(state: OverviewState): string {
+  return `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aufgaben | das kuechenhaus</title>
+  <style>${renderWorkspaceStyles()}</style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      ${LOGO_MARKUP}
+      ${renderSideNav("tasks", state.current_user.is_admin)}
+    </aside>
+    <main>
+      <div class="topline">
+        <div>
+          <h1>Aufgaben</h1>
+          <p class="lede">Hier werden Aufgaben und E-Mails bearbeitet. Das Cockpit zeigt nur die Lage, diese Seite ist die Arbeitsebene.</p>
+        </div>
+        <a class="ui-button" href="#task-create">Aufgabe anlegen</a>
+      </div>
+      ${renderCustomerCaseDatalist(state)}
+      <div class="workspace">
+        <div class="stack">
+          <section class="workspace-section">
+            <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Eintraege</span></div>
+            ${renderOverviewTasks(state, "/aufgaben.php")}
+          </section>
+          <section class="workspace-section task-form" id="task-create">
+            <div class="section-head"><div class="section-title"><span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2></div></div>
+            ${renderTaskCreateForm(state, "/aufgaben.php")}
+          </section>
+        </div>
+        <section class="workspace-section" id="emails">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail Eingange</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
+          ${renderOverviewEmails(state, "/aufgaben.php#emails")}
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>`;
+}
+
+function customerValue(customer: CustomerRecord | null, key: keyof CustomerRecord): string {
+  return escapeHtml(customer?.[key] ?? "");
+}
+
+function addressValue(customer: CustomerRecord | null, key: keyof CustomerAddress): string {
+  return escapeHtml(customer?.address?.[key] ?? "");
+}
+
+function renderCustomerRows(state: CustomersState): string {
+  if (state.customers.length === 0) {
+    return '<div class="empty">Noch keine Kunden angelegt.</div>';
+  }
+  return `<div class="table">
+    <div class="row header"><span>Kunde</span><span>Kontakt</span><span>Vorgaenge</span><span>Aktion</span></div>
+    ${state.customers
+      .map(
+        (customer) => `<div class="row">
+          <span><strong>${escapeHtml(customer.display_name)}</strong>${customer.customer_number ? `<br><small>${escapeHtml(customer.customer_number)}</small>` : ""}</span>
+          <span>${escapeHtml(customer.primary_email ?? customer.primary_phone ?? customer.primary_mobile ?? "-")}</span>
+          <span>${customer.case_count} Vorgang/Vorgaenge</span>
+          <span><a class="ui-button secondary" href="/kunden.php?edit=${customer.id}">Bearbeiten</a></span>
+        </div>`,
+      )
+      .join("")}
+  </div>`;
+}
+
+function renderCustomerForm(state: CustomersState, customer: CustomerRecord | null): string {
+  const isEdit = Boolean(customer);
+  const action = isEdit
+    ? `/customers-api/customers/${customer?.id}?return_to=/kunden.php?edit=${customer?.id}`
+    : "/customers-api/customers?return_to=/kunden.php";
+  const ownerUserId = customer?.owner_user_id ?? state.current_user.primary_user_id ?? "";
+  return `<form method="post" action="${action}">
+    <div class="form-grid">
+      <label>Kundentyp
+        <select name="customer_type">
+          <option value="private"${selectedAttribute(customer?.customer_type, "private")}>Privatkunde</option>
+          <option value="company"${selectedAttribute(customer?.customer_type, "company")}>Firma</option>
+        </select>
+      </label>
+      <label>Kundennummer
+        <input name="customer_number" type="text" value="${customerValue(customer, "customer_number")}">
+      </label>
+      <label>Anrede
+        <input name="salutation" type="text" value="${customerValue(customer, "salutation")}">
+      </label>
+      <label>Titel
+        <input name="title" type="text" value="${customerValue(customer, "title")}">
+      </label>
+      <label>Vorname
+        <input name="first_name" type="text" value="${customerValue(customer, "first_name")}">
+      </label>
+      <label>Nachname
+        <input name="last_name" type="text" value="${customerValue(customer, "last_name")}">
+      </label>
+      <label>Firma
+        <input name="company_name" type="text" value="${customerValue(customer, "company_name")}">
+      </label>
+      <label>E-Mail
+        <input name="primary_email" type="email" value="${customerValue(customer, "primary_email")}">
+      </label>
+      <label>Telefon
+        <input name="primary_phone" type="text" value="${customerValue(customer, "primary_phone")}">
+      </label>
+      <label>Mobil
+        <input name="primary_mobile" type="text" value="${customerValue(customer, "primary_mobile")}">
+      </label>
+      <label>Kontaktweg
+        <select name="preferred_contact_channel">
+          <option value="email"${selectedAttribute(customer?.preferred_contact_channel, "email")}>E-Mail</option>
+          <option value="phone"${selectedAttribute(customer?.preferred_contact_channel, "phone")}>Telefon</option>
+          <option value="mobile"${selectedAttribute(customer?.preferred_contact_channel, "mobile")}>Mobil</option>
+          <option value="post"${selectedAttribute(customer?.preferred_contact_channel, "post")}>Post</option>
+          <option value="none"${selectedAttribute(customer?.preferred_contact_channel, "none")}>Kein bevorzugter Weg</option>
+        </select>
+      </label>
+      <label>Verantwortlich
+        <select name="owner_user_id">
+          ${state.users
+            .map((user) => {
+              const selected = String(user.id) === String(ownerUserId) ? " selected" : "";
+              return `<option value="${user.id}"${selected}>${escapeHtml(`${user.first_name} ${user.last_name}`)}</option>`;
+            })
+            .join("")}
+        </select>
+      </label>
+      <label>Strasse
+        <input name="street" type="text" value="${addressValue(customer, "street")}">
+      </label>
+      <label>Hausnummer
+        <input name="house_number" type="text" value="${addressValue(customer, "house_number")}">
+      </label>
+      <label>PLZ
+        <input name="postal_code" type="text" value="${addressValue(customer, "postal_code")}">
+      </label>
+      <label>Ort
+        <input name="city" type="text" value="${addressValue(customer, "city")}">
+      </label>
+    </div>
+    <label>Notizen
+      <textarea name="notes">${customerValue(customer, "notes")}</textarea>
+    </label>
+    <details class="editor"${isEdit ? "" : " open"}>
+      <summary>Vorgang direkt anlegen</summary>
+      <label class="check-row">
+        <input name="create_case" type="checkbox"${isEdit ? "" : " checked"}>
+        Ersten Kundenvorgang anlegen
+      </label>
+      <div class="form-grid">
+        <label>Vorgangsnummer
+          <input name="case_number" type="text">
+        </label>
+        <label>Vorgangstitel
+          <input name="case_title" type="text" placeholder="z. B. Kuechenplanung">
+        </label>
+        <label>Statusphase
+          <select name="status_phase_id">
+            ${state.status_phases
+              .map((phase) => `<option value="${phase.phase}">${phase.phase}. ${escapeHtml(phase.name)}</option>`)
+              .join("")}
+          </select>
+        </label>
+        <label>Vorgang verantwortlich
+          <select name="responsible_user_id">
+            ${state.users
+              .map((user) => {
+                const selected = String(user.id) === String(ownerUserId) ? " selected" : "";
+                return `<option value="${user.id}"${selected}>${escapeHtml(`${user.first_name} ${user.last_name}`)}</option>`;
+              })
+              .join("")}
+          </select>
+        </label>
+      </div>
+    </details>
+    <div class="item-actions">
+      <a class="ui-button secondary" href="/kunden.php">EXIT</a>
+      <button class="ui-button" type="submit">Speichern</button>
+    </div>
+  </form>`;
+}
+
+function renderCustomersPage(state: CustomersState, editCustomerId: string | null, isNew: boolean): string {
+  const editCustomer = state.customers.find((customer) => String(customer.id) === editCustomerId) ?? null;
+  const showForm = isNew || Boolean(editCustomer);
+  return `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kunden | das kuechenhaus</title>
+  <style>${renderWorkspaceStyles()}</style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      ${LOGO_MARKUP}
+      ${renderSideNav("customers", state.current_user.is_admin)}
+    </aside>
+    <main>
+      <div class="topline">
+        <div>
+          <h1>Kunden</h1>
+          <p class="lede">Kunden werden hier als eigene Datensaetze angelegt. Gleiche Namen oder gleiche E-Mail-Adressen koennen mehrfach vorkommen und verweisen nicht automatisch auf vorhandene Eintraege.</p>
+        </div>
+        <a class="ui-button" href="/kunden.php?new=1">Kunde anlegen</a>
+      </div>
+      <div class="workspace">
+        <section class="workspace-section">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${state.customers.length} Eintraege</span></div>
+          ${renderCustomerRows(state)}
+        </section>
+        <section class="workspace-section task-form">
+          <div class="section-head"><div class="section-title"><span class="section-kicker">${showForm && editCustomer ? "Bearbeiten" : "Anlage"}</span><h2>${showForm && editCustomer ? escapeHtml(editCustomer.display_name) : "Kunde anlegen"}</h2></div></div>
+          ${showForm ? renderCustomerForm(state, editCustomer) : '<div class="empty">Waehle einen Kunden zum Bearbeiten aus oder lege einen neuen Kunden an.</div>'}
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>`;
 }
 
 function renderAdmin(state: AdminState, activeModal: string, editUserId: string | null): string {
@@ -1676,13 +2434,8 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
 <body>
   <div class="shell">
     <aside>
-        ${LOGO_MARKUP}
-      <nav aria-label="Bereiche">
-        <a href="/index.php">Uebersicht</a>
-        <a href="/admin.php" aria-current="page">Admin Bereich</a>
-        <a href="/aufgaben">Aufgaben</a>
-        <a href="/status">Status</a>
-      </nav>
+      ${LOGO_MARKUP}
+      ${renderSideNav("admin", true)}
     </aside>
     <main>
       <h1>Admin Bereich</h1>
@@ -2128,9 +2881,20 @@ export default {
     if (url.pathname.startsWith("/overview-api/")) {
       return proxyOverviewApi(request, env);
     }
+    if (url.pathname.startsWith("/customers-api/")) {
+      return proxyCustomersApi(request, env);
+    }
     if (url.pathname === "/index.php") {
       const state = await fetchOverviewState(env, request);
       return htmlResponse(renderHome(state));
+    }
+    if (url.pathname === "/aufgaben.php") {
+      const state = await fetchOverviewState(env, request);
+      return htmlResponse(renderTasksPage(state));
+    }
+    if (url.pathname === "/kunden.php") {
+      const state = await fetchCustomersState(env, request);
+      return htmlResponse(renderCustomersPage(state, url.searchParams.get("edit"), url.searchParams.has("new")));
     }
     if (url.pathname === "/admin.php") {
       const state = await fetchAdminState(env, request);

@@ -95,15 +95,28 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
 
     assert 'url.pathname === "/health"' in source
     assert 'url.pathname === "/index.php"' in source
+    assert 'url.pathname === "/kunden.php"' in source
+    assert 'url.pathname === "/aufgaben.php"' in source
     assert 'url.pathname === "/admin.php"' in source
     assert 'url.pathname.startsWith("/admin-api/")' in source
     assert 'url.pathname.startsWith("/overview-api/")' in source
+    assert 'url.pathname.startsWith("/customers-api/")' in source
     assert "DKH_ADMIN_API_TOKEN" in source
     assert "DKH_ADMIN_API_BASE_URL" in source
     assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
     assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
+    assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
     assert 'location' in source
     assert "Uebersicht" in source
+    assert "Instrumententafel" in source
+    assert "Warnlampen" in source
+    assert "Kurs & Navigation" in source
+    assert "Funkverkehr" in source
+    assert "Treibstoff / Kapazitaet" in source
+    assert "Flugplan" in source
+    assert "Blackbox / Dokumentation" in source
+    assert "Kunde anlegen" in source
+    assert "Gleiche Namen oder gleiche E-Mail-Adressen koennen mehrfach vorkommen" in source
     assert "Aufgabe anlegen" in source
     assert "E-Mail Eingange" in source
     assert "Zuordnung bestaetigen" in source
@@ -112,10 +125,7 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Archivieren" in source
     assert "customer-case-options" in source
     assert 'name="customer_case_search"' in source
-    assert (
-        'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=/index.php"'
-        in source
-    )
+    assert 'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=' in source
     assert "Kein Treffer" in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
     assert "modal users-modal" in source

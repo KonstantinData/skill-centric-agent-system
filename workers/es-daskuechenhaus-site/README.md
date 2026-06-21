@@ -4,11 +4,17 @@ Cloudflare Worker serving the internal `es-daskuechenhaus.de` website.
 
 Routes:
 
-- `/index.php`: protected user-specific cockpit for open tasks, email inbox
-  assignments, appointments, news, goals, and active delegations. Tasks can be
-  created, edited, archived, or moved to the soft-delete trash. Emails can be
-  manually assigned to customer cases, archived, or moved to the soft-delete
-  trash.
+- `/index.php`: protected user-specific risk and steering cockpit. It surfaces
+  warning signals first, then current work course, email traffic, capacity,
+  flight plan, active customer cases, and recent documentation events. It is an
+  overview board, not the primary work surface.
+- `/aufgaben.php`: protected task and email work surface. Tasks can be created,
+  edited, archived, or moved to the soft-delete trash. Emails can be manually
+  assigned to customer cases, archived, or moved to the soft-delete trash.
+- `/kunden.php`: protected customer work surface. Customers can be created and
+  edited against Hetzner PostgreSQL. Duplicate names and duplicate email
+  addresses are allowed; only a non-null customer number is unique. A first
+  customer case can be created together with the customer.
 - `/admin.php`: protected admin area for users, roles, workdays, integrations,
   and settings. The page renders live data from the Hetzner tenant runtime API.
 - `/admin-api/*`: protected Worker proxy for admin form submissions. The Worker
@@ -17,6 +23,9 @@ Routes:
   as task creation/editing, task lifecycle actions, manual email-to-case
   assignment, human confirmation of email assignment suggestions, and email
   lifecycle actions.
+- `/customers-api/*`: protected Worker proxy for customer creation and editing.
+  The Worker forwards to the Hetzner-only runtime API and stores no tenant
+  runtime data.
 
 The site is intentionally not designed for public anonymous access. Production
 deployment must be paired with a Cloudflare Access self-hosted application and
