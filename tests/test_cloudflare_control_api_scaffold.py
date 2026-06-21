@@ -120,10 +120,10 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
     assert 'location' in source
     assert "Uebersicht" in source
-    assert "CRM Steuerung" in source
+    assert "<h1>Steuerung</h1>" in source
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
-    assert "Kundenfortschritt" in source
+    assert "Aktive Vorgaenge steuern" in source
     assert "Nachvollziehbare Aenderungen" in source
     assert "Command Center" in source
     assert "renderCommandCenter" in source
@@ -163,6 +163,10 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Funkverkehr" not in source
     assert "Flugplan" not in source
     assert "Blackbox" not in source
+    assert "CRM Steuerung" not in source
+    assert "entscheidungsrelevante Arbeit" not in source
+    assert "Team <span>Admin</span>" not in source
+    assert 'href="/admin.php?modal=users"' not in source
     assert "SCAS Kontrolle" not in source
     assert "SCAS-Freigaben" not in source
     assert "SCAS-Vorschlaege" not in source

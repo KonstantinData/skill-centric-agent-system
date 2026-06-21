@@ -49,10 +49,10 @@ def test_crm_layout_has_responsive_grid_guards() -> None:
 def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     source = load_worker_source()
 
-    assert "CRM Steuerung" in source
+    assert "<h1>Steuerung</h1>" in source
     assert "Entscheidungszentrale" in source
     assert "Jetzt bearbeiten" in source
-    assert "Kundenfortschritt" in source
+    assert "Aktive Vorgaenge steuern" in source
     assert "Nachvollziehbare Aenderungen" in source
     assert "renderDecisionQueue" in source
     assert "renderCustomerFocus" in source
@@ -64,7 +64,7 @@ def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     assert "Faellige Aufgaben" in source
     assert "Eingang und Zuordnung" in source
     assert "customerMatchesQuery" in source
-    assert "renderCommandCenter(state.current_user" in source
+    assert "renderCommandCenter({" in source
 
 
 def test_crm_surface_rejects_non_production_language() -> None:
@@ -82,6 +82,10 @@ def test_crm_surface_rejects_non_production_language() -> None:
         "E-Mail(s)",
         "Vorgang/Vorgaenge",
         "Das Cockpit zeigt",
+        "CRM Steuerung",
+        "entscheidungsrelevante Arbeit",
+        "Team <span>Admin</span>",
+        'href="/admin.php?modal=users"',
         "Aufgaben und E-Mails werden hier",
         "/aufgaben.php#emails",
         "SCAS Kontrolle",

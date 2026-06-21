@@ -628,7 +628,6 @@ function renderCockpitList(items: string[], emptyText: string): string {
 }
 
 function renderCommandCenter(
-  currentUser: OverviewState["current_user"],
   metrics: CommandCenterMetrics,
 ): string {
   return `<section class="command-center" aria-label="Command Center">
@@ -641,7 +640,6 @@ function renderCommandCenter(
       <a href="/aufgaben.php">Aufgaben <span>${metrics.overdueTasks} ueberfaellig</span></a>
       <a href="/emails.php">E-Mails <span>${metrics.unassignedEmails} ohne Vorgang</span></a>
       <a href="/kunden.php">Vorgaenge <span>${metrics.activeCases} aktiv</span></a>
-      ${currentUser.is_admin ? '<a href="/admin.php?modal=users">Team <span>Admin</span></a>' : ""}
     </div>
   </section>`;
 }
@@ -788,7 +786,6 @@ function renderAuditTrail(state: OverviewState): string {
 }
 
 function renderHome(state: OverviewState): string {
-  const currentUser = state.current_user.display_name || state.current_user.email || "Angemeldeter Nutzer";
   const overdueTasks = state.tasks.filter((task) => isOverdue(task.due_at)).length;
   const unassignedEmails = state.emails.filter((email) => email.is_unassigned).length;
   const tasksWithoutAssignee = state.tasks.filter((task) => task.assigned_users.length === 0).length;
@@ -1355,12 +1352,11 @@ function renderHome(state: OverviewState): string {
     <main>
       <div class="topline">
         <div>
-          <h1>CRM Steuerung</h1>
-          <p class="lede">${escapeHtml(currentUser)} sieht nur entscheidungsrelevante Arbeit: Eskalationen, offene Zustaendigkeiten, E-Mail-Zuordnung, Kundenfortschritt und nachvollziehbare Aenderungen.</p>
+          <h1>Steuerung</h1>
         </div>
         <span class="badge">${escapeHtml(overall)}</span>
       </div>
-      ${renderCommandCenter(state.current_user, {
+      ${renderCommandCenter({
         overdueTasks,
         unassignedEmails,
         activeCases: state.customer_cases.length,
@@ -2208,7 +2204,7 @@ function renderTasksPage(state: OverviewState): string {
         </div>
         <a class="ui-button" href="#task-create">Aufgabe anlegen</a>
       </div>
-      ${renderCommandCenter(state.current_user, {
+      ${renderCommandCenter({
         overdueTasks: state.tasks.filter((task) => isOverdue(task.due_at)).length,
         unassignedEmails: state.emails.filter((email) => email.is_unassigned).length,
         activeCases: state.customer_cases.length,
@@ -2255,7 +2251,7 @@ function renderEmailsPage(state: OverviewState): string {
         </div>
         <a class="ui-button" href="#emails">E-Mails pruefen</a>
       </div>
-      ${renderCommandCenter(state.current_user, {
+      ${renderCommandCenter({
         overdueTasks: state.tasks.filter((task) => isOverdue(task.due_at)).length,
         unassignedEmails: state.emails.filter((email) => email.is_unassigned).length,
         activeCases: state.customer_cases.length,
@@ -2469,7 +2465,7 @@ function renderCustomersPage(
         </div>
         <a class="ui-button" href="/kunden.php?new=1">Kunde anlegen</a>
       </div>
-      ${renderCommandCenter(state.current_user, {
+      ${renderCommandCenter({
         overdueTasks: 0,
         unassignedEmails: 0,
         activeCases: state.customers.reduce((total, customer) => total + customer.case_count, 0),
