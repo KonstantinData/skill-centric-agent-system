@@ -43,6 +43,14 @@ CUSTOMER_DATABASE_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0005_customer_database.sql"
 )
+OVERVIEW_ACTION_STATE_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0006_overview_action_state.sql"
+)
 
 
 def load_migration() -> str:
@@ -55,6 +63,7 @@ def test_daskuechenhaus_admin_area_migration_exists() -> None:
     assert MAIL_RUNTIME_MIGRATION_PATH.exists()
     assert MAIL_IMPORT_STATE_MIGRATION_PATH.exists()
     assert CUSTOMER_DATABASE_MIGRATION_PATH.exists()
+    assert OVERVIEW_ACTION_STATE_MIGRATION_PATH.exists()
 
 
 def test_admin_area_migration_creates_expected_tables() -> None:

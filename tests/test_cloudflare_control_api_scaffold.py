@@ -106,6 +106,17 @@ def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
     assert "Uebersicht" in source
     assert "Aufgabe anlegen" in source
     assert "E-Mail Eingange" in source
+    assert "Zuordnung bestaetigen" in source
+    assert "Ablehnen" not in source
+    assert "In Papierkorb" in source
+    assert "Archivieren" in source
+    assert "customer-case-options" in source
+    assert 'name="customer_case_search"' in source
+    assert (
+        'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=/index.php"'
+        in source
+    )
+    assert "Kein Treffer" in source
     assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
     assert "modal users-modal" in source
     assert "modal settings-modal" in source

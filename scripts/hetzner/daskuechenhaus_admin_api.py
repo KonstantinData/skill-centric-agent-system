@@ -258,6 +258,8 @@ def overview_state(access_email: str) -> dict[str, Any]:
           LEFT JOIN app.task_assignments ta ON ta.task_id = t.id
           LEFT JOIN app.task_statuses ts ON ts.id = t.status_id
           WHERE ts.is_terminal = FALSE
+            AND t.archived_at IS NULL
+            AND t.deleted_at IS NULL
             AND (
               t.created_by_user_id IN (SELECT id FROM scope_users)
               OR ta.user_id IN (SELECT id FROM scope_users)
@@ -270,10 +272,14 @@ def overview_state(access_email: str) -> dict[str, Any]:
           LEFT JOIN app.email_case_links ecl ON ecl.email_message_id = em.id
           LEFT JOIN app.customer_cases cc ON cc.id = ecl.customer_case_id
           WHERE
+            em.archived_at IS NULL
+            AND em.deleted_at IS NULL
+            AND (
             (SELECT (data->>'is_admin')::boolean FROM context)
             OR em.assigned_user_id IS NULL
             OR em.assigned_user_id IN (SELECT id FROM scope_users)
             OR cc.owner_user_id IN (SELECT id FROM scope_users)
+            )
         )
         SELECT jsonb_build_object(
           'current_user', (SELECT data FROM context),
@@ -302,6 +308,34 @@ def overview_state(access_email: str) -> dict[str, Any]:
               ORDER BY sort_order
             )
             FROM app.task_statuses
+          ), '[]'::jsonb),
+          'customer_cases', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', cc.id,
+                'case_number', cc.case_number,
+                'customer_display_name', cc.customer_display_name,
+                'customer_number', c.customer_number,
+                'customer_email', c.primary_email,
+                'status_phase', COALESCE(cc.status_phase_id, cc.status_phase)
+              )
+              ORDER BY cc.updated_at DESC, cc.customer_display_name
+            )
+            FROM app.customer_cases cc
+            LEFT JOIN app.customers c ON c.id = cc.customer_id
+            WHERE cc.is_active = TRUE
+              AND (
+                (SELECT (data->>'is_admin')::boolean FROM context)
+                OR cc.owner_user_id IN (SELECT id FROM scope_users)
+                OR EXISTS (
+                  SELECT 1
+                  FROM app.tasks t
+                  JOIN app.task_assignments ta ON ta.task_id = t.id
+                  WHERE t.related_case_id = cc.id
+                    AND ta.user_id IN (SELECT id FROM scope_users)
+                )
+              )
+            LIMIT 150
           ), '[]'::jsonb),
           'tasks', COALESCE((
             SELECT jsonb_agg(
@@ -390,6 +424,28 @@ def overview_state(access_email: str) -> dict[str, Any]:
                   FROM app.email_case_links ecl
                   JOIN app.customer_cases cc ON cc.id = ecl.customer_case_id
                   WHERE ecl.email_message_id = em.id
+                ), '[]'::jsonb),
+                'suggestions', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', eas.id,
+                      'confidence', eas.confidence,
+                      'reason', eas.reason,
+                      'case', CASE
+                        WHEN cc.id IS NULL THEN NULL
+                        ELSE jsonb_build_object(
+                          'id', cc.id,
+                          'case_number', cc.case_number,
+                          'customer_display_name', cc.customer_display_name
+                        )
+                      END
+                    )
+                    ORDER BY eas.confidence DESC, eas.created_at DESC
+                  )
+                  FROM app.email_assignment_suggestions eas
+                  LEFT JOIN app.customer_cases cc ON cc.id = eas.suggested_case_id
+                  WHERE eas.email_message_id = em.id
+                    AND eas.status = 'pending'
                 ), '[]'::jsonb)
               )
               ORDER BY em.is_unassigned DESC, em.received_at DESC NULLS LAST, em.created_at DESC
@@ -941,6 +997,99 @@ def save_task_attachment(task_id: int, upload: FileUpload, uploaded_by_user_id: 
     )
 
 
+def resolve_customer_case_id(
+    data: dict[str, Any],
+    access_email: str,
+    *,
+    required: bool,
+) -> str | None:
+    context = current_user_context(access_email)
+    explicit_value = str(data.get("customer_case_id") or data.get("related_case_id") or "").strip()
+    search_value = str(
+        data.get("customer_case_search")
+        or data.get("customer_display_name")
+        or data.get("case_number")
+        or ""
+    ).strip()
+    embedded_id = re.search(r"\[id:(\d+)\]", search_value)
+    if embedded_id:
+        explicit_value = embedded_id.group(1)
+    if explicit_value:
+        search_value = explicit_value
+    if not search_value:
+        if required:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "customer_case_required")
+        return None
+
+    result = psql_json(
+        """
+        WITH context AS (
+          SELECT :'context'::jsonb AS data
+        ),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        candidates AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR EXISTS (
+                SELECT 1
+                FROM app.tasks t
+                JOIN app.task_assignments ta ON ta.task_id = t.id
+                WHERE t.related_case_id = cc.id
+                  AND ta.user_id IN (SELECT id FROM scope_users)
+              )
+            )
+            AND (
+              CASE
+                WHEN :'explicit_value' <> '' THEN cc.id = :'explicit_value'::bigint
+                ELSE
+                  lower(COALESCE(cc.case_number, '')) = lower(:'search_value')
+                  OR lower(cc.customer_display_name) = lower(:'search_value')
+                  OR lower(COALESCE(c.customer_number, '')) = lower(:'search_value')
+                  OR lower(COALESCE(c.primary_email, '')) = lower(:'search_value')
+                  OR cc.case_number ILIKE '%' || :'search_value' || '%'
+                  OR cc.customer_display_name ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
+              END
+            )
+          ORDER BY
+            CASE
+              WHEN lower(COALESCE(cc.case_number, '')) = lower(:'search_value') THEN 0
+              WHEN lower(cc.customer_display_name) = lower(:'search_value') THEN 1
+              ELSE 2
+            END,
+            cc.updated_at DESC
+          LIMIT 2
+        )
+        SELECT jsonb_build_object(
+          'count', (SELECT count(*) FROM candidates),
+          'id', (SELECT id FROM candidates LIMIT 1)
+        )::text;
+        """,
+        {
+            "context": json.dumps(context),
+            "explicit_value": explicit_value,
+            "search_value": search_value,
+        },
+    )
+    count = int(result.get("count") or 0)
+    if count == 0:
+        if required:
+            raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+        return None
+    if count > 1 and not explicit_value:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "customer_case_search_ambiguous")
+    return str(result["id"])
+
+
 def create_task(data: dict[str, Any], files: list[FileUpload], access_email: str) -> dict[str, Any]:
     context = require_primary_user(access_email)
     actor_user_id = int(context["primary_user_id"])
@@ -948,6 +1097,7 @@ def create_task(data: dict[str, Any], files: list[FileUpload], access_email: str
     title = str(data.get("title", "")).strip()
     if not title:
         raise ApiError(HTTPStatus.BAD_REQUEST, "task_title_required")
+    related_case_id = resolve_customer_case_id(data, access_email, required=False)
     payload = {
         "title": title,
         "description": str(data.get("description", "")).strip() or None,
@@ -957,7 +1107,7 @@ def create_task(data: dict[str, Any], files: list[FileUpload], access_email: str
         "reminder_at": str(data.get("reminder_at", "")).strip(),
         "reminder_email_enabled": normalize_bool(data.get("reminder_email_enabled")),
         "reminder_overview_enabled": normalize_bool(data.get("reminder_overview_enabled", "true")),
-        "related_case_id": str(data.get("related_case_id", "")).strip(),
+        "related_case_id": related_case_id or "",
         "assigned_user_id": assigned_user_id,
         "created_by_user_id": actor_user_id,
     }
@@ -1064,50 +1214,291 @@ def create_task(data: dict[str, Any], files: list[FileUpload], access_email: str
     return {"ok": True, "task_id": task_id}
 
 
+def update_task(
+    task_id: str,
+    data: dict[str, Any],
+    files: list[FileUpload],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    assigned_user_id = int(data.get("assigned_user_id") or actor_user_id)
+    title = str(data.get("title", "")).strip()
+    if not task_id:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "task_id_required")
+    if not title:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "task_title_required")
+    related_case_id = resolve_customer_case_id(data, access_email, required=False)
+    payload = {
+        "task_id": task_id,
+        "title": title,
+        "description": str(data.get("description", "")).strip() or None,
+        "status_code": str(data.get("status_code", "new")).strip() or "new",
+        "priority": str(data.get("priority", "normal")).strip() or "normal",
+        "due_at": str(data.get("due_at", "")).strip(),
+        "reminder_at": str(data.get("reminder_at", "")).strip(),
+        "reminder_email_enabled": normalize_bool(data.get("reminder_email_enabled")),
+        "reminder_overview_enabled": normalize_bool(data.get("reminder_overview_enabled", "true")),
+        "related_case_id": related_case_id or "",
+        "assigned_user_id": assigned_user_id,
+        "actor_user_id": actor_user_id,
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_task AS (
+          SELECT t.id
+          FROM app.tasks t
+          LEFT JOIN app.task_assignments ta ON ta.task_id = t.id
+          WHERE t.id = (SELECT (data->>'task_id')::bigint FROM payload)
+            AND t.deleted_at IS NULL
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR t.created_by_user_id IN (SELECT id FROM scope_users)
+              OR ta.user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        status AS (
+          SELECT id
+          FROM app.task_statuses
+          WHERE code = (SELECT data->>'status_code' FROM payload)
+        ),
+        updated_task AS (
+          UPDATE app.tasks t
+          SET
+            title = data->>'title',
+            description = NULLIF(data->>'description', ''),
+            status_id = (SELECT id FROM status),
+            priority = data->>'priority',
+            due_at = NULLIF(data->>'due_at', '')::timestamptz,
+            reminder_at = NULLIF(data->>'reminder_at', '')::timestamptz,
+            reminder_email_enabled = (data->>'reminder_email_enabled')::boolean,
+            reminder_overview_enabled = (data->>'reminder_overview_enabled')::boolean,
+            related_case_id = NULLIF(data->>'related_case_id', '')::bigint
+          FROM payload
+          WHERE t.id = (SELECT id FROM visible_task)
+          RETURNING t.id, t.related_case_id
+        ),
+        deleted_assignments AS (
+          DELETE FROM app.task_assignments ta
+          WHERE ta.task_id = (SELECT id FROM updated_task)
+        ),
+        assignment AS (
+          INSERT INTO app.task_assignments (task_id, user_id, assigned_by_user_id)
+          SELECT
+            updated_task.id,
+            (data->>'assigned_user_id')::bigint,
+            (data->>'actor_user_id')::bigint
+          FROM updated_task, payload
+        ),
+        deleted_reminders AS (
+          DELETE FROM app.task_reminders tr
+          WHERE tr.task_id = (SELECT id FROM updated_task)
+        ),
+        overview_reminder AS (
+          INSERT INTO app.task_reminders (task_id, user_id, remind_at, channel)
+          SELECT
+            updated_task.id,
+            (data->>'assigned_user_id')::bigint,
+            COALESCE(
+              NULLIF(data->>'reminder_at', '')::timestamptz,
+              NULLIF(data->>'due_at', '')::timestamptz
+            ),
+            'overview'
+          FROM updated_task, payload
+          WHERE (data->>'reminder_overview_enabled')::boolean
+            AND COALESCE(NULLIF(data->>'reminder_at', ''), NULLIF(data->>'due_at', '')) IS NOT NULL
+          ON CONFLICT DO NOTHING
+        ),
+        email_reminder AS (
+          INSERT INTO app.task_reminders (task_id, user_id, remind_at, channel)
+          SELECT
+            updated_task.id,
+            (data->>'assigned_user_id')::bigint,
+            COALESCE(
+              NULLIF(data->>'reminder_at', '')::timestamptz,
+              NULLIF(data->>'due_at', '')::timestamptz
+            ),
+            'email'
+          FROM updated_task, payload
+          WHERE (data->>'reminder_email_enabled')::boolean
+            AND COALESCE(NULLIF(data->>'reminder_at', ''), NULLIF(data->>'due_at', '')) IS NOT NULL
+          ON CONFLICT DO NOTHING
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            task_id,
+            actor_user_id,
+            title,
+            body
+          )
+          SELECT
+            'task_updated',
+            updated_task.related_case_id,
+            updated_task.id,
+            (data->>'actor_user_id')::bigint,
+            data->>'title',
+            NULLIF(data->>'description', '')
+          FROM updated_task, payload
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'task_id', (SELECT id FROM updated_task))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    updated_task_id = result.get("task_id")
+    if not updated_task_id:
+        raise ApiError(HTTPStatus.NOT_FOUND, "task_not_found")
+    for upload in files:
+        if upload.field_name == "attachment":
+            save_task_attachment(int(updated_task_id), upload, actor_user_id)
+    return {"ok": True, "task_id": updated_task_id}
+
+
+def set_task_lifecycle(task_id: str, action: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    if action not in {"archive", "delete"}:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_task_action")
+    payload = {
+        "task_id": task_id,
+        "actor_user_id": actor_user_id,
+        "context": context,
+        "action": action,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_task AS (
+          SELECT t.id, t.related_case_id, t.title
+          FROM app.tasks t
+          LEFT JOIN app.task_assignments ta ON ta.task_id = t.id
+          WHERE t.id = (SELECT (data->>'task_id')::bigint FROM payload)
+            AND t.deleted_at IS NULL
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR t.created_by_user_id IN (SELECT id FROM scope_users)
+              OR ta.user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated_task AS (
+          UPDATE app.tasks t
+          SET
+            archived_at = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'archive' THEN now()
+              ELSE t.archived_at
+            END,
+            archived_by_user_id = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'archive'
+              THEN (SELECT (data->>'actor_user_id')::bigint FROM payload)
+              ELSE t.archived_by_user_id
+            END,
+            deleted_at = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'delete' THEN now()
+              ELSE t.deleted_at
+            END,
+            deleted_by_user_id = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'delete'
+              THEN (SELECT (data->>'actor_user_id')::bigint FROM payload)
+              ELSE t.deleted_by_user_id
+            END
+          WHERE t.id = (SELECT id FROM visible_task)
+          RETURNING t.id
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            task_id,
+            actor_user_id,
+            title
+          )
+          SELECT
+            CASE
+              WHEN (data->>'action') = 'archive' THEN 'task_archived'
+              ELSE 'task_moved_to_trash'
+            END,
+            visible_task.related_case_id,
+            visible_task.id,
+            (data->>'actor_user_id')::bigint,
+            visible_task.title
+          FROM payload, visible_task
+          WHERE EXISTS (SELECT 1 FROM updated_task)
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'task_id', (SELECT id FROM updated_task))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("task_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "task_not_found")
+    return {"ok": True, "task_id": result["task_id"], "action": action}
+
+
 def assign_email(data: dict[str, Any], access_email: str) -> dict[str, Any]:
     context = require_primary_user(access_email)
     actor_user_id = int(context["primary_user_id"])
     email_message_id = str(data.get("email_message_id", "")).strip()
-    case_id = str(data.get("customer_case_id", "")).strip()
-    customer_display_name = str(data.get("customer_display_name", "")).strip()
-    case_number = str(data.get("case_number", "")).strip()
+    case_id = resolve_customer_case_id(data, access_email, required=True)
     if not email_message_id:
         raise ApiError(HTTPStatus.BAD_REQUEST, "email_message_id_required")
-    if not case_id and not customer_display_name:
-        raise ApiError(HTTPStatus.BAD_REQUEST, "case_or_customer_name_required")
     payload = {
         "email_message_id": email_message_id,
         "customer_case_id": case_id,
-        "customer_display_name": customer_display_name,
-        "case_number": case_number,
         "actor_user_id": actor_user_id,
+        "context": context,
     }
-    return psql_json(
+    result = psql_json(
         """
         WITH payload AS (SELECT :'payload'::jsonb AS data),
-        existing_case AS (
-          SELECT NULLIF(data->>'customer_case_id', '')::bigint AS id
-          FROM payload
-          WHERE NULLIF(data->>'customer_case_id', '') IS NOT NULL
-        ),
-        inserted_case AS (
-          INSERT INTO app.customer_cases (
-            case_number,
-            customer_display_name,
-            owner_user_id
-          )
-          SELECT
-            NULLIF(data->>'case_number', ''),
-            data->>'customer_display_name',
-            (data->>'actor_user_id')::bigint
-          FROM payload
-          WHERE NULLIF(data->>'customer_case_id', '') IS NULL
-          RETURNING id
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
         ),
         target_case AS (
-          SELECT id FROM existing_case
-          UNION ALL
-          SELECT id FROM inserted_case
+          SELECT cc.id
+          FROM app.customer_cases cc
+          WHERE cc.id = (SELECT (data->>'customer_case_id')::bigint FROM payload)
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR EXISTS (
+                SELECT 1
+                FROM app.tasks t
+                JOIN app.task_assignments ta ON ta.task_id = t.id
+                WHERE t.related_case_id = cc.id
+                  AND ta.user_id IN (SELECT id FROM scope_users)
+              )
+            )
+          LIMIT 1
+        ),
+        visible_email AS (
+          SELECT em.id, em.subject
+          FROM app.email_messages em
+          LEFT JOIN app.email_case_links ecl ON ecl.email_message_id = em.id
+          LEFT JOIN app.customer_cases cc ON cc.id = ecl.customer_case_id
+          WHERE em.id = (SELECT (data->>'email_message_id')::bigint FROM payload)
+            AND em.deleted_at IS NULL
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR em.assigned_user_id IS NULL
+              OR em.assigned_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+            )
           LIMIT 1
         ),
         link AS (
@@ -1117,10 +1508,10 @@ def assign_email(data: dict[str, Any], access_email: str) -> dict[str, Any]:
             assigned_by_user_id
           )
           SELECT
-            (data->>'email_message_id')::bigint,
+            visible_email.id,
             target_case.id,
             (data->>'actor_user_id')::bigint
-          FROM payload, target_case
+          FROM payload, target_case, visible_email
           ON CONFLICT DO NOTHING
         ),
         updated_email AS (
@@ -1129,8 +1520,21 @@ def assign_email(data: dict[str, Any], access_email: str) -> dict[str, Any]:
             is_unassigned = FALSE,
             assigned_user_id = (data->>'actor_user_id')::bigint
           FROM payload
-          WHERE em.id = (data->>'email_message_id')::bigint
+          WHERE em.id = (SELECT id FROM visible_email)
           RETURNING em.id, em.subject
+        ),
+        suggestion_decisions AS (
+          UPDATE app.email_assignment_suggestions eas
+          SET
+            status = CASE
+              WHEN eas.suggested_case_id = (SELECT id FROM target_case) THEN 'accepted'
+              ELSE 'rejected'
+            END,
+            decided_by_user_id = (data->>'actor_user_id')::bigint,
+            decided_at = now()
+          FROM payload
+          WHERE eas.email_message_id = (SELECT id FROM updated_email)
+            AND eas.status = 'pending'
         ),
         event AS (
           INSERT INTO app.communication_events (
@@ -1156,6 +1560,229 @@ def assign_email(data: dict[str, Any], access_email: str) -> dict[str, Any]:
         """,
         {"payload": json.dumps(payload)},
     )
+    if not result.get("email_message_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "email_not_found")
+    if not result.get("customer_case_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    return result
+
+
+def set_email_lifecycle(email_message_id: str, action: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    if action not in {"archive", "delete"}:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_email_action")
+    payload = {
+        "email_message_id": email_message_id,
+        "actor_user_id": actor_user_id,
+        "context": context,
+        "action": action,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_email AS (
+          SELECT em.id, em.subject
+          FROM app.email_messages em
+          LEFT JOIN app.email_case_links ecl ON ecl.email_message_id = em.id
+          LEFT JOIN app.customer_cases cc ON cc.id = ecl.customer_case_id
+          WHERE em.id = (SELECT (data->>'email_message_id')::bigint FROM payload)
+            AND em.deleted_at IS NULL
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR em.assigned_user_id IS NULL
+              OR em.assigned_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated_email AS (
+          UPDATE app.email_messages em
+          SET
+            archived_at = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'archive' THEN now()
+              ELSE em.archived_at
+            END,
+            archived_by_user_id = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'archive'
+              THEN (SELECT (data->>'actor_user_id')::bigint FROM payload)
+              ELSE em.archived_by_user_id
+            END,
+            deleted_at = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'delete' THEN now()
+              ELSE em.deleted_at
+            END,
+            deleted_by_user_id = CASE
+              WHEN (SELECT data->>'action' FROM payload) = 'delete'
+              THEN (SELECT (data->>'actor_user_id')::bigint FROM payload)
+              ELSE em.deleted_by_user_id
+            END
+          WHERE em.id = (SELECT id FROM visible_email)
+          RETURNING em.id
+        ),
+        linked_cases AS (
+          SELECT ecl.customer_case_id
+          FROM app.email_case_links ecl
+          WHERE ecl.email_message_id = (SELECT id FROM updated_email)
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            email_message_id,
+            actor_user_id,
+            title
+          )
+          SELECT
+            CASE
+              WHEN (data->>'action') = 'archive' THEN 'email_archived'
+              ELSE 'email_moved_to_trash'
+            END,
+            linked_cases.customer_case_id,
+            visible_email.id,
+            (data->>'actor_user_id')::bigint,
+            visible_email.subject
+          FROM payload, visible_email
+          LEFT JOIN linked_cases ON TRUE
+          WHERE EXISTS (SELECT 1 FROM updated_email)
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'email_message_id', (SELECT id FROM updated_email)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("email_message_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "email_not_found")
+    return {"ok": True, "email_message_id": result["email_message_id"], "action": action}
+
+
+def decide_email_suggestion(suggestion_id: str, decision: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    if decision not in {"accepted", "rejected"}:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_suggestion_decision")
+    payload = {
+        "suggestion_id": suggestion_id,
+        "decision": decision,
+        "actor_user_id": actor_user_id,
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_suggestion AS (
+          SELECT
+            eas.id,
+            eas.email_message_id,
+            eas.suggested_case_id,
+            em.subject
+          FROM app.email_assignment_suggestions eas
+          JOIN app.email_messages em ON em.id = eas.email_message_id
+          LEFT JOIN app.customer_cases cc ON cc.id = eas.suggested_case_id
+          WHERE eas.id = (SELECT (data->>'suggestion_id')::bigint FROM payload)
+            AND eas.status = 'pending'
+            AND em.deleted_at IS NULL
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR em.assigned_user_id IS NULL
+              OR em.assigned_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated_suggestion AS (
+          UPDATE app.email_assignment_suggestions eas
+          SET
+            status = (SELECT data->>'decision' FROM payload),
+            decided_by_user_id = (SELECT (data->>'actor_user_id')::bigint FROM payload),
+            decided_at = now()
+          WHERE eas.id = (SELECT id FROM visible_suggestion)
+          RETURNING eas.id
+        ),
+        link AS (
+          INSERT INTO app.email_case_links (
+            email_message_id,
+            customer_case_id,
+            assigned_by_user_id
+          )
+          SELECT
+            visible_suggestion.email_message_id,
+            visible_suggestion.suggested_case_id,
+            (data->>'actor_user_id')::bigint
+          FROM payload, visible_suggestion
+          WHERE (data->>'decision') = 'accepted'
+            AND visible_suggestion.suggested_case_id IS NOT NULL
+          ON CONFLICT DO NOTHING
+        ),
+        updated_email AS (
+          UPDATE app.email_messages em
+          SET
+            is_unassigned = FALSE,
+            assigned_user_id = (data->>'actor_user_id')::bigint
+          FROM payload, visible_suggestion
+          WHERE (data->>'decision') = 'accepted'
+            AND em.id = visible_suggestion.email_message_id
+          RETURNING em.id
+        ),
+        other_suggestions AS (
+          UPDATE app.email_assignment_suggestions eas
+          SET
+            status = 'rejected',
+            decided_by_user_id = (data->>'actor_user_id')::bigint,
+            decided_at = now()
+          FROM payload, visible_suggestion
+          WHERE (data->>'decision') = 'accepted'
+            AND eas.email_message_id = visible_suggestion.email_message_id
+            AND eas.id <> visible_suggestion.id
+            AND eas.status = 'pending'
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            email_message_id,
+            actor_user_id,
+            title
+          )
+          SELECT
+            CASE
+              WHEN (data->>'decision') = 'accepted'
+              THEN 'email_assignment_suggestion_accepted'
+              ELSE 'email_assignment_suggestion_rejected'
+            END,
+            visible_suggestion.suggested_case_id,
+            visible_suggestion.email_message_id,
+            (data->>'actor_user_id')::bigint,
+            visible_suggestion.subject
+          FROM payload, visible_suggestion
+          WHERE EXISTS (SELECT 1 FROM updated_suggestion)
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'suggestion_id', (SELECT id FROM updated_suggestion),
+          'email_message_id', COALESCE(
+            (SELECT id FROM updated_email),
+            (SELECT email_message_id FROM visible_suggestion)
+          )
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("suggestion_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "suggestion_not_found")
+    return result
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1209,8 +1836,34 @@ class Handler(BaseHTTPRequestHandler):
                 if parts == ["overview", "tasks"]:
                     self.write_json(create_task(data, files, access_email))
                     return
+                if len(parts) == 3 and parts[:2] == ["overview", "tasks"]:
+                    self.write_json(update_task(parts[2], data, files, access_email))
+                    return
+                if len(parts) == 4 and parts[:2] == ["overview", "tasks"] and parts[3] == "archive":
+                    self.write_json(set_task_lifecycle(parts[2], "archive", access_email))
+                    return
+                if len(parts) == 4 and parts[:2] == ["overview", "tasks"] and parts[3] == "delete":
+                    self.write_json(set_task_lifecycle(parts[2], "delete", access_email))
+                    return
                 if parts == ["overview", "emails", "assign"]:
                     self.write_json(assign_email(data, access_email))
+                    return
+                if (
+                    len(parts) == 5
+                    and parts[:3] == ["overview", "emails", "suggestions"]
+                    and parts[4] == "accept"
+                ):
+                    self.write_json(decide_email_suggestion(parts[3], "accepted", access_email))
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["overview", "emails"]
+                    and parts[3] == "archive"
+                ):
+                    self.write_json(set_email_lifecycle(parts[2], "archive", access_email))
+                    return
+                if len(parts) == 4 and parts[:2] == ["overview", "emails"] and parts[3] == "delete":
+                    self.write_json(set_email_lifecycle(parts[2], "delete", access_email))
                     return
             raise ApiError(HTTPStatus.NOT_FOUND, "not_found")
         except ApiError as error:
