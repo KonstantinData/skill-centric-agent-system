@@ -585,8 +585,14 @@ def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
     assert "daskuechenhaus_admin_api.py" in workflow
     assert "daskuechenhaus-admin-api.service" in workflow
     assert "Duplicate active customer emails block Search-First hard-bounce migration" in workflow
-    assert "Duplicate active primary phone numbers block Search-First hard-bounce migration" in workflow
-    assert "Duplicate active primary mobile numbers block Search-First hard-bounce migration" in workflow
+    assert (
+        "Duplicate active primary phone numbers block Search-First hard-bounce migration"
+        in workflow
+    )
+    assert (
+        "Duplicate active primary mobile numbers block Search-First hard-bounce migration"
+        in workflow
+    )
     assert "Invalid customer source values block Search-First source constraint" in workflow
     assert "sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1" in workflow
     assert "systemctl restart daskuechenhaus-admin-api.service" in workflow
