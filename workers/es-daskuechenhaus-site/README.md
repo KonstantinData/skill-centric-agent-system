@@ -4,10 +4,9 @@ Cloudflare Worker serving the internal `es-daskuechenhaus.de` website.
 
 Routes:
 
-- `/index.php`: protected user-specific risk and steering cockpit. It surfaces
-  warning signals first, then current work course, email traffic, capacity,
-  flight plan, active customer cases, and recent documentation events. It is an
-  overview board, not the primary work surface. The page includes the tenant
+- `/index.php`: protected user-specific CRM steering surface. It surfaces the
+  decision queue, customer progress, SCAS approval queue, operational workload,
+  and audit trail before lower-priority context. The page includes the tenant
   command center with global customer/case search entry points, quick actions,
   and the visible SCAS human-confirmation status.
 - `/aufgaben.php`: protected task and email work surface. Tasks can be created,
@@ -22,7 +21,7 @@ Routes:
   and settings. The page renders live data from the Hetzner tenant runtime API.
 - `/admin-api/*`: protected Worker proxy for admin form submissions. The Worker
   forwards to the Hetzner-only runtime API and stores no tenant runtime data.
-- `/overview-api/*`: protected Worker proxy for cockpit form submissions such
+- `/overview-api/*`: protected Worker proxy for CRM form submissions such
   as task creation/editing, task lifecycle actions, manual email-to-case
   assignment, human confirmation of email assignment suggestions, and email
   lifecycle actions.
@@ -50,9 +49,9 @@ Task and email attachment files remain on Hetzner runtime storage. PostgreSQL
 stores only metadata and paths for overview attachments.
 
 Email assignment suggestions may be produced by an agent or skill, but they are
-not applied automatically. The cockpit requires a human operator to confirm the
-suggested assignment. If the suggestion is not useful, the operator searches for
-the correct customer case and assigns it manually.
+not applied automatically. The CRM surface requires a human operator to confirm
+the suggested assignment. If the suggestion is not useful, the operator searches
+for the correct customer case and assigns it manually.
 
 SCAS-supported CRM actions write audit evidence to Hetzner runtime storage via
 `app.communication_events`. For confirmed email-assignment suggestions this

@@ -43,15 +43,43 @@ def test_crm_layout_has_responsive_grid_guards() -> None:
     assert ".command-search { grid-template-columns: 1fr; }" in source
     assert ".command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in source
     assert ".shell { grid-template-columns: 1fr; }" in source
-    assert ".risk-item { grid-template-columns: auto minmax(0, 1fr); }" in source
+    assert ".decision-row { grid-template-columns: auto minmax(0, 1fr); }" in source
 
 
 def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
     source = load_worker_source()
 
-    assert "Kontrollverlust" in source
-    assert "Was jetzt kippen kann" in source
+    assert "CRM Steuerung" in source
+    assert "Entscheidungszentrale" in source
+    assert "Jetzt bearbeiten" in source
+    assert "Kundenfortschritt" in source
+    assert "SCAS Kontrolle" in source
+    assert "Audit Trail" in source
+    assert "renderDecisionQueue" in source
+    assert "renderCustomerFocus" in source
+    assert "renderScasReviewQueue" in source
+    assert "renderAuditTrail" in source
     assert "Heute arbeiten" in source
-    assert "Blackbox" in source
     assert "customerMatchesQuery" in source
     assert "renderCommandCenter(state.current_user" in source
+
+
+def test_crm_surface_rejects_non_production_language() -> None:
+    source = load_worker_source()
+
+    forbidden_terms = [
+        "Blackbox",
+        "Funkverkehr",
+        "Flugplan",
+        "Instrumententafel",
+        "Was jetzt kippen kann",
+        "Kontrollverlust",
+        "EXIT",
+        "Aufgabe(n)",
+        "E-Mail(s)",
+        "Vorgang/Vorgaenge",
+        "Das Cockpit zeigt",
+    ]
+
+    for term in forbidden_terms:
+        assert term not in source

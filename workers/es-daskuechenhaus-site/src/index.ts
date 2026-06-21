@@ -600,15 +600,6 @@ function renderSideNav(active: "overview" | "customers" | "tasks" | "admin", isA
   </nav>`;
 }
 
-type CockpitRisk = {
-  level: "red" | "yellow" | "green";
-  label: string;
-  title: string;
-  detail: string;
-  href: string;
-  cta: string;
-};
-
 type CommandCenterMetrics = {
   overdueTasks: number;
   unassignedEmails: number;
@@ -633,22 +624,6 @@ function renderCockpitList(items: string[], emptyText: string): string {
     return `<div class="empty">${escapeHtml(emptyText)}</div>`;
   }
   return `<ul class="cockpit-list">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
-}
-
-function renderRiskQueue(items: CockpitRisk[]): string {
-  return `<div class="risk-queue">${items
-    .map(
-      (item) => `<a class="risk-item ${item.level}" href="${escapeHtml(item.href)}">
-        <span class="risk-lamp" aria-hidden="true"></span>
-        <span class="risk-copy">
-          <span class="risk-label">${escapeHtml(item.label)}</span>
-          <strong>${escapeHtml(item.title)}</strong>
-          <small>${escapeHtml(item.detail)}</small>
-        </span>
-        <em>${escapeHtml(item.cta)}</em>
-      </a>`,
-    )
-    .join("")}</div>`;
 }
 
 function renderCommandCenter(
@@ -732,22 +707,114 @@ function renderCapacity(state: OverviewState): string {
     [...loads.entries()]
       .sort((left, right) => right[1] - left[1])
       .slice(0, 6)
-      .map(([name, count]) => `<a href="/aufgaben.php">${escapeHtml(name)}</a><span>${count} offene Aufgabe(n)</span>`),
+      .map(([name, count]) => `<a href="/aufgaben.php">${escapeHtml(name)}</a><span>${count} offene Aufgaben</span>`),
     "Keine Aufgabenlast in der aktuellen Ansicht.",
   );
 }
 
-function renderBlackbox(state: OverviewState): string {
-  const events = (state.communication_events ?? []).slice(0, 6);
-  return renderCockpitList(
-    events.map((event) => {
+type DecisionItem = {
+  urgency: "critical" | "warning" | "normal";
+  label: string;
+  title: string;
+  meta: string;
+  href: string;
+  action: string;
+};
+
+function renderDecisionQueue(items: DecisionItem[]): string {
+  if (items.length === 0) {
+    return '<div class="empty">Keine offenen Entscheidungen in deiner aktuellen Ansicht.</div>';
+  }
+  return `<div class="decision-list">${items
+    .slice(0, 9)
+    .map(
+      (item) => `<a class="decision-row ${item.urgency}" href="${escapeHtml(item.href)}">
+        <span class="decision-marker" aria-hidden="true"></span>
+        <span class="decision-copy">
+          <span class="decision-label">${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${escapeHtml(item.meta)}</small>
+        </span>
+        <span class="decision-action">${escapeHtml(item.action)}</span>
+      </a>`,
+    )
+    .join("")}</div>`;
+}
+
+function renderCustomerFocus(state: OverviewState): string {
+  if (state.customer_cases.length === 0) {
+    return '<div class="empty">Noch keine aktiven Kundenvorgaenge sichtbar.</div>';
+  }
+  return `<div class="data-table customer-focus">
+    <div class="data-row data-head"><span>Vorgang</span><span>Kunde</span><span>Phase</span><span>Naechster Schritt</span></div>
+    ${state.customer_cases
+      .slice(0, 7)
+      .map((customerCase) => {
+        const relatedTasks = state.tasks.filter((task) => task.case?.id === customerCase.id);
+        const nextTask = [...relatedTasks].sort((left, right) => {
+          const leftTime = parseDate(left.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          const rightTime = parseDate(right.due_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+          return leftTime - rightTime;
+        })[0];
+        const phase = customerCase.status_phase ? `Phase ${customerCase.status_phase}` : "offen";
+        const nextStep = nextTask
+          ? `${nextTask.title}${nextTask.due_at ? ` (${formatDateTime(nextTask.due_at)})` : ""}`
+          : "Naechste Aufgabe anlegen";
+        return `<a class="data-row" href="/kunden.php">
+          <span>${escapeHtml(customerCase.case_number ?? "-")}</span>
+          <strong>${escapeHtml(customerCase.customer_display_name)}</strong>
+          <span>${escapeHtml(phase)}</span>
+          <span>${escapeHtml(truncateText(nextStep, 84))}</span>
+        </a>`;
+      })
+      .join("")}
+  </div>`;
+}
+
+function renderScasReviewQueue(state: OverviewState): string {
+  const suggestions = state.emails
+    .filter((email) => email.is_unassigned && email.suggestions.length > 0)
+    .slice(0, 6);
+  if (suggestions.length === 0) {
+    return '<div class="empty">Keine SCAS-Vorschlaege warten auf Freigabe.</div>';
+  }
+  return `<div class="review-list">${suggestions
+    .map((email) => {
+      const suggestion = email.suggestions[0];
+      const suggestedCase = suggestion?.case;
+      const confidence = Math.round(Number(suggestion?.confidence ?? 0) * 100);
+      const target = suggestedCase
+        ? `${suggestedCase.case_number ? `${suggestedCase.case_number} · ` : ""}${suggestedCase.customer_display_name}`
+        : "kein Vorgang";
+      return `<article class="review-row">
+        <div>
+          <span class="section-kicker">Freigabe erforderlich</span>
+          <h3>${escapeHtml(truncateText(email.subject || "(ohne Betreff)", 86))}</h3>
+          <p>${escapeHtml(target)} · ${confidence}% · ${escapeHtml(truncateText(suggestion?.reason ?? "SCAS-Vorschlag pruefen.", 120))}</p>
+        </div>
+        <a class="ui-button secondary" href="/aufgaben.php#emails">Pruefen</a>
+      </article>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderAuditTrail(state: OverviewState): string {
+  const events = (state.communication_events ?? []).slice(0, 8);
+  if (events.length === 0) {
+    return '<div class="empty">Noch kein Audit-Trail fuer sichtbare Vorgaenge vorhanden.</div>';
+  }
+  return `<ol class="audit-list">${events
+    .map((event) => {
       const caseLabel = event.customer_case
         ? `${event.customer_case.case_number ? `${event.customer_case.case_number} · ` : ""}${event.customer_case.customer_display_name}`
         : "ohne Vorgang";
-      return `<a href="/kunden.php">${escapeHtml(event.title)}</a><span>${escapeHtml(caseLabel)} · ${escapeHtml(event.actor ?? "System")} · ${escapeHtml(formatDateTime(event.occurred_at))}</span>`;
-    }),
-    "Noch keine dokumentierten Aenderungen in deiner aktuellen Ansicht.",
-  );
+      return `<li>
+        <time>${escapeHtml(formatDateTime(event.occurred_at))}</time>
+        <strong>${escapeHtml(event.title)}</strong>
+        <span>${escapeHtml(caseLabel)} · ${escapeHtml(event.actor ?? "System")}</span>
+      </li>`;
+    })
+    .join("")}</ol>`;
 }
 
 function renderHome(state: OverviewState): string {
@@ -761,48 +828,32 @@ function renderHome(state: OverviewState): string {
   const unresolvedSuggestions = state.emails.filter((email) => email.is_unassigned && email.suggestions.length > 0).length;
   const hasRed = overdueTasks > 0 || urgentTasks > 0 || tasksWithoutAssignee > 0;
   const hasYellow = unassignedEmails > 0 || state.customer_cases.length === 0 || todayTasks > 0 || todayAppointments > 0;
-  const overall = hasRed ? "Rot: sofort handeln" : hasYellow ? "Gelb: heute beachten" : "Gruen: laeuft";
-  const riskQueue: CockpitRisk[] = [
-    {
-      level: overdueTasks > 0 ? "red" : "green",
-      label: "Aufgaben",
-      title: "Ueberfaellige Aufgaben",
-      detail: overdueTasks > 0 ? `${overdueTasks} Aufgabe(n) sind ueberfaellig.` : "Keine ueberfaelligen Aufgaben sichtbar.",
-      href: "/aufgaben.php",
-      cta: "Aufgaben pruefen",
-    },
-    {
-      level: tasksWithoutAssignee > 0 ? "red" : "green",
-      label: "Verantwortung",
-      title: "Aufgaben ohne Zustaendigen",
-      detail: tasksWithoutAssignee > 0 ? `${tasksWithoutAssignee} Aufgabe(n) haben keinen Besitzer.` : "Alle sichtbaren Aufgaben haben einen Zustaendigen.",
-      href: "/aufgaben.php",
-      cta: "Zustaendigkeit klaeren",
-    },
-    {
-      level: unassignedEmails > 0 ? "yellow" : "green",
-      label: "E-Mail",
-      title: "Nicht zugeordnete E-Mails",
-      detail: unassignedEmails > 0 ? `${unassignedEmails} Nachricht(en) brauchen eine Vorgangszuordnung.` : "Alle sichtbaren E-Mails sind zugeordnet.",
-      href: "/aufgaben.php#emails",
-      cta: "E-Mails zuordnen",
-    },
-    {
-      level: todayAppointments > 0 || todayTasks > 0 ? "yellow" : "green",
-      label: "Heute",
-      title: "Termine und Faelligkeiten",
-      detail: `${todayAppointments} Termin(e) und ${todayTasks} Aufgabe(n) heute sichtbar.`,
-      href: "/aufgaben.php",
-      cta: "Tag pruefen",
-    },
-    {
-      level: state.customer_cases.length === 0 ? "yellow" : "green",
-      label: "Vorgaenge",
-      title: "Vorgaenge ohne Basis",
-      detail: state.customer_cases.length === 0 ? "Es gibt noch keinen sichtbaren Kundenvorgang." : `${state.customer_cases.length} aktive Vorgang/Vorgaenge sichtbar.`,
-      href: "/kunden.php",
-      cta: "Kunden oeffnen",
-    },
+  const overall = hasRed ? "Sofort handeln" : hasYellow ? "Heute steuern" : "Stabil";
+  const decisionItems: DecisionItem[] = [
+    ...state.tasks
+      .filter((task) => isOverdue(task.due_at) || task.priority === "urgent" || task.assigned_users.length === 0)
+      .map((task) => ({
+        urgency: isOverdue(task.due_at) || task.priority === "urgent" ? "critical" as const : "warning" as const,
+        label: task.assigned_users.length === 0 ? "Zustaendigkeit" : "Aufgabe",
+        title: task.title,
+        meta: `${task.case?.customer_display_name ?? "ohne Vorgang"} · ${task.assigned_users.map((user) => user.name).join(", ") || "nicht zugeordnet"}${task.due_at ? ` · ${formatDateTime(task.due_at)}` : ""}`,
+        href: "/aufgaben.php",
+        action: task.assigned_users.length === 0 ? "zuweisen" : "bearbeiten",
+      })),
+    ...state.emails
+      .filter((email) => email.is_unassigned)
+      .map((email) => {
+        const sender = email.participants.find((participant) => participant.type === "from") ?? email.participants[0];
+        const fit = email.suggestions[0]?.case;
+        return {
+          urgency: email.suggestions.length > 0 ? "warning" as const : "normal" as const,
+          label: "E-Mail",
+          title: email.subject || "(ohne Betreff)",
+          meta: `${sender?.display_name || sender?.email_address || "Unbekannt"} · ${fit ? `SCAS-Vorschlag: ${fit.customer_display_name}` : "Vorgang manuell suchen"}`,
+          href: "/aufgaben.php#emails",
+          action: "zuordnen",
+        };
+      }),
   ];
   return `<!doctype html>
 <html lang="de">
@@ -825,6 +876,7 @@ function renderHome(state: OverviewState): string {
       --danger-bg: #fff0f0;
       --ok: #276738;
       --ok-bg: #edf8ef;
+      --ink-soft: #263326;
     }
     * { box-sizing: border-box; }
     body {
@@ -977,7 +1029,7 @@ function renderHome(state: OverviewState): string {
     }
     .status-strip {
       display: grid;
-      grid-template-columns: minmax(220px, 0.9fr) repeat(4, minmax(112px, 1fr));
+      grid-template-columns: repeat(5, minmax(128px, 1fr));
       gap: 10px;
       margin: 18px 0;
     }
@@ -1014,31 +1066,29 @@ function renderHome(state: OverviewState): string {
       color: var(--muted);
       line-height: 1.45;
     }
-    .risk-board {
+    .operations-board {
       display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+      grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
       gap: 16px;
       margin-bottom: 16px;
       align-items: stretch;
     }
-    .risk-panel,
-    .command-panel {
+    .board-section {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 14px;
       min-width: 0;
     }
-    .risk-panel {
+    .board-section.primary {
       border-color: ${hasRed ? "#d79a9a" : hasYellow ? "#d7b66f" : "#a9cfb0"};
-      background: ${hasRed ? "var(--danger-bg)" : hasYellow ? "var(--warning-bg)" : "var(--ok-bg)"};
     }
-    .risk-queue {
+    .decision-list {
       display: grid;
-      gap: 8px;
+      gap: 6px;
       margin-top: 12px;
     }
-    .risk-item {
+    .decision-row {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 10px;
@@ -1047,79 +1097,57 @@ function renderHome(state: OverviewState): string {
       color: var(--text);
       text-decoration: none;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 6px;
       background: var(--surface);
       transition: transform 100ms ease, box-shadow 120ms ease, border-color 120ms ease;
     }
-    .risk-item:hover {
+    .decision-row:hover {
       transform: translateY(-1px);
       box-shadow: 0 8px 20px rgba(24, 38, 18, 0.08);
     }
-    .risk-item:active {
+    .decision-row:active {
       transform: translateY(0);
       box-shadow: none;
     }
-    .risk-item.red { border-color: #e2b8b8; }
-    .risk-item.yellow { border-color: #e0c48d; }
-    .risk-item.green { border-color: #bad7bf; }
-    .risk-lamp {
+    .decision-row.critical { border-left: 4px solid var(--danger); }
+    .decision-row.warning { border-left: 4px solid #c77c12; }
+    .decision-row.normal { border-left: 4px solid var(--ok); }
+    .decision-marker {
       width: 13px;
       height: 13px;
       border-radius: 999px;
     }
-    .red .risk-lamp { background: var(--danger); }
-    .yellow .risk-lamp { background: #c77c12; }
-    .green .risk-lamp { background: var(--ok); }
-    .risk-copy,
-    .risk-copy strong,
-    .risk-copy small,
-    .risk-label {
+    .critical .decision-marker { background: var(--danger); }
+    .warning .decision-marker { background: #c77c12; }
+    .normal .decision-marker { background: var(--ok); }
+    .decision-copy,
+    .decision-copy strong,
+    .decision-copy small,
+    .decision-label {
       display: block;
     }
-    .risk-label {
+    .decision-label {
       color: var(--muted);
       font-size: 0.72rem;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    .risk-copy strong {
+    .decision-copy strong {
       margin-top: 2px;
       font-size: 0.98rem;
       line-height: 1.25;
     }
-    .risk-copy small {
+    .decision-copy small {
       margin-top: 3px;
       font-size: 0.82rem;
+      color: var(--muted);
     }
-    .risk-item em {
+    .decision-action {
       color: var(--green-dark);
       font-size: 0.8rem;
-      font-style: normal;
       font-weight: 800;
       white-space: nowrap;
-    }
-    .command-links {
-      display: grid;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .command-link {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfa;
-      padding: 10px;
-      color: var(--text);
-      text-decoration: none;
-      font-weight: 800;
-    }
-    .command-link span {
-      font-size: 0.82rem;
-      font-weight: 600;
     }
     .cockpit-grid {
       display: grid;
@@ -1150,6 +1178,79 @@ function renderHome(state: OverviewState): string {
       padding-bottom: 10px;
       border-bottom: 1px solid var(--line);
       margin-bottom: 10px;
+    }
+    .data-table {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .data-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 0.55fr) minmax(140px, 0.95fr) minmax(70px, 0.45fr) minmax(180px, 1.2fr);
+      gap: 12px;
+      align-items: center;
+      color: var(--text);
+      padding: 10px 12px;
+      text-decoration: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .data-row:last-child { border-bottom: 0; }
+    .data-row:hover { background: #f8fbf5; }
+    .data-head {
+      background: var(--soft);
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .review-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .review-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfa;
+    }
+    .review-row h3,
+    .review-row p {
+      margin: 3px 0 0;
+    }
+    .review-row p {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+    .audit-list {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .audit-list li {
+      display: grid;
+      grid-template-columns: 150px minmax(170px, 0.8fr) minmax(220px, 1fr);
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+    .audit-list li:last-child { border-bottom: 0; }
+    .audit-list time,
+    .audit-list span {
+      color: var(--muted);
+      font-size: 0.84rem;
     }
     h2 {
       margin: 0;
@@ -1282,7 +1383,7 @@ function renderHome(state: OverviewState): string {
       box-shadow: none;
     }
     @media (max-width: 1100px) {
-      .risk-board,
+      .operations-board,
       .status-strip,
       .command-center,
       .cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1293,16 +1394,18 @@ function renderHome(state: OverviewState): string {
       .shell { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       main { padding: 24px 18px; }
-      .risk-board,
+      .operations-board,
       .status-strip,
       .command-center,
       .cockpit-grid,
-      .panel-split { grid-template-columns: 1fr; }
+      .panel-split,
+      .data-row,
+      .audit-list li { grid-template-columns: 1fr; }
       .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .command-search { grid-template-columns: 1fr; }
       .topline { align-items: flex-start; flex-direction: column; }
-      .risk-item { grid-template-columns: auto minmax(0, 1fr); }
-      .risk-item em { grid-column: 2; white-space: normal; }
+      .decision-row { grid-template-columns: auto minmax(0, 1fr); }
+      .decision-action { grid-column: 2; white-space: normal; }
     }
   </style>
 </head>
@@ -1315,8 +1418,8 @@ function renderHome(state: OverviewState): string {
     <main>
       <div class="topline">
         <div>
-          <h1>Uebersicht</h1>
-          <p class="lede">${escapeHtml(currentUser)} sieht hier die Instrumententafel: erst Kontrollverlust, dann Arbeit, Vorgang, Team und Termine. Die Detailarbeit liegt im Seitenmenue.</p>
+          <h1>CRM Steuerung</h1>
+          <p class="lede">${escapeHtml(currentUser)} sieht nur entscheidungsrelevante Arbeit: Eskalationen, offene Zustaendigkeiten, E-Mail-Zuordnung, Kundenfortschritt und nachvollziehbare SCAS-Freigaben.</p>
         </div>
         <span class="badge">${escapeHtml(overall)}</span>
       </div>
@@ -1327,31 +1430,37 @@ function renderHome(state: OverviewState): string {
       })}
       <div class="status-strip">
         <div class="status-card ${hasRed ? "red" : hasYellow ? "yellow" : "green"}">
-          <div class="metric">${escapeHtml(hasRed ? "Rot" : hasYellow ? "Gelb" : "Gruen")}</div>
-          <div class="metric-label">Geschaeftslage</div>
+          <div class="metric">${escapeHtml(overall)}</div>
+          <div class="metric-label">Prioritaet</div>
           <div class="metric-sub">${escapeHtml(overall)}</div>
         </div>
         <div class="status-card${overdueTasks > 0 ? " red" : ""}"><div class="metric">${state.tasks.length}</div><div class="metric-label">offene Aufgaben</div><div class="metric-sub">${overdueTasks} ueberfaellig · ${urgentTasks} dringend</div></div>
-        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">Funkverkehr</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${unresolvedSuggestions} SCAS-Vorschlaege</div></div>
+        <div class="status-card${unassignedEmails > 0 ? " yellow" : ""}"><div class="metric">${state.emails.length}</div><div class="metric-label">E-Mail Eingang</div><div class="metric-sub">${unassignedEmails} ohne Vorgang · ${unresolvedSuggestions} SCAS-Vorschlaege</div></div>
         <div class="status-card"><div class="metric">${state.customer_cases.length}</div><div class="metric-label">aktive Vorgaenge</div><div class="metric-sub">Kundenarbeit im Blick</div></div>
-        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgabe(n) faellig</div></div>
+        <div class="status-card"><div class="metric">${todayAppointments}</div><div class="metric-label">Termine heute</div><div class="metric-sub">${todayTasks} Aufgaben faellig</div></div>
       </div>
-      <section class="risk-board" aria-label="Cockpit Kontrollverlust">
-        <div class="risk-panel">
-          <div class="panel-head"><div><span class="section-kicker">Kontrollverlust</span><h2>Was jetzt kippen kann</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
-          ${renderRiskQueue(riskQueue)}
+      <section class="operations-board" aria-label="CRM Entscheidungszentrale">
+        <div class="board-section primary">
+          <div class="panel-head"><div><span class="section-kicker">Entscheidungszentrale</span><h2>Jetzt bearbeiten</h2></div><a class="panel-link" href="/aufgaben.php">Arbeitsebene</a></div>
+          ${renderDecisionQueue(decisionItems)}
         </div>
-        <div class="command-panel">
-          <div class="panel-head"><div><span class="section-kicker">Sofortzugriff</span><h2>Direkt handeln</h2></div></div>
-          <div class="command-links">
-            <a class="command-link" href="/aufgaben.php">Aufgaben <span>${overdueTasks} ueberfaellig</span></a>
-            <a class="command-link" href="/aufgaben.php#emails">E-Mails <span>${unassignedEmails} ohne Vorgang</span></a>
-            <a class="command-link" href="/kunden.php">Kunden/Vorgaenge <span>${state.customer_cases.length} aktiv</span></a>
-            ${state.current_user.is_admin ? '<a class="command-link" href="/admin.php?modal=users">Team/Admin <span>Zustaendigkeit</span></a>' : ""}
-          </div>
+        <div class="board-section">
+          <div class="panel-head"><div><span class="section-kicker">SCAS Kontrolle</span><h2>Vorschlaege freigeben</h2></div><a class="panel-link" href="/aufgaben.php#emails">E-Mails</a></div>
+          ${renderScasReviewQueue(state)}
         </div>
       </section>
       <div class="cockpit-grid">
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Kundenfortschritt</span><h2>Aktive Vorgaenge steuern</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
+          ${renderCustomerFocus(state)}
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><span class="section-kicker">Team & Termine</span><h2>Auslastung und Termine</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
+          ${renderCapacity(state)}
+          <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
+          ${renderOverviewAppointments(state)}
+          <div style="margin-top:10px">${renderOverviewNews(state)}</div>
+        </section>
         <section class="panel wide">
           <div class="panel-head"><div><span class="section-kicker">Heute arbeiten</span><h2>Aufgaben und E-Mails</h2></div><a class="panel-link" href="/aufgaben.php">Oeffnen</a></div>
           <div class="panel-split">
@@ -1359,26 +1468,9 @@ function renderHome(state: OverviewState): string {
             <div>${renderCockpitEmails(state)}</div>
           </div>
         </section>
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Vorgaenge</span><h2>Kunden aktiv bewegen</h2></div><a class="panel-link" href="/kunden.php">Kunden</a></div>
-          ${renderCockpitList(
-            state.customer_cases.slice(0, 6).map((customerCase) => {
-              const phase = customerCase.status_phase ? `Phase ${customerCase.status_phase}` : "ohne Phase";
-              return `<a href="/kunden.php">${escapeHtml(customerCase.case_number ?? customerCase.customer_display_name)}</a><span>${escapeHtml(customerCase.customer_display_name)} · ${escapeHtml(phase)}</span>`;
-            }),
-            "Noch keine sichtbaren Kundenvorgaenge. Lege Kunden und Vorgaenge im Kundenbereich an.",
-          )}
-        </section>
-        <section class="panel">
-          <div class="panel-head"><div><span class="section-kicker">Team & Termine</span><h2>Kapazitaet, Vertretung, Flugplan</h2></div><a class="panel-link" href="/aufgaben.php">Details</a></div>
-          ${renderCapacity(state)}
-          <div style="margin-top:10px">${renderOverviewDelegations(state)}</div>
-          ${renderOverviewAppointments(state)}
-          <div style="margin-top:10px">${renderOverviewNews(state)}</div>
-        </section>
         <section class="panel wide">
-          <div class="panel-head"><div><span class="section-kicker">Blackbox</span><h2>Letzte dokumentierte Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
-          ${renderBlackbox(state)}
+          <div class="panel-head"><div><span class="section-kicker">Audit Trail</span><h2>Nachvollziehbare Aenderungen</h2></div><a class="panel-link" href="/kunden.php">Kundenmappe</a></div>
+          ${renderAuditTrail(state)}
         </section>
       </div>
       <div class="quick-actions">
@@ -1440,7 +1532,7 @@ function renderOverviewTasks(state: OverviewState, returnTo = "/index.php"): str
         </details>
       </article>`;
     })
-    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere Aufgabe(n)</div>` : ""}`;
+    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere Aufgaben</div>` : ""}`;
 }
 
 function renderOverviewEmails(state: OverviewState, returnTo = "/index.php"): string {
@@ -1486,7 +1578,7 @@ function renderOverviewEmails(state: OverviewState, returnTo = "/index.php"): st
         </div>
       </article>`;
     })
-    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere E-Mail(s)</div>` : ""}`;
+    .join("")}</div>${hiddenCount > 0 ? `<div class="more-note">+ ${hiddenCount} weitere E-Mails</div>` : ""}`;
 }
 
 function renderEmailSuggestions(email: OverviewState["emails"][number], returnTo = "/index.php"): string {
@@ -2186,7 +2278,7 @@ function renderTasksPage(state: OverviewState): string {
       <div class="topline">
         <div>
           <h1>Aufgaben</h1>
-          <p class="lede">Hier werden Aufgaben und E-Mails bearbeitet. Das Cockpit zeigt nur die Lage, diese Seite ist die Arbeitsebene.</p>
+          <p class="lede">Aufgaben und E-Mails werden hier direkt priorisiert, zugeordnet, bearbeitet und revisionssicher abgeschlossen.</p>
         </div>
         <a class="ui-button" href="#task-create">Aufgabe anlegen</a>
       </div>
@@ -2199,7 +2291,7 @@ function renderTasksPage(state: OverviewState): string {
       <div class="workspace">
         <div class="stack">
           <section class="workspace-section">
-            <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Eintraege</span></div>
+            <div class="section-head"><div class="section-title"><span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2></div><span class="count-pill">${state.tasks.length} Aufgaben</span></div>
             ${renderOverviewTasks(state, "/aufgaben.php")}
           </section>
           <section class="workspace-section task-form" id="task-create">
@@ -2208,7 +2300,7 @@ function renderTasksPage(state: OverviewState): string {
           </section>
         </div>
         <section class="workspace-section" id="emails">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail Eingange</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2></div><span class="count-pill">${state.emails.length} Nachrichten</span></div>
           ${renderOverviewEmails(state, "/aufgaben.php#emails")}
         </section>
       </div>
@@ -2257,7 +2349,7 @@ function renderCustomerRows(state: CustomersState): string {
         (customer) => `<div class="row">
           <span><strong>${escapeHtml(customer.display_name)}</strong>${customer.customer_number ? `<br><small>${escapeHtml(customer.customer_number)}</small>` : ""}</span>
           <span>${escapeHtml(customer.primary_email ?? customer.primary_phone ?? customer.primary_mobile ?? "-")}</span>
-          <span>${customer.case_count} Vorgang/Vorgaenge</span>
+          <span>${customer.case_count} Vorgaenge</span>
           <span><a class="ui-button secondary" href="/kunden.php?edit=${customer.id}">Bearbeiten</a></span>
         </div>`,
       )
@@ -2374,7 +2466,7 @@ function renderCustomerForm(state: CustomersState, customer: CustomerRecord | nu
       </div>
     </details>
     <div class="item-actions">
-      <a class="ui-button secondary" href="/kunden.php">EXIT</a>
+      <a class="ui-button secondary" href="/kunden.php">Zurueck</a>
       <button class="ui-button" type="submit">Speichern</button>
     </div>
   </form>`;
@@ -2410,7 +2502,7 @@ function renderCustomersPage(
       <div class="topline">
         <div>
           <h1>Kunden</h1>
-          <p class="lede">Kunden werden hier als eigene Datensaetze angelegt. Gleiche Namen oder gleiche E-Mail-Adressen koennen mehrfach vorkommen und verweisen nicht automatisch auf vorhandene Eintraege.</p>
+          <p class="lede">Kunden, Kontaktdaten, Verantwortlichkeiten und Vorgangsstart werden hier eindeutig gepflegt.</p>
         </div>
         <a class="ui-button" href="/kunden.php?new=1">Kunde anlegen</a>
       </div>
@@ -2422,7 +2514,7 @@ function renderCustomersPage(
       ${searchQuery ? `<div class="filter-note">Suche: <strong>${escapeHtml(searchQuery)}</strong> · ${visibleCustomers.length} Treffer</div>` : ""}
       <div class="workspace">
         <section class="workspace-section">
-          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${visibleCustomers.length} Eintraege</span></div>
+          <div class="section-head"><div class="section-title"><span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2></div><span class="count-pill">${visibleCustomers.length} Kunden</span></div>
           ${renderCustomerRows(visibleState)}
         </section>
         <section class="workspace-section task-form">
@@ -2941,7 +3033,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
                       </label>
                     </div>
                     <div class="actions">
-                      <label class="ui-action secondary" for="employee-overview">EXIT</label>
+                      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
                       <button type="submit">Speichern</button>
                     </div>
                   </form>
@@ -2968,7 +3060,7 @@ function renderAdmin(state: AdminState, activeModal: string, editUserId: string 
                     </div>
                     <p class="hint">Sonntag ist nicht als Arbeitstag vorgesehen. Das zweite Zeitfenster bleibt leer, wenn keine Pause oder kein Nachmittagsblock benoetigt wird.</p>
                     <div class="actions">
-                      <label class="ui-action secondary" for="employee-overview">EXIT</label>
+                      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
                       <button type="submit">Speichern</button>
                     </div>
                   </form>
@@ -3224,7 +3316,7 @@ function renderEmployeeForm(action: string, title: string, roles: Role[], values
     </div>
     <input name="external_identity_provider" type="hidden" value="cloudflare_access">
     <div class="actions">
-      <label class="ui-action secondary" for="employee-overview">EXIT</label>
+      <label class="ui-action secondary" for="employee-overview">Zurueck</label>
       <button type="submit">Speichern</button>
     </div>
   </form>`;
