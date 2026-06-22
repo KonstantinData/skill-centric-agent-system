@@ -97,6 +97,9 @@ jobs:
           policy_name = "SCAS DKH CRM allowed users"
           app_name = "Das Küchenhaus CRM"
           deny_message = "Konto nicht fuer CRM freigeschaltet Bitte Team kontaktieren"
+          organization_name = "Das Küchenhaus CRM"
+          login_header_text = "Anmeldung zum Küchenhaus CRM"
+          login_footer_text = "Zugang nur fuer freigeschaltete Benutzer"
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -215,11 +218,41 @@ jobs:
               payload.pop("self_hosted_domains", None)
               return payload
 
+          def sanitize_organization_for_update(organization: dict) -> dict:
+              allowed_keys = {
+                  "allow_authenticate_via_warp",
+                  "auto_redirect_to_identity",
+                  "custom_pages",
+                  "deny_unmatched_requests",
+                  "deny_unmatched_requests_exempted_zone_names",
+                  "login_design",
+                  "mfa_config",
+                  "mfa_piv_key_requirements",
+                  "mfa_required_for_all_apps",
+                  "name",
+                  "session_duration",
+                  "user_seat_expiration_inactive_time",
+                  "warp_auth_session_duration",
+              }
+              payload = {
+                  key: copy.deepcopy(value)
+                  for key, value in organization.items()
+                  if key in allowed_keys and value is not None
+              }
+              login_design = copy.deepcopy(payload.get("login_design") or {})
+              login_design["header_text"] = login_header_text
+              login_design["footer_text"] = login_footer_text
+              payload["name"] = organization_name
+              payload["auto_redirect_to_identity"] = False
+              payload["login_design"] = login_design
+              return payload
+
           apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
           matching_apps = [app for app in apps if app_matches(app)]
           if not matching_apps:
               raise SystemExit("No self-hosted Access application found for the requested hostnames.")
 
+          organization = cf_request("GET", f"/accounts/{account_id}/access/organizations").get("result", {})
           primary = next((app for app in matching_apps if primary_hostname in destination_uris(app)), matching_apps[0])
           changed_policies: list[str] = []
           existing_policy_summaries: list[str] = []
@@ -254,6 +287,9 @@ jobs:
                   changed_policies.append(str(app.get("domain") or app["id"]))
 
           primary_update = sanitize_app_for_update(primary)
+          organization_update = sanitize_organization_for_update(organization)
+          organization_status = "dry-run"
+          organization_error = ""
           consolidation_status = "dry-run"
           consolidation_error = ""
           deleted_duplicate_apps: list[str] = []
@@ -272,6 +308,12 @@ jobs:
               deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
 
           if apply_changes:
+              try:
+                  cf_request("PUT", f"/accounts/{account_id}/access/organizations", organization_update)
+                  organization_status = "updated"
+              except RuntimeError as exc:
+                  organization_status = "blocked"
+                  organization_error = str(exc)
               try:
                   try:
                       cf_request("PUT", f"/accounts/{account_id}/access/apps/{primary['id']}", primary_update)
@@ -294,6 +336,7 @@ jobs:
                   consolidation_status = "blocked"
                   consolidation_error = str(exc)
           else:
+              organization_status = "planned"
               consolidation_status = "planned"
 
           refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
@@ -311,6 +354,11 @@ jobs:
               f"- Matching Access apps after: `{len(refreshed_matches)}`",
               f"- Canonical app before: `{primary.get('name', '')}` / `{primary.get('domain', '')}` / aud `{primary.get('aud', '')}`",
               f"- Canonical app desired name: `{app_name}`",
+              f"- Organization before: `{organization.get('name', '')}` / auth domain `{organization.get('auth_domain', '')}`",
+              f"- Organization desired name: `{organization_name}`",
+              f"- Login header text: `{login_header_text}`",
+              f"- Login footer text: `{login_footer_text}`",
+              f"- Organization branding status: `{organization_status}`",
               f"- Auto redirect to identity: `false`",
               f"- Path scoped Access cookie: `false`",
               f"- Policy changes needed/applied on: `{', '.join(changed_policies) if changed_policies else 'none'}`",
@@ -324,6 +372,13 @@ jobs:
                   [
                       "- Consolidation error:",
                       f"  - `{consolidation_error[:1000]}`",
+                  ]
+              )
+          if organization_error:
+              evidence.extend(
+                  [
+                      "- Organization branding error:",
+                      f"  - `{organization_error[:1000]}`",
                   ]
               )
           evidence.extend(
@@ -342,10 +397,13 @@ jobs:
               "matching_apps_before": len(matching_apps),
               "matching_apps_after": len(refreshed_matches),
               "changed_policies": changed_policies,
+              "organization_status": organization_status,
               "consolidation_status": consolidation_status,
               "deleted_duplicate_apps": deleted_duplicate_apps,
           }, sort_keys=True))
 
+          if apply_changes and organization_status == "blocked":
+              raise SystemExit("Access organization branding was blocked. See evidence artifact.")
           if apply_changes and consolidation_status == "blocked":
               raise SystemExit("Access policies were processed, but hostname consolidation was blocked. See evidence artifact.")
           PY
