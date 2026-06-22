@@ -526,6 +526,9 @@ def test_es_daskuechenhaus_crm_deploy_workflow_cuts_over_to_nextjs_origin() -> N
     assert "es-daskuechenhaus-crm" in workflow
     assert "DKH_CLOUDFLARE_ZONE_ID" in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "Create Cloudflare Origin certificate" in workflow
+    assert "/client/v4/certificates" in workflow
+    assert "/etc/ssl/cloudflare" in workflow
     assert "/workers/routes" in workflow
     assert "/dns_records" in workflow
     assert "Access application/policies: `preserved; not modified by this workflow`" in workflow
