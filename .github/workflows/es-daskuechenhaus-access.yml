@@ -95,6 +95,11 @@ jobs:
           primary_hostname = os.environ["DKH_ACCESS_PRIMARY_HOSTNAME"].strip().lower()
           base = "https://api.cloudflare.com/client/v4"
           policy_name = "SCAS DKH CRM allowed users"
+          app_name = "Das Küchenhaus CRM"
+          deny_message = (
+              "Dieses Konto ist nicht für das Küchenhaus CRM freigeschaltet. "
+              "Bitte wenden Sie sich an das Küchenhaus-Team."
+          )
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -199,12 +204,17 @@ jobs:
                   if key in allowed_keys and value is not None
               }
               payload["type"] = "self_hosted"
-              payload["name"] = "Das Kuechenhaus CRM"
+              payload["name"] = app_name
               payload["domain"] = primary_hostname
               payload["destinations"] = [
                   {"type": "public", "uri": hostname}
                   for hostname in hostnames
               ]
+              payload["auto_redirect_to_identity"] = False
+              payload["custom_deny_message"] = deny_message
+              payload["http_only_cookie_attribute"] = True
+              payload["path_cookie_attribute"] = False
+              payload["skip_interstitial"] = False
               payload.pop("self_hosted_domains", None)
               return payload
 
@@ -303,6 +313,9 @@ jobs:
               f"- Matching Access apps before: `{len(matching_apps)}`",
               f"- Matching Access apps after: `{len(refreshed_matches)}`",
               f"- Canonical app before: `{primary.get('name', '')}` / `{primary.get('domain', '')}` / aud `{primary.get('aud', '')}`",
+              f"- Canonical app desired name: `{app_name}`",
+              f"- Auto redirect to identity: `false`",
+              f"- Path scoped Access cookie: `false`",
               f"- Policy changes needed/applied on: `{', '.join(changed_policies) if changed_policies else 'none'}`",
               f"- Consolidation status: `{consolidation_status}`",
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
