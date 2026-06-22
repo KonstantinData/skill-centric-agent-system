@@ -152,7 +152,7 @@ jobs:
                   "decision": "allow",
                   "precedence": precedence,
                   "include": [
-                      {"_type": "email", "email": email}
+                      {"email": {"email": email}}
                       for email in allowed_emails
                   ],
                   "exclude": [],
@@ -160,11 +160,13 @@ jobs:
               }
 
           def policy_emails(policy: dict) -> set[str]:
-              return {
-                  str(rule.get("email", "")).lower()
-                  for rule in policy.get("include") or []
-                  if rule.get("_type") == "email" and rule.get("email")
-              }
+              emails: set[str] = set()
+              for rule in policy.get("include") or []:
+                  if isinstance(rule.get("email"), dict) and rule["email"].get("email"):
+                      emails.add(str(rule["email"]["email"]).lower())
+                  elif rule.get("_type") == "email" and rule.get("email"):
+                      emails.add(str(rule["email"]).lower())
+              return emails
 
           def sanitize_app_for_update(app: dict) -> dict:
               allowed_keys = {
