@@ -76,12 +76,39 @@ gh workflow run "es-daskuechenhaus.de Access Configuration" `
   -f "hostnames=es-daskuechenhaus.de www.es-daskuechenhaus.de" `
   -f "allowed_emails=k.milonas@schober-daskuechenhaus.de" `
   -f primary_hostname=es-daskuechenhaus.de `
-  -f delete_duplicate_apps=true
+  -f delete_duplicate_apps=true `
+  -f reset_user_auth_state=false `
+  -f reset_user_email=""
 ```
 
 When the other two portal users are approved, add them to the
 `allowed_emails` input as a whitespace-separated list. Do not add broad domain
 allow rules unless all mailboxes in that domain should receive CRM access.
+
+To force a clean Cloudflare Access re-enrollment for a DKH user, run the same
+workflow with `reset_user_auth_state=true` and `reset_user_email` set to that
+user's approved e-mail address. The reset revokes Access sessions, deletes
+registered independent MFA authenticators when the API exposes them, and removes
+the user's active Access user/seat state where Cloudflare allows it. Cloudflare
+may keep an inactive user record; the important reset criteria are no active
+session and no registered MFA authenticator for the next login.
+
+```powershell
+gh workflow run "es-daskuechenhaus.de Access Configuration" `
+  --repo KonstantinData/skill-centric-agent-system `
+  --ref main `
+  -f apply_changes=true `
+  -f confirm_production=true `
+  -f "hostnames=es-daskuechenhaus.de www.es-daskuechenhaus.de" `
+  -f "allowed_emails=k.milonas@schober-daskuechenhaus.de" `
+  -f primary_hostname=es-daskuechenhaus.de `
+  -f delete_duplicate_apps=true `
+  -f reset_user_auth_state=true `
+  -f reset_user_email=k.milonas@schober-daskuechenhaus.de
+```
+
+After a reset, the user can start enrollment through the protected application
+or directly at `https://still-butterfly-bbff.cloudflareaccess.com/AddMfaDevice`.
 
 Cloudflare's Access login page header/footer and organization name are global
 Zero Trust settings. The repository-owned workflow keeps the DKH organization
