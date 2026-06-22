@@ -29,6 +29,11 @@ Browser
   portal setup, use one `Allow` policy with `Emails` selectors for the approved
   users. The initial approved user is:
   - `k.milonas@schober-daskuechenhaus.de`
+- Cloudflare Access uses e-mail one-time PIN as the first factor and
+  independent MFA with an authenticator application (`totp`) as the second
+  factor. The workflow keeps MFA enabled at the organization level and applies
+  TOTP MFA to every `Allow` policy on the two DKH Access applications so an
+  older allow policy cannot bypass MFA.
 - The Access application name, Zero Trust organization display name, login
   header/footer text, and identity-denied message are DKH-specific. Keep
   automatic identity-provider redirects disabled so users land on the Access
@@ -79,9 +84,9 @@ allow rules unless all mailboxes in that domain should receive CRM access.
 Cloudflare's Access login page header/footer and organization name are global
 Zero Trust settings. The repository-owned workflow keeps the DKH organization
 name, login header/footer text, per-hostname application names, Access allow
-policy, deny message, cookie scope, and host-specific Access app split
-reproducible. Do not leave legacy labels such as unrelated chatbot names on the
-Access login page.
+policy, TOTP MFA settings, deny message, cookie scope, and host-specific Access
+app split reproducible. Do not leave legacy labels such as unrelated chatbot
+names on the Access login page.
 
 ## Validation
 
