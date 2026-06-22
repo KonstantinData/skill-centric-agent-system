@@ -66,15 +66,13 @@
 
   const setResults = (items) => {
     const results = root.querySelector("[data-customer-search-results]");
-    const emptyState = root.querySelector("[data-customer-search-empty]");
     const hint = root.querySelector("[data-customer-search-hint]");
-    const createPanel = document.querySelector("[data-customer-create-panel]");
+    const createModal = document.querySelector("[data-customer-create-modal]");
     results.innerHTML = "";
     if (!items.length) {
       results.hidden = true;
-      emptyState.hidden = false;
-      if (createPanel) createPanel.hidden = false;
       hint.textContent = "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
+      if (createModal) createModal.hidden = false;
       return;
     }
     const list = document.createElement("div");
@@ -114,26 +112,25 @@
     }
     results.append(list);
     results.hidden = false;
-    emptyState.hidden = items.length > 0;
-    if (createPanel) createPanel.hidden = true;
-    hint.textContent = items.length > 0
-      ? items.length + " Treffer gefunden."
-      : "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
+    if (createModal) createModal.hidden = true;
+    hint.textContent = items.length + " Treffer gefunden.";
   };
 
   if (!root) return;
 
   const input = root.querySelector("[data-customer-search-input]");
   const results = root.querySelector("[data-customer-search-results]");
-  const emptyState = root.querySelector("[data-customer-search-empty]");
   const hint = root.querySelector("[data-customer-search-hint]");
-  const createPanel = document.querySelector("[data-customer-create-panel]");
+  const createModal = document.querySelector("[data-customer-create-modal]");
+
+  const closeCreateModal = () => {
+    if (createModal) createModal.hidden = true;
+  };
 
   const resetSearch = () => {
     results.hidden = true;
     results.innerHTML = "";
-    emptyState.hidden = true;
-    if (createPanel) createPanel.hidden = true;
+    closeCreateModal();
     hint.textContent = "Geben Sie mindestens drei Zeichen ein.";
   };
 
@@ -161,11 +158,23 @@
     } catch (error) {
       if (error.name === "AbortError") return;
       results.hidden = true;
-      emptyState.hidden = true;
-      if (createPanel) createPanel.hidden = true;
+      closeCreateModal();
       hint.textContent = "Suche aktuell nicht verfügbar.";
     }
   };
+
+  if (createModal) {
+    createModal.addEventListener("click", (event) => {
+      if (event.target === createModal) closeCreateModal();
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-customer-create-close]")
+        : null;
+      if (closeButton) closeCreateModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCreateModal();
+    });
+  }
 
   input.addEventListener("input", runSearch);
 })();

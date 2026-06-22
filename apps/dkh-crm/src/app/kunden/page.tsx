@@ -24,8 +24,9 @@ export default async function CustomersPage() {
   return (
     <div className="content-stack">
       <PageHero
+        eyebrow={null}
         title="Kunden"
-        subtitle="Suche, Dubletten-sensible Neuanlage und direkter Einstieg in Kundenakten."
+        subtitle="Suche, Neuanlage und direkter Einstieg in Kundenakten."
       />
       <Panel>
         <div data-customer-search-first className="grid gap-3">
@@ -42,15 +43,66 @@ export default async function CustomersPage() {
             Geben Sie mindestens drei Zeichen ein.
           </p>
           <div data-customer-search-results hidden />
-          <p data-customer-search-empty hidden className="text-sm text-[var(--muted)]">
-            Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.
-          </p>
         </div>
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <Panel data-customer-create-panel hidden>
-          <h2 className="section-title">Kunde anlegen</h2>
+        <div aria-hidden="true" />
+
+        <Panel>
+          <h2 className="section-title">Zuletzt verwendet</h2>
+          <div className="mt-4 grid gap-3">
+            {recentlyUsedCustomers.map((customer) => (
+              <article key={customer.id} className="rounded-lg border border-[var(--border)] bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold">{customer.display_name}</p>
+                    <p className="text-sm text-[var(--muted)]">
+                      {customer.customer_number || "Ohne Kundennummer"} ·{" "}
+                      {customer.primary_email || customer.primary_phone || "Keine Kontaktdaten"}
+                    </p>
+                  </div>
+                  <LinkButton
+                    href={`/kunden/${customer.id}`}
+                    data-customer-file-link=""
+                    data-customer-id={customer.id}
+                  >
+                    Akte öffnen
+                  </LinkButton>
+                </div>
+              </article>
+            ))}
+            {recentlyUsedCustomers.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">Noch keine zuletzt bearbeiteten Kunden.</p>
+            ) : null}
+          </div>
+        </Panel>
+      </div>
+      <div
+        data-customer-create-modal
+        hidden
+        className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-create-title"
+      >
+        <Panel className="max-h-[92vh] w-full max-w-3xl overflow-y-auto">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="customer-create-title" className="section-title">Kunde anlegen</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Kein Treffer in der Suche. Erfassen Sie den Kunden jetzt neu.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-customer-create-close
+              aria-label="Neuanlage schließen"
+            >
+              Schließen
+            </button>
+          </div>
           <form className="mt-4 grid gap-3" action="/api/kunden/customers?return_to=/kunden" method="post">
             <div className="grid gap-3 md:grid-cols-2">
               <Label label="Typ">
@@ -114,35 +166,6 @@ export default async function CustomersPage() {
             </label>
             <Button type="submit">Kunde speichern</Button>
           </form>
-        </Panel>
-
-        <Panel>
-          <h2 className="section-title">Zuletzt verwendet</h2>
-          <div className="mt-4 grid gap-3">
-            {recentlyUsedCustomers.map((customer) => (
-              <article key={customer.id} className="rounded-lg border border-[var(--border)] bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-bold">{customer.display_name}</p>
-                    <p className="text-sm text-[var(--muted)]">
-                      {customer.customer_number || "Ohne Kundennummer"} ·{" "}
-                      {customer.primary_email || customer.primary_phone || "Keine Kontaktdaten"}
-                    </p>
-                  </div>
-                  <LinkButton
-                    href={`/kunden/${customer.id}`}
-                    data-customer-file-link=""
-                    data-customer-id={customer.id}
-                  >
-                    Akte öffnen
-                  </LinkButton>
-                </div>
-              </article>
-            ))}
-            {recentlyUsedCustomers.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">Noch keine zuletzt bearbeiteten Kunden.</p>
-            ) : null}
-          </div>
         </Panel>
       </div>
       <Script src="/customer-search.v1.js" strategy="afterInteractive" />

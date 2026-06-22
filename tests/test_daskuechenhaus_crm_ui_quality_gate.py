@@ -30,9 +30,10 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "/api/kunden/search?q=" in search_script
     assert "/kunden/" in search_script
     assert "maxOpenFiles = 3" in search_script
-    assert "[data-customer-create-panel]" in search_script
-    assert "if (createPanel) createPanel.hidden = false" in search_script
-    assert "if (createPanel) createPanel.hidden = true" in search_script
+    assert "[data-customer-create-modal]" in search_script
+    assert "if (createModal) createModal.hidden = false" in search_script
+    assert "closeCreateModal" in search_script
+    assert "Escape" in search_script
 
 
 def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
@@ -76,9 +77,16 @@ def test_dkh_crm_surface_uses_new_routes_not_php_worker_routes() -> None:
 
 def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     source = load_text(APP_ROOT / "src" / "app" / "kunden" / "page.tsx")
+    hero = load_text(APP_ROOT / "src" / "components" / "chrome" / "page-hero.tsx")
 
-    assert '<Panel data-customer-create-panel hidden>' in source
-    assert "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden." in source
+    assert "eyebrow={null}" in source
+    assert "Suche, Neuanlage und direkter Einstieg in Kundenakten." in source
+    assert "Suche, Dubletten-sensible Neuanlage" not in source
+    assert "eyebrow = \"das küchenhaus\"" in hero
+    assert "data-customer-create-modal" in source
+    assert "role=\"dialog\"" in source
+    assert "data-customer-create-close" in source
+    assert "data-customer-search-empty" not in source
     assert "recentlyUsedCustomers" in source
     assert ".slice(0, 5)" in source
     assert "Zuletzt verwendet" in source
