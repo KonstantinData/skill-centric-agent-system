@@ -29,6 +29,9 @@ Browser
   portal setup, use one `Allow` policy with `Emails` selectors for the approved
   users. The initial approved user is:
   - `k.milonas@schober-daskuechenhaus.de`
+- The Access application name and identity-denied message are German. Keep
+  automatic identity-provider redirects disabled so users land on the Access
+  login choice page instead of being bounced through an IdP loop.
 - No Cloudflare Worker route should exist for either hostname.
 - The Access application must pass the authenticated user email to the origin
   through the Access JWT/header flow.
@@ -72,6 +75,12 @@ gh workflow run "es-daskuechenhaus.de Access Configuration" `
 When the other two portal users are approved, add them to the
 `allowed_emails` input as a whitespace-separated list. Do not add broad domain
 allow rules unless all mailboxes in that domain should receive CRM access.
+
+Cloudflare's Access login page header/footer are global Zero Trust custom page
+settings in the Cloudflare dashboard. Configure them in German under
+Zero Trust > Reusable components > Custom pages > Access login page. The
+repository-owned workflow keeps the DKH application name, Access allow policy,
+deny message, cookie scope, and hostname consolidation reproducible.
 
 ## Validation
 
