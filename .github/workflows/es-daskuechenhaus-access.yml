@@ -97,8 +97,8 @@ jobs:
           policy_name = "SCAS DKH CRM allowed users"
           app_name = "Das Küchenhaus CRM"
           deny_message = (
-              "Dieses Konto ist nicht für das Küchenhaus CRM freigeschaltet "
-              "Bitte wenden Sie sich an das Küchenhaus Team"
+              "Dieses Konto ist nicht fuer das Kuechenhaus CRM freigeschaltet "
+              "Bitte wenden Sie sich an das Kuechenhaus Team"
           )
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
