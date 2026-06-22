@@ -33,7 +33,9 @@ Browser
   independent MFA with an authenticator application (`totp`) as the second
   factor. The workflow keeps MFA enabled at the organization level and applies
   TOTP MFA to every `Allow` policy on the two DKH Access applications so an
-  older allow policy cannot bypass MFA.
+  older allow policy cannot bypass MFA. The MFA session duration is `24h`; this
+  keeps MFA mandatory while avoiding an immediately expired MFA session during
+  the Access callback flow.
 - The Access application name, Zero Trust organization display name, login
   header/footer text, and identity-denied message are DKH-specific. Keep
   automatic identity-provider redirects disabled so users land on the Access
