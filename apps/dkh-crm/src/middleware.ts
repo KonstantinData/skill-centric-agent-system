@@ -19,10 +19,13 @@ function accessJwtConfig() {
     /^https?:\/\//,
     "",
   );
-  const audience = process.env.CF_ACCESS_AUD;
-  if (!teamDomain || !audience) return null;
+  const audiences = (process.env.CF_ACCESS_AUD ?? "")
+    .split(/[,\s]+/)
+    .map((audience) => audience.trim())
+    .filter(Boolean);
+  if (!teamDomain || audiences.length === 0) return null;
   return {
-    audience,
+    audiences,
     issuer: `https://${teamDomain}`,
     teamDomain,
   };
@@ -37,7 +40,7 @@ async function accessEmailFromJwt(request: NextRequest): Promise<string> {
     new URL(`${config.issuer}/cdn-cgi/access/certs`),
   );
   const { payload } = await jwtVerify(token, jwks, {
-    audience: config.audience,
+    audience: config.audiences,
     issuer: config.issuer,
   });
   return typeof payload.email === "string" ? payload.email : "";
