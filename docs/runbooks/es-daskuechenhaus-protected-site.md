@@ -10,7 +10,7 @@ Next.js application in `apps/dkh-crm/`.
 ```text
 Browser
   -> Cloudflare DNS proxy
-  -> Cloudflare Access self-hosted application
+  -> Cloudflare Access self-hosted application for the requested hostname
   -> Hetzner Nginx
   -> apps/dkh-crm .next/standalone/server.js
   -> Hetzner DKH Admin API
@@ -20,9 +20,9 @@ Browser
 ## Required Cloudflare State
 
 - DNS keeps `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` proxied.
-- Cloudflare Access protects both hostnames through one self-hosted Access
-  application. The production Access application must use both public
-  destinations:
+- Cloudflare Access protects both hostnames through separate self-hosted Access
+  applications. Keep one application per hostname so the Access login callback
+  host matches the hostname that started authentication:
   - `es-daskuechenhaus.de`
   - `www.es-daskuechenhaus.de`
 - Access authorization is explicit user allow-listing. For the three-person
@@ -52,10 +52,9 @@ npm --prefix apps/dkh-crm run build
   - `DKH_ADMIN_API_BASE_URL`
   - `DKH_ADMIN_API_TOKEN`
   - `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` when JWT validation is enforced.
-    If Cloudflare Access uses separate applications for the apex and `www`
+    Because Cloudflare Access uses separate applications for the apex and `www`
     hostnames, include both audience tags in `CF_ACCESS_AUD` separated by
-    whitespace or commas. Prefer a single Access application covering both
-    hostnames when possible.
+    whitespace or commas.
 
 ## Access Configuration Workflow
 
@@ -79,9 +78,10 @@ allow rules unless all mailboxes in that domain should receive CRM access.
 
 Cloudflare's Access login page header/footer and organization name are global
 Zero Trust settings. The repository-owned workflow keeps the DKH organization
-name, login header/footer text, application name, Access allow policy, deny
-message, cookie scope, and hostname consolidation reproducible. Do not leave
-legacy labels such as unrelated chatbot names on the Access login page.
+name, login header/footer text, per-hostname application names, Access allow
+policy, deny message, cookie scope, and host-specific Access app split
+reproducible. Do not leave legacy labels such as unrelated chatbot names on the
+Access login page.
 
 ## Validation
 

@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
       hostnames:
-        description: Space-separated public hostnames protected by one Access app
+        description: Space-separated public hostnames protected by host-specific Access apps
         required: true
         type: string
         default: es-daskuechenhaus.de www.es-daskuechenhaus.de
@@ -29,7 +29,7 @@ on:
         type: string
         default: es-daskuechenhaus.de
       delete_duplicate_apps:
-        description: Delete duplicate Access apps after the primary app covers all hostnames
+        description: Delete duplicate Access apps after each hostname has its own app
         required: true
         type: boolean
         default: true
@@ -218,7 +218,10 @@ jobs:
                   fragments.append(f"{key}=[{'; '.join(values) if values else 'none'}]")
               return " ".join(fragments)
 
-          def sanitize_app_for_update(app: dict) -> dict:
+          def app_name_for_hostname(hostname: str) -> str:
+              return app_name if hostname == primary_hostname else f"{app_name} ({hostname})"
+
+          def sanitize_app_for_update(app: dict | None, hostname: str) -> dict:
               allowed_keys = {
                   "type",
                   "name",
@@ -243,18 +246,17 @@ jobs:
                   "cors_headers",
                   "tags",
               }
-              payload = {
-                  key: copy.deepcopy(value)
-                  for key, value in app.items()
-                  if key in allowed_keys and value is not None
-              }
+              payload = {}
+              if app:
+                  payload = {
+                      key: copy.deepcopy(value)
+                      for key, value in app.items()
+                      if key in allowed_keys and value is not None
+                  }
               payload["type"] = "self_hosted"
-              payload["name"] = app_name
-              payload["domain"] = primary_hostname
-              payload["destinations"] = [
-                  {"type": "public", "uri": hostname}
-                  for hostname in hostnames
-              ]
+              payload["name"] = app_name_for_hostname(hostname)
+              payload["domain"] = hostname
+              payload["destinations"] = [{"type": "public", "uri": hostname}]
               payload["auto_redirect_to_identity"] = False
               payload["custom_deny_message"] = deny_message
               payload["http_only_cookie_attribute"] = True
@@ -328,13 +330,71 @@ jobs:
                   )
                   renamed_identity_providers.append(str(provider.get("name") or provider["id"]))
                   provider["name"] = otp_identity_provider_name
-          primary = next((app for app in matching_apps if primary_hostname in destination_uris(app)), matching_apps[0])
-          changed_policies: list[str] = []
-          existing_policy_summaries: list[str] = []
+          def exact_app_for_hostname(candidates: list[dict], hostname: str) -> dict | None:
+              for app in candidates:
+                  if app.get("type") == "self_hosted" and destination_uris(app) == {hostname}:
+                      return app
+              return None
 
-          for app in matching_apps:
+          def covering_app_for_hostname(
+              candidates: list[dict],
+              hostname: str,
+              excluded_ids: set[str] | None = None,
+          ) -> dict | None:
+              excluded_ids = excluded_ids or set()
+              for app in candidates:
+                  if app.get("type") != "self_hosted" or str(app.get("id")) in excluded_ids:
+                      continue
+                  if hostname in destination_uris(app):
+                      return app
+              return None
+
+          def select_target_apps(candidates: list[dict]) -> dict[str, dict | None]:
+              target_apps: dict[str, dict | None] = {}
+              primary = exact_app_for_hostname(candidates, primary_hostname) or covering_app_for_hostname(
+                  candidates,
+                  primary_hostname,
+              )
+              if primary:
+                  target_apps[primary_hostname] = primary
+              used_ids = {str(primary["id"])} if primary else set()
+              for hostname in hostnames:
+                  if hostname == primary_hostname:
+                      continue
+                  exact = exact_app_for_hostname(candidates, hostname)
+                  if exact:
+                      target_apps[hostname] = exact
+                      used_ids.add(str(exact["id"]))
+                      continue
+                  target_apps[hostname] = covering_app_for_hostname(candidates, hostname, used_ids)
+                  if target_apps[hostname]:
+                      used_ids.add(str(target_apps[hostname]["id"]))
+              return target_apps
+
+          def ensure_one_time_pin_allowed(payload: dict) -> dict:
+              if one_time_pin_provider_ids and payload.get("allowed_idps"):
+                  allowed_idps = [str(provider_id) for provider_id in payload["allowed_idps"]]
+                  for provider_id in one_time_pin_provider_ids:
+                      if provider_id not in allowed_idps:
+                          allowed_idps.append(provider_id)
+                  payload["allowed_idps"] = allowed_idps
+              return payload
+
+          def target_app_summary(target_apps: dict[str, dict | None]) -> list[str]:
+              summaries: list[str] = []
+              for hostname in hostnames:
+                  app = target_apps.get(hostname)
+                  if app:
+                      summaries.append(
+                          f"{hostname}: {app.get('name', '')} / {app.get('domain', '')} / aud {app.get('aud', '')}"
+                      )
+                  else:
+                      summaries.append(f"{hostname}: missing")
+              return summaries
+
+          def ensure_policy(app: dict, policy_changes: list[str], policy_summaries: list[str]) -> None:
               policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
-              existing_policy_summaries.extend(
+              policy_summaries.extend(
                   (
                       f"{app.get('domain', app['id'])}: {policy.get('name')} "
                       f"({policy.get('decision')}) {policy_rule_summary(policy)}"
@@ -358,31 +418,23 @@ jobs:
                   if target.get("decision") != "allow" or policy_emails(target) != desired_emails:
                       if apply_changes:
                           cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", payload)
-                      changed_policies.append(str(app.get("domain") or app["id"]))
+                      policy_changes.append(str(app.get("domain") or app["id"]))
               else:
                   if apply_changes:
                       cf_request("POST", f"/accounts/{account_id}/access/apps/{app['id']}/policies", payload)
-                  changed_policies.append(str(app.get("domain") or app["id"]))
+                  policy_changes.append(str(app.get("domain") or app["id"]))
 
-          primary_update = sanitize_app_for_update(primary)
-          if one_time_pin_provider_ids and primary_update.get("allowed_idps"):
-              allowed_idps = [str(provider_id) for provider_id in primary_update["allowed_idps"]]
-              for provider_id in one_time_pin_provider_ids:
-                  if provider_id not in allowed_idps:
-                      allowed_idps.append(provider_id)
-              primary_update["allowed_idps"] = allowed_idps
+          target_apps_before = select_target_apps(apps)
+          existing_policy_summaries: list[str] = []
+          changed_policies: list[str] = []
           organization_update = sanitize_organization_for_update(organization)
           organization_status = "dry-run"
           organization_error = ""
-          consolidation_status = "dry-run"
-          consolidation_error = ""
+          host_app_status = "dry-run"
+          host_app_error = ""
+          changed_apps: list[str] = []
           deleted_duplicate_apps: list[str] = []
           deleted_duplicate_app_ids: set[str] = set()
-          duplicate_apps = [
-              app
-              for app in matching_apps
-              if app["id"] != primary["id"] and destination_uris(app).issubset(set(hostnames))
-          ]
 
           def delete_duplicate_app(app: dict) -> None:
               if app["id"] in deleted_duplicate_app_ids:
@@ -399,29 +451,72 @@ jobs:
                   organization_status = "blocked"
                   organization_error = str(exc)
               try:
-                  try:
-                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{primary['id']}", primary_update)
-                      consolidation_status = "updated-primary"
-                  except RuntimeError as exc:
-                      if (
-                          not delete_duplicate_apps
-                          or not duplicate_apps
-                          or "destination belongs to another application" not in str(exc)
-                      ):
-                          raise
-                      for app in duplicate_apps:
-                          delete_duplicate_app(app)
-                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{primary['id']}", primary_update)
-                      consolidation_status = "deleted-duplicates-updated-primary"
+                  source_app = target_apps_before.get(primary_hostname) or matching_apps[0]
+                  for hostname in hostnames:
+                      app = target_apps_before.get(hostname)
+                      if not app:
+                          continue
+                      payload = ensure_one_time_pin_allowed(sanitize_app_for_update(app, hostname))
+                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                      changed_apps.append(f"{hostname}:updated")
+
+                  refreshed_for_create = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+                  used_target_ids: set[str] = set()
+                  for hostname in hostnames:
+                      app = exact_app_for_hostname(refreshed_for_create, hostname)
+                      if app:
+                          used_target_ids.add(str(app["id"]))
+                          continue
+                      app = covering_app_for_hostname(refreshed_for_create, hostname, used_target_ids)
+                      if app:
+                          payload = ensure_one_time_pin_allowed(sanitize_app_for_update(app, hostname))
+                          cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                          changed_apps.append(f"{hostname}:split-existing")
+                          used_target_ids.add(str(app["id"]))
+                          refreshed_for_create = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+                          continue
+                      payload = ensure_one_time_pin_allowed(sanitize_app_for_update(source_app, hostname))
+                      created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
+                      changed_apps.append(f"{hostname}:created")
+                      if created.get("id"):
+                          used_target_ids.add(str(created["id"]))
+                      refreshed_for_create = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+
+                  refreshed_for_cleanup = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+                  target_apps_after_cleanup = select_target_apps(refreshed_for_cleanup)
+                  target_ids = {
+                      str(app["id"])
+                      for app in target_apps_after_cleanup.values()
+                      if app and app.get("id")
+                  }
                   if delete_duplicate_apps:
-                      for app in duplicate_apps:
-                          delete_duplicate_app(app)
+                      for app in refreshed_for_cleanup:
+                          uris = destination_uris(app)
+                          if (
+                              app.get("type") == "self_hosted"
+                              and uris
+                              and uris.issubset(set(hostnames))
+                              and str(app.get("id")) not in target_ids
+                          ):
+                              delete_duplicate_app(app)
+
+                  refreshed_for_policy = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+                  target_apps_for_policy = select_target_apps(refreshed_for_policy)
+                  missing = [hostname for hostname, app in target_apps_for_policy.items() if not app]
+                  if missing:
+                      raise RuntimeError(f"Missing Access applications after split: {', '.join(missing)}")
+                  for hostname in hostnames:
+                      ensure_policy(target_apps_for_policy[hostname], changed_policies, existing_policy_summaries)
+                  host_app_status = "updated"
               except RuntimeError as exc:
-                  consolidation_status = "blocked"
-                  consolidation_error = str(exc)
+                  host_app_status = "blocked"
+                  host_app_error = str(exc)
           else:
               organization_status = "planned"
-              consolidation_status = "planned"
+              host_app_status = "planned"
+              for hostname, app in target_apps_before.items():
+                  if app:
+                      ensure_policy(app, changed_policies, existing_policy_summaries)
 
           refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
           refreshed_identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
@@ -431,20 +526,37 @@ jobs:
               if provider.get("id")
           }
           refreshed_matches = [app for app in refreshed_apps if app_matches(app)]
-          refreshed_primary = next((app for app in refreshed_matches if primary_hostname in destination_uris(app)), primary)
+          target_apps_after = select_target_apps(refreshed_apps)
+          target_audiences_after = [
+              str(app.get("aud"))
+              for app in target_apps_after.values()
+              if app and app.get("aud")
+          ]
           collected_at = datetime.now(UTC).isoformat()
           otp_allowed_before = (
               bool(one_time_pin_provider_ids)
               and (
-                  not primary.get("allowed_idps")
-                  or bool(set(str(provider_id) for provider_id in primary.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+                  all(
+                      app
+                      and (
+                          not app.get("allowed_idps")
+                          or bool(set(str(provider_id) for provider_id in app.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+                      )
+                      for app in target_apps_before.values()
+                  )
               )
           )
           otp_allowed_after = (
               bool(one_time_pin_provider_ids)
               and (
-                  not refreshed_primary.get("allowed_idps")
-                  or bool(set(str(provider_id) for provider_id in refreshed_primary.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+                  all(
+                      app
+                      and (
+                          not app.get("allowed_idps")
+                          or bool(set(str(provider_id) for provider_id in app.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+                      )
+                      for app in target_apps_after.values()
+                  )
               )
           )
 
@@ -455,10 +567,12 @@ jobs:
               f"- Primary hostname: `{primary_hostname}`",
               f"- Hostnames: `{', '.join(hostnames)}`",
               f"- Allowed emails: `{', '.join(allowed_emails)}`",
+              f"- Host-specific Access apps before: `{sum(1 for app in target_apps_before.values() if app)}`",
+              f"- Host-specific Access apps after: `{sum(1 for app in target_apps_after.values() if app)}`",
               f"- Matching Access apps before: `{len(matching_apps)}`",
               f"- Matching Access apps after: `{len(refreshed_matches)}`",
-              f"- Canonical app before: `{primary.get('name', '')}` / `{primary.get('domain', '')}` / aud `{primary.get('aud', '')}`",
-              f"- Canonical app desired name: `{app_name}`",
+              f"- Access app mode: `one app per hostname`",
+              f"- Application audience tags after: `{', '.join(target_audiences_after)}`",
               f"- Organization before: `{organization.get('name', '')}` / auth domain `{organization.get('auth_domain', '')}`",
               f"- Organization desired name: `{organization_name}`",
               f"- Login header text: `{login_header_text}`",
@@ -470,37 +584,50 @@ jobs:
               f"- One-time PIN allowed before: `{str(otp_allowed_before).lower()}`",
               f"- One-time PIN allowed after: `{str(otp_allowed_after).lower()}`",
               f"- Organization branding status: `{organization_status}`",
+              f"- Host app status: `{host_app_status}`",
+              f"- Host app changes: `{', '.join(changed_apps) if changed_apps else 'none'}`",
               f"- Auto redirect to identity: `false`",
               f"- Path scoped Access cookie: `false`",
               f"- Policy changes needed/applied on: `{', '.join(changed_policies) if changed_policies else 'none'}`",
-              f"- Consolidation status: `{consolidation_status}`",
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
-              "- Identity provider summary:",
+              "- Host apps before:",
           ]
+          evidence.extend(f"  - `{summary}`" for summary in target_app_summary(target_apps_before))
+          evidence.extend(
+              [
+                  "- Host apps after:",
+              ]
+          )
+          evidence.extend(f"  - `{summary}`" for summary in target_app_summary(target_apps_after))
+          evidence.extend(
+              [
+              "- Identity provider summary:",
+              ]
+          )
           evidence.extend(f"  - `{identity_provider_label(provider)}`" for provider in refreshed_identity_providers)
           evidence.extend(
               [
-                  "- Canonical app allowed identity providers before:",
+                  "- Host app allowed identity providers after:",
               ]
           )
-          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(primary, identity_provider_lookup))
-          evidence.extend(
-              [
-                  "- Canonical app allowed identity providers after:",
-              ]
-          )
-          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(refreshed_primary, refreshed_identity_provider_lookup))
+          for hostname in hostnames:
+              app = target_apps_after.get(hostname)
+              if app:
+                  for label in app_allowed_identity_provider_labels(app, refreshed_identity_provider_lookup):
+                      evidence.append(f"  - `{hostname}: {label}`")
+              else:
+                  evidence.append(f"  - `{hostname}: missing`")
           evidence.extend(
               [
               "- Existing policy summary:",
               ]
           )
           evidence.extend(f"  - `{summary}`" for summary in existing_policy_summaries)
-          if consolidation_error:
+          if host_app_error:
               evidence.extend(
                   [
-                      "- Consolidation error:",
-                      f"  - `{consolidation_error[:1000]}`",
+                      "- Host app error:",
+                      f"  - `{host_app_error[:1000]}`",
                   ]
               )
           if organization_error:
@@ -527,7 +654,8 @@ jobs:
               "matching_apps_after": len(refreshed_matches),
               "changed_policies": changed_policies,
               "organization_status": organization_status,
-              "consolidation_status": consolidation_status,
+              "host_app_status": host_app_status,
+              "audiences_after": target_audiences_after,
               "deleted_duplicate_apps": deleted_duplicate_apps,
               "renamed_identity_providers": renamed_identity_providers,
               "one_time_pin_allowed_after": otp_allowed_after,
@@ -537,8 +665,8 @@ jobs:
 
           if apply_changes and organization_status == "blocked":
               raise SystemExit("Access organization branding was blocked. See evidence artifact.")
-          if apply_changes and consolidation_status == "blocked":
-              raise SystemExit("Access policies were processed, but hostname consolidation was blocked. See evidence artifact.")
+          if apply_changes and host_app_status == "blocked":
+              raise SystemExit("Access host application split was blocked. See evidence artifact.")
           PY
 
       - name: Upload Access evidence
