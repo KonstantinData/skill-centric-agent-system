@@ -173,6 +173,50 @@ jobs:
                       emails.add(str(rule["email"]).lower())
               return emails
 
+          def is_one_time_pin_provider(provider: dict) -> bool:
+              provider_type = str(provider.get("type") or "").lower()
+              provider_name = str(provider.get("name") or "").lower()
+              return provider_type == "onetimepin" or "one-time pin" in provider_name or "otp" in provider_name
+
+          def identity_provider_label(provider: dict) -> str:
+              return (
+                  f"{provider.get('name', 'unnamed')} "
+                  f"({provider.get('type', 'unknown')}) id {provider.get('id', 'missing')}"
+              )
+
+          def app_allowed_identity_provider_labels(app: dict, provider_lookup: dict[str, dict]) -> list[str]:
+              allowed_idps = app.get("allowed_idps") or []
+              if not allowed_idps:
+                  return ["all configured identity providers"]
+              labels: list[str] = []
+              for provider_id in allowed_idps:
+                  provider = provider_lookup.get(str(provider_id))
+                  labels.append(identity_provider_label(provider) if provider else f"unknown id {provider_id}")
+              return labels
+
+          def policy_rule_summary(policy: dict) -> str:
+              fragments: list[str] = []
+              for key in ("include", "require", "exclude"):
+                  rules = policy.get(key) or []
+                  values: list[str] = []
+                  for rule in rules:
+                      if isinstance(rule.get("email"), dict) and rule["email"].get("email"):
+                          values.append(f"email:{str(rule['email']['email']).lower()}")
+                      elif rule.get("_type") == "email" and rule.get("email"):
+                          values.append(f"email:{str(rule['email']).lower()}")
+                      elif isinstance(rule.get("email_domain"), dict) and rule["email_domain"].get("domain"):
+                          values.append(f"domain:{str(rule['email_domain']['domain']).lower()}")
+                      elif rule.get("_type") == "email_domain" and rule.get("email_domain"):
+                          values.append(f"domain:{str(rule['email_domain']).lower()}")
+                      elif isinstance(rule.get("group"), dict) and rule["group"].get("id"):
+                          values.append(f"group:{rule['group']['id']}")
+                      elif rule.get("_type"):
+                          values.append(str(rule["_type"]))
+                      else:
+                          values.append(",".join(sorted(rule.keys())) or "unknown")
+                  fragments.append(f"{key}=[{'; '.join(values) if values else 'none'}]")
+              return " ".join(fragments)
+
           def sanitize_app_for_update(app: dict) -> dict:
               allowed_keys = {
                   "type",
@@ -254,6 +298,17 @@ jobs:
               raise SystemExit("No self-hosted Access application found for the requested hostnames.")
 
           organization = cf_request("GET", f"/accounts/{account_id}/access/organizations").get("result", {})
+          identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
+          identity_provider_lookup = {
+              str(provider.get("id")): provider
+              for provider in identity_providers
+              if provider.get("id")
+          }
+          one_time_pin_provider_ids = [
+              str(provider["id"])
+              for provider in identity_providers
+              if provider.get("id") and is_one_time_pin_provider(provider)
+          ]
           primary = next((app for app in matching_apps if primary_hostname in destination_uris(app)), matching_apps[0])
           changed_policies: list[str] = []
           existing_policy_summaries: list[str] = []
@@ -261,7 +316,10 @@ jobs:
           for app in matching_apps:
               policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
               existing_policy_summaries.extend(
-                  f"{app.get('domain', app['id'])}: {policy.get('name')} ({policy.get('decision')})"
+                  (
+                      f"{app.get('domain', app['id'])}: {policy.get('name')} "
+                      f"({policy.get('decision')}) {policy_rule_summary(policy)}"
+                  )
                   for policy in policies
               )
               target = next((policy for policy in policies if policy.get("name") == policy_name), None)
@@ -288,6 +346,12 @@ jobs:
                   changed_policies.append(str(app.get("domain") or app["id"]))
 
           primary_update = sanitize_app_for_update(primary)
+          if one_time_pin_provider_ids and primary_update.get("allowed_idps"):
+              allowed_idps = [str(provider_id) for provider_id in primary_update["allowed_idps"]]
+              for provider_id in one_time_pin_provider_ids:
+                  if provider_id not in allowed_idps:
+                      allowed_idps.append(provider_id)
+              primary_update["allowed_idps"] = allowed_idps
           organization_update = sanitize_organization_for_update(organization)
           organization_status = "dry-run"
           organization_error = ""
@@ -342,7 +406,22 @@ jobs:
 
           refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
           refreshed_matches = [app for app in refreshed_apps if app_matches(app)]
+          refreshed_primary = next((app for app in refreshed_matches if primary_hostname in destination_uris(app)), primary)
           collected_at = datetime.now(UTC).isoformat()
+          otp_allowed_before = (
+              bool(one_time_pin_provider_ids)
+              and (
+                  not primary.get("allowed_idps")
+                  or bool(set(str(provider_id) for provider_id in primary.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+              )
+          )
+          otp_allowed_after = (
+              bool(one_time_pin_provider_ids)
+              and (
+                  not refreshed_primary.get("allowed_idps")
+                  or bool(set(str(provider_id) for provider_id in refreshed_primary.get("allowed_idps", [])).intersection(one_time_pin_provider_ids))
+              )
+          )
 
           evidence = [
               "# es-daskuechenhaus.de Cloudflare Access Evidence",
@@ -359,14 +438,36 @@ jobs:
               f"- Organization desired name: `{organization_name}`",
               f"- Login header text: `{login_header_text}`",
               f"- Login footer text: `{login_footer_text}`",
+              f"- Configured identity providers: `{len(identity_providers)}`",
+              f"- One-time PIN provider present: `{str(bool(one_time_pin_provider_ids)).lower()}`",
+              f"- One-time PIN allowed before: `{str(otp_allowed_before).lower()}`",
+              f"- One-time PIN allowed after: `{str(otp_allowed_after).lower()}`",
               f"- Organization branding status: `{organization_status}`",
               f"- Auto redirect to identity: `false`",
               f"- Path scoped Access cookie: `false`",
               f"- Policy changes needed/applied on: `{', '.join(changed_policies) if changed_policies else 'none'}`",
               f"- Consolidation status: `{consolidation_status}`",
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
-              "- Existing policy summary:",
+              "- Identity provider summary:",
           ]
+          evidence.extend(f"  - `{identity_provider_label(provider)}`" for provider in identity_providers)
+          evidence.extend(
+              [
+                  "- Canonical app allowed identity providers before:",
+              ]
+          )
+          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(primary, identity_provider_lookup))
+          evidence.extend(
+              [
+                  "- Canonical app allowed identity providers after:",
+              ]
+          )
+          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(refreshed_primary, identity_provider_lookup))
+          evidence.extend(
+              [
+              "- Existing policy summary:",
+              ]
+          )
           evidence.extend(f"  - `{summary}`" for summary in existing_policy_summaries)
           if consolidation_error:
               evidence.extend(
@@ -401,6 +502,9 @@ jobs:
               "organization_status": organization_status,
               "consolidation_status": consolidation_status,
               "deleted_duplicate_apps": deleted_duplicate_apps,
+              "one_time_pin_allowed_after": otp_allowed_after,
+              "one_time_pin_allowed_before": otp_allowed_before,
+              "one_time_pin_provider_present": bool(one_time_pin_provider_ids),
           }, sort_keys=True))
 
           if apply_changes and organization_status == "blocked":
