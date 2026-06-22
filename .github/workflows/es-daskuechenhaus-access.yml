@@ -221,6 +221,7 @@ jobs:
           def sanitize_organization_for_update(organization: dict) -> dict:
               allowed_keys = {
                   "allow_authenticate_via_warp",
+                  "auth_domain",
                   "auto_redirect_to_identity",
                   "custom_pages",
                   "deny_unmatched_requests",
