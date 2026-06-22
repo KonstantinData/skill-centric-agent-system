@@ -195,6 +195,70 @@ jobs:
           fi
           ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
 
+      - name: Create Cloudflare Origin certificate
+        if: inputs.apply_deploy == true
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p dkh-crm-origin-cert
+          primary_hostname="$(printf '%s\n' ${DKH_HOSTNAMES} | head -n 1)"
+          san="$(
+            for hostname in ${DKH_HOSTNAMES}
+            do
+              printf 'DNS:%s,' "${hostname}"
+            done
+          )"
+          san="${san%,}"
+
+          openssl req \
+            -new \
+            -newkey rsa:2048 \
+            -nodes \
+            -keyout dkh-crm-origin-cert/origin.key \
+            -out dkh-crm-origin-cert/origin.csr \
+            -subj "/CN=${primary_hostname}" \
+            -addext "subjectAltName=${san}" >/dev/null 2>&1
+
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          hostnames = os.environ["DKH_HOSTNAMES"].split()
+          csr = Path("dkh-crm-origin-cert/origin.csr").read_text(encoding="utf-8")
+          payload = {
+              "csr": csr,
+              "hostnames": hostnames,
+              "request_type": "origin-rsa",
+              "requested_validity": 5475,
+          }
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4/certificates",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise SystemExit(f"Cloudflare Origin CA certificate creation failed: {detail}") from exc
+          if not body.get("success", False):
+              raise SystemExit(f"Cloudflare Origin CA certificate creation failed: {body}")
+          certificate = body["result"]["certificate"]
+          Path("dkh-crm-origin-cert/origin.pem").write_text(certificate, encoding="utf-8")
+          PY
+
       - name: Upload CRM bundle to Hetzner
         if: inputs.apply_deploy == true
         shell: bash
@@ -207,6 +271,18 @@ jobs:
             -o ConnectTimeout=10 \
             dkh-crm-standalone.tar.gz \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz"
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            dkh-crm-origin-cert/origin.pem \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem"
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            dkh-crm-origin-cert/origin.key \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key"
 
       - name: Deploy Next.js CRM on Hetzner
         if: inputs.apply_deploy == true
@@ -219,7 +295,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' REMOTE_ORIGIN_CERT='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -242,6 +318,9 @@ jobs:
           nginx_site="/etc/nginx/sites-available/es-daskuechenhaus-crm"
           nginx_enabled="/etc/nginx/sites-enabled/es-daskuechenhaus-crm"
           cert_dir="/etc/letsencrypt/live/es-daskuechenhaus.de"
+          origin_cert_dir="/etc/ssl/cloudflare"
+          origin_cert_file="${origin_cert_dir}/daskuechenhaus-crm-origin.pem"
+          origin_key_file="${origin_cert_dir}/daskuechenhaus-crm-origin.key"
 
           sudo_if_needed install -d -o "${app_user}" -g "${app_group}" -m 0750 "${releases_dir}"
           sudo_if_needed rm -rf "${release_dir}"
@@ -315,9 +394,14 @@ jobs:
             sleep 2
           done
 
-          if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
-            echo "Origin certificate files are missing for es-daskuechenhaus.de." >&2
-            exit 1
+          cert_file="${cert_dir}/fullchain.pem"
+          key_file="${cert_dir}/privkey.pem"
+          if [ ! -f "${cert_file}" ] || [ ! -f "${key_file}" ]; then
+            sudo_if_needed install -d -o root -g root -m 0755 "${origin_cert_dir}"
+            sudo_if_needed install -o root -g root -m 0644 "${REMOTE_ORIGIN_CERT}" "${origin_cert_file}"
+            sudo_if_needed install -o root -g root -m 0600 "${REMOTE_ORIGIN_KEY}" "${origin_key_file}"
+            cert_file="${origin_cert_file}"
+            key_file="${origin_key_file}"
           fi
 
           cat > "${evidence_dir}/nginx-site.conf" <<EOF
@@ -332,8 +416,8 @@ jobs:
               listen 443 ssl http2;
               server_name ${DKH_HOSTNAMES};
 
-              ssl_certificate ${cert_dir}/fullchain.pem;
-              ssl_certificate_key ${cert_dir}/privkey.pem;
+              ssl_certificate ${cert_file};
+              ssl_certificate_key ${key_file};
 
               location / {
                   proxy_pass http://127.0.0.1:${DKH_LOCAL_PORT};
@@ -381,13 +465,14 @@ jobs:
             printf -- '- Hostnames: `%s`\n' "${DKH_HOSTNAMES}"
             printf -- '- Service: `daskuechenhaus-crm.service`\n'
             printf -- '- Nginx site: `%s`\n' "${nginx_site}"
+            printf -- '- Origin certificate: `%s`\n' "${cert_file}"
             printf -- '- Local port: `%s`\n' "${DKH_LOCAL_PORT}"
             printf -- '- Origin smoke: `passed`\n'
             printf -- '- Secret values in artifact: `none`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
           } > "${evidence_dir}/deployment.md"
 
-          rm -f "${REMOTE_ARCHIVE}"
+          rm -f "${REMOTE_ARCHIVE}" "${REMOTE_ORIGIN_CERT}" "${REMOTE_ORIGIN_KEY}"
           REMOTE
 
       - name: Update Cloudflare DNS and remove Worker routes
