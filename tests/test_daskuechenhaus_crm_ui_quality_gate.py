@@ -29,11 +29,13 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert (APP_ROOT / "public" / "customer-search.v1.js").exists()
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
-    assert "/api/kunden/search?q=" in search_script
+    assert 'fetch("/api/kunden/search?" + params.toString()' in search_script
+    assert "URLSearchParams" in search_script
+    assert 'params.set("status", filterValue)' in search_script
     assert "/kunden/" in search_script
     assert "maxOpenFiles = 3" in search_script
     assert "[data-customer-create-modal]" in search_script
-    assert "if (createModal) createModal.hidden = false" in search_script
+    assert "options.openCreateModal && createModal" in search_script
     assert "closeCreateModal" in search_script
     assert "Escape" in search_script
 
@@ -59,6 +61,8 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert "Disallowed API path" in proxy
     assert "safeDecodeSegment" in proxy
     assert "/customers/search" in kunden_search
+    assert 'upstream.searchParams.set("status", status)' in kunden_search
+    assert '["active", "closed", "all"].includes(status)' in kunden_search
     assert "x-access-user-email" in proxy
     assert "x-access-user-email" in kunden_search
     assert "cf-access-authenticated-user-email" in kunden_search
@@ -88,6 +92,15 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "data-customer-create-modal" in source
     assert "role=\"dialog\"" in source
     assert "data-customer-create-close" in source
+    assert "Neukundenanlage" in source
+    assert "Kunde suchen" not in source
+    assert "data-customer-direct-search" in source
+    assert "Kunden direkt Suche" in source
+    assert "data-customer-status-filter" in source
+    assert "Aktive Kunden" in source
+    assert "Abgeschlossene Kunden" in source
+    assert "Alle Kunden" in source
+    assert "xl:grid-cols-2" in source
     assert "data-customer-search-empty" not in source
     assert "name=\"create_case\"" in source
     assert "data-customer-create-case-toggle" in source
@@ -105,5 +118,8 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
     assert "syncCaseDetails" in search_script
+    assert "setupSearch" in search_script
+    assert "openCreateModal: true" in search_script
+    assert "openCreateModal: false" in search_script
     assert 'caseDetails.hidden = !enabled' in search_script
     assert 'field.disabled = !enabled' in search_script

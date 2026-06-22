@@ -30,7 +30,7 @@ export default async function CustomersPage() {
       />
       <Panel>
         <div data-customer-search-first className="grid gap-3">
-          <h2 className="section-title">Kunde suchen</h2>
+          <h2 className="section-title">Neukundenanlage</h2>
           <input
             data-customer-search-input
             className="field"
@@ -46,10 +46,33 @@ export default async function CustomersPage() {
         </div>
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <div aria-hidden="true" />
+      <div className="grid items-stretch gap-4 xl:grid-cols-2">
+        <Panel className="h-full">
+          <div data-customer-direct-search className="grid gap-3">
+            <h2 className="section-title">Kunden direkt Suche</h2>
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <input
+                data-customer-search-input
+                className="field"
+                name="direct_q"
+                type="search"
+                autoComplete="off"
+                placeholder="Name, E-Mail, Kundennummer oder Telefon"
+              />
+              <Select data-customer-status-filter name="customer_status" defaultValue="active">
+                <option value="active">Aktive Kunden</option>
+                <option value="closed">Abgeschlossene Kunden</option>
+                <option value="all">Alle Kunden</option>
+              </Select>
+            </div>
+            <p data-customer-search-hint className="text-sm text-[var(--muted)]">
+              Geben Sie mindestens drei Zeichen ein.
+            </p>
+            <div data-customer-search-results hidden />
+          </div>
+        </Panel>
 
-        <Panel>
+        <Panel className="h-full">
           <h2 className="section-title">Zuletzt verwendet</h2>
           <div className="mt-4 grid gap-3">
             {recentlyUsedCustomers.map((customer) => (

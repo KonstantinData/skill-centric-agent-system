@@ -1231,9 +1231,14 @@ def customers_state(access_email: str) -> dict[str, Any]:
     )
 
 
-def search_customers(query: str, access_email: str) -> dict[str, Any]:
+def search_customers(
+    query: str,
+    access_email: str,
+    customer_filter: str = "all",
+) -> dict[str, Any]:
     context = require_primary_user(access_email)
     search_value = query.strip()
+    search_filter = customer_filter if customer_filter in {"active", "closed", "all"} else "all"
     phone_value = normalize_phone_number(search_value)
     if len(search_value) < 3:
         return {"ok": True, "customers": []}
@@ -1284,14 +1289,51 @@ def search_customers(query: str, access_email: str) -> dict[str, Any]:
             LIMIT 1
           ) ca ON TRUE
           WHERE
-            c.display_name ILIKE '%' || :'search_value' || '%'
-            OR COALESCE(c.company_name, '') ILIKE '%' || :'search_value' || '%'
-            OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
-            OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
-            OR COALESCE(c.primary_phone_normalized, '') = :'phone_value'
-            OR COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
-            OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
-            OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+            (
+              c.display_name ILIKE '%' || :'search_value' || '%'
+              OR COALESCE(c.company_name, '') ILIKE '%' || :'search_value' || '%'
+              OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
+              OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
+              OR COALESCE(c.primary_phone_normalized, '') = :'phone_value'
+              OR COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
+              OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
+              OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+            )
+            AND (
+              :'customer_filter' = 'all'
+              OR (
+                :'customer_filter' = 'closed'
+                AND EXISTS (
+                  SELECT 1
+                  FROM app.customer_cases cc
+                  LEFT JOIN app.customer_case_status_phases csp
+                    ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
+                  WHERE cc.customer_id = c.id
+                    AND cc.is_active = TRUE
+                    AND COALESCE(csp.is_terminal, FALSE) = TRUE
+                )
+              )
+              OR (
+                :'customer_filter' = 'active'
+                AND (
+                  EXISTS (
+                    SELECT 1
+                    FROM app.customer_cases cc
+                    LEFT JOIN app.customer_case_status_phases csp
+                      ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
+                    WHERE cc.customer_id = c.id
+                      AND cc.is_active = TRUE
+                      AND COALESCE(csp.is_terminal, FALSE) = FALSE
+                  )
+                  OR NOT EXISTS (
+                    SELECT 1
+                    FROM app.customer_cases cc
+                    WHERE cc.customer_id = c.id
+                      AND cc.is_active = TRUE
+                  )
+                )
+              )
+            )
         )
         SELECT jsonb_build_object(
           'ok', TRUE,
@@ -1312,7 +1354,7 @@ def search_customers(query: str, access_email: str) -> dict[str, Any]:
               SELECT *
               FROM matches
               ORDER BY rank, display_name, id
-              LIMIT 8
+              LIMIT 20
             ) limited_matches
           ), '[]'::jsonb)
         )::text;
@@ -1320,6 +1362,7 @@ def search_customers(query: str, access_email: str) -> dict[str, Any]:
         {
             "context": json.dumps(context),
             "search_value": search_value,
+            "customer_filter": search_filter,
             "phone_value": phone_value,
         },
     )
@@ -2577,8 +2620,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if self.command == "GET" and parsed.path == "/customers/search":
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
-                query = parse_qs(parsed.query).get("q", [""])[0]
-                self.write_json(search_customers(query, access_email))
+                params = parse_qs(parsed.query)
+                query = params.get("q", [""])[0]
+                customer_filter = params.get("status", ["all"])[0]
+                self.write_json(search_customers(query, access_email, customer_filter))
                 return
             if self.command == "POST":
                 data, files = request_payload(self)

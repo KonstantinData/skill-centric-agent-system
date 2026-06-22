@@ -1,7 +1,6 @@
 (() => {
-  const root = document.querySelector("[data-customer-search-first]");
-  let controller = null;
-  let lastQuery = "";
+  const controllers = new WeakMap();
+  const latestQueries = new WeakMap();
   const openFilesKey = "dkh.openCustomerFiles";
   const maxOpenFiles = 3;
 
@@ -64,15 +63,17 @@
     openCustomerFile(link.href, link.getAttribute("data-customer-id"));
   });
 
-  const setResults = (items) => {
+  const setResults = (root, items, options) => {
     const results = root.querySelector("[data-customer-search-results]");
     const hint = root.querySelector("[data-customer-search-hint]");
     const createModal = document.querySelector("[data-customer-create-modal]");
     results.innerHTML = "";
     if (!items.length) {
       results.hidden = true;
-      hint.textContent = "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
-      if (createModal) createModal.hidden = false;
+      hint.textContent = options.openCreateModal
+        ? "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden."
+        : "Kein Treffer.";
+      if (options.openCreateModal && createModal) createModal.hidden = false;
       return;
     }
     const list = document.createElement("div");
@@ -112,15 +113,10 @@
     }
     results.append(list);
     results.hidden = false;
-    if (createModal) createModal.hidden = true;
+    if (options.openCreateModal && createModal) createModal.hidden = true;
     hint.textContent = items.length + " Treffer gefunden.";
   };
 
-  if (!root) return;
-
-  const input = root.querySelector("[data-customer-search-input]");
-  const results = root.querySelector("[data-customer-search-results]");
-  const hint = root.querySelector("[data-customer-search-hint]");
   const createModal = document.querySelector("[data-customer-create-modal]");
   const createCaseToggle = document.querySelector("[data-customer-create-case-toggle]");
   const caseDetails = document.querySelector("[data-customer-case-details]");
@@ -139,39 +135,63 @@
     }
   };
 
-  const resetSearch = () => {
+  const resetSearch = (root, options) => {
+    const results = root.querySelector("[data-customer-search-results]");
+    const hint = root.querySelector("[data-customer-search-hint]");
     results.hidden = true;
     results.innerHTML = "";
-    closeCreateModal();
+    if (options.openCreateModal) closeCreateModal();
     hint.textContent = "Geben Sie mindestens drei Zeichen ein.";
   };
 
-  const runSearch = async () => {
+  const runSearch = async (root, options) => {
+    const input = root.querySelector("[data-customer-search-input]");
+    const results = root.querySelector("[data-customer-search-results]");
+    const hint = root.querySelector("[data-customer-search-hint]");
+    const filter = root.querySelector("[data-customer-status-filter]");
     const query = input.value.trim();
-    lastQuery = query;
+    const filterValue = filter && filter.value ? filter.value : "";
+    const searchKey = query + "::" + filterValue;
+    latestQueries.set(root, searchKey);
     if (query.length < 3) {
-      if (controller) controller.abort();
-      resetSearch();
+      const currentController = controllers.get(root);
+      if (currentController) currentController.abort();
+      resetSearch(root, options);
       return;
     }
-    if (controller) controller.abort();
-    controller = new AbortController();
+    const currentController = controllers.get(root);
+    if (currentController) currentController.abort();
+    const controller = new AbortController();
+    controllers.set(root, controller);
     hint.textContent = "Suche läuft...";
     try {
-      const response = await fetch("/api/kunden/search?q=" + encodeURIComponent(query), {
+      const params = new URLSearchParams({ q: query });
+      if (filterValue) params.set("status", filterValue);
+      const response = await fetch("/api/kunden/search?" + params.toString(), {
         headers: { accept: "application/json" },
         signal: controller.signal,
       });
       if (!response.ok) throw new Error("search_failed");
       const payload = await response.json();
-      if (input.value.trim() !== lastQuery) return;
+      if (input.value.trim() + "::" + filterValue !== latestQueries.get(root)) return;
       const items = Array.isArray(payload.customers) ? payload.customers : [];
-      setResults(items);
+      setResults(root, items, options);
     } catch (error) {
       if (error.name === "AbortError") return;
       results.hidden = true;
-      closeCreateModal();
+      if (options.openCreateModal) closeCreateModal();
       hint.textContent = "Suche aktuell nicht verfügbar.";
+    }
+  };
+
+  const setupSearch = (root, options) => {
+    if (!root) return;
+    const input = root.querySelector("[data-customer-search-input]");
+    const filter = root.querySelector("[data-customer-status-filter]");
+    if (!input) return;
+    input.addEventListener("input", () => runSearch(root, options));
+    if (filter) {
+      filter.addEventListener("change", () => runSearch(root, options));
     }
   };
 
@@ -193,5 +213,10 @@
     syncCaseDetails();
   }
 
-  input.addEventListener("input", runSearch);
+  setupSearch(document.querySelector("[data-customer-search-first]"), {
+    openCreateModal: true,
+  });
+  setupSearch(document.querySelector("[data-customer-direct-search]"), {
+    openCreateModal: false,
+  });
 })();

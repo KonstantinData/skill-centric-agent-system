@@ -71,6 +71,12 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert 'parts[:2] == ["customers", "customers"]' in source
     assert "customers_state" in source
     assert "search_customers" in source
+    assert 'customer_filter: str = "all"' in source
+    assert 'customer_filter in {"active", "closed", "all"}' in source
+    assert 'params.get("status", ["all"])[0]' in source
+    assert "app.customer_case_status_phases csp" in source
+    assert "COALESCE(csp.is_terminal, FALSE) = TRUE" in source
+    assert "LIMIT 20" in source
     assert "save_customer" in source
     assert "customer_display_name" in source
     assert "app.customers" in source
