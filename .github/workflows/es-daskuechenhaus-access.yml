@@ -96,10 +96,7 @@ jobs:
           base = "https://api.cloudflare.com/client/v4"
           policy_name = "SCAS DKH CRM allowed users"
           app_name = "Das Küchenhaus CRM"
-          deny_message = (
-              "Dieses Konto ist nicht fuer das Kuechenhaus CRM freigeschaltet "
-              "Bitte wenden Sie sich an das Kuechenhaus Team"
-          )
+          deny_message = "Konto nicht fuer CRM freigeschaltet Bitte Team kontaktieren"
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
