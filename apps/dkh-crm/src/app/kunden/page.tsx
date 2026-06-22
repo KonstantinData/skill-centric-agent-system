@@ -165,7 +165,6 @@ export default async function CustomersPage() {
                 name="create_case"
                 value="true"
                 type="checkbox"
-                defaultChecked
                 data-customer-create-case-toggle
               />
               Direkt einen Vorgang anlegen

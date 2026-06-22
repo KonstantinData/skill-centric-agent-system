@@ -92,6 +92,7 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "name=\"create_case\"" in source
     assert "data-customer-create-case-toggle" in source
     assert "data-customer-case-details" in source
+    assert "defaultChecked" not in source
     assert "create_direct_case" not in source
     assert "Wird beim Speichern automatisch vergeben" in source
     assert "name=\"carat_order_number\"" in source
