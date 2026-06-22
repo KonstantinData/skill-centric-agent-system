@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DKH CRM
 
-## Getting Started
+Next.js CRM workspace for `es-daskuechenhaus.de`.
 
-First, run the development server:
+The app is the current CRM UI for Das Kuechenhaus. It runs behind Cloudflare
+Access in production and proxies CRM reads/writes to the existing Hetzner
+runtime API.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Local Development
+
+```powershell
+npm install
+npm run dev -- -p 3001 -H 127.0.0.1
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://127.0.0.1:3001/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Local development accepts the Cloudflare Access email headers when present, but
+does not require them. Production requests without a resolved user email return
+`401`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Required Environment
 
-## Learn More
+```env
+DKH_ADMIN_API_BASE_URL=https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api
+DKH_ADMIN_API_TOKEN=<secret>
+```
 
-To learn more about Next.js, take a look at the following resources:
+For production JWT validation, set both Cloudflare Access variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+CF_ACCESS_TEAM_DOMAIN=<team>.cloudflareaccess.com
+CF_ACCESS_AUD=<application-audience-tag>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+When these variables are present in production, the middleware verifies the
+`cf-access-jwt-assertion` audience and issuer before trusting the user email.
 
-## Deploy on Vercel
+## Build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Stop any running standalone server before building on Windows. A running
+`.next/standalone/server.js` process can keep `.next` files locked and make
+`next build` appear to hang.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npm run build
+```
+
+The build uses `output: "standalone"` and then copies `public/` and
+`.next/static/` into `.next/standalone/` via
+`scripts/copy-standalone-assets.mjs`.
+
+## Legacy Route Compatibility
+
+Legacy `.php` entrypoints redirect to the new App Router pages with temporary
+redirects during cutover:
+
+- `/index.php` and `/uebersicht.php` -> `/`
+- `/termine.php` -> `/termine`
+- `/aufgaben.php` -> `/aufgaben`
+- `/emails.php` -> `/emails`
+- `/kunden.php` -> `/kunden`
+- `/vorgaenge.php` -> `/vorgaenge`
+- `/admin.php` -> `/admin`
