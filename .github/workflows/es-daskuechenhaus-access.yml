@@ -1,0 +1,317 @@
+name: es-daskuechenhaus.de Access Configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_changes:
+        description: Apply Cloudflare Access application and policy changes
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_changes=true
+        required: true
+        type: boolean
+        default: false
+      hostnames:
+        description: Space-separated public hostnames protected by one Access app
+        required: true
+        type: string
+        default: es-daskuechenhaus.de www.es-daskuechenhaus.de
+      allowed_emails:
+        description: Space-separated user emails allowed to use the CRM
+        required: true
+        type: string
+        default: k.milonas@schober-daskuechenhaus.de
+      primary_hostname:
+        description: Canonical Access application hostname
+        required: true
+        type: string
+        default: es-daskuechenhaus.de
+      delete_duplicate_apps:
+        description: Delete duplicate Access apps after the primary app covers all hostnames
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-access
+  cancel-in-progress: false
+
+jobs:
+  configure-access:
+    name: Configure DKH CRM Cloudflare Access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    env:
+      APPLY_CHANGES: ${{ inputs.apply_changes }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      DKH_ACCESS_HOSTNAMES: ${{ inputs.hostnames }}
+      DKH_ACCESS_ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
+      DKH_ACCESS_PRIMARY_HOSTNAME: ${{ inputs.primary_hostname }}
+      DKH_ACCESS_DELETE_DUPLICATE_APPS: ${{ inputs.delete_duplicate_apps }}
+      DKH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
+      DKH_CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Configure Access application and policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true when apply_changes=true."
+            exit 1
+          fi
+          if [ -z "${DKH_CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${DKH_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing DKH Cloudflare account credentials."
+            exit 1
+          fi
+
+          install -d es-daskuechenhaus-access-evidence
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          account_id = os.environ["DKH_CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["DKH_CLOUDFLARE_API_TOKEN"]
+          apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
+          delete_duplicate_apps = os.environ["DKH_ACCESS_DELETE_DUPLICATE_APPS"].lower() == "true"
+          hostnames = [value.strip().lower() for value in os.environ["DKH_ACCESS_HOSTNAMES"].split() if value.strip()]
+          allowed_emails = [value.strip().lower() for value in os.environ["DKH_ACCESS_ALLOWED_EMAILS"].split() if value.strip()]
+          primary_hostname = os.environ["DKH_ACCESS_PRIMARY_HOSTNAME"].strip().lower()
+          base = "https://api.cloudflare.com/client/v4"
+          policy_name = "SCAS DKH CRM allowed users"
+
+          hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
+          email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+          if not hostnames or primary_hostname not in hostnames:
+              raise SystemExit("primary_hostname must be included in hostnames.")
+          for hostname in hostnames:
+              if not hostname_pattern.fullmatch(hostname):
+                  raise SystemExit(f"Unsupported hostname value: {hostname}")
+          if not allowed_emails:
+              raise SystemExit("At least one allowed email is required.")
+          for email in allowed_emails:
+              if not email_pattern.fullmatch(email):
+                  raise SystemExit(f"Unsupported email value: {email}")
+
+          def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload, sort_keys=True).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {detail}") from exc
+              if not body.get("success", False):
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
+              return body
+
+          def destination_uris(app: dict) -> set[str]:
+              uris: set[str] = set()
+              for destination in app.get("destinations") or []:
+                  if destination.get("type") == "public" and destination.get("uri"):
+                      uris.add(str(destination["uri"]).lower().rstrip("/"))
+              for domain in app.get("self_hosted_domains") or []:
+                  uris.add(str(domain).lower().rstrip("/"))
+              if app.get("domain"):
+                  uris.add(str(app["domain"]).lower().rstrip("/"))
+              return uris
+
+          def app_matches(app: dict) -> bool:
+              return app.get("type") == "self_hosted" and bool(destination_uris(app).intersection(hostnames))
+
+          def policy_payload(precedence: int = 1) -> dict:
+              return {
+                  "name": policy_name,
+                  "decision": "allow",
+                  "precedence": precedence,
+                  "include": [
+                      {"_type": "email", "email": email}
+                      for email in allowed_emails
+                  ],
+                  "exclude": [],
+                  "require": [],
+              }
+
+          def policy_emails(policy: dict) -> set[str]:
+              return {
+                  str(rule.get("email", "")).lower()
+                  for rule in policy.get("include") or []
+                  if rule.get("_type") == "email" and rule.get("email")
+              }
+
+          def sanitize_app_for_update(app: dict) -> dict:
+              allowed_keys = {
+                  "type",
+                  "name",
+                  "domain",
+                  "destinations",
+                  "self_hosted_domains",
+                  "session_duration",
+                  "allowed_idps",
+                  "app_launcher_visible",
+                  "auto_redirect_to_identity",
+                  "enable_binding_cookie",
+                  "http_only_cookie_attribute",
+                  "same_site_cookie_attribute",
+                  "path_cookie_attribute",
+                  "logo_url",
+                  "skip_interstitial",
+                  "service_auth_401_redirect",
+                  "options_preflight_bypass",
+                  "custom_deny_message",
+                  "custom_deny_url",
+                  "custom_non_identity_deny_url",
+                  "cors_headers",
+                  "tags",
+              }
+              payload = {
+                  key: copy.deepcopy(value)
+                  for key, value in app.items()
+                  if key in allowed_keys and value is not None
+              }
+              payload["type"] = "self_hosted"
+              payload["name"] = "Das Kuechenhaus CRM"
+              payload["domain"] = primary_hostname
+              payload["destinations"] = [
+                  {"type": "public", "uri": hostname}
+                  for hostname in hostnames
+              ]
+              payload.pop("self_hosted_domains", None)
+              return payload
+
+          apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          matching_apps = [app for app in apps if app_matches(app)]
+          if not matching_apps:
+              raise SystemExit("No self-hosted Access application found for the requested hostnames.")
+
+          primary = next((app for app in matching_apps if primary_hostname in destination_uris(app)), matching_apps[0])
+          changed_policies: list[str] = []
+          existing_policy_summaries: list[str] = []
+
+          for app in matching_apps:
+              policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
+              existing_policy_summaries.extend(
+                  f"{app.get('domain', app['id'])}: {policy.get('name')} ({policy.get('decision')})"
+                  for policy in policies
+              )
+              target = next((policy for policy in policies if policy.get("name") == policy_name), None)
+              payload = policy_payload(
+                  int(target.get("precedence", 1)) if target and str(target.get("precedence", "")).isdigit() else 1
+              )
+              if target:
+                  desired_emails = set(allowed_emails)
+                  if target.get("decision") != "allow" or policy_emails(target) != desired_emails:
+                      if apply_changes:
+                          cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", payload)
+                      changed_policies.append(str(app.get("domain") or app["id"]))
+              else:
+                  if apply_changes:
+                      cf_request("POST", f"/accounts/{account_id}/access/apps/{app['id']}/policies", payload)
+                  changed_policies.append(str(app.get("domain") or app["id"]))
+
+          primary_update = sanitize_app_for_update(primary)
+          consolidation_status = "dry-run"
+          consolidation_error = ""
+          deleted_duplicate_apps: list[str] = []
+          if apply_changes:
+              try:
+                  cf_request("PUT", f"/accounts/{account_id}/access/apps/{primary['id']}", primary_update)
+                  consolidation_status = "updated-primary"
+                  if delete_duplicate_apps:
+                      for app in matching_apps:
+                          if app["id"] == primary["id"]:
+                              continue
+                          if destination_uris(app).issubset(set(hostnames)):
+                              cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
+                              deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
+              except RuntimeError as exc:
+                  consolidation_status = "blocked"
+                  consolidation_error = str(exc)
+          else:
+              consolidation_status = "planned"
+
+          refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          refreshed_matches = [app for app in refreshed_apps if app_matches(app)]
+          collected_at = datetime.now(UTC).isoformat()
+
+          evidence = [
+              "# es-daskuechenhaus.de Cloudflare Access Evidence",
+              "",
+              f"- Apply changes: `{str(apply_changes).lower()}`",
+              f"- Primary hostname: `{primary_hostname}`",
+              f"- Hostnames: `{', '.join(hostnames)}`",
+              f"- Allowed emails: `{', '.join(allowed_emails)}`",
+              f"- Matching Access apps before: `{len(matching_apps)}`",
+              f"- Matching Access apps after: `{len(refreshed_matches)}`",
+              f"- Canonical app before: `{primary.get('name', '')}` / `{primary.get('domain', '')}` / aud `{primary.get('aud', '')}`",
+              f"- Policy changes needed/applied on: `{', '.join(changed_policies) if changed_policies else 'none'}`",
+              f"- Consolidation status: `{consolidation_status}`",
+              f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
+              "- Existing policy summary:",
+          ]
+          evidence.extend(f"  - `{summary}`" for summary in existing_policy_summaries)
+          if consolidation_error:
+              evidence.extend(
+                  [
+                      "- Consolidation error:",
+                      f"  - `{consolidation_error[:1000]}`",
+                  ]
+              )
+          evidence.extend(
+              [
+                  f"- Collected at: `{collected_at}`",
+                  "",
+              ]
+          )
+
+          Path("es-daskuechenhaus-access-evidence/access.md").write_text(
+              "\n".join(evidence),
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "apply_changes": apply_changes,
+              "matching_apps_before": len(matching_apps),
+              "matching_apps_after": len(refreshed_matches),
+              "changed_policies": changed_policies,
+              "consolidation_status": consolidation_status,
+              "deleted_duplicate_apps": deleted_duplicate_apps,
+          }, sort_keys=True))
+
+          if apply_changes and consolidation_status == "blocked":
+              raise SystemExit("Access policies were processed, but hostname consolidation was blocked. See evidence artifact.")
+          PY
+
+      - name: Upload Access evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: es-daskuechenhaus-access-evidence
+          path: es-daskuechenhaus-access-evidence/access.md
+          if-no-files-found: error
