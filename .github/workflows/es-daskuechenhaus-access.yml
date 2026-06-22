@@ -115,8 +115,7 @@ jobs:
           login_header_text = "Anmeldung zum Küchenhaus CRM"
           login_footer_text = "Zugang nur fuer freigeschaltete Benutzer"
           otp_identity_provider_name = "Das Küchenhaus CRM E-Mail-Code"
-          mfa_allowed_authenticators = ["totp"]
-          mfa_session_duration = "24h"
+          mfa_desired_mode = "disabled"
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -193,9 +192,7 @@ jobs:
                   "exclude": [],
                   "require": [],
                   "mfa_config": {
-                      "allowed_authenticators": mfa_allowed_authenticators,
-                      "session_duration": mfa_session_duration,
-                      "mfa_disabled": False,
+                      "mfa_disabled": True,
                   },
               }
 
@@ -252,17 +249,9 @@ jobs:
                   fragments.append(f"{key}=[{'; '.join(values) if values else 'none'}]")
               return " ".join(fragments)
 
-          def policy_mfa_enabled(policy: dict) -> bool:
+          def policy_mfa_disabled(policy: dict) -> bool:
               mfa_config = policy.get("mfa_config") or {}
-              allowed_authenticators = {
-                  str(value)
-                  for value in mfa_config.get("allowed_authenticators") or []
-              }
-              return (
-                  mfa_config.get("mfa_disabled") is not True
-                  and set(mfa_allowed_authenticators).issubset(allowed_authenticators)
-                  and mfa_config.get("session_duration") == mfa_session_duration
-              )
+              return mfa_config.get("mfa_disabled") is True
 
           def user_email_values(user: dict) -> set[str]:
               values: set[str] = set()
@@ -417,7 +406,7 @@ jobs:
                       reset_users_removed += 1
               reset_status = "updated" if not reset_errors else "partial"
 
-          def with_required_mfa_policy(policy: dict) -> dict:
+          def with_disabled_mfa_policy(policy: dict) -> dict:
               payload = copy.deepcopy(policy)
               allowed_keys = {
                   "approval_required",
@@ -440,9 +429,7 @@ jobs:
                   if key in allowed_keys and value is not None
               }
               payload["mfa_config"] = {
-                  "allowed_authenticators": mfa_allowed_authenticators,
-                  "session_duration": mfa_session_duration,
-                  "mfa_disabled": False,
+                  "mfa_disabled": True,
               }
               return payload
 
@@ -519,12 +506,8 @@ jobs:
               login_design["header_text"] = login_header_text
               login_design["footer_text"] = login_footer_text
               mfa_config = copy.deepcopy(payload.get("mfa_config") or {})
-              allowed_authenticators = list(mfa_config.get("allowed_authenticators") or [])
-              for authenticator in mfa_allowed_authenticators:
-                  if authenticator not in allowed_authenticators:
-                      allowed_authenticators.append(authenticator)
-              mfa_config["allowed_authenticators"] = allowed_authenticators
-              mfa_config["session_duration"] = mfa_session_duration
+              mfa_config["allowed_authenticators"] = []
+              mfa_config.pop("session_duration", None)
               payload["name"] = organization_name
               payload["auto_redirect_to_identity"] = False
               payload["mfa_required_for_all_apps"] = False
@@ -634,7 +617,7 @@ jobs:
               policy_summaries.extend(
                   (
                       f"{app.get('domain', app['id'])}: {policy.get('name')} "
-                      f"({policy.get('decision')}) mfa={str(policy_mfa_enabled(policy)).lower()} "
+                      f"({policy.get('decision')}) mfa_disabled={str(policy_mfa_disabled(policy)).lower()} "
                       f"{policy_rule_summary(policy)}"
                   )
                   for policy in policies
@@ -644,15 +627,15 @@ jobs:
                       continue
                   if policy.get("name") == policy_name:
                       continue
-                  if policy_mfa_enabled(policy):
+                  if policy_mfa_disabled(policy):
                       continue
                   if apply_changes:
                       cf_request(
                           "PUT",
                           f"/accounts/{account_id}/access/apps/{app['id']}/policies/{policy['id']}",
-                          with_required_mfa_policy(policy),
+                          with_disabled_mfa_policy(policy),
                       )
-                  policy_changes.append(f"{app.get('domain') or app['id']}:{policy.get('name', policy['id'])}:mfa")
+                  policy_changes.append(f"{app.get('domain') or app['id']}:{policy.get('name', policy['id'])}:disable-mfa")
               target = next((policy for policy in policies if policy.get("name") == policy_name), None)
               existing_precedences = [
                   int(policy["precedence"])
@@ -667,7 +650,7 @@ jobs:
               )
               if target:
                   desired_emails = set(allowed_emails)
-                  if target.get("decision") != "allow" or policy_emails(target) != desired_emails or not policy_mfa_enabled(target):
+                  if target.get("decision") != "allow" or policy_emails(target) != desired_emails or not policy_mfa_disabled(target):
                       if apply_changes:
                           cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", payload)
                       policy_changes.append(str(app.get("domain") or app["id"]))
@@ -831,8 +814,8 @@ jobs:
               f"- Organization desired name: `{organization_name}`",
               f"- Login header text: `{login_header_text}`",
               f"- Login footer text: `{login_footer_text}`",
-              f"- Independent MFA desired authenticators: `{', '.join(mfa_allowed_authenticators)}`",
-              f"- Independent MFA desired session duration: `{mfa_session_duration}`",
+              f"- Independent MFA desired mode: `{mfa_desired_mode}`",
+              f"- Independent MFA desired authenticators: `none`",
               f"- Organization MFA required for all apps: `{str(organization_update.get('mfa_required_for_all_apps')).lower()}`",
               f"- Configured identity providers: `{len(identity_providers)}`",
               f"- OTP identity provider desired name: `{otp_identity_provider_name}`",

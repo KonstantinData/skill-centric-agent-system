@@ -29,13 +29,9 @@ Browser
   portal setup, use one `Allow` policy with `Emails` selectors for the approved
   users. The initial approved user is:
   - `k.milonas@schober-daskuechenhaus.de`
-- Cloudflare Access uses e-mail one-time PIN as the first factor and
-  independent MFA with an authenticator application (`totp`) as the second
-  factor. The workflow keeps MFA enabled at the organization level and applies
-  TOTP MFA to every `Allow` policy on the two DKH Access applications so an
-  older allow policy cannot bypass MFA. The MFA session duration is `24h`; this
-  keeps MFA mandatory while avoiding an immediately expired MFA session during
-  the Access callback flow.
+- Cloudflare Access uses e-mail one-time PIN for authentication. Independent
+  MFA is explicitly disabled for the DKH Access allow policies so users are not
+  prompted for an authenticator application or another second factor.
 - The Access application name, Zero Trust organization display name, login
   header/footer text, and identity-denied message are DKH-specific. Keep
   automatic identity-provider redirects disabled so users land on the Access
@@ -85,13 +81,10 @@ When the other two portal users are approved, add them to the
 `allowed_emails` input as a whitespace-separated list. Do not add broad domain
 allow rules unless all mailboxes in that domain should receive CRM access.
 
-To force a clean Cloudflare Access re-enrollment for a DKH user, run the same
-workflow with `reset_user_auth_state=true` and `reset_user_email` set to that
-user's approved e-mail address. The reset revokes Access sessions, deletes
-registered independent MFA authenticators when the API exposes them, and removes
-the user's active Access user/seat state where Cloudflare allows it. Cloudflare
-may keep an inactive user record; the important reset criteria are no active
-session and no registered MFA authenticator for the next login.
+To revoke a DKH user's active Cloudflare Access sessions and remove their active
+Access user/seat state, run the same workflow with `reset_user_auth_state=true`
+and `reset_user_email` set to that user's approved e-mail address. This does
+not re-enable MFA and is only a session/user-state reset.
 
 ```powershell
 gh workflow run "es-daskuechenhaus.de Access Configuration" `
@@ -107,15 +100,12 @@ gh workflow run "es-daskuechenhaus.de Access Configuration" `
   -f reset_user_email=k.milonas@schober-daskuechenhaus.de
 ```
 
-After a reset, the user can start enrollment through the protected application
-or directly at `https://still-butterfly-bbff.cloudflareaccess.com/AddMfaDevice`.
-
 Cloudflare's Access login page header/footer and organization name are global
 Zero Trust settings. The repository-owned workflow keeps the DKH organization
 name, login header/footer text, per-hostname application names, Access allow
-policy, TOTP MFA settings, deny message, cookie scope, and host-specific Access
-app split reproducible. Do not leave legacy labels such as unrelated chatbot
-names on the Access login page.
+policy, MFA-disabled policy state, deny message, cookie scope, and host-specific
+Access app split reproducible. Do not leave legacy labels such as unrelated
+chatbot names on the Access login page.
 
 ## Validation
 
