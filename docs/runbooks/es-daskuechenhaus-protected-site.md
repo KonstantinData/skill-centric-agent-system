@@ -40,6 +40,10 @@ npm --prefix apps/dkh-crm run build
   - `DKH_ADMIN_API_BASE_URL`
   - `DKH_ADMIN_API_TOKEN`
   - `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` when JWT validation is enforced.
+    If Cloudflare Access uses separate applications for the apex and `www`
+    hostnames, include both audience tags in `CF_ACCESS_AUD` separated by
+    whitespace or commas. Prefer a single Access application covering both
+    hostnames when possible.
 
 ## Validation
 

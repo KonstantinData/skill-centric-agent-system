@@ -35,6 +35,10 @@ CF_ACCESS_AUD=<application-audience-tag>
 
 When these variables are present in production, the middleware verifies the
 `cf-access-jwt-assertion` audience and issuer before trusting the user email.
+`CF_ACCESS_AUD` may contain multiple audience tags separated by spaces, commas,
+or newlines. Configure all Cloudflare Access applications that can front the
+CRM hostnames, for example both the apex and `www` applications if Cloudflare
+keeps them separate.
 
 ## Build
 
