@@ -122,9 +122,21 @@
   const results = root.querySelector("[data-customer-search-results]");
   const hint = root.querySelector("[data-customer-search-hint]");
   const createModal = document.querySelector("[data-customer-create-modal]");
+  const createCaseToggle = document.querySelector("[data-customer-create-case-toggle]");
+  const caseDetails = document.querySelector("[data-customer-case-details]");
 
   const closeCreateModal = () => {
     if (createModal) createModal.hidden = true;
+  };
+
+  const syncCaseDetails = () => {
+    if (!createCaseToggle || !caseDetails) return;
+    const enabled = createCaseToggle.checked;
+    caseDetails.hidden = !enabled;
+    for (const field of caseDetails.querySelectorAll("input, select, textarea")) {
+      if (!field.name) continue;
+      field.disabled = !enabled;
+    }
   };
 
   const resetSearch = () => {
@@ -174,6 +186,11 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeCreateModal();
     });
+  }
+
+  if (createCaseToggle) {
+    createCaseToggle.addEventListener("change", syncCaseDetails);
+    syncCaseDetails();
   }
 
   input.addEventListener("input", runSearch);

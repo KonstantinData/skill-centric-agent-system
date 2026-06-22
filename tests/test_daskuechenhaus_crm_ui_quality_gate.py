@@ -90,6 +90,8 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "data-customer-create-close" in source
     assert "data-customer-search-empty" not in source
     assert "name=\"create_case\"" in source
+    assert "data-customer-create-case-toggle" in source
+    assert "data-customer-case-details" in source
     assert "create_direct_case" not in source
     assert "Wird beim Speichern automatisch vergeben" in source
     assert "name=\"carat_order_number\"" in source
@@ -99,3 +101,8 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert ".slice(0, 5)" in source
     assert "Zuletzt verwendet" in source
     assert "Aktuelle Kunden" not in source
+
+    search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
+    assert "syncCaseDetails" in search_script
+    assert 'caseDetails.hidden = !enabled' in search_script
+    assert 'field.disabled = !enabled' in search_script
