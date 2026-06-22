@@ -12,6 +12,8 @@ def load_text(path: Path) -> str:
 
 def test_dkh_crm_next_app_is_the_only_site_ui() -> None:
     assert APP_ROOT.exists()
+    assert not (REPO_ROOT / "workers" / "daskuechenhaus-control-api").exists()
+    assert not (REPO_ROOT / "docs" / "diagrams" / "daskuechenhaus-cloudflare-d1.drawio").exists()
     assert not (REPO_ROOT / "workers" / "es-daskuechenhaus-site").exists()
     assert not (
         REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
@@ -87,6 +89,12 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "role=\"dialog\"" in source
     assert "data-customer-create-close" in source
     assert "data-customer-search-empty" not in source
+    assert "name=\"create_case\"" in source
+    assert "create_direct_case" not in source
+    assert "Wird beim Speichern automatisch vergeben" in source
+    assert "name=\"carat_order_number\"" in source
+    assert "pattern=\"[A-Za-z0-9]{1,5}-[A-Za-z0-9]{1,3}\"" in source
+    assert "Vorgangsnummer" in source
     assert "recentlyUsedCustomers" in source
     assert ".slice(0, 5)" in source
     assert "Zuletzt verwendet" in source

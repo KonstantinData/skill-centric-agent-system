@@ -92,6 +92,15 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     )
     assert '"case_type": str(' in source
     assert '"kitchen_project_b2b"' in source
+    assert "generate_customer_number(customer_type)" in source
+    assert "generate_case_number() if create_case else" in source
+    assert 'prefix = "OBJ-" if customer_type == "company" else "PRV-"' in source
+    assert 'return generate_unique_number("V-", 8, "customer_cases", "case_number")' in source
+    assert "CARAT_ORDER_NUMBER_PATTERN" in source
+    assert "carat_order_number_invalid" in source
+    assert "'customer_cases', COALESCE((" in source
+    assert "'carat_order_number', cc.carat_order_number" in source
+    assert "customer_number = NULLIF(data->>'customer_number', '')" not in source
 
 
 def test_daskuechenhaus_admin_api_keeps_cockpit_actions_human_confirmed() -> None:

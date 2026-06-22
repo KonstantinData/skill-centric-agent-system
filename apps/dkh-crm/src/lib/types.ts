@@ -238,7 +238,7 @@ export type CustomerCaseRecord = {
   id: number;
   customer_id: number | null;
   case_number: string | null;
-  carat_case_number: string | null;
+  carat_order_number: string | null;
   case_title: string | null;
   case_status: string;
   customer_display_name: string;

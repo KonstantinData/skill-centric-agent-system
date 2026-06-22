@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
+import string
 import subprocess
 import traceback
 from dataclasses import dataclass
@@ -45,6 +47,9 @@ ALLOWED_TASK_ATTACHMENT_EXTENSIONS = {
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
+NUMBER_ALPHABET = string.ascii_uppercase + string.digits
+CARAT_ORDER_NUMBER_PATTERN = re.compile(r"^[A-Za-z0-9]{1,5}-[A-Za-z0-9]{1,3}$")
+
 
 @dataclass(frozen=True)
 class FileUpload:
@@ -83,6 +88,50 @@ def psql_json(sql: str, variables: dict[str, str] | None = None) -> Any:
     if not text:
         return None
     return json.loads(text)
+
+
+def random_code(length: int) -> str:
+    return "".join(secrets.choice(NUMBER_ALPHABET) for _ in range(length))
+
+
+def value_exists(table: str, column: str, value: str) -> bool:
+    result = psql_json(
+        f"""
+        SELECT jsonb_build_object(
+          'exists', EXISTS (
+            SELECT 1
+            FROM app.{table}
+            WHERE {column} = :'value'
+          )
+        )::text;
+        """,
+        {"value": value},
+    )
+    return bool(result and result.get("exists"))
+
+
+def generate_unique_number(prefix: str, length: int, table: str, column: str) -> str:
+    for _ in range(20):
+        candidate = f"{prefix}{random_code(length)}"
+        if not value_exists(table, column, candidate):
+            return candidate
+    raise ApiError(HTTPStatus.CONFLICT, "number_generation_collision")
+
+
+def generate_customer_number(customer_type: str) -> str:
+    prefix = "OBJ-" if customer_type == "company" else "PRV-"
+    return generate_unique_number(prefix, 6, "customers", "customer_number")
+
+
+def generate_case_number() -> str:
+    return generate_unique_number("V-", 8, "customer_cases", "case_number")
+
+
+def normalize_carat_order_number(value: Any) -> str:
+    normalized = str(value or "").strip().upper()
+    if normalized and not CARAT_ORDER_NUMBER_PATTERN.fullmatch(normalized):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "carat_order_number_invalid")
+    return normalized
 
 
 def admin_state() -> dict[str, Any]:
@@ -1127,6 +1176,54 @@ def customers_state(access_email: str) -> dict[str, Any]:
               ORDER BY c.updated_at DESC, c.id DESC
             )
             FROM visible_customers c
+          ), '[]'::jsonb),
+          'customer_cases', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', cc.id,
+                'customer_id', cc.customer_id,
+                'case_number', cc.case_number,
+                'carat_order_number', cc.carat_order_number,
+                'case_title', cc.case_title,
+                'case_status', cc.case_status,
+                'customer_display_name', cc.customer_display_name,
+                'customer_number', c.customer_number,
+                'customer_email', c.primary_email,
+                'status_phase', COALESCE(cc.status_phase_id, cc.status_phase),
+                'status_phase_name', csp.name,
+                'notes', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', n.id,
+                      'customer_case_id', n.customer_case_id,
+                      'note_type', n.note_type,
+                      'body', n.body,
+                      'created_by', COALESCE(u.first_name || ' ' || u.last_name, u.email),
+                      'created_at',
+                        to_char(
+                          n.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        )
+                    )
+                    ORDER BY n.created_at DESC, n.id DESC
+                  )
+                  FROM app.customer_case_notes n
+                  LEFT JOIN app.users u ON u.id = n.created_by_user_id
+                  WHERE n.customer_case_id = cc.id
+                ), '[]'::jsonb),
+                'updated_at',
+                  to_char(
+                    cc.updated_at AT TIME ZONE 'Europe/Berlin',
+                    'YYYY-MM-DD HH24:MI'
+                  )
+              )
+              ORDER BY cc.updated_at DESC, cc.id DESC
+            )
+            FROM app.customer_cases cc
+            JOIN visible_customers c ON c.id = cc.customer_id
+            LEFT JOIN app.customer_case_status_phases csp
+              ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
+            WHERE cc.is_active = TRUE
           ), '[]'::jsonb)
         )::text;
         """,
@@ -1317,10 +1414,14 @@ def save_customer(
     display_name = customer_display_name(data)
     if not display_name:
         raise ApiError(HTTPStatus.BAD_REQUEST, "customer_name_required")
+    customer_type = str(data.get("customer_type", "private")).strip() or "private"
+    create_case = normalize_bool(data.get("create_case"))
     payload = {
         "customer_id": str(customer_id or "").strip(),
-        "customer_number": str(data.get("customer_number", "")).strip(),
-        "customer_type": str(data.get("customer_type", "private")).strip() or "private",
+        "customer_number": ""
+        if customer_id
+        else generate_customer_number(customer_type),
+        "customer_type": customer_type,
         "salutation": str(data.get("salutation", "")).strip(),
         "title": str(data.get("title", "")).strip(),
         "first_name": str(data.get("first_name", "")).strip(),
@@ -1340,8 +1441,9 @@ def save_customer(
         "house_number": str(data.get("house_number", "")).strip(),
         "postal_code": str(data.get("postal_code", "")).strip(),
         "city": str(data.get("city", "")).strip(),
-        "create_case": normalize_bool(data.get("create_case")),
-        "case_number": str(data.get("case_number", "")).strip(),
+        "create_case": create_case,
+        "case_number": generate_case_number() if create_case else "",
+        "carat_order_number": normalize_carat_order_number(data.get("carat_order_number", "")),
         "case_title": str(data.get("case_title", "")).strip(),
         "case_type": str(
             data.get(
@@ -1383,7 +1485,6 @@ def save_customer(
         updated_customer AS (
           UPDATE app.customers c
           SET
-            customer_number = NULLIF(data->>'customer_number', ''),
             customer_type = data->>'customer_type',
             salutation = NULLIF(data->>'salutation', ''),
             title = NULLIF(data->>'title', ''),
@@ -1511,6 +1612,7 @@ def save_customer(
             customer_id,
             case_title,
             case_type,
+            carat_order_number,
             status_phase_id,
             created_by_user_id,
             responsible_user_id
@@ -1523,6 +1625,7 @@ def save_customer(
             (SELECT id FROM target_customer),
             NULLIF(data->>'case_title', ''),
             data->>'case_type',
+            NULLIF(data->>'carat_order_number', ''),
             NULLIF(data->>'status_phase_id', '')::smallint,
             (data->>'actor_user_id')::bigint,
             NULLIF(data->>'responsible_user_id', '')::bigint

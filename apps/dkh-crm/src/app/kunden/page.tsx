@@ -105,14 +105,14 @@ export default async function CustomersPage() {
           </div>
           <form className="mt-4 grid gap-3" action="/api/kunden/customers?return_to=/kunden" method="post">
             <div className="grid gap-3 md:grid-cols-2">
-              <Label label="Typ">
+              <Label label="Kundentyp">
                 <Select name="customer_type" defaultValue="private">
-                  <option value="private">Privat</option>
-                  <option value="company">Firma</option>
+                  <option value="private">Privatkunde</option>
+                  <option value="company">Objektkunde</option>
                 </Select>
               </Label>
               <Label label="Kundennummer">
-                <Field name="customer_number" />
+                <Field value="Wird beim Speichern automatisch vergeben" disabled />
               </Label>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -161,9 +161,46 @@ export default async function CustomersPage() {
               <Textarea name="notes" />
             </Label>
             <label className="flex items-center gap-2 text-sm font-bold">
-              <input name="create_direct_case" value="true" type="checkbox" defaultChecked />
+              <input name="create_case" value="true" type="checkbox" defaultChecked />
               Direkt einen Vorgang anlegen
             </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Vorgangsnummer">
+                <Field value="Wird beim Speichern automatisch vergeben" disabled />
+              </Label>
+              <Label label="CARAT Vorgangsnummer">
+                <Field
+                  name="carat_order_number"
+                  pattern="[A-Za-z0-9]{1,5}-[A-Za-z0-9]{1,3}"
+                  maxLength={9}
+                  placeholder="z. B. 12345-123"
+                  title="Maximal 5 Zeichen, Bindestrich, maximal 3 Zeichen"
+                />
+              </Label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Vorgangstitel">
+                <Field name="case_title" placeholder="z. B. Küchenplanung" />
+              </Label>
+              <Label label="Statusphase">
+                <Select name="status_phase_id" defaultValue="1">
+                  {state.status_phases.map((phase) => (
+                    <option key={phase.phase} value={phase.phase}>
+                      {phase.phase}. {phase.name}
+                    </option>
+                  ))}
+                </Select>
+              </Label>
+            </div>
+            <Label label="Vorgang verantwortlich">
+              <Select name="responsible_user_id">
+                {state.users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {displayName(user.first_name, user.last_name) || user.email}
+                  </option>
+                ))}
+              </Select>
+            </Label>
             <Button type="submit">Kunde speichern</Button>
           </form>
         </Panel>

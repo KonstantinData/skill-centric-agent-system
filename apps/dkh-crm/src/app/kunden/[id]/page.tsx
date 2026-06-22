@@ -127,6 +127,11 @@ export default async function CustomerFilePage({ params }: PageProps) {
                   <p className="text-sm text-[var(--muted)]">
                     {item.case_title || "Küchenprojekt"} · {item.status_phase_name || item.case_status}
                   </p>
+                  {item.carat_order_number ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      CARAT Vorgangsnummer: {item.carat_order_number}
+                    </p>
+                  ) : null}
                   <form
                     className="mt-3 grid gap-2"
                     action={`/api/kunden/cases/${item.id}/notes?return_to=/kunden/${customer.id}`}

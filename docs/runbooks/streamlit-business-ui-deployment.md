@@ -114,12 +114,8 @@ session is present. It must point to an approved HTTPS upstream identity
 boundary; the Streamlit app does not store passwords or authenticate users
 itself.
 
-For Daskuechenhaus customer case management, pass
-`customer_cases_api_url=https://daskuechenhaus-control-api.still-butterfly-bbff.workers.dev`.
-The deploy workflow requires the matching environment secret
-`SCAS_*_DASKUECHENHAUS_CASES_API_SECRET` for Daskuechenhaus apply runs and
-writes `SCAS_CUSTOMER_CASES_API_URL` plus `SCAS_CUSTOMER_CASES_API_SECRET` into
-the root-owned service environment file.
+The Daskuechenhaus CRM is deployed through the dedicated Next.js CRM workflow,
+not through the legacy Streamlit tenant UI or a customer-cases Worker.
 
 ## Build-Only Plan
 
@@ -177,7 +173,6 @@ gh workflow run tenant-ui-deploy.yml \
   -f tenant_id=daskuechenhaus \
   -f hostname=daskuechenhaus.condata.io \
   -f control_api_url=https://<staging-control-api-url> \
-  -f customer_cases_api_url=https://daskuechenhaus-control-api.still-butterfly-bbff.workers.dev \
   -f auth_mode=local-login \
   -f apply_deploy=true \
   -f confirm_production=false
