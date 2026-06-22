@@ -100,6 +100,7 @@ jobs:
           organization_name = "Das Küchenhaus CRM"
           login_header_text = "Anmeldung zum Küchenhaus CRM"
           login_footer_text = "Zugang nur fuer freigeschaltete Benutzer"
+          otp_identity_provider_name = "Das Küchenhaus CRM E-Mail-Code"
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -309,6 +310,24 @@ jobs:
               for provider in identity_providers
               if provider.get("id") and is_one_time_pin_provider(provider)
           ]
+          renamed_identity_providers: list[str] = []
+          if apply_changes:
+              for provider in identity_providers:
+                  if not is_one_time_pin_provider(provider):
+                      continue
+                  if provider.get("name") == otp_identity_provider_name:
+                      continue
+                  cf_request(
+                      "PUT",
+                      f"/accounts/{account_id}/access/identity_providers/{provider['id']}",
+                      {
+                          "name": otp_identity_provider_name,
+                          "type": provider["type"],
+                          "config": copy.deepcopy(provider.get("config") or {}),
+                      },
+                  )
+                  renamed_identity_providers.append(str(provider.get("name") or provider["id"]))
+                  provider["name"] = otp_identity_provider_name
           primary = next((app for app in matching_apps if primary_hostname in destination_uris(app)), matching_apps[0])
           changed_policies: list[str] = []
           existing_policy_summaries: list[str] = []
@@ -405,6 +424,12 @@ jobs:
               consolidation_status = "planned"
 
           refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          refreshed_identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
+          refreshed_identity_provider_lookup = {
+              str(provider.get("id")): provider
+              for provider in refreshed_identity_providers
+              if provider.get("id")
+          }
           refreshed_matches = [app for app in refreshed_apps if app_matches(app)]
           refreshed_primary = next((app for app in refreshed_matches if primary_hostname in destination_uris(app)), primary)
           collected_at = datetime.now(UTC).isoformat()
@@ -439,6 +464,8 @@ jobs:
               f"- Login header text: `{login_header_text}`",
               f"- Login footer text: `{login_footer_text}`",
               f"- Configured identity providers: `{len(identity_providers)}`",
+              f"- OTP identity provider desired name: `{otp_identity_provider_name}`",
+              f"- Renamed identity providers: `{', '.join(renamed_identity_providers) if renamed_identity_providers else 'none'}`",
               f"- One-time PIN provider present: `{str(bool(one_time_pin_provider_ids)).lower()}`",
               f"- One-time PIN allowed before: `{str(otp_allowed_before).lower()}`",
               f"- One-time PIN allowed after: `{str(otp_allowed_after).lower()}`",
@@ -450,7 +477,7 @@ jobs:
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
               "- Identity provider summary:",
           ]
-          evidence.extend(f"  - `{identity_provider_label(provider)}`" for provider in identity_providers)
+          evidence.extend(f"  - `{identity_provider_label(provider)}`" for provider in refreshed_identity_providers)
           evidence.extend(
               [
                   "- Canonical app allowed identity providers before:",
@@ -462,7 +489,7 @@ jobs:
                   "- Canonical app allowed identity providers after:",
               ]
           )
-          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(refreshed_primary, identity_provider_lookup))
+          evidence.extend(f"  - `{label}`" for label in app_allowed_identity_provider_labels(refreshed_primary, refreshed_identity_provider_lookup))
           evidence.extend(
               [
               "- Existing policy summary:",
@@ -502,6 +529,7 @@ jobs:
               "organization_status": organization_status,
               "consolidation_status": consolidation_status,
               "deleted_duplicate_apps": deleted_duplicate_apps,
+              "renamed_identity_providers": renamed_identity_providers,
               "one_time_pin_allowed_after": otp_allowed_after,
               "one_time_pin_allowed_before": otp_allowed_before,
               "one_time_pin_provider_present": bool(one_time_pin_provider_ids),
