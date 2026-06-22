@@ -20,7 +20,15 @@ Browser
 ## Required Cloudflare State
 
 - DNS keeps `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` proxied.
-- Cloudflare Access protects both hostnames as the same CRM entrypoint.
+- Cloudflare Access protects both hostnames through one self-hosted Access
+  application. The production Access application must use both public
+  destinations:
+  - `es-daskuechenhaus.de`
+  - `www.es-daskuechenhaus.de`
+- Access authorization is explicit user allow-listing. For the three-person
+  portal setup, use one `Allow` policy with `Emails` selectors for the approved
+  users. The initial approved user is:
+  - `k.milonas@schober-daskuechenhaus.de`
 - No Cloudflare Worker route should exist for either hostname.
 - The Access application must pass the authenticated user email to the origin
   through the Access JWT/header flow.
@@ -44,6 +52,26 @@ npm --prefix apps/dkh-crm run build
     hostnames, include both audience tags in `CF_ACCESS_AUD` separated by
     whitespace or commas. Prefer a single Access application covering both
     hostnames when possible.
+
+## Access Configuration Workflow
+
+Manage the DKH CRM Cloudflare Access app through:
+
+```powershell
+gh workflow run "es-daskuechenhaus.de Access Configuration" `
+  --repo KonstantinData/skill-centric-agent-system `
+  --ref main `
+  -f apply_changes=true `
+  -f confirm_production=true `
+  -f "hostnames=es-daskuechenhaus.de www.es-daskuechenhaus.de" `
+  -f "allowed_emails=k.milonas@schober-daskuechenhaus.de" `
+  -f primary_hostname=es-daskuechenhaus.de `
+  -f delete_duplicate_apps=true
+```
+
+When the other two portal users are approved, add them to the
+`allowed_emails` input as a whitespace-separated list. Do not add broad domain
+allow rules unless all mailboxes in that domain should receive CRM access.
 
 ## Validation
 
