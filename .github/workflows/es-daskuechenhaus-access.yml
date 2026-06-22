@@ -224,8 +224,16 @@ jobs:
                   for policy in policies
               )
               target = next((policy for policy in policies if policy.get("name") == policy_name), None)
+              existing_precedences = [
+                  int(policy["precedence"])
+                  for policy in policies
+                  if str(policy.get("precedence", "")).isdigit()
+              ]
+              next_precedence = max(existing_precedences, default=0) + 1
               payload = policy_payload(
-                  int(target.get("precedence", 1)) if target and str(target.get("precedence", "")).isdigit() else 1
+                  int(target["precedence"])
+                  if target and str(target.get("precedence", "")).isdigit()
+                  else next_precedence
               )
               if target:
                   desired_emails = set(allowed_emails)
