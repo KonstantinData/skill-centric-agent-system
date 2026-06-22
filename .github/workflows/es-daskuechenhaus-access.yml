@@ -33,6 +33,16 @@ on:
         required: true
         type: boolean
         default: true
+      reset_user_auth_state:
+        description: Revoke sessions and delete MFA authenticators for reset_user_email
+        required: true
+        type: boolean
+        default: false
+      reset_user_email:
+        description: User email whose Cloudflare Access auth state should be reset
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -55,6 +65,8 @@ jobs:
       DKH_ACCESS_ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
       DKH_ACCESS_PRIMARY_HOSTNAME: ${{ inputs.primary_hostname }}
       DKH_ACCESS_DELETE_DUPLICATE_APPS: ${{ inputs.delete_duplicate_apps }}
+      DKH_ACCESS_RESET_USER_AUTH_STATE: ${{ inputs.reset_user_auth_state }}
+      DKH_ACCESS_RESET_USER_EMAIL: ${{ inputs.reset_user_email }}
       DKH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
       DKH_CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
 
@@ -90,6 +102,8 @@ jobs:
           token = os.environ["DKH_CLOUDFLARE_API_TOKEN"]
           apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
           delete_duplicate_apps = os.environ["DKH_ACCESS_DELETE_DUPLICATE_APPS"].lower() == "true"
+          reset_user_auth_state = os.environ["DKH_ACCESS_RESET_USER_AUTH_STATE"].lower() == "true"
+          reset_user_email = os.environ["DKH_ACCESS_RESET_USER_EMAIL"].strip().lower()
           hostnames = [value.strip().lower() for value in os.environ["DKH_ACCESS_HOSTNAMES"].split() if value.strip()]
           allowed_emails = [value.strip().lower() for value in os.environ["DKH_ACCESS_ALLOWED_EMAILS"].split() if value.strip()]
           primary_hostname = os.environ["DKH_ACCESS_PRIMARY_HOSTNAME"].strip().lower()
@@ -117,6 +131,13 @@ jobs:
           for email in allowed_emails:
               if not email_pattern.fullmatch(email):
                   raise SystemExit(f"Unsupported email value: {email}")
+          if reset_user_auth_state:
+              if not reset_user_email:
+                  raise SystemExit("reset_user_email is required when reset_user_auth_state=true.")
+              if not email_pattern.fullmatch(reset_user_email):
+                  raise SystemExit(f"Unsupported reset_user_email value: {reset_user_email}")
+              if reset_user_email not in allowed_emails:
+                  raise SystemExit("reset_user_email must be included in allowed_emails.")
 
           def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
               data = None
@@ -139,6 +160,12 @@ jobs:
               if not body.get("success", False):
                   raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
               return body
+
+          def cf_request_optional(method: str, path: str, payload: dict | None = None) -> tuple[dict | None, str]:
+              try:
+                  return cf_request(method, path, payload), ""
+              except RuntimeError as exc:
+                  return None, str(exc)
 
           def destination_uris(app: dict) -> set[str]:
               uris: set[str] = set()
@@ -236,6 +263,159 @@ jobs:
                   and set(mfa_allowed_authenticators).issubset(allowed_authenticators)
                   and mfa_config.get("session_duration") == mfa_session_duration
               )
+
+          def user_email_values(user: dict) -> set[str]:
+              values: set[str] = set()
+              for key in ("email", "email_address", "name", "user_email"):
+                  if user.get(key) and "@" in str(user[key]):
+                      values.add(str(user[key]).lower())
+              for item in user.get("emails") or []:
+                  if isinstance(item, dict) and item.get("value"):
+                      values.add(str(item["value"]).lower())
+                  elif isinstance(item, str):
+                      values.add(item.lower())
+              return values
+
+          def user_matches_email(user: dict, email: str) -> bool:
+              return email in user_email_values(user)
+
+          def authenticator_id(authenticator: dict) -> str:
+              for key in ("id", "uid", "uuid"):
+                  if authenticator.get(key):
+                      return str(authenticator[key])
+              return ""
+
+          def collect_user_authenticators(user: dict) -> list[dict]:
+              authenticators: list[dict] = []
+              for key in ("mfa_authenticators", "mfa_devices", "authenticators"):
+                  value = user.get(key)
+                  if isinstance(value, list):
+                      authenticators.extend(item for item in value if isinstance(item, dict))
+              return authenticators
+
+          def access_users_matching_email(email: str) -> tuple[list[dict], list[str]]:
+              warnings: list[str] = []
+              users_by_id: dict[str, dict] = {}
+              list_paths = [
+                  f"/accounts/{account_id}/access/users?email={urllib.parse.quote(email)}&per_page=100",
+                  f"/accounts/{account_id}/access/users?search={urllib.parse.quote(email)}&per_page=100",
+                  f"/accounts/{account_id}/access/users?per_page=100",
+              ]
+              for path in list_paths:
+                  body, error = cf_request_optional("GET", path)
+                  if error:
+                      warnings.append(error)
+                      continue
+                  for user in (body or {}).get("result", []):
+                      if user_matches_email(user, email) and user.get("id"):
+                          users_by_id[str(user["id"])] = user
+              users: list[dict] = []
+              for user_id, user in users_by_id.items():
+                  detail, error = cf_request_optional("GET", f"/accounts/{account_id}/access/users/{user_id}")
+                  if error:
+                      warnings.append(error)
+                      users.append(user)
+                  else:
+                      users.append((detail or {}).get("result", user))
+              return users, warnings
+
+          def get_user_mfa_authenticators(user: dict, warnings: list[str]) -> list[dict]:
+              authenticators = collect_user_authenticators(user)
+              body, error = cf_request_optional(
+                  "GET",
+                  f"/accounts/{account_id}/access/users/{user['id']}/mfa_authenticators",
+              )
+              if error:
+                  warnings.append(error)
+              else:
+                  result = (body or {}).get("result", [])
+                  if isinstance(result, list):
+                      authenticators.extend(item for item in result if isinstance(item, dict))
+              seen_ids: set[str] = set()
+              unique_authenticators: list[dict] = []
+              for authenticator in authenticators:
+                  auth_id = authenticator_id(authenticator)
+                  if auth_id and auth_id not in seen_ids:
+                      seen_ids.add(auth_id)
+                      unique_authenticators.append(authenticator)
+              return unique_authenticators
+
+          reset_status = "not-requested"
+          reset_errors: list[str] = []
+          reset_warnings: list[str] = []
+          reset_users: list[dict] = []
+          reset_user_ids: list[str] = []
+          reset_user_active_sessions_before = 0
+          reset_user_mfa_authenticators_before = 0
+          reset_user_mfa_authenticators_deleted = 0
+          reset_user_sessions_revoked = False
+          reset_users_removed = 0
+
+          def reset_access_user_auth_state() -> None:
+              global reset_status
+              global reset_users
+              global reset_user_ids
+              global reset_user_active_sessions_before
+              global reset_user_mfa_authenticators_before
+              global reset_user_mfa_authenticators_deleted
+              global reset_user_sessions_revoked
+              global reset_users_removed
+              if not reset_user_auth_state:
+                  return
+              reset_status = "planned"
+              reset_users, lookup_warnings = access_users_matching_email(reset_user_email)
+              reset_warnings.extend(lookup_warnings)
+              reset_user_ids = [str(user["id"]) for user in reset_users if user.get("id")]
+              authenticators_by_user: dict[str, list[dict]] = {}
+              for user in reset_users:
+                  if not user.get("id"):
+                      continue
+                  sessions, error = cf_request_optional(
+                      "GET",
+                      f"/accounts/{account_id}/access/users/{user['id']}/active_sessions",
+                  )
+                  if error:
+                      reset_warnings.append(error)
+                  else:
+                      result = (sessions or {}).get("result", [])
+                      if isinstance(result, list):
+                          reset_user_active_sessions_before += len(result)
+                  authenticators = get_user_mfa_authenticators(user, reset_warnings)
+                  authenticators_by_user[str(user["id"])] = authenticators
+                  reset_user_mfa_authenticators_before += len(authenticators)
+              if not apply_changes:
+                  return
+              body, error = cf_request_optional(
+                  "POST",
+                  f"/accounts/{account_id}/access/organizations/revoke_user",
+                  {"email": reset_user_email},
+              )
+              if error:
+                  reset_errors.append(error)
+              else:
+                  reset_user_sessions_revoked = True
+              for user in reset_users:
+                  user_id = str(user.get("id") or "")
+                  if not user_id:
+                      continue
+                  for authenticator in authenticators_by_user.get(user_id, []):
+                      auth_id = authenticator_id(authenticator)
+                      if not auth_id:
+                          continue
+                      _, error = cf_request_optional(
+                          "DELETE",
+                          f"/accounts/{account_id}/access/users/{user_id}/mfa_authenticators/{auth_id}",
+                      )
+                      if error:
+                          reset_errors.append(error)
+                      else:
+                          reset_user_mfa_authenticators_deleted += 1
+                  _, error = cf_request_optional("DELETE", f"/accounts/{account_id}/access/users/{user_id}")
+                  if error:
+                      reset_errors.append(error)
+                  else:
+                      reset_users_removed += 1
+              reset_status = "updated" if not reset_errors else "partial"
 
           def with_required_mfa_policy(policy: dict) -> dict:
               payload = copy.deepcopy(policy)
@@ -590,6 +770,8 @@ jobs:
                   if app:
                       ensure_policy(app, changed_policies, existing_policy_summaries)
 
+          reset_access_user_auth_state()
+
           refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
           refreshed_identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
           refreshed_identity_provider_lookup = {
@@ -658,6 +840,16 @@ jobs:
               f"- One-time PIN provider present: `{str(bool(one_time_pin_provider_ids)).lower()}`",
               f"- One-time PIN allowed before: `{str(otp_allowed_before).lower()}`",
               f"- One-time PIN allowed after: `{str(otp_allowed_after).lower()}`",
+              f"- Reset user auth state requested: `{str(reset_user_auth_state).lower()}`",
+              f"- Reset user email: `{reset_user_email or 'none'}`",
+              f"- Reset status: `{reset_status}`",
+              f"- Reset matching users: `{len(reset_users)}`",
+              f"- Reset matching user ids: `{', '.join(reset_user_ids) if reset_user_ids else 'none'}`",
+              f"- Reset active sessions before: `{reset_user_active_sessions_before}`",
+              f"- Reset MFA authenticators before: `{reset_user_mfa_authenticators_before}`",
+              f"- Reset MFA authenticators deleted: `{reset_user_mfa_authenticators_deleted}`",
+              f"- Reset sessions revoked: `{str(reset_user_sessions_revoked).lower()}`",
+              f"- Reset users removed: `{reset_users_removed}`",
               f"- Organization branding status: `{organization_status}`",
               f"- Host app status: `{host_app_status}`",
               f"- Host app changes: `{', '.join(changed_apps) if changed_apps else 'none'}`",
@@ -712,6 +904,20 @@ jobs:
                       f"  - `{organization_error[:1000]}`",
                   ]
               )
+          if reset_errors:
+              evidence.extend(
+                  [
+                      "- Reset errors:",
+                  ]
+              )
+              evidence.extend(f"  - `{error[:1000]}`" for error in reset_errors)
+          if reset_warnings:
+              evidence.extend(
+                  [
+                      "- Reset warnings:",
+                  ]
+              )
+              evidence.extend(f"  - `{warning[:1000]}`" for warning in reset_warnings)
           evidence.extend(
               [
                   f"- Collected at: `{collected_at}`",
@@ -733,6 +939,15 @@ jobs:
               "audiences_after": target_audiences_after,
               "deleted_duplicate_apps": deleted_duplicate_apps,
               "renamed_identity_providers": renamed_identity_providers,
+              "reset_errors": reset_errors,
+              "reset_matching_users": len(reset_users),
+              "reset_mfa_authenticators_before": reset_user_mfa_authenticators_before,
+              "reset_mfa_authenticators_deleted": reset_user_mfa_authenticators_deleted,
+              "reset_sessions_revoked": reset_user_sessions_revoked,
+              "reset_status": reset_status,
+              "reset_user_auth_state": reset_user_auth_state,
+              "reset_users_removed": reset_users_removed,
+              "reset_warnings": reset_warnings,
               "one_time_pin_allowed_after": otp_allowed_after,
               "one_time_pin_allowed_before": otp_allowed_before,
               "one_time_pin_provider_present": bool(one_time_pin_provider_ids),
@@ -742,6 +957,8 @@ jobs:
               raise SystemExit("Access organization branding was blocked. See evidence artifact.")
           if apply_changes and host_app_status == "blocked":
               raise SystemExit("Access host application split was blocked. See evidence artifact.")
+          if apply_changes and reset_user_auth_state and reset_errors:
+              raise SystemExit("Access user auth reset was incomplete. See evidence artifact.")
           PY
 
       - name: Upload Access evidence
