@@ -5,11 +5,21 @@ import { Field, Label, Select, Textarea } from "@/components/ui/form";
 import { Panel } from "@/components/ui/panel";
 import { getUserEmail } from "@/lib/auth";
 import { fetchCustomersState } from "@/lib/dkh-api";
+import type { CustomerRecord } from "@/lib/types";
 import { displayName } from "@/lib/utils";
+
+function customerUpdatedTime(customer: CustomerRecord): number {
+  if (!customer.updated_at) return 0;
+  const time = new Date(customer.updated_at).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 
 export default async function CustomersPage() {
   const userEmail = await getUserEmail();
   const state = await fetchCustomersState(userEmail);
+  const recentlyUsedCustomers = [...state.customers]
+    .sort((left, right) => customerUpdatedTime(right) - customerUpdatedTime(left))
+    .slice(0, 5);
 
   return (
     <div className="content-stack">
@@ -33,13 +43,13 @@ export default async function CustomersPage() {
           </p>
           <div data-customer-search-results hidden />
           <p data-customer-search-empty hidden className="text-sm text-[var(--muted)]">
-            Kein Treffer. Legen Sie den Kunden unten neu an.
+            Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.
           </p>
         </div>
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <Panel>
+        <Panel data-customer-create-panel hidden>
           <h2 className="section-title">Kunde anlegen</h2>
           <form className="mt-4 grid gap-3" action="/api/kunden/customers?return_to=/kunden" method="post">
             <div className="grid gap-3 md:grid-cols-2">
@@ -107,9 +117,9 @@ export default async function CustomersPage() {
         </Panel>
 
         <Panel>
-          <h2 className="section-title">Aktuelle Kunden</h2>
+          <h2 className="section-title">Zuletzt verwendet</h2>
           <div className="mt-4 grid gap-3">
-            {state.customers.map((customer) => (
+            {recentlyUsedCustomers.map((customer) => (
               <article key={customer.id} className="rounded-lg border border-[var(--border)] bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -129,8 +139,8 @@ export default async function CustomersPage() {
                 </div>
               </article>
             ))}
-            {state.customers.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">Keine Kunden im Sichtbereich.</p>
+            {recentlyUsedCustomers.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">Noch keine zuletzt bearbeiteten Kunden.</p>
             ) : null}
           </div>
         </Panel>

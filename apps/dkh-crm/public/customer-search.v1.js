@@ -68,9 +68,13 @@
     const results = root.querySelector("[data-customer-search-results]");
     const emptyState = root.querySelector("[data-customer-search-empty]");
     const hint = root.querySelector("[data-customer-search-hint]");
+    const createPanel = document.querySelector("[data-customer-create-panel]");
     results.innerHTML = "";
     if (!items.length) {
       results.hidden = true;
+      emptyState.hidden = false;
+      if (createPanel) createPanel.hidden = false;
+      hint.textContent = "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
       return;
     }
     const list = document.createElement("div");
@@ -111,6 +115,7 @@
     results.append(list);
     results.hidden = false;
     emptyState.hidden = items.length > 0;
+    if (createPanel) createPanel.hidden = true;
     hint.textContent = items.length > 0
       ? items.length + " Treffer gefunden."
       : "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden.";
@@ -122,11 +127,13 @@
   const results = root.querySelector("[data-customer-search-results]");
   const emptyState = root.querySelector("[data-customer-search-empty]");
   const hint = root.querySelector("[data-customer-search-hint]");
+  const createPanel = document.querySelector("[data-customer-create-panel]");
 
   const resetSearch = () => {
     results.hidden = true;
     results.innerHTML = "";
     emptyState.hidden = true;
+    if (createPanel) createPanel.hidden = true;
     hint.textContent = "Geben Sie mindestens drei Zeichen ein.";
   };
 
@@ -155,6 +162,7 @@
       if (error.name === "AbortError") return;
       results.hidden = true;
       emptyState.hidden = true;
+      if (createPanel) createPanel.hidden = true;
       hint.textContent = "Suche aktuell nicht verfügbar.";
     }
   };

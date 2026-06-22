@@ -54,6 +54,17 @@ The build uses `output: "standalone"` and then copies `public/` and
 `.next/static/` into `.next/standalone/` via
 `scripts/copy-standalone-assets.mjs`.
 
+## Customer Page Behavior
+
+The `/kunden` page follows a search-first duplicate-prevention flow. The
+customer creation form is hidden on initial page load, remains hidden while the
+search has matches or is unavailable, and is shown only after the customer
+search returns no matches for a query with at least three characters.
+
+The customer quick-access card is labeled `Zuletzt verwendet` and shows the
+five most recently updated customer records by `updated_at`. It is separate from
+any Stammkunden/customer-master-data surface.
+
 ## Legacy Route Compatibility
 
 Legacy `.php` entrypoints redirect to the new App Router pages with temporary
