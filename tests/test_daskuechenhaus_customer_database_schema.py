@@ -11,6 +11,14 @@ CUSTOMER_DATABASE_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0005_customer_database.sql"
 )
+SEARCH_FIRST_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0008_customer_search_first_deduplication.sql"
+)
 
 
 def load_migration() -> str:
@@ -19,6 +27,7 @@ def load_migration() -> str:
 
 def test_customer_database_migration_exists() -> None:
     assert CUSTOMER_DATABASE_MIGRATION_PATH.exists()
+    assert SEARCH_FIRST_MIGRATION_PATH.exists()
 
 
 def test_customer_database_creates_expected_tables() -> None:
@@ -146,3 +155,23 @@ def test_customer_database_adds_permissions_and_runtime_grants() -> None:
     assert "WHERE roles.code = 'employee'" in migration
     assert "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA app" in migration
     assert "tenant_daskuechenhaus_app" in migration
+
+
+def test_customer_search_first_migration_adds_deduplication_contract() -> None:
+    migration = SEARCH_FIRST_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert "primary_phone_normalized" in migration
+    assert "primary_mobile_normalized" in migration
+    assert "phone_normalized" in migration
+    assert "mobile_normalized" in migration
+    assert "customers_primary_email_unique_idx" in migration
+    assert "customers_primary_phone_normalized_unique_idx" in migration
+    assert "customers_primary_mobile_normalized_unique_idx" in migration
+    assert "customers_source CHECK" in migration
+    assert "'walk_in'" in migration
+    assert "'website'" in migration
+    assert "'recommendation'" in migration
+    assert "'b2b_network'" in migration
+    assert "'kitchen_project_b2b'" in migration
+    assert "customers_search_first_idx" in migration
+    assert "customer_contacts_search_first_idx" in migration

@@ -517,7 +517,13 @@
       "additionalProperties": false,
       "required": [
         "logo_path",
+        "experience_standard",
+        "brand_assets",
         "landing",
+        "navigation",
+        "command_center",
+        "scas_skill_packs",
+        "terminology",
         "workspace_areas"
       ],
       "properties": {
@@ -527,6 +533,13 @@
             "null"
           ],
           "minLength": 1
+        },
+        "experience_standard": {
+          "type": "string",
+          "const": "sota-2026-tenant-crm"
+        },
+        "brand_assets": {
+          "$ref": "#/$defs/uiBrandAssets"
         },
         "landing": {
           "type": "object",
@@ -553,6 +566,22 @@
         "theme": {
           "$ref": "#/$defs/uiTheme"
         },
+        "navigation": {
+          "$ref": "#/$defs/uiNavigation"
+        },
+        "command_center": {
+          "$ref": "#/$defs/uiCommandCenter"
+        },
+        "scas_skill_packs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/uiScasSkillPack"
+          },
+          "uniqueItems": true
+        },
+        "terminology": {
+          "$ref": "#/$defs/uiTerminology"
+        },
         "workspace_areas": {
           "type": "array",
           "items": {
@@ -560,6 +589,43 @@
           },
           "minItems": 1,
           "uniqueItems": true
+        }
+      }
+    },
+    "uiBrandAssets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logo_path",
+        "favicon_path",
+        "app_icon_path",
+        "asset_scope"
+      ],
+      "properties": {
+        "logo_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "favicon_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "app_icon_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "asset_scope": {
+          "type": "string",
+          "const": "tenant-owned"
         }
       }
     },
@@ -594,6 +660,80 @@
           "$ref": "#/$defs/hexColor"
         }
       }
+    },
+    "uiNavigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_area_ids",
+        "admin_area_ids"
+      ],
+      "properties": {
+        "primary_area_ids": {
+          "$ref": "#/$defs/idArray"
+        },
+        "admin_area_ids": {
+          "$ref": "#/$defs/idArray"
+        }
+      }
+    },
+    "uiCommandCenter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "surfaces",
+        "default_route"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "surfaces": {
+          "$ref": "#/$defs/idArray"
+        },
+        "default_route": {
+          "type": "string",
+          "pattern": "^/(?:[a-z0-9/-]+)?$"
+        }
+      }
+    },
+    "uiScasSkillPack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_types",
+        "required_capabilities",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "task_types": {
+          "$ref": "#/$defs/idArray"
+        },
+        "required_capabilities": {
+          "$ref": "#/$defs/idArray"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "disabled"
+          ]
+        }
+      }
+    },
+    "uiTerminology": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minProperties": 1
     },
     "hexColor": {
       "type": "string",

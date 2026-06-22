@@ -32,8 +32,14 @@ TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
 ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
 )
+ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-crm-deploy.yml"
+)
 ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-mail-runtime-sync.yml"
+)
+ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-admin-api-deploy.yml"
 )
 DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
@@ -86,8 +92,16 @@ def load_es_daskuechenhaus_site_deploy_workflow() -> str:
     return ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
+def load_es_daskuechenhaus_crm_deploy_workflow() -> str:
+    return ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
 def load_es_daskuechenhaus_mail_runtime_sync_workflow() -> str:
     return ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_es_daskuechenhaus_admin_api_deploy_workflow() -> str:
+    return ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def test_ci_workflow_exists() -> None:
@@ -486,32 +500,37 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
 
 
 def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
-    assert ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.exists()
-    workflow = load_es_daskuechenhaus_site_deploy_workflow()
+    assert not ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.exists()
+    for workflow_path in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
+        workflow = workflow_path.read_text(encoding="utf-8")
+        assert "workers/es-daskuechenhaus-site" not in workflow
+        assert "dkh-site:typecheck" not in workflow
+        assert "dkh-site:check" not in workflow
+
+
+def test_es_daskuechenhaus_crm_deploy_workflow_cuts_over_to_nextjs_origin() -> None:
+    assert ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_es_daskuechenhaus_crm_deploy_workflow()
 
     assert "workflow_dispatch:" in workflow
-    assert "allowed_emails:" in workflow
     assert "apply_deploy:" in workflow
     assert "confirm_production:" in workflow
-    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "confirm_production must be true when apply_deploy=true" in workflow
+    assert "apps/dkh-crm" in workflow
+    assert "npm run dkh-crm:check" in workflow
+    assert "dkh-crm-standalone.tar.gz" in workflow
+    assert "daskuechenhaus-crm.service" in workflow
+    assert "es-daskuechenhaus.de www.es-daskuechenhaus.de" in workflow
+    assert "es-daskuechenhaus-crm" in workflow
     assert "DKH_CLOUDFLARE_ZONE_ID" in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" in workflow
-    assert "HOSTNAMES: es-daskuechenhaus.de,www.es-daskuechenhaus.de" in workflow
-    assert "secrets.CLOUDFLARE_API_TOKEN" not in workflow
-    assert "confirm_production must be true when apply_deploy=true" in workflow
-    assert "allowed_emails is required when apply_deploy=true" in workflow
-    assert "scripts/cloudflare/es_daskuechenhaus_access.py" in workflow
-    assert 'IFS=\',\' read -r -a hostnames <<< "${HOSTNAMES}"' in workflow
-    assert "npm run dkh-site:typecheck" in workflow
-    assert "npm run dkh-site:check" in workflow
-    assert "npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml" in workflow
-    assert (
-        "Anonymous access returned HTTP 200 for ${hostname}. "
-        "Cloudflare Access is not blocking public access."
-        in workflow
-    )
-    assert "es-daskuechenhaus-site-deploy-plan" in workflow
-    assert "es-daskuechenhaus-site-deployment-evidence" in workflow
+    assert "/workers/routes" in workflow
+    assert "/dns_records" in workflow
+    assert "Access application/policies: `preserved; not modified by this workflow`" in workflow
+    assert "workers/es-daskuechenhaus-site" not in workflow
+    assert "es-daskuechenhaus-site" not in workflow
 
 
 def test_es_daskuechenhaus_mail_runtime_sync_workflow_is_hetzner_only() -> None:
@@ -550,6 +569,49 @@ def test_es_daskuechenhaus_mail_runtime_sync_exports_multiline_ssh_key_safely() 
     assert "echo '__SCAS_HETZNER_SSH_KEY__'" in workflow
     assert "value contains reserved delimiter" in workflow
     assert "printf 'TARGET_HETZNER_SSH_KEY=%s" not in workflow
+
+
+def test_es_daskuechenhaus_admin_api_deploy_workflow_is_production_guarded() -> None:
+    assert ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_es_daskuechenhaus_admin_api_deploy_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "apply_deploy:" in workflow
+    assert "confirm_production:" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "SCAS_PROD_HETZNER_HOST" in workflow
+    assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
+    assert "SCAS_PROD_HETZNER_USER" in workflow
+    assert "confirm_production must be true when apply_deploy=true" in workflow
+    assert "TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
+    assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
+    assert "wrangler" not in workflow
+    assert "CLOUDFLARE_API_TOKEN" not in workflow
+
+
+def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
+    workflow = load_es_daskuechenhaus_admin_api_deploy_workflow()
+
+    assert "0008_customer_search_first_deduplication.sql" in workflow
+    assert "daskuechenhaus_admin_api.py" in workflow
+    assert "daskuechenhaus-admin-api.service" in workflow
+    assert "Duplicate active customer emails block Search-First hard-bounce migration" in workflow
+    assert (
+        "Duplicate active primary phone numbers block Search-First hard-bounce migration"
+        in workflow
+    )
+    assert (
+        "Duplicate active primary mobile numbers block Search-First hard-bounce migration"
+        in workflow
+    )
+    assert "Invalid customer source values block Search-First source constraint" in workflow
+    assert "sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1" in workflow
+    assert "systemctl restart daskuechenhaus-admin-api.service" in workflow
+    assert "http://127.0.0.1:8715/health" in workflow
+    assert "Admin API did not become reachable on 127.0.0.1:8715" in workflow
+    assert "http://127.0.0.1:8715/customers/search?q=abc" in workflow
+    assert "Secret values in artifact: `none`" in workflow
 
 
 def test_production_readiness_workflow_exists() -> None:

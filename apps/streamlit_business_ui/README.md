@@ -7,15 +7,22 @@ enabled by the current tenant roles. Internal tenant identifiers, setup status,
 hostnames, role names, data-source names, admin routes, and audit/settings
 diagnostics are not rendered on the user-facing landing page.
 
-Tenants use `ui_profile.logo_path`, `ui_profile.theme`, and
+Tenants use `ui_profile.experience_standard`, `ui_profile.brand_assets`,
+`ui_profile.theme`, `ui_profile.navigation`, `ui_profile.command_center`,
+`ui_profile.scas_skill_packs`, `ui_profile.terminology`, and
 `ui_profile.workspace_areas` from their tenant registry fixture for the first
-screen. The Daskuechenhaus tenant uses its tenant-local logo at
+screen and tenant CRM shell. The Daskuechenhaus tenant uses its tenant-local logo at
 `assets/images/daskuechenhaus/logo_daskuechenhaus.png` and the corporate colors
 `#fff`, `#111`, `#333`, and `#76b726`. The theme CSS also pins Streamlit's
 header menu button to tenant foreground/background colors so it remains visible
 in light and dark browser modes. Other tenants render their own metadata and do
 not inherit tenant-specific logo, color, or copy when their fixture lacks those
 UI profile fields.
+
+The active CRM web app baseline is documented in
+`docs/policies/sota-2026-tenant-crm-web-app.md`. Tenant UI metadata may expose
+SCAS-supported skill-package bindings to the user, but execution authority still
+comes from role-derived capabilities and the normal SCAS Composer control path.
 
 When `SCAS_CONTROL_API_URL` and `SCAS_TENANT_ADMIN_TOKEN` are set, the UI loads
 the tenant admin context from `GET /tenant-admin/tenants/{tenant_id}` instead of

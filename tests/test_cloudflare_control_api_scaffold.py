@@ -10,12 +10,10 @@ WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
 DKH_SITE_WRANGLER_CONFIG_PATH = (
     REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "wrangler.toml"
 )
-DKH_SITE_WORKER_SOURCE_PATH = (
-    REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "src" / "index.ts"
-)
-DKH_SITE_ACCESS_SCRIPT_PATH = (
-    REPO_ROOT / "scripts" / "cloudflare" / "es_daskuechenhaus_access.py"
-)
+DKH_CRM_APP_ROOT = REPO_ROOT / "apps" / "dkh-crm"
+DKH_CRM_PACKAGE_JSON_PATH = DKH_CRM_APP_ROOT / "package.json"
+DKH_CRM_MIDDLEWARE_PATH = DKH_CRM_APP_ROOT / "src" / "middleware.ts"
+DKH_CRM_PROXY_PATH = DKH_CRM_APP_ROOT / "src" / "lib" / "proxy.ts"
 WORKER_SOURCE_PATH = REPO_ROOT / "workers" / "control-api" / "src" / "index.ts"
 WORKER_TEST_PATH = REPO_ROOT / "workers" / "control-api" / "test" / "index.test.ts"
 VITEST_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "vitest.config.ts"
@@ -59,115 +57,33 @@ def test_worker_package_scripts_are_defined() -> None:
         scripts["worker:deploy:dev"]
         == "wrangler deploy --config workers/control-api/wrangler.toml"
     )
-    assert (
-        scripts["dkh-site:typecheck"]
-        == "tsc --noEmit -p workers/es-daskuechenhaus-site/tsconfig.json"
-    )
-    assert (
-        scripts["dkh-site:check"]
-        == "wrangler deploy --dry-run --config workers/es-daskuechenhaus-site/wrangler.toml"
-    )
+    assert scripts["dkh-crm:lint"] == "npm --prefix apps/dkh-crm run lint"
+    assert scripts["dkh-crm:build"] == "npm --prefix apps/dkh-crm run build"
+    assert scripts["dkh-crm:check"] == "npm run dkh-crm:lint && npm run dkh-crm:build"
+    assert "dkh-site:typecheck" not in scripts
+    assert "dkh-site:check" not in scripts
 
 
-def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
-    config = load_toml(DKH_SITE_WRANGLER_CONFIG_PATH)
-    source = load_text(DKH_SITE_WORKER_SOURCE_PATH)
-
-    assert config["name"] == "es-daskuechenhaus-site"
-    assert config["main"] == "src/index.ts"
-    assert config["workers_dev"] is False
-    assert config["preview_urls"] is False
-    assert config["vars"] == {
-        "DKH_ADMIN_API_BASE_URL": (
-            "https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api"
-        )
-    }
-    assert config["routes"] == [
-        {
-            "pattern": "es-daskuechenhaus.de/*",
-            "zone_name": "es-daskuechenhaus.de",
-        },
-        {
-            "pattern": "www.es-daskuechenhaus.de/*",
-            "zone_name": "es-daskuechenhaus.de",
-        }
-    ]
-
-    assert 'url.pathname === "/health"' in source
-    assert 'url.pathname === "/index.php"' in source
-    assert 'url.pathname === "/admin.php"' in source
-    assert 'url.pathname.startsWith("/admin-api/")' in source
-    assert 'url.pathname.startsWith("/overview-api/")' in source
-    assert "DKH_ADMIN_API_TOKEN" in source
-    assert "DKH_ADMIN_API_BASE_URL" in source
-    assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
-    assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
-    assert 'location' in source
-    assert "Uebersicht" in source
-    assert "Aufgabe anlegen" in source
-    assert "E-Mail Eingange" in source
-    assert "Zuordnung bestaetigen" in source
-    assert "Ablehnen" not in source
-    assert "In Papierkorb" in source
-    assert "Archivieren" in source
-    assert "customer-case-options" in source
-    assert 'name="customer_case_search"' in source
-    assert (
-        'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=/index.php"'
-        in source
-    )
-    assert "Kein Treffer" in source
-    assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
-    assert "modal users-modal" in source
-    assert "modal settings-modal" in source
-    assert "modal integrations-modal" in source
-    assert "Mitarbeiter anlegen" in source
-    assert "Konstantin Milonas" not in source
-    assert "Verkauf" in source
-    assert "Cloudflare Subject" not in source
-    assert "Neuer Mitarbeiter" not in source
-    assert "Naechster Schritt" not in source
-    assert "Worker eine gesicherte API" not in source
-    assert 'id="admin-workdays"' not in source
-    assert 'for="admin-workdays"' not in source
-    assert 'id="employee-roles"' in source
-    assert 'id="employee-workdays"' in source
-    assert "employee-roles-panel" in source
-    assert "employee-workdays-panel" in source
-    assert "Mitarbeiteruebersicht" in source
-    assert 'method="post"' in source
-    assert 'href="/admin.php?modal=users&edit=${user.id}"' in source
-    assert "fetchAdminState" in source
-    assert "proxyAdminApi" in source
-    assert "morning_start_time_" in source
-    assert "afternoon_end_time_" in source
-    assert 'name="department"' in source
-    assert 'name="is_active"' in source
-    assert 'name="external_identity_provider"' in source
-    assert 'name="company_name"' in source
-    assert 'name="secret_reference"' in source
-    assert "SECURITY_HEADERS" in source
-    assert "default-src 'none'" in source
-    assert "x-robots-tag" in source
+def test_es_daskuechenhaus_worker_ui_has_been_removed_for_next_crm() -> None:
+    assert not DKH_SITE_WRANGLER_CONFIG_PATH.exists()
+    assert DKH_CRM_APP_ROOT.exists()
+    assert (DKH_CRM_APP_ROOT / "next.config.ts").exists()
+    assert (DKH_CRM_APP_ROOT / "public" / "logo.svg").exists()
+    assert (DKH_CRM_APP_ROOT / "public" / "crm-hero.jpg").exists()
 
 
-def test_es_daskuechenhaus_access_script_requires_explicit_allow_list() -> None:
-    script = load_text(DKH_SITE_ACCESS_SCRIPT_PATH)
+def test_dkh_crm_next_app_preserves_cloudflare_access_boundary() -> None:
+    package = load_json(DKH_CRM_PACKAGE_JSON_PATH)
+    middleware = load_text(DKH_CRM_MIDDLEWARE_PATH)
+    proxy = load_text(DKH_CRM_PROXY_PATH)
 
-    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in script
-    assert "DKH_CLOUDFLARE_ZONE_ID" in script
-    assert "DKH_CLOUDFLARE_API_TOKEN" in script
-    assert "allowed-emails" in script
-    assert "allowed_emails is required when --apply is used" in script
-    assert "PRIMARY_HOSTNAME" in script
-    assert "access_app_name" in script
-    assert '"app_launcher_visible": True' in script
-    assert "100::" in script
-    assert "/dns_records" in script
-    assert "/access/apps" in script
-    assert "mfa_config" in script
-    assert "security_key" in script
-    assert "totp" in script
+    assert package["scripts"]["build"] == "next build && node scripts/copy-standalone-assets.mjs"
+    assert "cf-access-jwt-assertion" in middleware
+    assert "cf-access-authenticated-user-email" in middleware
+    assert "x-dkh-user-email" in middleware
+    assert "jwtVerify" in middleware
+    assert "DKH_ADMIN_API_BASE_URL" in proxy
+    assert "Disallowed API path" in proxy
 
 
 def test_wrangler_config_defines_control_api_bindings() -> None:

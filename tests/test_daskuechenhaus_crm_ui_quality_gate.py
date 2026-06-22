@@ -1,0 +1,71 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+APP_ROOT = REPO_ROOT / "apps" / "dkh-crm"
+
+
+def load_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def test_dkh_crm_next_app_is_the_only_site_ui() -> None:
+    assert APP_ROOT.exists()
+    assert not (REPO_ROOT / "workers" / "es-daskuechenhaus-site").exists()
+    assert not (
+        REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
+    ).exists()
+    assert not (
+        REPO_ROOT / "scripts" / "cloudflare" / "es_daskuechenhaus_access.py"
+    ).exists()
+
+
+def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
+    assert (APP_ROOT / "public" / "logo.svg").exists()
+    assert (APP_ROOT / "public" / "crm-hero.jpg").exists()
+    assert (APP_ROOT / "public" / "customer-search.v1.js").exists()
+
+    search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
+    assert "/api/kunden/search?q=" in search_script
+    assert "/kunden/" in search_script
+    assert "maxOpenFiles = 3" in search_script
+
+
+def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
+    middleware = load_text(APP_ROOT / "src" / "middleware.ts")
+
+    assert "cf-access-jwt-assertion" in middleware
+    assert "cf-access-authenticated-user-email" in middleware
+    assert "cf-access-client-id" in middleware
+    assert "cf-access-client-secret" in middleware
+    assert "cf-access-user-email" in middleware
+    assert "x-access-user-email" in middleware
+    assert "x-dkh-user-email" in middleware
+    assert "jwtVerify" in middleware
+
+
+def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
+    proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
+    kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
+
+    assert 'type ProxyKind = "overview" | "admin" | "customers"' in proxy
+    assert "Disallowed API path" in proxy
+    assert "safeDecodeSegment" in proxy
+    assert "/customers/search" in kunden_search
+    assert "x-access-user-email" in proxy
+    assert "x-access-user-email" in kunden_search
+    assert "cf-access-authenticated-user-email" in kunden_search
+
+
+def test_dkh_crm_surface_uses_new_routes_not_php_worker_routes() -> None:
+    source = "\n".join(
+        load_text(path)
+        for path in (APP_ROOT / "src").rglob("*.tsx")
+    )
+
+    for route in ("/termine", "/aufgaben", "/emails", "/kunden", "/vorgaenge", "/admin"):
+        assert route in source
+
+    assert ".php" not in source
+    assert "tenant-assets/daskuechenhaus" not in source

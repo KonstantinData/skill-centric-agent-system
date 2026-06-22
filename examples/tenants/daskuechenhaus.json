@@ -221,6 +221,13 @@
   ],
   "ui_profile": {
     "logo_path": "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
+    "experience_standard": "sota-2026-tenant-crm",
+    "brand_assets": {
+      "logo_path": "assets/images/daskuechenhaus/logo_daskuechenhaus.png",
+      "favicon_path": null,
+      "app_icon_path": null,
+      "asset_scope": "tenant-owned"
+    },
     "landing": {
       "type": "internal-operations-dashboard",
       "area_presentation": "tiles"
@@ -232,6 +239,58 @@
       "secondary_text": "#333",
       "accent": "#76b726",
       "border": "#76b726"
+    },
+    "navigation": {
+      "primary_area_ids": [
+        "customer-cases",
+        "research"
+      ],
+      "admin_area_ids": [
+        "tenant-admin"
+      ]
+    },
+    "command_center": {
+      "enabled": true,
+      "surfaces": [
+        "global-search",
+        "quick-actions",
+        "notifications",
+        "saved-views",
+        "scas-actions"
+      ],
+      "default_route": "/"
+    },
+    "scas_skill_packs": [
+      {
+        "id": "daskuechenhaus-email-assignment",
+        "task_types": [
+          "email-assignment",
+          "case-matching"
+        ],
+        "required_capabilities": [
+          "customer-cases"
+        ],
+        "status": "planned"
+      },
+      {
+        "id": "daskuechenhaus-next-step-planning",
+        "task_types": [
+          "task-prioritization",
+          "next-step-recommendation",
+          "appointment-preparation"
+        ],
+        "required_capabilities": [
+          "customer-cases"
+        ],
+        "status": "planned"
+      }
+    ],
+    "terminology": {
+      "customer": "Kunde",
+      "case": "Vorgang",
+      "task": "Aufgabe",
+      "email": "E-Mail",
+      "cockpit": "Cockpit"
     },
     "workspace_areas": [
       {

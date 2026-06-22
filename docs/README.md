@@ -86,6 +86,8 @@ This repository uses `docs/` as an operational documentation surface, not only a
   runs.
 - `apps/streamlit_business_ui/`: tenant-aware Streamlit Business UI with a
   manual deployment path in `.github/workflows/tenant-ui-deploy.yml`.
+- `apps/dkh-crm/`: DKH CRM Next.js app served behind Cloudflare Access at
+  `es-daskuechenhaus.de` / `www.es-daskuechenhaus.de`.
 
 ## Roadmap
 

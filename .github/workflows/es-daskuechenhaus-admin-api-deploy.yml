@@ -1,0 +1,279 @@
+name: es-daskuechenhaus.de Admin API Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_deploy:
+        description: Apply Hetzner Admin API deployment and database migration
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_deploy=true
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-admin-api-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and optionally deploy Admin API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    env:
+      APPLY_DEPLOY: ${{ inputs.apply_deploy }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          if [ "${APPLY_DEPLOY}" = "true" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true when apply_deploy=true."
+            missing=1
+          fi
+
+          target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
+          target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
+          target_key="${SCAS_PROD_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}"
+          for pair in \
+            "TARGET_HETZNER_HOST:${target_host}" \
+            "TARGET_HETZNER_USER:${target_user}" \
+            "TARGET_HETZNER_SSH_KEY:${target_key}"
+          do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "${value}" ]; then
+              echo "::error::Missing required Hetzner secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ "${target_key}" == *"__SCAS_HETZNER_SSH_KEY__"* ]]; then
+            echo "::error::Refusing to export HETZNER_SSH_KEY: value contains reserved delimiter."
+            missing=1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${target_key}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+          exit "${missing}"
+
+      - name: Plan Admin API deployment
+        if: inputs.apply_deploy == false
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p es-daskuechenhaus-admin-api-evidence
+          {
+            printf '# es-daskuechenhaus.de Admin API Deploy Plan\n\n'
+            printf -- '- Apply deploy: `false`\n'
+            printf -- '- Hetzner target: configured through GitHub secrets\n'
+            printf -- '- Database: `tenant_daskuechenhaus`\n'
+            printf -- '- Migration: `0008_customer_search_first_deduplication.sql`\n'
+            printf -- '- Service: `daskuechenhaus-admin-api.service`\n'
+            printf -- '- Remote mutation: none\n'
+          } > es-daskuechenhaus-admin-api-evidence/plan.md
+
+      - name: Upload deployment plan
+        if: inputs.apply_deploy == false
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-admin-api-deploy-plan
+          path: es-daskuechenhaus-admin-api-evidence/plan.md
+
+      - name: Configure SSH
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 0600 "${HOME}/.ssh/hetzner_key"
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null 2>&1; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Deploy Admin API to Hetzner
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_app="/tmp/daskuechenhaus-admin-api-${GITHUB_RUN_ID}.py"
+          remote_service="/tmp/daskuechenhaus-admin-api-${GITHUB_RUN_ID}.service"
+          remote_migration="/tmp/0008_customer_search_first_deduplication-${GITHUB_RUN_ID}.sql"
+
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            scripts/hetzner/daskuechenhaus_admin_api.py \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_app}"
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            scripts/hetzner/daskuechenhaus-admin-api.service \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_service}"
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            migrations/hetzner/tenants/daskuechenhaus/0008_customer_search_first_deduplication.sql \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_migration}"
+
+          ssh -i "${HOME}/.ssh/hetzner_key" \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          duplicate_emails="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
+          SELECT lower(primary_email) || ' (' || count(*) || ')'
+          FROM app.customers
+          WHERE primary_email IS NOT NULL
+            AND is_active = TRUE
+          GROUP BY lower(primary_email)
+          HAVING count(*) > 1;
+          SQL
+          )"
+          duplicate_phones="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
+          WITH normalized AS (
+            SELECT NULLIF(regexp_replace(COALESCE(primary_phone, ''), '[^0-9+]', '', 'g'), '') AS phone
+            FROM app.customers
+            WHERE is_active = TRUE
+          )
+          SELECT phone || ' (' || count(*) || ')'
+          FROM normalized
+          WHERE phone IS NOT NULL
+          GROUP BY phone
+          HAVING count(*) > 1;
+          SQL
+          )"
+          duplicate_mobiles="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
+          WITH normalized AS (
+            SELECT NULLIF(regexp_replace(COALESCE(primary_mobile, ''), '[^0-9+]', '', 'g'), '') AS mobile
+            FROM app.customers
+            WHERE is_active = TRUE
+          )
+          SELECT mobile || ' (' || count(*) || ')'
+          FROM normalized
+          WHERE mobile IS NOT NULL
+          GROUP BY mobile
+          HAVING count(*) > 1;
+          SQL
+          )"
+          invalid_sources="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
+          SELECT source || ' (' || count(*) || ')'
+          FROM app.customers
+          WHERE source IS NOT NULL
+            AND source NOT IN (
+              'walk_in',
+              'website',
+              'recommendation',
+              'b2b_network',
+              'existing_customer',
+              'phone',
+              'email',
+              'fair',
+              'other',
+              'legacy_customer_case'
+            )
+          GROUP BY source;
+          SQL
+          )"
+
+          failed=0
+          if [ -n "${duplicate_emails}" ]; then
+            echo "::error::Duplicate active customer emails block Search-First hard-bounce migration."
+            printf '%s\n' "${duplicate_emails}"
+            failed=1
+          fi
+          if [ -n "${duplicate_phones}" ]; then
+            echo "::error::Duplicate active primary phone numbers block Search-First hard-bounce migration."
+            printf '%s\n' "${duplicate_phones}"
+            failed=1
+          fi
+          if [ -n "${duplicate_mobiles}" ]; then
+            echo "::error::Duplicate active primary mobile numbers block Search-First hard-bounce migration."
+            printf '%s\n' "${duplicate_mobiles}"
+            failed=1
+          fi
+          if [ -n "${invalid_sources}" ]; then
+            echo "::error::Invalid customer source values block Search-First source constraint."
+            printf '%s\n' "${invalid_sources}"
+            failed=1
+          fi
+          if [ "${failed}" -ne 0 ]; then
+            exit 1
+          fi
+
+          sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_MIGRATION}"
+          sudo -n install -d -o tenant_daskuechenhaus_app -g tenant_daskuechenhaus_app -m 0750 /opt/daskuechenhaus/admin-api
+          sudo -n install -o tenant_daskuechenhaus_app -g tenant_daskuechenhaus_app -m 0750 "${REMOTE_APP}" /opt/daskuechenhaus/admin-api/app.py
+          sudo -n install -o root -g root -m 0644 "${REMOTE_SERVICE}" /etc/systemd/system/daskuechenhaus-admin-api.service
+          sudo -n systemctl daemon-reload
+          sudo -n systemctl restart daskuechenhaus-admin-api.service
+          sudo -n systemctl is-active daskuechenhaus-admin-api.service
+
+          for attempt in $(seq 1 20); do
+            if curl -fsS "http://127.0.0.1:8715/health" >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 20 ]; then
+              echo "::error::Admin API did not become reachable on 127.0.0.1:8715."
+              exit 1
+            fi
+            sleep 1
+          done
+
+          token="$(sudo -n cat /etc/daskuechenhaus/admin-api-token)"
+          curl -fsS \
+            -H "x-dkh-admin-api-token: ${token}" \
+            -H "x-access-user-email: k.milonas@schober-daskuechenhaus.de" \
+            "http://127.0.0.1:8715/customers/search?q=abc" \
+            | grep -F '"ok": true'
+
+          rm -f "${REMOTE_APP}" "${REMOTE_SERVICE}" "${REMOTE_MIGRATION}"
+          REMOTE
+
+      - name: Upload deployment evidence
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p es-daskuechenhaus-admin-api-evidence
+          {
+            printf '# es-daskuechenhaus.de Admin API Deployment Evidence\n\n'
+            printf -- '- Apply deploy: `true`\n'
+            printf -- '- Database: `tenant_daskuechenhaus`\n'
+            printf -- '- Migration: `0008_customer_search_first_deduplication.sql`\n'
+            printf -- '- Service: `daskuechenhaus-admin-api.service`\n'
+            printf -- '- Backend smoke: `/customers/search?q=abc`\n'
+            printf -- '- Secret values in artifact: `none`\n'
+          } > es-daskuechenhaus-admin-api-evidence/deployment.md
+
+      - name: Store deployment evidence
+        if: inputs.apply_deploy == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-admin-api-deployment-evidence
+          path: es-daskuechenhaus-admin-api-evidence/deployment.md

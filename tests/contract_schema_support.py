@@ -18,6 +18,10 @@ COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.s
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
 TENANT_REGISTRY_SCHEMA_PATH = REPO_ROOT / "schemas" / "tenant-registry.schema.json"
+CRM_SKILL_PACK_SCHEMA_PATH = REPO_ROOT / "schemas" / "crm-skill-pack.schema.json"
+CRM_SKILL_PACK_EXAMPLE_PATH = (
+    REPO_ROOT / "examples" / "crm-skill-packs" / "generic-email-assignment.json"
+)
 MODULE_EXAMPLE_PATH = (
     REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
 )
@@ -115,6 +119,13 @@ def tenant_registry_schema() -> dict[str, Any]:
     return schema
 
 
+@pytest.fixture(scope="module")
+def crm_skill_pack_schema() -> dict[str, Any]:
+    schema = load_json(CRM_SKILL_PACK_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
 @pytest.fixture
 def module_example() -> dict[str, Any]:
     return load_json(MODULE_EXAMPLE_PATH)
@@ -163,6 +174,11 @@ def retrieval_context_response_example() -> dict[str, Any]:
 @pytest.fixture
 def tenant_registry_example() -> dict[str, Any]:
     return load_json(TENANT_REGISTRY_EXAMPLE_PATH)
+
+
+@pytest.fixture
+def crm_skill_pack_example() -> dict[str, Any]:
+    return load_json(CRM_SKILL_PACK_EXAMPLE_PATH)
 
 
 def assert_valid(schema: dict[str, Any], instance: dict[str, Any]) -> None:
@@ -357,6 +373,11 @@ def assert_runtime_plane_references_are_valid(runtime_plane: dict[str, Any]) -> 
 def assert_tenant_registry_references_are_valid(tenant: dict[str, Any]) -> None:
     tenant_id = tenant["tenant_id"]
     data_sources = {source["id"]: source for source in tenant["data_sources"]}
+    role_capabilities = {
+        capability
+        for role in tenant["role_bundles"]
+        for capability in role["capability_grants"]
+    }
 
     assert tenant["area_id"], "tenant area_id must be set"
     assert tenant["memory"]["area_brain_id"].endswith(tenant_id), (
@@ -379,6 +400,47 @@ def assert_tenant_registry_references_are_valid(tenant: dict[str, Any]) -> None:
             source = data_sources.get(grant["data_source_id"])
             assert source, f"role {role['id']} references missing data source"
             assert source["tenant_id"] == role["tenant_id"]
+
+    ui_profile = tenant.get("ui_profile")
+    if not ui_profile:
+        return
+
+    assert ui_profile["experience_standard"] == "sota-2026-tenant-crm"
+    assert ui_profile["brand_assets"]["asset_scope"] == "tenant-owned"
+    assert ui_profile["brand_assets"]["logo_path"] == ui_profile["logo_path"]
+
+    workspace_areas = {area["id"]: area for area in ui_profile["workspace_areas"]}
+    workspace_routes = {area["route"] for area in ui_profile["workspace_areas"]}
+    navigation = ui_profile["navigation"]
+    navigation_ids = set(navigation["primary_area_ids"]) | set(navigation["admin_area_ids"])
+    missing_navigation_ids = navigation_ids - set(workspace_areas)
+    assert not missing_navigation_ids, (
+        "tenant UI navigation references missing workspace areas: "
+        + ", ".join(sorted(missing_navigation_ids))
+    )
+
+    for area_id in navigation["admin_area_ids"]:
+        assert workspace_areas[area_id]["admin_only"] is True, (
+            f"admin navigation area is not admin-only: {area_id}"
+        )
+
+    command_center = ui_profile["command_center"]
+    assert command_center["enabled"] is True
+    assert "scas-actions" in command_center["surfaces"]
+    assert command_center["default_route"] == "/" or (
+        command_center["default_route"] in workspace_routes
+    ), f"command center default route is not a tenant workspace: {command_center['default_route']}"
+
+    terminology = ui_profile["terminology"]
+    for required_term in ("customer", "case", "task", "email", "cockpit"):
+        assert required_term in terminology, f"missing tenant terminology: {required_term}"
+
+    for skill_pack in ui_profile["scas_skill_packs"]:
+        missing_capabilities = set(skill_pack["required_capabilities"]) - role_capabilities
+        assert not missing_capabilities, (
+            f"skill pack {skill_pack['id']} references ungranted capabilities: "
+            + ", ".join(sorted(missing_capabilities))
+        )
 
 
 def schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:

@@ -1,0 +1,19 @@
+import {
+  CalendarDays,
+  CheckSquare,
+  Home,
+  Inbox,
+  Settings,
+  UserRoundSearch,
+  UsersRound,
+} from "lucide-react";
+
+export const NAV_ITEMS = [
+  { href: "/", label: "Übersicht", icon: Home },
+  { href: "/termine", label: "Termine", icon: CalendarDays },
+  { href: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
+  { href: "/emails", label: "E-Mails", icon: Inbox },
+  { href: "/kunden", label: "Kunden", icon: UserRoundSearch },
+  { href: "/vorgaenge", label: "Vorgänge", icon: UsersRound },
+  { href: "/admin", label: "Admin", icon: Settings },
+];

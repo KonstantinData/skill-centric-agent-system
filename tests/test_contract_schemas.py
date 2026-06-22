@@ -84,6 +84,58 @@ def test_keyword_only_module_metadata_is_rejected(
     assert_invalid(module_schema, keyword_only_module, "'capability_class' is a required property")
 
 
+@pytest.mark.parametrize(
+    ("mutator", "message_part"),
+    [
+        (
+            lambda skill_pack: skill_pack["ui_binding"].__setitem__(
+                "grants_runtime_authority",
+                True,
+            ),
+            "False was expected",
+        ),
+        (
+            lambda skill_pack: skill_pack["ui_binding"].__setitem__(
+                "confirmation_required",
+                False,
+            ),
+            "True was expected",
+        ),
+        (
+            lambda skill_pack: skill_pack["composition"].__setitem__(
+                "requires_immutable_runtime_profile",
+                False,
+            ),
+            "True was expected",
+        ),
+        (
+            lambda skill_pack: skill_pack["composition"].__setitem__(
+                "selection_path",
+                "ui-direct-grant",
+            ),
+            "'registry-scoring-policy-graph-profile' was expected",
+        ),
+        (
+            lambda skill_pack: skill_pack["audit_evidence"].__setitem__(
+                "retention_plane",
+                "cloudflare-control-plane",
+            ),
+            "'hetzner-runtime-plane' was expected",
+        ),
+    ],
+)
+def test_invalid_crm_skill_packs_are_rejected(
+    crm_skill_pack_schema: dict[str, Any],
+    crm_skill_pack_example: dict[str, Any],
+    mutator: Any,
+    message_part: str,
+) -> None:
+    invalid_skill_pack = deepcopy(crm_skill_pack_example)
+    mutator(invalid_skill_pack)
+
+    assert_invalid(crm_skill_pack_schema, invalid_skill_pack, message_part)
+
+
 def test_dependency_only_module_metadata_rejects_direct_scoring(
     module_schema: dict[str, Any],
     module_example: dict[str, Any],
@@ -216,6 +268,13 @@ def test_runtime_profile_rejects_unselected_version_pin(
                 "ui_profile",
                 {
                     "logo_path": None,
+                    "experience_standard": "sota-2026-tenant-crm",
+                    "brand_assets": {
+                        "logo_path": None,
+                        "favicon_path": None,
+                        "app_icon_path": None,
+                        "asset_scope": "tenant-owned",
+                    },
                     "landing": {
                         "type": "internal-operations-dashboard",
                         "area_presentation": "tiles",
@@ -227,6 +286,26 @@ def test_runtime_profile_rejects_unselected_version_pin(
                         "secondary_text": "#333",
                         "accent": "#76b726",
                         "border": "#76b726",
+                    },
+                    "navigation": {
+                        "primary_area_ids": ["research"],
+                        "admin_area_ids": [],
+                    },
+                    "command_center": {
+                        "enabled": True,
+                        "surfaces": ["global-search", "scas-actions"],
+                        "default_route": "/",
+                    },
+                    "scas_skill_packs": [
+                        {
+                            "id": "demo-research-assistance",
+                            "task_types": ["tenant-research"],
+                            "required_capabilities": ["research"],
+                            "status": "planned",
+                        }
+                    ],
+                    "terminology": {
+                        "customer": "Customer"
                     },
                     "workspace_areas": [
                         {

@@ -526,6 +526,39 @@ def overview_state(access_email: str) -> dict[str, Any]:
               OR ge.achieved_by_user_id IN (SELECT id FROM scope_users)
             LIMIT 10
           ), '[]'::jsonb),
+          'communication_events', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', ce.id,
+                'event_type', ce.event_type,
+                'title', ce.title,
+                'body', ce.body,
+                'occurred_at',
+                  to_char(
+                    ce.occurred_at AT TIME ZONE 'Europe/Berlin',
+                    'YYYY-MM-DD HH24:MI'
+                  ),
+                'customer_case', CASE
+                  WHEN cc.id IS NULL THEN NULL
+                  ELSE jsonb_build_object(
+                    'id', cc.id,
+                    'case_number', cc.case_number,
+                    'customer_display_name', cc.customer_display_name
+                  )
+                END,
+                'actor', actor.first_name || ' ' || actor.last_name
+              )
+              ORDER BY ce.occurred_at DESC
+            )
+            FROM app.communication_events ce
+            LEFT JOIN app.customer_cases cc ON cc.id = ce.customer_case_id
+            LEFT JOIN app.users actor ON actor.id = ce.actor_user_id
+            WHERE
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR ce.actor_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+            LIMIT 12
+          ), '[]'::jsonb),
           'delegations', COALESCE((
             SELECT jsonb_agg(
               jsonb_build_object(
@@ -563,6 +596,24 @@ def overview_state(access_email: str) -> dict[str, Any]:
 
 def normalize_bool(value: Any) -> str:
     return "true" if str(value).lower() in {"1", "true", "on", "yes"} else "false"
+
+
+def normalize_phone_number(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    cleaned = re.sub(r"[^\d+]", "", raw)
+    if cleaned.startswith("00"):
+        cleaned = f"+{cleaned[2:]}"
+    if cleaned.startswith("+"):
+        digits = re.sub(r"\D", "", cleaned[1:])
+        return f"+{digits}" if digits else ""
+    digits = re.sub(r"\D", "", cleaned)
+    if not digits:
+        return ""
+    if digits.startswith("0"):
+        return f"+49{digits[1:]}"
+    return f"+{digits}"
 
 
 def request_payload(handler: BaseHTTPRequestHandler) -> tuple[dict[str, Any], list[FileUpload]]:
@@ -952,6 +1003,561 @@ def require_primary_user(access_email: str) -> dict[str, Any]:
     if not context.get("primary_user_id"):
         raise ApiError(HTTPStatus.FORBIDDEN, "user_not_registered")
     return context
+
+
+def customer_display_name(data: dict[str, Any]) -> str:
+    customer_type = str(data.get("customer_type", "private")).strip() or "private"
+    if customer_type == "company":
+        display_name = str(data.get("company_name", "")).strip()
+    else:
+        display_name = " ".join(
+            part
+            for part in [
+                str(data.get("first_name", "")).strip(),
+                str(data.get("last_name", "")).strip(),
+            ]
+            if part
+        )
+    return (
+        display_name
+        or str(data.get("company_name", "")).strip()
+        or str(data.get("primary_email", "")).strip().lower()
+    )
+
+
+def customers_state(access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    return psql_json(
+        """
+        WITH context AS (
+          SELECT :'context'::jsonb AS data
+        ),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customers AS (
+          SELECT DISTINCT c.*
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+        )
+        SELECT jsonb_build_object(
+          'current_user', (SELECT data FROM context),
+          'users', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', u.id,
+                'first_name', u.first_name,
+                'last_name', u.last_name,
+                'email', u.email,
+                'roles', COALESCE((
+                  SELECT jsonb_agg(r.code ORDER BY r.code)
+                  FROM app.user_roles ur
+                  JOIN app.roles r ON r.id = ur.role_id
+                  WHERE ur.user_id = u.id
+                ), '[]'::jsonb)
+              )
+              ORDER BY u.last_name, u.first_name, u.id
+            )
+            FROM app.users u
+            WHERE u.is_active = TRUE
+          ), '[]'::jsonb),
+          'status_phases', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'phase', phase,
+                'name', name,
+                'is_terminal', is_terminal
+              )
+              ORDER BY sort_order
+            )
+            FROM app.customer_case_status_phases
+          ), '[]'::jsonb),
+          'customers', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', c.id,
+                'customer_number', c.customer_number,
+                'customer_type', c.customer_type,
+                'display_name', c.display_name,
+                'salutation', c.salutation,
+                'title', c.title,
+                'first_name', c.first_name,
+                'last_name', c.last_name,
+                'company_name', c.company_name,
+                'primary_email', c.primary_email,
+                'primary_phone', c.primary_phone,
+                'primary_mobile', c.primary_mobile,
+                'preferred_contact_channel', c.preferred_contact_channel,
+                'notes', c.notes,
+                'owner_user_id', c.owner_user_id,
+                'updated_at',
+                  to_char(
+                    c.updated_at AT TIME ZONE 'Europe/Berlin',
+                    'YYYY-MM-DD HH24:MI'
+                  ),
+                'case_count', (
+                  SELECT count(*)
+                  FROM app.customer_cases cc
+                  WHERE cc.customer_id = c.id
+                    AND cc.is_active = TRUE
+                ),
+                'address', (
+                  SELECT jsonb_build_object(
+                    'street', ca.street,
+                    'house_number', ca.house_number,
+                    'address_extra', ca.address_extra,
+                    'postal_code', ca.postal_code,
+                    'city', ca.city,
+                    'country', ca.country
+                  )
+                  FROM app.customer_addresses ca
+                  WHERE ca.customer_id = c.id
+                  ORDER BY ca.is_primary DESC, ca.id
+                  LIMIT 1
+                )
+              )
+              ORDER BY c.updated_at DESC, c.id DESC
+            )
+            FROM visible_customers c
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {"context": json.dumps(context)},
+    )
+
+
+def search_customers(query: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    search_value = query.strip()
+    phone_value = normalize_phone_number(search_value)
+    if len(search_value) < 3:
+        return {"ok": True, "customers": []}
+    return psql_json(
+        """
+        WITH context AS (
+          SELECT :'context'::jsonb AS data
+        ),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customers AS (
+          SELECT DISTINCT c.*
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+        ),
+        matches AS (
+          SELECT
+            c.id,
+            c.display_name,
+            c.customer_type,
+            c.customer_number,
+            c.primary_email,
+            ca.postal_code,
+            ca.city,
+            CASE
+              WHEN lower(COALESCE(c.primary_email, '')) = lower(:'search_value') THEN 0
+              WHEN COALESCE(c.primary_phone_normalized, '') = :'phone_value' THEN 1
+              WHEN COALESCE(c.primary_mobile_normalized, '') = :'phone_value' THEN 1
+              WHEN lower(COALESCE(c.customer_number, '')) = lower(:'search_value') THEN 2
+              WHEN lower(c.display_name) = lower(:'search_value') THEN 3
+              ELSE 9
+            END AS rank
+          FROM visible_customers c
+          LEFT JOIN LATERAL (
+            SELECT postal_code, city
+            FROM app.customer_addresses ca
+            WHERE ca.customer_id = c.id
+            ORDER BY ca.is_primary DESC, ca.id
+            LIMIT 1
+          ) ca ON TRUE
+          WHERE
+            c.display_name ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.company_name, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_phone_normalized, '') = :'phone_value'
+            OR COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
+            OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
+            OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'customers', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'customer_id', id,
+                'display_name', display_name,
+                'customer_type', customer_type,
+                'customer_number', customer_number,
+                'city', city,
+                'postal_code', postal_code,
+                'primary_email', primary_email
+              )
+              ORDER BY rank, display_name, id
+            )
+            FROM (
+              SELECT *
+              FROM matches
+              ORDER BY rank, display_name, id
+              LIMIT 8
+            ) limited_matches
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {
+            "context": json.dumps(context),
+            "search_value": search_value,
+            "phone_value": phone_value,
+        },
+    )
+
+
+def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        candidates AS (
+          SELECT DISTINCT
+            c.id,
+            c.display_name,
+            CASE
+              WHEN NULLIF(data->>'primary_email', '') IS NOT NULL
+                AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
+                THEN 'email'
+              WHEN NULLIF(data->>'primary_phone_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_phone_normalized, '') = data->>'primary_phone_normalized'
+                THEN 'phone'
+              WHEN NULLIF(data->>'primary_mobile_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_mobile_normalized, '') = data->>'primary_mobile_normalized'
+                THEN 'mobile'
+              WHEN NULLIF(data->>'postal_code', '') IS NOT NULL
+                AND lower(c.display_name) = lower(data->>'display_name')
+                AND EXISTS (
+                  SELECT 1
+                  FROM app.customer_addresses ca
+                  WHERE ca.customer_id = c.id
+                    AND ca.postal_code = data->>'postal_code'
+                )
+                THEN 'name_postal_code'
+              ELSE 'unknown'
+            END AS match_type
+          FROM app.customers c, payload
+          WHERE c.is_active = TRUE
+            AND c.id <> COALESCE(NULLIF(data->>'customer_id', '')::bigint, 0)
+            AND (
+              (
+                NULLIF(data->>'primary_email', '') IS NOT NULL
+                AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
+              )
+              OR (
+                NULLIF(data->>'primary_phone_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_phone_normalized, '') = data->>'primary_phone_normalized'
+              )
+              OR (
+                NULLIF(data->>'primary_mobile_normalized', '') IS NOT NULL
+                AND COALESCE(c.primary_mobile_normalized, '') = data->>'primary_mobile_normalized'
+              )
+              OR (
+                NULLIF(data->>'postal_code', '') IS NOT NULL
+                AND lower(c.display_name) = lower(data->>'display_name')
+                AND EXISTS (
+                  SELECT 1
+                  FROM app.customer_addresses ca
+                  WHERE ca.customer_id = c.id
+                    AND ca.postal_code = data->>'postal_code'
+                )
+              )
+            )
+          ORDER BY c.display_name, c.id
+          LIMIT 5
+        )
+        SELECT jsonb_build_object(
+          'matches', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'customer_id', id,
+                'display_name', display_name,
+                'match_type', match_type
+              )
+              ORDER BY display_name, id
+            )
+            FROM candidates
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    matches = result.get("matches") if result else []
+    return matches if isinstance(matches, list) else []
+
+
+def save_customer(
+    data: dict[str, Any],
+    access_email: str,
+    customer_id: str | None = None,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    display_name = customer_display_name(data)
+    if not display_name:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "customer_name_required")
+    payload = {
+        "customer_id": str(customer_id or "").strip(),
+        "customer_number": str(data.get("customer_number", "")).strip(),
+        "customer_type": str(data.get("customer_type", "private")).strip() or "private",
+        "salutation": str(data.get("salutation", "")).strip(),
+        "title": str(data.get("title", "")).strip(),
+        "first_name": str(data.get("first_name", "")).strip(),
+        "last_name": str(data.get("last_name", "")).strip(),
+        "company_name": str(data.get("company_name", "")).strip(),
+        "display_name": display_name,
+        "primary_email": str(data.get("primary_email", "")).strip().lower(),
+        "primary_phone": str(data.get("primary_phone", "")).strip(),
+        "primary_phone_normalized": normalize_phone_number(data.get("primary_phone", "")),
+        "primary_mobile": str(data.get("primary_mobile", "")).strip(),
+        "primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", "")),
+        "preferred_contact_channel": str(data.get("preferred_contact_channel", "email")).strip()
+        or "email",
+        "notes": str(data.get("notes", "")).strip(),
+        "owner_user_id": str(data.get("owner_user_id") or actor_user_id),
+        "street": str(data.get("street", "")).strip(),
+        "house_number": str(data.get("house_number", "")).strip(),
+        "postal_code": str(data.get("postal_code", "")).strip(),
+        "city": str(data.get("city", "")).strip(),
+        "create_case": normalize_bool(data.get("create_case")),
+        "case_number": str(data.get("case_number", "")).strip(),
+        "case_title": str(data.get("case_title", "")).strip(),
+        "case_type": str(
+            data.get(
+                "case_type",
+                "kitchen_project_b2b"
+                if str(data.get("customer_type", "private")).strip() == "company"
+                else "kitchen_project",
+            )
+        ).strip(),
+        "status_phase_id": str(data.get("status_phase_id") or "1"),
+        "responsible_user_id": str(
+            data.get("responsible_user_id") or data.get("owner_user_id") or actor_user_id
+        ),
+        "actor_user_id": actor_user_id,
+        "context": context,
+    }
+    duplicate_matches = customer_duplicate_matches(payload)
+    if duplicate_matches:
+        raise ApiError(HTTPStatus.CONFLICT, "customer_duplicate_found")
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id
+          FROM app.customers c
+          WHERE c.id = NULLIF((SELECT data->>'customer_id' FROM payload), '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated_customer AS (
+          UPDATE app.customers c
+          SET
+            customer_number = NULLIF(data->>'customer_number', ''),
+            customer_type = data->>'customer_type',
+            salutation = NULLIF(data->>'salutation', ''),
+            title = NULLIF(data->>'title', ''),
+            first_name = NULLIF(data->>'first_name', ''),
+            last_name = NULLIF(data->>'last_name', ''),
+            company_name = NULLIF(data->>'company_name', ''),
+            display_name = data->>'display_name',
+            primary_email = NULLIF(data->>'primary_email', ''),
+            primary_phone = NULLIF(data->>'primary_phone', ''),
+            primary_phone_normalized = NULLIF(data->>'primary_phone_normalized', ''),
+            primary_mobile = NULLIF(data->>'primary_mobile', ''),
+            primary_mobile_normalized = NULLIF(data->>'primary_mobile_normalized', ''),
+            preferred_contact_channel = data->>'preferred_contact_channel',
+            notes = NULLIF(data->>'notes', ''),
+            owner_user_id = NULLIF(data->>'owner_user_id', '')::bigint,
+            updated_at = now()
+          FROM payload
+          WHERE c.id = (SELECT id FROM visible_customer)
+          RETURNING c.id
+        ),
+        inserted_customer AS (
+          INSERT INTO app.customers (
+            customer_number,
+            customer_type,
+            salutation,
+            title,
+            first_name,
+            last_name,
+            company_name,
+            display_name,
+            primary_email,
+            primary_phone,
+            primary_phone_normalized,
+            primary_mobile,
+            primary_mobile_normalized,
+            preferred_contact_channel,
+            notes,
+            owner_user_id,
+            created_by_user_id
+          )
+          SELECT
+            NULLIF(data->>'customer_number', ''),
+            data->>'customer_type',
+            NULLIF(data->>'salutation', ''),
+            NULLIF(data->>'title', ''),
+            NULLIF(data->>'first_name', ''),
+            NULLIF(data->>'last_name', ''),
+            NULLIF(data->>'company_name', ''),
+            data->>'display_name',
+            NULLIF(data->>'primary_email', ''),
+            NULLIF(data->>'primary_phone', ''),
+            NULLIF(data->>'primary_phone_normalized', ''),
+            NULLIF(data->>'primary_mobile', ''),
+            NULLIF(data->>'primary_mobile_normalized', ''),
+            data->>'preferred_contact_channel',
+            NULLIF(data->>'notes', ''),
+            NULLIF(data->>'owner_user_id', '')::bigint,
+            (data->>'actor_user_id')::bigint
+          FROM payload
+          WHERE (data->>'customer_id') = ''
+          RETURNING id
+        ),
+        target_customer AS (
+          SELECT id FROM updated_customer
+          UNION ALL
+          SELECT id FROM inserted_customer
+        ),
+        address_input AS (
+          SELECT data
+          FROM payload
+          WHERE NULLIF(data->>'street', '') IS NOT NULL
+            AND NULLIF(data->>'postal_code', '') IS NOT NULL
+            AND NULLIF(data->>'city', '') IS NOT NULL
+        ),
+        existing_address AS (
+          SELECT ca.id
+          FROM app.customer_addresses ca
+          WHERE ca.customer_id = (SELECT id FROM target_customer)
+            AND ca.address_type = 'billing'
+          ORDER BY ca.is_primary DESC, ca.id
+          LIMIT 1
+        ),
+        updated_address AS (
+          UPDATE app.customer_addresses ca
+          SET
+            recipient_name = (SELECT data->>'display_name' FROM payload),
+            street = data->>'street',
+            house_number = NULLIF(data->>'house_number', ''),
+            postal_code = data->>'postal_code',
+            city = data->>'city',
+            updated_at = now(),
+            is_primary = TRUE
+          FROM address_input
+          WHERE ca.id = (SELECT id FROM existing_address)
+        ),
+        inserted_address AS (
+          INSERT INTO app.customer_addresses (
+            customer_id,
+            address_type,
+            recipient_name,
+            street,
+            house_number,
+            postal_code,
+            city,
+            is_primary
+          )
+          SELECT
+            (SELECT id FROM target_customer),
+            'billing',
+            data->>'display_name',
+            data->>'street',
+            NULLIF(data->>'house_number', ''),
+            data->>'postal_code',
+            data->>'city',
+            TRUE
+          FROM address_input
+          WHERE NOT EXISTS (SELECT 1 FROM existing_address)
+        ),
+        created_case AS (
+          INSERT INTO app.customer_cases (
+            case_number,
+            customer_display_name,
+            status_phase,
+            owner_user_id,
+            customer_id,
+            case_title,
+            case_type,
+            status_phase_id,
+            created_by_user_id,
+            responsible_user_id
+          )
+          SELECT
+            NULLIF(data->>'case_number', ''),
+            data->>'display_name',
+            NULLIF(data->>'status_phase_id', '')::smallint,
+            NULLIF(data->>'responsible_user_id', '')::bigint,
+            (SELECT id FROM target_customer),
+            NULLIF(data->>'case_title', ''),
+            data->>'case_type',
+            NULLIF(data->>'status_phase_id', '')::smallint,
+            (data->>'actor_user_id')::bigint,
+            NULLIF(data->>'responsible_user_id', '')::bigint
+          FROM payload
+          WHERE (data->>'create_case')::boolean
+          RETURNING id
+        ),
+        customer_event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            actor_user_id,
+            title,
+            body
+          )
+          SELECT
+            CASE WHEN (SELECT data->>'customer_id' FROM payload) = '' THEN 'customer_created'
+                 ELSE 'customer_updated'
+            END,
+            (SELECT id FROM created_case),
+            (SELECT (data->>'actor_user_id')::bigint FROM payload),
+            (SELECT data->>'display_name' FROM payload),
+            NULLIF((SELECT data->>'notes' FROM payload), '')
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'customer_id', (SELECT id FROM target_customer),
+          'customer_case_id', (SELECT id FROM created_case)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("customer_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+    return result
 
 
 def save_task_attachment(task_id: int, upload: FileUpload, uploaded_by_user_id: int) -> None:
@@ -1754,7 +2360,14 @@ def decide_email_suggestion(suggestion_id: str, decision: str, access_email: str
             customer_case_id,
             email_message_id,
             actor_user_id,
-            title
+            title,
+            tenant_id,
+            skill_pack_id,
+            selected_module_ids,
+            validator_results_json,
+            confirmation_status,
+            action_result_json,
+            role_context_json
           )
           SELECT
             CASE
@@ -1765,7 +2378,50 @@ def decide_email_suggestion(suggestion_id: str, decision: str, access_email: str
             visible_suggestion.suggested_case_id,
             visible_suggestion.email_message_id,
             (data->>'actor_user_id')::bigint,
-            visible_suggestion.subject
+            visible_suggestion.subject,
+            'daskuechenhaus',
+            'daskuechenhaus-email-assignment',
+            ARRAY[
+              'crm-email-case-matching',
+              'crm-email-assignment-reasoning'
+            ]::text[],
+            jsonb_build_array(
+              jsonb_build_object(
+                'validator_id',
+                'tenant-profile-validator',
+                'status',
+                'passed'
+              ),
+              jsonb_build_object(
+                'validator_id',
+                'skill-scope-compatibility-validator',
+                'status',
+                'passed'
+              ),
+              jsonb_build_object(
+                'validator_id',
+                'crm-action-audit-validator',
+                'status',
+                'passed'
+              )
+            ),
+            (data->>'decision'),
+            jsonb_build_object(
+              'decision',
+              data->>'decision',
+              'email_message_id',
+              visible_suggestion.email_message_id,
+              'customer_case_id',
+              visible_suggestion.suggested_case_id
+            ),
+            jsonb_build_object(
+              'principal_email',
+              data->'context'->>'email',
+              'role_bundle_ids',
+              data->'context'->'roles',
+              'scope_user_ids',
+              data->'context'->'scope_user_ids'
+            )
           FROM payload, visible_suggestion
           WHERE EXISTS (SELECT 1 FROM updated_suggestion)
         )
@@ -1812,6 +2468,15 @@ class Handler(BaseHTTPRequestHandler):
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
                 self.write_json(overview_state(access_email))
                 return
+            if self.command == "GET" and parsed.path == "/customers/state":
+                access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                self.write_json(customers_state(access_email))
+                return
+            if self.command == "GET" and parsed.path == "/customers/search":
+                access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                query = parse_qs(parsed.query).get("q", [""])[0]
+                self.write_json(search_customers(query, access_email))
+                return
             if self.command == "POST":
                 data, files = request_payload(self)
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
@@ -1832,6 +2497,12 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if parts == ["admin", "integrations"]:
                     self.write_json(save_integration(data))
+                    return
+                if parts == ["customers", "customers"]:
+                    self.write_json(save_customer(data, access_email))
+                    return
+                if len(parts) == 3 and parts[:2] == ["customers", "customers"]:
+                    self.write_json(save_customer(data, access_email, parts[2]))
                     return
                 if parts == ["overview", "tasks"]:
                     self.write_json(create_task(data, files, access_email))

@@ -36,6 +36,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "docs/runbooks/streamlit-business-ui-deployment.md",
     "deploy/streamlit-business-ui/Dockerfile",
     "examples/control-plane/dev-seed.sql",
+    "examples/crm-skill-packs/liquisto-research-assistance.json",
     "examples/tenants/liquisto.json",
     "tests/test_contract_schema_examples.py",
     "tests/test_control_plane_seed.py",

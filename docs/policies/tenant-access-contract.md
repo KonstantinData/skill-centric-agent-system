@@ -37,11 +37,26 @@ The registry entry contains:
 Tenant legal and contact metadata describes the company. It does not grant
 runtime authority.
 
-Tenant UI profile metadata may define tenant branding and workspace areas such
-as `research` or `tenant-admin`. UI areas are display and navigation metadata
-only. Visibility must be derived from tenant-local role capabilities; the UI
-profile must not grant capabilities, data-source access, skills, tools,
-policies, validators, memory scopes, or knowledge scopes.
+Tenant UI profile metadata defines the tenant-specific CRM web app surface. A
+tenant UI profile that exists must declare the active
+`sota-2026-tenant-crm` experience standard, tenant-owned brand assets, theme
+tokens, navigation area IDs, command-center surfaces, tenant terminology,
+SCAS skill-package bindings, and workspace areas such as `research` or
+`tenant-admin`.
+
+UI profile metadata is display, routing, and product-configuration metadata
+only. Visibility must be derived from tenant-local role capabilities. Skill
+package bindings advertise which tenant-specific CRM workflows may be surfaced
+to the user, but they do not grant capabilities, data-source access, skills,
+tools, policies, validators, memory scopes, or knowledge scopes. The Composer
+must still select executable modules through registry discovery, scoring,
+policy filtering, dependency graph validation, and immutable runtime profile
+validation.
+
+Tenant asset handling is fail-closed. A tenant may use only assets declared in
+its own `ui_profile.brand_assets`. Missing assets may degrade to a neutral
+unbranded state, but they must not fall back to another tenant's logo, favicon,
+app icon, colors, or copy.
 
 Tenant UIs that are reachable outside local development must run in an
 authenticated session mode. The UI may use repository fixtures only for local
