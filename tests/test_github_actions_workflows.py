@@ -32,6 +32,9 @@ TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
 ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
 )
+ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-crm-deploy.yml"
+)
 ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-mail-runtime-sync.yml"
 )
@@ -87,6 +90,10 @@ def load_tenant_cloudflare_evidence_workflow() -> str:
 
 def load_es_daskuechenhaus_site_deploy_workflow() -> str:
     return ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_es_daskuechenhaus_crm_deploy_workflow() -> str:
+    return ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def load_es_daskuechenhaus_mail_runtime_sync_workflow() -> str:
@@ -493,32 +500,37 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
 
 
 def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
-    assert ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.exists()
-    workflow = load_es_daskuechenhaus_site_deploy_workflow()
+    assert not ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH.exists()
+    for workflow_path in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
+        workflow = workflow_path.read_text(encoding="utf-8")
+        assert "workers/es-daskuechenhaus-site" not in workflow
+        assert "dkh-site:typecheck" not in workflow
+        assert "dkh-site:check" not in workflow
+
+
+def test_es_daskuechenhaus_crm_deploy_workflow_cuts_over_to_nextjs_origin() -> None:
+    assert ES_DASKUECHENHAUS_CRM_DEPLOY_WORKFLOW_PATH.exists()
+    workflow = load_es_daskuechenhaus_crm_deploy_workflow()
 
     assert "workflow_dispatch:" in workflow
-    assert "allowed_emails:" in workflow
     assert "apply_deploy:" in workflow
     assert "confirm_production:" in workflow
-    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "confirm_production must be true when apply_deploy=true" in workflow
+    assert "apps/dkh-crm" in workflow
+    assert "npm run dkh-crm:check" in workflow
+    assert "dkh-crm-standalone.tar.gz" in workflow
+    assert "daskuechenhaus-crm.service" in workflow
+    assert "es-daskuechenhaus.de www.es-daskuechenhaus.de" in workflow
+    assert "es-daskuechenhaus-crm" in workflow
     assert "DKH_CLOUDFLARE_ZONE_ID" in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" in workflow
-    assert "HOSTNAMES: es-daskuechenhaus.de,www.es-daskuechenhaus.de" in workflow
-    assert "secrets.CLOUDFLARE_API_TOKEN" not in workflow
-    assert "confirm_production must be true when apply_deploy=true" in workflow
-    assert "allowed_emails is required when apply_deploy=true" in workflow
-    assert "scripts/cloudflare/es_daskuechenhaus_access.py" in workflow
-    assert 'IFS=\',\' read -r -a hostnames <<< "${HOSTNAMES}"' in workflow
-    assert "npm run dkh-site:typecheck" in workflow
-    assert "npm run dkh-site:check" in workflow
-    assert "npx wrangler deploy --config workers/es-daskuechenhaus-site/wrangler.toml" in workflow
-    assert (
-        "Anonymous access returned HTTP 200 for ${hostname}. "
-        "Cloudflare Access is not blocking public access."
-        in workflow
-    )
-    assert "es-daskuechenhaus-site-deploy-plan" in workflow
-    assert "es-daskuechenhaus-site-deployment-evidence" in workflow
+    assert "/workers/routes" in workflow
+    assert "/dns_records" in workflow
+    assert "Access application/policies: `preserved; not modified by this workflow`" in workflow
+    assert "workers/es-daskuechenhaus-site" not in workflow
+    assert "es-daskuechenhaus-site" not in workflow
 
 
 def test_es_daskuechenhaus_mail_runtime_sync_workflow_is_hetzner_only() -> None:

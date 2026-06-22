@@ -10,12 +10,10 @@ WRANGLER_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "wrangler.toml"
 DKH_SITE_WRANGLER_CONFIG_PATH = (
     REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "wrangler.toml"
 )
-DKH_SITE_WORKER_SOURCE_PATH = (
-    REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "src" / "index.ts"
-)
-DKH_SITE_ACCESS_SCRIPT_PATH = (
-    REPO_ROOT / "scripts" / "cloudflare" / "es_daskuechenhaus_access.py"
-)
+DKH_CRM_APP_ROOT = REPO_ROOT / "apps" / "dkh-crm"
+DKH_CRM_PACKAGE_JSON_PATH = DKH_CRM_APP_ROOT / "package.json"
+DKH_CRM_MIDDLEWARE_PATH = DKH_CRM_APP_ROOT / "src" / "middleware.ts"
+DKH_CRM_PROXY_PATH = DKH_CRM_APP_ROOT / "src" / "lib" / "proxy.ts"
 WORKER_SOURCE_PATH = REPO_ROOT / "workers" / "control-api" / "src" / "index.ts"
 WORKER_TEST_PATH = REPO_ROOT / "workers" / "control-api" / "test" / "index.test.ts"
 VITEST_CONFIG_PATH = REPO_ROOT / "workers" / "control-api" / "vitest.config.ts"
@@ -59,194 +57,33 @@ def test_worker_package_scripts_are_defined() -> None:
         scripts["worker:deploy:dev"]
         == "wrangler deploy --config workers/control-api/wrangler.toml"
     )
-    assert (
-        scripts["dkh-site:typecheck"]
-        == "tsc --noEmit -p workers/es-daskuechenhaus-site/tsconfig.json"
-    )
-    assert (
-        scripts["dkh-site:check"]
-        == "wrangler deploy --dry-run --config workers/es-daskuechenhaus-site/wrangler.toml"
-    )
+    assert scripts["dkh-crm:lint"] == "npm --prefix apps/dkh-crm run lint"
+    assert scripts["dkh-crm:build"] == "npm --prefix apps/dkh-crm run build"
+    assert scripts["dkh-crm:check"] == "npm run dkh-crm:lint && npm run dkh-crm:build"
+    assert "dkh-site:typecheck" not in scripts
+    assert "dkh-site:check" not in scripts
 
 
-def test_es_daskuechenhaus_site_worker_is_private_route_scaffold() -> None:
-    config = load_toml(DKH_SITE_WRANGLER_CONFIG_PATH)
-    source = load_text(DKH_SITE_WORKER_SOURCE_PATH)
-
-    assert config["name"] == "es-daskuechenhaus-site"
-    assert config["main"] == "src/index.ts"
-    assert config["workers_dev"] is False
-    assert config["preview_urls"] is False
-    assert config["vars"] == {
-        "DKH_ADMIN_API_BASE_URL": (
-            "https://daskuechenhaus.condata.io/_daskuechenhaus-admin-api"
-        )
-    }
-    assert config["routes"] == [
-        {
-            "pattern": "es-daskuechenhaus.de/*",
-            "zone_name": "es-daskuechenhaus.de",
-        },
-        {
-            "pattern": "www.es-daskuechenhaus.de/*",
-            "zone_name": "es-daskuechenhaus.de",
-        }
-    ]
-
-    assert 'url.pathname === "/health"' in source
-    assert 'url.pathname === "/index.php"' in source
-    assert 'url.pathname === "/kunden.php"' in source
-    assert 'url.pathname === "/aufgaben.php"' in source
-    assert 'url.pathname === "/emails.php"' in source
-    assert 'url.pathname === "/admin.php"' in source
-    assert 'url.pathname.startsWith("/admin-api/")' in source
-    assert 'url.pathname.startsWith("/overview-api/")' in source
-    assert 'url.pathname.startsWith("/customers-api/")' in source
-    assert 'url.pathname === "/api/customers/search"' in source
-    assert "DKH_ADMIN_API_TOKEN" in source
-    assert "DKH_ADMIN_API_BASE_URL" in source
-    assert "DKH_TENANT_UI" in source
-    assert '"sota-2026-tenant-crm"' in source
-    assert "assets/images/daskuechenhaus/logo_daskuechenhaus.png" in source
-    assert 'logoRoute: "/tenant-assets/daskuechenhaus/logo.svg"' in source
-    assert (
-        'customerSearchScriptRoute: "/tenant-assets/daskuechenhaus/customer-search.v1.js"'
-        in source
-    )
-    assert 'url.pathname.startsWith("/tenant-assets/")' in source
-    assert "serveTenantAsset" in source
-    assert 'logoPath.startsWith("assets/images/daskuechenhaus/")' in source
-    assert "renderTenantThemeVars(DKH_TENANT_UI)" in source
-    assert "renderTenantLogo(DKH_TENANT_UI)" in source
-    assert "LOGO_MARKUP" not in source
-    assert "svg.logo" not in source
-    assert 'url.pathname.replace(/^\\/admin-api/, "/admin")' in source
-    assert 'url.pathname.replace(/^\\/overview-api/, "/overview")' in source
-    assert 'url.pathname.replace(/^\\/customers-api/, "/customers")' in source
-    assert "proxyCustomerSearchApi" in source
-    assert '`/customers/search${url.search}`' in source
-    assert 'location' in source
-    assert "Übersicht" in source
-    assert "<h1>Steuerung</h1>" in source
-    assert "Entscheidungszentrale" in source
-    assert "Jetzt bearbeiten" in source
-    assert "Aktive Vorgänge steuern" in source
-    assert "Nachvollziehbare Änderungen" in source
-    assert "Command Center" in source
-    assert "renderCommandCenter" in source
-    assert "renderDecisionQueue" in source
-    assert "renderCustomerFocus" in source
-    assert "renderAuditTrail" in source
-    assert "renderTasksPage" in source
-    assert "renderEmailsPage" in source
-    assert 'renderSideNav("tasks"' in source
-    assert 'renderSideNav("emails"' in source
-    assert "Nächste Aktion" in source
-    assert 'id="command-search"' in source
-    assert 'name="q"' in source
-    assert "customerMatchesQuery" in source
-    assert "Ausführung nur mit Bestätigung" not in source
-    assert "filter-note" in source
-    assert "Fällige Aufgaben" in source
-    assert "Eingang und Zuordnung" in source
-    assert "Team, Auslastung und Termine" in source
-    assert "Auslastung und Termine" in source
-    assert "Kunden" in source
-    assert (
-        "Verwalten Sie hier Ihre Kundenkontakte. Bitte wählen Sie den passenden Bereich, "
-        "um einen Neukunden anzulegen oder ein neues Küchenprojekt für einen "
-        "Bestandskunden zu erfassen."
-    ) in source
-    assert "Name, Firma, E-Mail, Telefon oder Kundennummer eingeben..." in source
-    assert "Privatkunde anlegen" in source
-    assert "Objektkunde anlegen" in source
-    assert "Aufgabe anlegen" in source
-    assert "E-Mail-Eingang" in source
-    assert 'href="/emails.php"' in source
-    assert "Zuordnung bestätigen" in source
-    assert "Ablehnen" not in source
-    assert "In Papierkorb" in source
-    assert "Archivieren" in source
-    assert "customer-case-options" in source
-    assert 'name="customer_case_search"' in source
-    assert 'action="/overview-api/emails/suggestions/${suggestion.id}/accept?return_to=' in source
-    assert "Kein Treffer" in source
-    assert "Instrumententafel" not in source
-    assert "Kontrollverlust" not in source
-    assert "Was jetzt kippen kann" not in source
-    assert "Funkverkehr" not in source
-    assert "Flugplan" not in source
-    assert "Blackbox" not in source
-    assert "CRM Steuerung" not in source
-    assert "entscheidungsrelevante Arbeit" not in source
-    assert "Team <span>Admin</span>" not in source
-    assert 'href="/admin.php?modal=users"' not in source
-    assert "SCAS Kontrolle" not in source
-    assert "SCAS-Freigaben" not in source
-    assert "SCAS-Vorschläge" not in source
-    assert "Keine SCAS-Vorschläge" not in source
-    assert "renderScasReviewQueue" not in source
-    assert '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>' not in source
-    assert '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>' not in source
-    assert '<span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2>' not in source
-    assert (
-        '<span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2>'
-        not in source
-    )
-    assert "Aufgaben und E-Mails werden hier" not in source
-    assert "/aufgaben.php#emails" not in source
-    assert "Sonntag ist nicht als Arbeitstag vorgesehen" in source
-    assert "modal users-modal" in source
-    assert "modal settings-modal" in source
-    assert "modal integrations-modal" in source
-    assert "Mitarbeiter anlegen" in source
-    assert "Konstantin Milonas" not in source
-    assert "Verkauf" in source
-    assert "Cloudflare Subject" not in source
-    assert "Neuer Mitarbeiter" not in source
-    assert "Worker eine gesicherte API" not in source
-    assert 'id="admin-workdays"' not in source
-    assert 'for="admin-workdays"' not in source
-    assert 'id="employee-roles"' in source
-    assert 'id="employee-workdays"' in source
-    assert "employee-roles-panel" in source
-    assert "employee-workdays-panel" in source
-    assert "Mitarbeiterübersicht" in source
-    assert 'method="post"' in source
-    assert 'href="/admin.php?modal=users&edit=${user.id}"' in source
-    assert "fetchAdminState" in source
-    assert "proxyAdminApi" in source
-    assert "morning_start_time_" in source
-    assert "afternoon_end_time_" in source
-    assert 'name="department"' in source
-    assert 'name="is_active"' in source
-    assert 'name="external_identity_provider"' in source
-    assert 'name="company_name"' in source
-    assert 'name="secret_reference"' in source
-    assert "SECURITY_HEADERS" in source
-    assert "default-src 'none'" in source
-    assert "script-src 'self'" in source
-    assert "connect-src 'self'" in source
-    assert "x-robots-tag" in source
+def test_es_daskuechenhaus_worker_ui_has_been_removed_for_next_crm() -> None:
+    assert not DKH_SITE_WRANGLER_CONFIG_PATH.exists()
+    assert DKH_CRM_APP_ROOT.exists()
+    assert (DKH_CRM_APP_ROOT / "next.config.ts").exists()
+    assert (DKH_CRM_APP_ROOT / "public" / "logo.svg").exists()
+    assert (DKH_CRM_APP_ROOT / "public" / "crm-hero.jpg").exists()
 
 
-def test_es_daskuechenhaus_access_script_requires_explicit_allow_list() -> None:
-    script = load_text(DKH_SITE_ACCESS_SCRIPT_PATH)
+def test_dkh_crm_next_app_preserves_cloudflare_access_boundary() -> None:
+    package = load_json(DKH_CRM_PACKAGE_JSON_PATH)
+    middleware = load_text(DKH_CRM_MIDDLEWARE_PATH)
+    proxy = load_text(DKH_CRM_PROXY_PATH)
 
-    assert "DKH_CLOUDFLARE_ACCOUNT_ID" in script
-    assert "DKH_CLOUDFLARE_ZONE_ID" in script
-    assert "DKH_CLOUDFLARE_API_TOKEN" in script
-    assert "allowed-emails" in script
-    assert "allowed_emails is required when --apply is used" in script
-    assert "PRIMARY_HOSTNAME" in script
-    assert "access_app_name" in script
-    assert '"app_launcher_visible": True' in script
-    assert "100::" in script
-    assert "/dns_records" in script
-    assert "/access/apps" in script
-    assert "mfa_config" in script
-    assert "security_key" in script
-    assert "totp" in script
+    assert package["scripts"]["build"] == "next build && node scripts/copy-standalone-assets.mjs"
+    assert "cf-access-jwt-assertion" in middleware
+    assert "cf-access-authenticated-user-email" in middleware
+    assert "x-dkh-user-email" in middleware
+    assert "jwtVerify" in middleware
+    assert "DKH_ADMIN_API_BASE_URL" in proxy
+    assert "Disallowed API path" in proxy
 
 
 def test_wrangler_config_defines_control_api_bindings() -> None:

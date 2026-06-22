@@ -1,0 +1,538 @@
+name: es-daskuechenhaus.de CRM Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_deploy:
+        description: Apply Hetzner Next.js CRM deployment and Cloudflare cutover
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_deploy=true
+        required: true
+        type: boolean
+        default: false
+      hostnames:
+        description: Space-separated public hostnames protected by Cloudflare Access
+        required: true
+        type: string
+        default: es-daskuechenhaus.de www.es-daskuechenhaus.de
+      local_port:
+        description: Local Hetzner port used by the Next.js CRM service
+        required: true
+        type: string
+        default: "3001"
+      origin_ipv4:
+        description: Optional explicit Hetzner origin IPv4 for Cloudflare DNS
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-crm-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and optionally deploy Next.js CRM
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+    env:
+      APPLY_DEPLOY: ${{ inputs.apply_deploy }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      DKH_HOSTNAMES: ${{ inputs.hostnames }}
+      DKH_LOCAL_PORT: ${{ inputs.local_port }}
+      DKH_ORIGIN_IPV4_INPUT: ${{ inputs.origin_ipv4 }}
+      DKH_ADMIN_API_BASE_URL: http://127.0.0.1:8715
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      DKH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.DKH_CLOUDFLARE_ACCOUNT_ID }}
+      DKH_CLOUDFLARE_ZONE_ID: ${{ secrets.DKH_CLOUDFLARE_ZONE_ID }}
+      DKH_CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+      DKH_CF_ACCESS_TEAM_DOMAIN: ${{ secrets.DKH_CF_ACCESS_TEAM_DOMAIN }}
+      DKH_CF_ACCESS_AUD: ${{ secrets.DKH_CF_ACCESS_AUD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          if [ "${APPLY_DEPLOY}" = "true" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true when apply_deploy=true."
+            missing=1
+          fi
+
+          if [[ ! "${DKH_LOCAL_PORT}" =~ ^[0-9]+$ ]]; then
+            echo "::error::local_port must be numeric."
+            missing=1
+          fi
+
+          for hostname in ${DKH_HOSTNAMES}
+          do
+            if [[ ! "${hostname}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+              echo "::error::Unsupported hostname value."
+              missing=1
+            fi
+          done
+
+          target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
+          target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
+          target_key="${SCAS_PROD_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}"
+          for pair in \
+            "TARGET_HETZNER_HOST:${target_host}" \
+            "TARGET_HETZNER_USER:${target_user}" \
+            "TARGET_HETZNER_SSH_KEY:${target_key}" \
+            "DKH_CLOUDFLARE_ACCOUNT_ID:${DKH_CLOUDFLARE_ACCOUNT_ID}" \
+            "DKH_CLOUDFLARE_ZONE_ID:${DKH_CLOUDFLARE_ZONE_ID}" \
+            "DKH_CLOUDFLARE_API_TOKEN:${DKH_CLOUDFLARE_API_TOKEN}"
+          do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ "${APPLY_DEPLOY}" = "true" ] && [ -z "${value}" ]; then
+              echo "::error::Missing required production secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ "${target_key}" == *"__SCAS_HETZNER_SSH_KEY__"* ]]; then
+            echo "::error::Refusing to export HETZNER_SSH_KEY: value contains reserved delimiter."
+            missing=1
+          fi
+
+          origin_ipv4="${DKH_ORIGIN_IPV4_INPUT}"
+          if [ -z "${origin_ipv4}" ] && [ -n "${target_host}" ]; then
+            if [[ "${target_host}" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+              origin_ipv4="${target_host}"
+            else
+              origin_ipv4="$(getent ahostsv4 "${target_host}" | awk '{print $1; exit}')"
+            fi
+          fi
+
+          if [ "${APPLY_DEPLOY}" = "true" ]; then
+            ORIGIN_IPV4="${origin_ipv4}" python3 - <<'PY'
+          import ipaddress
+          import os
+          ipaddress.IPv4Address(os.environ["ORIGIN_IPV4"])
+          PY
+          fi
+
+          admin_api_base_url_b64="$(printf '%s' "${DKH_ADMIN_API_BASE_URL}" | base64 -w0)"
+          cf_access_team_domain_b64="$(printf '%s' "${DKH_CF_ACCESS_TEAM_DOMAIN}" | base64 -w0)"
+          cf_access_aud_b64="$(printf '%s' "${DKH_CF_ACCESS_AUD}" | base64 -w0)"
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            printf 'DKH_ORIGIN_IPV4=%s\n' "${origin_ipv4}"
+            printf 'DKH_ADMIN_API_BASE_URL_B64=%s\n' "${admin_api_base_url_b64}"
+            printf 'DKH_CF_ACCESS_TEAM_DOMAIN_B64=%s\n' "${cf_access_team_domain_b64}"
+            printf 'DKH_CF_ACCESS_AUD_B64=%s\n' "${cf_access_aud_b64}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${target_key}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+          exit "${missing}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/dkh-crm/package-lock.json
+
+      - name: Build Next.js CRM bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm ci --prefix apps/dkh-crm
+          npm run dkh-crm:check
+
+          rm -rf dkh-crm-bundle dkh-crm-standalone.tar.gz
+          mkdir -p dkh-crm-bundle/node/bin
+          cp -a apps/dkh-crm/.next/standalone/. dkh-crm-bundle/
+          cp "$(command -v node)" dkh-crm-bundle/node/bin/node
+          chmod 0755 dkh-crm-bundle/node/bin/node
+          tar -C dkh-crm-bundle -czf dkh-crm-standalone.tar.gz .
+
+      - name: Upload deploy plan
+        if: inputs.apply_deploy == false
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-crm-deploy-plan
+          path: dkh-crm-standalone.tar.gz
+          if-no-files-found: error
+
+      - name: Configure SSH
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 0700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 0600 "${HOME}/.ssh/hetzner_key"
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null 2>&1; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Upload CRM bundle to Hetzner
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            dkh-crm-standalone.tar.gz \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Deploy Next.js CRM on Hetzner
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo -n "$@"
+            fi
+          }
+
+          app_user="tenant_daskuechenhaus_app"
+          app_group="tenant_daskuechenhaus_app"
+          app_root="/opt/daskuechenhaus/dkh-crm"
+          releases_dir="${app_root}/releases"
+          release_dir="${releases_dir}/${RELEASE_SUFFIX}"
+          current_link="${app_root}/current"
+          evidence_dir="/tmp/dkh-crm-deploy-${GITHUB_RUN_ID}"
+          env_file="/etc/daskuechenhaus/dkh-crm.env"
+          service_file="/etc/systemd/system/daskuechenhaus-crm.service"
+          nginx_site="/etc/nginx/sites-available/es-daskuechenhaus-crm"
+          nginx_enabled="/etc/nginx/sites-enabled/es-daskuechenhaus-crm"
+          cert_dir="/etc/letsencrypt/live/es-daskuechenhaus.de"
+
+          sudo_if_needed install -d -o "${app_user}" -g "${app_group}" -m 0750 "${releases_dir}"
+          sudo_if_needed rm -rf "${release_dir}"
+          sudo_if_needed install -d -o "${app_user}" -g "${app_group}" -m 0750 "${release_dir}"
+          sudo_if_needed tar -xzf "${REMOTE_ARCHIVE}" -C "${release_dir}" --no-same-owner
+          sudo_if_needed chown -R "${app_user}:${app_group}" "${release_dir}"
+          sudo_if_needed chmod 0755 "${release_dir}/node/bin/node"
+          sudo_if_needed ln -sfn "${release_dir}" "${current_link}"
+
+          install -d -m 0700 "${evidence_dir}"
+          admin_api_base_url="$(printf '%s' "${DKH_ADMIN_API_BASE_URL_B64}" | base64 -d)"
+          cf_access_team_domain="$(printf '%s' "${DKH_CF_ACCESS_TEAM_DOMAIN_B64}" | base64 -d)"
+          cf_access_aud="$(printf '%s' "${DKH_CF_ACCESS_AUD_B64}" | base64 -d)"
+          admin_api_token="$(sudo_if_needed cat /etc/daskuechenhaus/admin-api-token)"
+
+          {
+            printf 'NODE_ENV=production\n'
+            printf 'HOSTNAME=127.0.0.1\n'
+            printf 'PORT=%s\n' "${DKH_LOCAL_PORT}"
+            printf 'DKH_ADMIN_API_BASE_URL=%s\n' "${admin_api_base_url}"
+            printf 'DKH_ADMIN_API_TOKEN=%s\n' "${admin_api_token}"
+            if [ -n "${cf_access_team_domain}" ]; then
+              printf 'CF_ACCESS_TEAM_DOMAIN=%s\n' "${cf_access_team_domain}"
+            fi
+            if [ -n "${cf_access_aud}" ]; then
+              printf 'CF_ACCESS_AUD=%s\n' "${cf_access_aud}"
+            fi
+          } > "${evidence_dir}/dkh-crm.env"
+          sudo_if_needed install -o root -g "${app_group}" -m 0640 "${evidence_dir}/dkh-crm.env" "${env_file}"
+
+          cat > "${evidence_dir}/daskuechenhaus-crm.service" <<EOF
+          [Unit]
+          Description=Das Kuechenhaus Next.js CRM
+          After=network-online.target daskuechenhaus-admin-api.service
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User=${app_user}
+          Group=${app_group}
+          WorkingDirectory=${current_link}
+          EnvironmentFile=${env_file}
+          ExecStart=${current_link}/node/bin/node server.js
+          Restart=always
+          RestartSec=5
+          NoNewPrivileges=true
+          PrivateTmp=true
+          ProtectSystem=strict
+          ProtectHome=true
+          ReadWritePaths=${app_root}
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sudo_if_needed install -o root -g root -m 0644 "${evidence_dir}/daskuechenhaus-crm.service" "${service_file}"
+          sudo_if_needed systemctl daemon-reload
+          sudo_if_needed systemctl enable daskuechenhaus-crm.service
+          sudo_if_needed systemctl restart daskuechenhaus-crm.service
+          sudo_if_needed systemctl is-active daskuechenhaus-crm.service
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${DKH_LOCAL_PORT}/logo.svg" >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              echo "Next.js CRM did not become reachable on 127.0.0.1:${DKH_LOCAL_PORT}." >&2
+              sudo_if_needed journalctl -u daskuechenhaus-crm.service -n 80 --no-pager >&2 || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
+            echo "Origin certificate files are missing for es-daskuechenhaus.de." >&2
+            exit 1
+          fi
+
+          cat > "${evidence_dir}/nginx-site.conf" <<EOF
+          server {
+              listen 80;
+              server_name ${DKH_HOSTNAMES};
+
+              return 301 https://\$host\$request_uri;
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name ${DKH_HOSTNAMES};
+
+              ssl_certificate ${cert_dir}/fullchain.pem;
+              ssl_certificate_key ${cert_dir}/privkey.pem;
+
+              location / {
+                  proxy_pass http://127.0.0.1:${DKH_LOCAL_PORT};
+                  proxy_http_version 1.1;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_read_timeout 120s;
+              }
+          }
+          EOF
+
+          if [ -f "${nginx_site}" ]; then
+            sudo_if_needed cp "${nginx_site}" "${evidence_dir}/nginx-site.previous"
+          fi
+
+          sudo_if_needed install -o root -g root -m 0644 "${evidence_dir}/nginx-site.conf" "${nginx_site}"
+          sudo_if_needed ln -sfn "${nginx_site}" "${nginx_enabled}"
+          if ! sudo_if_needed nginx -t; then
+            if [ -f "${evidence_dir}/nginx-site.previous" ]; then
+              sudo_if_needed install -o root -g root -m 0644 "${evidence_dir}/nginx-site.previous" "${nginx_site}"
+            else
+              sudo_if_needed rm -f "${nginx_site}" "${nginx_enabled}"
+            fi
+            sudo_if_needed nginx -t || true
+            echo "Nginx configuration failed validation; restored previous state." >&2
+            exit 1
+          fi
+          sudo_if_needed systemctl reload nginx
+
+          for hostname in ${DKH_HOSTNAMES}
+          do
+            curl -kfsS \
+              --resolve "${hostname}:443:127.0.0.1" \
+              --max-time 10 \
+              "https://${hostname}/logo.svg" >/dev/null
+          done
+
+          {
+            printf '# es-daskuechenhaus.de CRM Deployment Evidence\n\n'
+            printf -- '- Release: `%s`\n' "${RELEASE_SUFFIX}"
+            printf -- '- Hostnames: `%s`\n' "${DKH_HOSTNAMES}"
+            printf -- '- Service: `daskuechenhaus-crm.service`\n'
+            printf -- '- Nginx site: `%s`\n' "${nginx_site}"
+            printf -- '- Local port: `%s`\n' "${DKH_LOCAL_PORT}"
+            printf -- '- Origin smoke: `passed`\n'
+            printf -- '- Secret values in artifact: `none`\n'
+            printf -- '- Collected at: `%s`\n' "$(date -Is)"
+          } > "${evidence_dir}/deployment.md"
+
+          rm -f "${REMOTE_ARCHIVE}"
+          REMOTE
+
+      - name: Update Cloudflare DNS and remove Worker routes
+        if: inputs.apply_deploy == true
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.DKH_CLOUDFLARE_ZONE_ID }}
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          origin_ipv4 = os.environ["DKH_ORIGIN_IPV4"]
+          hostnames = os.environ["DKH_HOSTNAMES"].split()
+          base = "https://api.cloudflare.com/client/v4"
+
+          def request(method: str, path: str, payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              req = urllib.request.Request(
+                  f"{base}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise SystemExit(f"Cloudflare API {method} {path} failed: {detail}") from exc
+              if not body.get("success", False):
+                  raise SystemExit(f"Cloudflare API {method} {path} failed: {body}")
+              return body
+
+          routes = request("GET", f"/zones/{zone_id}/workers/routes?per_page=100").get("result", [])
+          wanted_patterns = {f"{hostname}/*" for hostname in hostnames}
+          deleted_routes = []
+          for route in routes:
+              if route.get("pattern") in wanted_patterns:
+                  request("DELETE", f"/zones/{zone_id}/workers/routes/{route['id']}")
+                  deleted_routes.append(route.get("pattern", route["id"]))
+
+          dns_changes = []
+          for hostname in hostnames:
+              encoded_name = urllib.parse.quote(hostname, safe="")
+              for record_type in ("AAAA", "CNAME"):
+                  records = request(
+                      "GET",
+                      f"/zones/{zone_id}/dns_records?type={record_type}&name={encoded_name}&per_page=100",
+                  ).get("result", [])
+                  for record in records:
+                      request("DELETE", f"/zones/{zone_id}/dns_records/{record['id']}")
+                      dns_changes.append(f"deleted {record_type} {hostname}")
+
+              a_records = request(
+                  "GET",
+                  f"/zones/{zone_id}/dns_records?type=A&name={encoded_name}&per_page=100",
+              ).get("result", [])
+              payload = {
+                  "type": "A",
+                  "name": hostname,
+                  "content": origin_ipv4,
+                  "ttl": 1,
+                  "proxied": True,
+                  "comment": "SCAS-managed DKH Next.js CRM origin",
+              }
+              if a_records:
+                  primary = a_records[0]
+                  request("PATCH", f"/zones/{zone_id}/dns_records/{primary['id']}", payload)
+                  dns_changes.append(f"updated A {hostname}")
+                  for extra in a_records[1:]:
+                      request("DELETE", f"/zones/{zone_id}/dns_records/{extra['id']}")
+                      dns_changes.append(f"deleted duplicate A {hostname}")
+              else:
+                  request("POST", f"/zones/{zone_id}/dns_records", payload)
+                  dns_changes.append(f"created A {hostname}")
+
+          os.makedirs("es-daskuechenhaus-crm-evidence", exist_ok=True)
+          with open("es-daskuechenhaus-crm-evidence/cloudflare.md", "w", encoding="utf-8") as handle:
+              handle.write("# es-daskuechenhaus.de Cloudflare Cutover Evidence\n\n")
+              handle.write(f"- Origin IPv4: `{origin_ipv4}`\n")
+              handle.write(f"- Hostnames: `{', '.join(hostnames)}`\n")
+              handle.write(f"- Worker routes deleted: `{len(deleted_routes)}`\n")
+              handle.write("- DNS changes:\n")
+              for change in dns_changes:
+                  handle.write(f"  - `{change}`\n")
+              handle.write("- Access application/policies: `preserved; not modified by this workflow`\n")
+          PY
+
+      - name: Verify Cloudflare Access remains the public entrypoint
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p es-daskuechenhaus-crm-evidence
+          {
+            printf '# es-daskuechenhaus.de Public Access Smoke\n\n'
+            for hostname in ${DKH_HOSTNAMES}
+            do
+              headers_file="$(mktemp)"
+              status="$(curl -sS -o /dev/null -D "${headers_file}" -w '%{http_code}' --max-time 30 "https://${hostname}/")"
+              location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, "", $0); print substr($0, 11); exit}' "${headers_file}")"
+              rm -f "${headers_file}"
+              if [ "${status}" != "302" ] && [ "${status}" != "301" ]; then
+                echo "::error::Expected Cloudflare Access redirect for ${hostname}, got HTTP ${status}."
+                exit 1
+              fi
+              if [[ "${location}" != *"cloudflareaccess.com"* && "${location}" != *"/cdn-cgi/access/login/"* ]]; then
+                echo "::error::Expected Cloudflare Access login redirect for ${hostname}."
+                exit 1
+              fi
+              printf -- '- `%s`: HTTP `%s`, Access redirect `present`\n' "${hostname}" "${status}"
+            done
+          } > es-daskuechenhaus-crm-evidence/public-access-smoke.md
+
+      - name: Download Hetzner deployment evidence
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/dkh-crm-deploy-${GITHUB_RUN_ID}/deployment.md" \
+            es-daskuechenhaus-crm-evidence/deployment.md
+
+      - name: Store deployment evidence
+        if: inputs.apply_deploy == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: es-daskuechenhaus-crm-deployment-evidence
+          path: es-daskuechenhaus-crm-evidence
+          if-no-files-found: error

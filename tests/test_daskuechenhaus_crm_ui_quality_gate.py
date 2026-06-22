@@ -3,199 +3,69 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORKER_SOURCE_PATH = (
-    REPO_ROOT / "workers" / "es-daskuechenhaus-site" / "src" / "index.ts"
-)
+APP_ROOT = REPO_ROOT / "apps" / "dkh-crm"
 
 
-def load_worker_source() -> str:
-    return WORKER_SOURCE_PATH.read_text(encoding="utf-8")
+def load_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
-def test_crm_ui_uses_tenant_owned_branding_without_svg_logo_fallback() -> None:
-    source = load_worker_source()
-
-    assert "DKH_TENANT_UI" in source
-    assert 'assetScope: "tenant-owned"' in source
-    assert "/tenant-assets/daskuechenhaus/logo.svg" in source
-    assert '<img class="tenant-logo"' in source
-    assert "LOGO_MARKUP" not in source
-    assert "svg.logo" not in source
-
-
-def test_crm_command_center_has_accessible_search_and_scas_status() -> None:
-    source = load_worker_source()
-
-    assert 'aria-label="Command Center"' in source
-    assert '<label for="command-search">Suche</label>' in source
-    assert 'id="command-search"' in source
-    assert 'type="search"' in source
-    assert 'aria-label="Schnellaktionen"' in source
-    assert "Vorschläge sichtbar, Ausführung nur mit Bestätigung" not in source
+def test_dkh_crm_next_app_is_the_only_site_ui() -> None:
+    assert APP_ROOT.exists()
+    assert not (REPO_ROOT / "workers" / "es-daskuechenhaus-site").exists()
+    assert not (
+        REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
+    ).exists()
+    assert not (
+        REPO_ROOT / "scripts" / "cloudflare" / "es_daskuechenhaus_access.py"
+    ).exists()
 
 
-def test_crm_layout_is_mobile_first_with_min_width_guards() -> None:
-    source = load_worker_source()
+def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
+    assert (APP_ROOT / "public" / "logo.svg").exists()
+    assert (APP_ROOT / "public" / "crm-hero.jpg").exists()
+    assert (APP_ROOT / "public" / "customer-search.v1.js").exists()
 
-    # Mobile-first: layout grows via min-width only, no max-width fallbacks remain.
-    assert "@media (min-width: 768px)" in source
-    assert "@media (min-width: 1100px)" in source
-    assert "@media (max-width:" not in source
-
-    # Desktop multi-column layout is restored inside the min-width guards.
-    assert ".shell { display: grid; grid-template-columns: 252px minmax(0, 1fr); }" in source
-
-
-def test_crm_touch_targets_meet_mobile_contract() -> None:
-    source = load_worker_source()
-
-    assert "min-height: 48px" in source
-    assert "min-height: 44px" not in source
+    search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
+    assert "/api/kunden/search?q=" in search_script
+    assert "/kunden/" in search_script
+    assert "maxOpenFiles = 3" in search_script
 
 
-def test_crm_has_app_like_bottom_navigation_and_fab() -> None:
-    source = load_worker_source()
+def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
+    middleware = load_text(APP_ROOT / "src" / "middleware.ts")
 
-    assert "renderBottomNav(" in source
-    assert "renderFab(" in source
-    assert 'class="tab-bar"' in source
-    assert "aria-label=\"Hauptbereiche\"" in source
-    # Bottom nav and FAB are mobile-only and respect the safe area.
-    assert ".tab-bar { display: none; }" in source
-    assert ".fab { display: none; }" in source
-    assert "env(safe-area-inset-bottom)" in source
-
-
-def test_crm_uses_cards_native_links_and_cls_safe_media() -> None:
-    source = load_worker_source()
-
-    # Wide customer table collapses into progressive-disclosure cards.
-    assert "renderContactLinks(" in source
-    assert '<details class="card">' in source
-    # Native mobile protocols for one-tap contact actions.
-    assert "tel:" in source
-    assert "mailto:" in source
-    assert "maps/search" in source
-    # Fixed aspect ratio keeps cumulative layout shift at zero.
-    assert "aspect-ratio: 260 / 88" in source
+    assert "cf-access-jwt-assertion" in middleware
+    assert "cf-access-authenticated-user-email" in middleware
+    assert "cf-access-client-id" in middleware
+    assert "cf-access-client-secret" in middleware
+    assert "cf-access-user-email" in middleware
+    assert "x-access-user-email" in middleware
+    assert "x-dkh-user-email" in middleware
+    assert "jwtVerify" in middleware
 
 
-def test_customer_page_enforces_search_first_entry() -> None:
-    source = load_worker_source()
+def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
+    proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
+    kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
 
-    assert "renderCustomerSearchFirst" in source
-    assert 'data-customer-search-first' in source
-    assert 'data-customer-search-input' in source
-    assert 'data-customer-search-results' in source
-    assert 'data-customer-search-empty hidden' in source
-    assert "Name, Firma, E-Mail, Telefon oder Kundennummer eingeben..." in source
-    assert "Neues Projekt anlegen" in source
-    assert "Privatkunde anlegen" in source
-    assert "Objektkunde anlegen" in source
-    assert 'href="/kunden.php?new=1&type=private"' in source
-    assert 'href="/kunden.php?new=1&type=company"' in source
-    assert "CUSTOMER_SEARCH_SCRIPT" in source
-    assert "/api/customers/search?q=" in source
-    assert "script-src 'self'" in source
-    assert "connect-src 'self'" in source
-    assert "customer-search.v1.js" in source
+    assert 'type ProxyKind = "overview" | "admin" | "customers"' in proxy
+    assert "Disallowed API path" in proxy
+    assert "safeDecodeSegment" in proxy
+    assert "/customers/search" in kunden_search
+    assert "x-access-user-email" in proxy
+    assert "x-access-user-email" in kunden_search
+    assert "cf-access-authenticated-user-email" in kunden_search
 
 
-def test_crm_surface_keeps_outcome_first_paths_visible() -> None:
-    source = load_worker_source()
+def test_dkh_crm_surface_uses_new_routes_not_php_worker_routes() -> None:
+    source = "\n".join(
+        load_text(path)
+        for path in (APP_ROOT / "src").rglob("*.tsx")
+    )
 
-    assert "<h1>Steuerung</h1>" in source
-    assert "Entscheidungszentrale" in source
-    assert "Jetzt bearbeiten" in source
-    assert "Aktive Vorgänge steuern" in source
-    assert "Nachvollziehbare Änderungen" in source
-    assert "renderDecisionQueue" in source
-    assert "renderCustomerFocus" in source
-    assert "renderAuditTrail" in source
-    assert 'url.pathname === "/emails.php"' in source
-    assert "renderEmailsPage" in source
-    assert 'renderSideNav("emails"' in source
-    assert 'href="/emails.php"' in source
-    assert "Fällige Aufgaben" in source
-    assert "Eingang und Zuordnung" in source
-    assert "customerMatchesQuery" in source
-    assert "renderCommandCenter({" in source
+    for route in ("/termine", "/aufgaben", "/emails", "/kunden", "/vorgaenge", "/admin"):
+        assert route in source
 
-
-def test_crm_surface_rejects_non_production_language() -> None:
-    source = load_worker_source()
-
-    forbidden_terms = [
-        "Blackbox",
-        "Funkverkehr",
-        "Flugplan",
-        "Instrumententafel",
-        "Was jetzt kippen kann",
-        "Kontrollverlust",
-        "EXIT",
-        "Aufgabe(n)",
-        "E-Mail(s)",
-        "Vorgang/Vorgänge",
-        "Das Cockpit zeigt",
-        "CRM Steuerung",
-        "entscheidungsrelevante Arbeit",
-        "Team <span>Admin</span>",
-        'href="/admin.php?modal=users"',
-        "Aufgaben und E-Mails werden hier",
-        "/aufgaben.php#emails",
-        "SCAS Kontrolle",
-        "SCAS-Freigaben",
-        "SCAS-Vorschläge",
-        "Keine SCAS-Vorschläge",
-        "renderScasReviewQueue",
-        '<span class="section-kicker">Neue Aufgabe</span><h2>Aufgabe anlegen</h2>',
-        '<span class="section-kicker">Bearbeiten</span><h2>Offene Aufgaben</h2>',
-        '<span class="section-kicker">Kommunikation</span><h2>E-Mail-Eingang</h2>',
-        '<span class="section-kicker">Kundenbestand</span><h2>Aktuell angelegte Kunden</h2>',
-        "Anlage(n)",
-    ]
-
-    for term in forbidden_terms:
-        assert term not in source
-
-
-def test_crm_visible_german_copy_uses_umlauts() -> None:
-    source = load_worker_source()
-
-    legacy_visible_spellings = [
-        "Uebersicht",
-        "Naechste Aktion",
-        "Faellige Aufgaben",
-        "Aktive Vorgaenge",
-        "Nachvollziehbare Aenderungen",
-        "Zuordnung bestaetigen",
-        "Aenderungen speichern",
-        "E-Mails pruefen",
-        "Zurueck",
-        "Schliessen",
-        "Strasse",
-        "Geschaeftsfuehrer",
-        "Mitarbeiteruebersicht",
-        "API-Schluessel",
-        "Kuechenplanung",
-        "Oeffnen",
-        "ueberfaellig",
-        "Rueckmeldung",
-        "moeglich",
-        "Zustaendig",
-        "Zustaendigkeit",
-        "E-Mail-Eingaenge",
-        "Kundenvorgaenge",
-        "Prioritaet",
-        "Zuordnungsvorschlaege",
-        "faellig",
-        "Faellig",
-        "Ueberfaellig",
-        "Anlage ergaenzen",
-        "Waehle",
-        "das kuechenhaus",
-        "Blumenstrasse",
-    ]
-
-    for spelling in legacy_visible_spellings:
-        assert spelling not in source
+    assert ".php" not in source
+    assert "tenant-assets/daskuechenhaus" not in source
