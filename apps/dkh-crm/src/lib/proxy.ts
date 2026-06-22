@@ -54,10 +54,7 @@ function proxyHeaders(request: NextRequest) {
   const headers = new Headers();
   const token = process.env.DKH_ADMIN_API_TOKEN;
   if (token) headers.set("authorization", `Bearer ${token}`);
-  const email =
-    request.headers.get("x-dkh-user-email") ??
-    request.headers.get("cf-access-authenticated-user-email") ??
-    "";
+  const email = request.headers.get("x-dkh-user-email") ?? "";
   if (email) {
     headers.set("x-access-user-email", email);
     headers.set("cf-access-authenticated-user-email", email);

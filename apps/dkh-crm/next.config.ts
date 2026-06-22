@@ -8,37 +8,42 @@ const nextConfig: NextConfig = {
       {
         source: "/uebersicht.php",
         destination: "/",
-        permanent: true,
+        permanent: false,
+      },
+      {
+        source: "/index.php",
+        destination: "/",
+        permanent: false,
       },
       {
         source: "/termine.php",
         destination: "/termine",
-        permanent: true,
+        permanent: false,
       },
       {
         source: "/aufgaben.php",
         destination: "/aufgaben",
-        permanent: true,
+        permanent: false,
       },
       {
         source: "/emails.php",
         destination: "/emails",
-        permanent: true,
+        permanent: false,
       },
       {
         source: "/kunden.php",
         destination: "/kunden",
-        permanent: true,
+        permanent: false,
       },
       {
         source: "/vorgaenge.php",
         destination: "/vorgaenge",
-        permanent: true,
+        permanent: false,
       },
       {
         source: "/admin.php",
         destination: "/admin",
-        permanent: true,
+        permanent: false,
       },
     ];
   },
