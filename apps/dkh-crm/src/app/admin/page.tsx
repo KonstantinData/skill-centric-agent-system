@@ -98,17 +98,22 @@ export default async function AdminPage() {
                     <Field name="timezone" defaultValue={user.timezone} />
                   </Label>
                   <div className="flex flex-wrap gap-3 text-sm font-bold">
-                    {state.roles.map((role) => (
-                      <label key={role.code} className="flex items-center gap-2">
-                        <input
-                          name={`role_${role.code}`}
-                          value="true"
-                          type="checkbox"
-                          defaultChecked={user.roles.includes(role.code)}
-                        />
-                        {role.name}
-                      </label>
-                    ))}
+                    {state.roles.map((role) => {
+                      const isLockedAdminRole = user.roles.includes("admin") && role.code === "admin";
+                      return (
+                        <label key={role.code} className="flex items-center gap-2">
+                          {isLockedAdminRole ? <input name="role_admin" value="true" type="hidden" /> : null}
+                          <input
+                            name={`role_${role.code}`}
+                            value="true"
+                            type="checkbox"
+                            defaultChecked={isLockedAdminRole || user.roles.includes(role.code)}
+                            disabled={isLockedAdminRole}
+                          />
+                          {role.name}
+                        </label>
+                      );
+                    })}
                   </div>
                   <label className="flex items-center gap-2 text-sm font-bold">
                     <input name="is_active" value="true" type="checkbox" defaultChecked={user.is_active} />

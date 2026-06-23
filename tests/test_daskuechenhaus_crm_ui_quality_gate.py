@@ -187,3 +187,12 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Vorgang schließen" in source
     assert r"^cases\/\d+$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
+
+
+def test_dkh_crm_admin_user_save_preserves_existing_admin_role() -> None:
+    source = load_text(APP_ROOT / "src" / "app" / "admin" / "page.tsx")
+
+    assert 'const isLockedAdminRole = user.roles.includes("admin") && role.code === "admin"' in source
+    assert '<input name="role_admin" value="true" type="hidden" />' in source
+    assert "defaultChecked={isLockedAdminRole || user.roles.includes(role.code)}" in source
+    assert "disabled={isLockedAdminRole}" in source
