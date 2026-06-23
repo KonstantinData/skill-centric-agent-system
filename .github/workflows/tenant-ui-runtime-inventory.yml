@@ -379,6 +379,9 @@ jobs:
           section "Daskuechenhaus CRM status"
           if command -v systemctl >/dev/null 2>&1; then
             sudo -n systemctl status daskuechenhaus-crm.service --no-pager -l 2>&1 | redact || true
+            printf '\n### Admin API health\n\n'
+            curl -sS 'http://127.0.0.1:8715/health' 2>&1 | redact || true
+            printf '\n'
             printf '\n### Origin `/kunden` response\n\n'
             curl -sS -D - \
               -H 'x-dkh-user-email: k.milonas@schober-daskuechenhaus.de' \
