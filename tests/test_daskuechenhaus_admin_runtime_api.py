@@ -74,6 +74,9 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert 'customer_filter: str = "all"' in source
     assert 'customer_filter in {"active", "closed", "all"}' in source
     assert 'params.get("status", ["all"])[0]' in source
+    assert "WHEN :'phone_value' <> ''" in source
+    assert "AND COALESCE(c.primary_phone_normalized, '') = :'phone_value'" in source
+    assert "AND COALESCE(c.primary_mobile_normalized, '') = :'phone_value'" in source
     assert "app.customer_case_status_phases csp" in source
     assert "COALESCE(csp.is_terminal, FALSE) = TRUE" in source
     assert "LIMIT 20" in source

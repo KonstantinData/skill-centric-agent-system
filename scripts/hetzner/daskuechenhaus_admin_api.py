@@ -1289,8 +1289,10 @@ def search_customers(
             ca.city,
             CASE
               WHEN lower(COALESCE(c.primary_email, '')) = lower(:'search_value') THEN 0
-              WHEN COALESCE(c.primary_phone_normalized, '') = :'phone_value' THEN 1
-              WHEN COALESCE(c.primary_mobile_normalized, '') = :'phone_value' THEN 1
+              WHEN :'phone_value' <> ''
+                AND COALESCE(c.primary_phone_normalized, '') = :'phone_value' THEN 1
+              WHEN :'phone_value' <> ''
+                AND COALESCE(c.primary_mobile_normalized, '') = :'phone_value' THEN 1
               WHEN lower(COALESCE(c.customer_number, '')) = lower(:'search_value') THEN 2
               WHEN lower(c.display_name) = lower(:'search_value') THEN 3
               ELSE 9
@@ -1309,8 +1311,14 @@ def search_customers(
               OR COALESCE(c.company_name, '') ILIKE '%' || :'search_value' || '%'
               OR COALESCE(c.customer_number, '') ILIKE '%' || :'search_value' || '%'
               OR COALESCE(c.primary_email, '') ILIKE '%' || :'search_value' || '%'
-              OR COALESCE(c.primary_phone_normalized, '') = :'phone_value'
-              OR COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
+              OR (
+                :'phone_value' <> ''
+                AND COALESCE(c.primary_phone_normalized, '') = :'phone_value'
+              )
+              OR (
+                :'phone_value' <> ''
+                AND COALESCE(c.primary_mobile_normalized, '') = :'phone_value'
+              )
               OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
               OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
             )
