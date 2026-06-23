@@ -45,10 +45,36 @@ const PROJECT_SITUATIONS = [
 ] as const;
 
 const PROJECT_URGENCIES = [
-  ["", "Bitte wählen"],
-  ["normal", "Normal"],
-  ["time_critical", "Zeitkritisch"],
-  ["open", "Noch offen"],
+  [
+    "",
+    "Bitte wählen",
+    "Noch keine Einschätzung zur zeitlichen Dringlichkeit.",
+  ],
+  [
+    "open",
+    "Noch offen",
+    "Kunde hat noch keinen festen Zeitdruck. Beispiel: Wir wollen uns erst einmal informieren.",
+  ],
+  [
+    "normal",
+    "Normal",
+    "Kein akuter Terminzwang. Realistische Planung mit üblichem Vorlauf möglich.",
+  ],
+  [
+    "deadline_relevant",
+    "Terminrelevant",
+    "Es gibt ein Datum, das beachtet werden muss. Beispiele: Umzug, Wohnungsübergabe, Neubauabschnitt oder Mietbeginn.",
+  ],
+  [
+    "time_critical",
+    "Zeitkritisch",
+    "Der gewünschte Zeitraum liegt sehr nah oder ist schwer erreichbar. Beispiel: Küche soll in wenigen Wochen stehen.",
+  ],
+  [
+    "emergency_replacement",
+    "Notfall / Ersatzbedarf",
+    "Bestehende Küche nicht nutzbar oder Schadenfall. Beispiele: Wasserschaden, Brandschaden, defekte Bestandsküche, Übergangslösung nötig.",
+  ],
 ] as const;
 
 const BUDGET_RANGES = [
@@ -160,6 +186,31 @@ function sectionValue(
 function sectionChecked(section: SectionPayload | undefined, key: string): boolean {
   const value = section?.[key];
   return value === true || value === "true" || value === "on" || value === "1";
+}
+
+function UrgencyInfoTooltip() {
+  return (
+    <div className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        aria-label="Informationen zu den Dringlichkeitsleveln"
+        className="grid h-5 w-5 cursor-help place-items-center rounded-full border border-[var(--accent)] bg-white text-xs font-bold text-[var(--accent-strong)] outline-none focus:ring-2 focus:ring-[var(--accent)]"
+      >
+        i
+      </span>
+      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-80 rounded-lg border border-[var(--border)] bg-white p-3 text-xs font-normal leading-relaxed text-[var(--foreground)] shadow-lg group-hover:block group-focus-within:block">
+        <p className="font-bold">Dringlichkeitslevel</p>
+        <dl className="mt-2 grid gap-2">
+          {PROJECT_URGENCIES.filter(([value]) => value).map(([value, label, description]) => (
+            <div key={value}>
+              <dt className="font-bold">{label}</dt>
+              <dd className="text-[var(--muted)]">{description}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  );
 }
 
 function caseLabel(item: CustomerCaseRecord): string {
@@ -829,6 +880,8 @@ function CaseDesktop({
                   />
                 </Label>
                 <Label label="Dringlichkeit">
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1">
                   <Select
                     name="urgency"
                     defaultValue={sectionValue(projectObjects, "urgency")}
@@ -837,6 +890,9 @@ function CaseDesktop({
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
+                    </span>
+                    <UrgencyInfoTooltip />
+                  </span>
                 </Label>
                 <Label label="Grund für Terminwunsch">
                   <Field

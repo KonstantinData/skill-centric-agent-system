@@ -209,6 +209,7 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "PROJECT_URGENCIES" in source
     assert "BUDGET_RANGES" in source
     assert "INQUIRY_SOURCES" in source
+    assert "UrgencyInfoTooltip" in source
     assert "Einbauküche" in source
     assert "Garderobe" in source
     assert "Sideboard" in source
@@ -218,6 +219,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert 'name="delivery_city"' in source
     assert "Gewünschter Zeitraum" in source
     assert "Budgetrahmen" in source
+    assert "Terminrelevant" in source
+    assert "Notfall / Ersatzbedarf" in source
+    assert "Bestehende Küche nicht nutzbar oder Schadenfall" in source
+    assert "Informationen zu den Dringlichkeitsleveln" in source
     assert "Kontaktweg" in source
     assert "Vorhandene Unterlagen" in source
     assert "Interne Notiz für den ersten Termin" in source
