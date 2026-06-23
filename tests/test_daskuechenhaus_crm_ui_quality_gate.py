@@ -202,8 +202,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Vergangenheit" in source
     assert "Zukunft" in source
     assert "Aktueller Bereich" in source
-    assert "Downloadbereich geplant" in source
-    assert "Dokumentenpakete und Freigaben gesammelt herunterladen" in source
+    assert "DOCUMENTS_REGISTER" in source
+    assert "Dokumentenbereich öffnen" in source
+    assert "Hochladen, herunterladen und per E-Mail versenden" in source
+    assert 'activeRegister === DOCUMENTS_REGISTER.key' in source
     assert "DOCUMENT_GUIDE_CATEGORIES" in source
     assert "Wählen Sie zuerst die passende Dokumentart" in source
     assert "Kundenunterlage" in source

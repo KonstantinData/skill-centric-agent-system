@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   CheckSquare,
   ClipboardList,
-  Download,
   FileText,
   FolderOpen,
   Mail,
@@ -189,6 +188,13 @@ const CASE_REGISTERS = [
 ] as const;
 
 type CaseRegisterKey = (typeof CASE_REGISTERS)[number]["key"];
+type CaseDesktopRegisterKey = CaseRegisterKey | "dokumente";
+
+const DOCUMENTS_REGISTER = {
+  key: "dokumente",
+  label: "Dokumente",
+  description: "Dokumente hochladen, herunterladen und für den Versand vorbereiten.",
+} as const;
 
 function registerForPhase(phase: number | null | undefined): CaseRegisterKey {
   const normalizedPhase = phase ?? 1;
@@ -202,7 +208,10 @@ function registerForPhase(phase: number | null | undefined): CaseRegisterKey {
   );
 }
 
-function normalizeRegister(value: string | undefined, phase: number | null | undefined): CaseRegisterKey {
+function normalizeRegister(value: string | undefined, phase: number | null | undefined): CaseDesktopRegisterKey {
+  if (value === DOCUMENTS_REGISTER.key) {
+    return DOCUMENTS_REGISTER.key;
+  }
   return CASE_REGISTERS.some((register) => register.key === value)
     ? (value as CaseRegisterKey)
     : registerForPhase(phase);
@@ -737,7 +746,7 @@ function CaseDesktop({
   >;
   users: Awaited<ReturnType<typeof fetchCustomersState>>["users"];
   statusPhases: Awaited<ReturnType<typeof fetchCustomersState>>["status_phases"];
-  activeRegister: CaseRegisterKey;
+  activeRegister: CaseDesktopRegisterKey;
   returnTo: string;
 }) {
   const projectObjects = selectedCase.sections?.project_objects;
@@ -748,7 +757,10 @@ function CaseDesktop({
   const activeTaskCount = selectedCaseTasks.filter((task) => task.status !== "done").length;
   const currentPhase = selectedCase.status_phase ?? 1;
   const phaseRegister = registerForPhase(currentPhase);
-  const registerMeta = CASE_REGISTERS.find((register) => register.key === activeRegister) ?? CASE_REGISTERS[0];
+  const registerMeta =
+    activeRegister === DOCUMENTS_REGISTER.key
+      ? DOCUMENTS_REGISTER
+      : CASE_REGISTERS.find((register) => register.key === activeRegister) ?? CASE_REGISTERS[0];
 
   return (
     <div className="grid gap-4">
@@ -852,21 +864,25 @@ function CaseDesktop({
               </a>
             );
           })}
-          <div
-            className="rounded-lg border border-dashed border-[var(--border)] bg-white p-3 text-sm text-[var(--muted)]"
-            aria-label="Downloadbereich geplant"
+          <a
+            href={`/kunden/${customerId}?case=${selectedCase.id}&register=${DOCUMENTS_REGISTER.key}`}
+            className={`rounded-lg border p-3 text-sm transition ${
+              activeRegister === DOCUMENTS_REGISTER.key
+                ? "border-[var(--accent)] bg-[var(--surface-soft)]"
+                : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
+            }`}
+            aria-label="Dokumentenbereich öffnen"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 font-bold text-[var(--foreground)]">
-                <Download size={16} aria-hidden="true" />
-                Download
+                <FileText size={16} aria-hidden="true" />
+                {DOCUMENTS_REGISTER.label}
               </span>
-              <span className="badge">Geplant</span>
             </div>
             <p className="mt-2 text-xs">
-              Dokumentenpakete und Freigaben gesammelt herunterladen.
+              Hochladen, herunterladen und per E-Mail versenden.
             </p>
-          </div>
+          </a>
         </div>
       </Panel>
 
@@ -1278,6 +1294,7 @@ function CaseDesktop({
           </Panel>
           ) : null}
 
+          {activeRegister === DOCUMENTS_REGISTER.key ? (
           <Panel>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -1319,7 +1336,7 @@ function CaseDesktop({
                   </Select>
                 </Label>
                 <Label label="Register">
-                  <Select name="register_code" defaultValue={activeRegister}>
+                  <Select name="register_code" defaultValue={phaseRegister}>
                     {CASE_REGISTERS.filter((register) => register.key !== "kommunikation").map((register) => (
                       <option key={register.key} value={register.key}>{register.label}</option>
                     ))}
@@ -1409,6 +1426,7 @@ function CaseDesktop({
               Aktuell werden Dokument-Metadaten gespeichert. Datei-Upload, Versionierung und Download-Pakete werden im nächsten Schritt angebunden.
             </p>
           </Panel>
+          ) : null}
         </div>
 
         {["abwicklung", "kommunikation", "rechnung_abschluss"].includes(activeRegister) ? (
