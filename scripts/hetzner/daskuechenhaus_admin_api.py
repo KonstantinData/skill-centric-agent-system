@@ -3803,6 +3803,7 @@ def store_carat_prjz_analysis(
             position
           FROM payload,
           LATERAL jsonb_array_elements(data->'positions') AS position
+          RETURNING import_id
         )
         SELECT jsonb_build_object(
           'ok', TRUE,
