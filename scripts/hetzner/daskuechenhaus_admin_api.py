@@ -2510,6 +2510,10 @@ def create_task(data: dict[str, Any], files: list[FileUpload], access_email: str
             (data->>'assigned_user_id')::bigint,
             (data->>'created_by_user_id')::bigint
           FROM inserted_task, payload
+          ON CONFLICT (task_id, user_id) DO UPDATE
+          SET
+            assigned_by_user_id = EXCLUDED.assigned_by_user_id,
+            created_at = app.task_assignments.created_at
           RETURNING task_id
         ),
         overview_reminder AS (
@@ -2646,6 +2650,7 @@ def update_task(
         deleted_assignments AS (
           DELETE FROM app.task_assignments ta
           WHERE ta.task_id = (SELECT id FROM updated_task)
+            AND ta.user_id <> (SELECT (data->>'assigned_user_id')::bigint FROM payload)
         ),
         assignment AS (
           INSERT INTO app.task_assignments (task_id, user_id, assigned_by_user_id)
@@ -2654,6 +2659,10 @@ def update_task(
             (data->>'assigned_user_id')::bigint,
             (data->>'actor_user_id')::bigint
           FROM updated_task, payload
+          ON CONFLICT (task_id, user_id) DO UPDATE
+          SET
+            assigned_by_user_id = EXCLUDED.assigned_by_user_id,
+            created_at = app.task_assignments.created_at
         ),
         deleted_reminders AS (
           DELETE FROM app.task_reminders tr

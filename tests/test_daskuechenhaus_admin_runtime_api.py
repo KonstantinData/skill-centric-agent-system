@@ -61,6 +61,7 @@ def test_daskuechenhaus_admin_api_exposes_required_overview_routes() -> None:
     assert "current_user_context" in source
     assert "scope_user_ids" in source
     assert "user_delegations" in source
+    assert source.count("ON CONFLICT (task_id, user_id) DO UPDATE") >= 2
 
 
 def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
