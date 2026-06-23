@@ -202,6 +202,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Vergangenheit" in source
     assert "Zukunft" in source
     assert "Aktueller Bereich" in source
+    assert "Downloadbereich geplant" in source
+    assert "Dokumentenpakete und Freigaben gesammelt herunterladen" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source

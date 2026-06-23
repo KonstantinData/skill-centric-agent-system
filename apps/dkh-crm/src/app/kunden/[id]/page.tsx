@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckSquare,
   ClipboardList,
+  Download,
   FolderOpen,
   Mail,
   MessageSquareText,
@@ -811,6 +812,21 @@ function CaseDesktop({
               </a>
             );
           })}
+          <div
+            className="rounded-lg border border-dashed border-[var(--border)] bg-white p-3 text-sm text-[var(--muted)]"
+            aria-label="Downloadbereich geplant"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 font-bold text-[var(--foreground)]">
+                <Download size={16} aria-hidden="true" />
+                Download
+              </span>
+              <span className="badge">Geplant</span>
+            </div>
+            <p className="mt-2 text-xs">
+              Dokumentenpakete und Freigaben gesammelt herunterladen.
+            </p>
+          </div>
         </div>
       </Panel>
 
