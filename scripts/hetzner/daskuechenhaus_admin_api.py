@@ -3996,7 +3996,7 @@ def sync_supplier_orders_from_carat_selection(
           FROM app.customer_case_carat_imports ci
           JOIN app.customer_case_carat_import_positions cip ON cip.import_id = ci.id
           WHERE ci.id = (SELECT (data->>'import_id')::bigint FROM payload)
-            AND cip.selection_status = 'selected'
+            AND cip.selection_status IN ('selected', 'transferred')
         ),
         upserted_suppliers AS (
           INSERT INTO app.suppliers (name, normalized_name)
@@ -4888,10 +4888,14 @@ def select_carat_import_positions(
 ) -> dict[str, Any]:
     context = require_primary_user(access_email)
     position_ids = selected_carat_position_ids(data)
+    action = str(data.get("carat_action") or "transfer").strip()
+    if action not in {"transfer", "reset"}:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "carat_action_invalid")
     payload = {
         "case_id": case_id,
         "import_id": import_id,
         "position_ids": position_ids,
+        "action": action,
         "actor_user_id": context["primary_user_id"],
         "context": context,
     }
@@ -4928,7 +4932,7 @@ def select_carat_import_positions(
           SELECT jsonb_array_elements_text(data->'position_ids')::bigint AS id
           FROM payload
         ),
-        reset_positions AS (
+        reset_previous_selection AS (
           UPDATE app.customer_case_carat_import_positions p
           SET
             selection_status = 'candidate',
@@ -4936,6 +4940,19 @@ def select_carat_import_positions(
             selected_at = NULL
           WHERE p.import_id = (SELECT id FROM visible_import)
             AND p.selection_status = 'selected'
+            AND (SELECT data->>'action' FROM payload) = 'transfer'
+        ),
+        reset_requested_positions AS (
+          UPDATE app.customer_case_carat_import_positions p
+          SET
+            selection_status = 'candidate',
+            selected_by_user_id = NULL,
+            selected_at = NULL
+          WHERE p.import_id = (SELECT id FROM visible_import)
+            AND p.id IN (SELECT id FROM requested_positions)
+            AND p.selection_status IN ('selected', 'transferred')
+            AND (SELECT data->>'action' FROM payload) = 'reset'
+          RETURNING p.id
         ),
         selected_positions AS (
           UPDATE app.customer_case_carat_import_positions p
@@ -4945,13 +4962,20 @@ def select_carat_import_positions(
             selected_at = now()
           WHERE p.import_id = (SELECT id FROM visible_import)
             AND p.id IN (SELECT id FROM requested_positions)
+            AND p.selection_status = 'candidate'
+            AND (SELECT data->>'action' FROM payload) = 'transfer'
           RETURNING p.id
         ),
         import_status AS (
           UPDATE app.customer_case_carat_imports ci
           SET
             status = CASE
-              WHEN EXISTS (SELECT 1 FROM selected_positions) THEN 'partially_transferred'
+              WHEN EXISTS (
+                SELECT 1
+                FROM app.customer_case_carat_import_positions p
+                WHERE p.import_id = (SELECT id FROM visible_import)
+                  AND p.selection_status IN ('selected', 'transferred')
+              ) THEN 'partially_transferred'
               ELSE 'analysis_ready'
             END,
             updated_at = now()
@@ -4959,7 +4983,9 @@ def select_carat_import_positions(
         )
         SELECT jsonb_build_object(
           'ok', TRUE,
+          'action', (SELECT data->>'action' FROM payload),
           'selected_count', (SELECT count(*) FROM selected_positions),
+          'reset_count', (SELECT count(*) FROM reset_requested_positions),
           'import_id', (SELECT id FROM visible_import)
         )::text;
         """,
@@ -4971,6 +4997,26 @@ def select_carat_import_positions(
         int(result["import_id"]),
         int(context["primary_user_id"]),
     )
+    if result.get("action") == "transfer":
+        psql_json(
+            """
+            WITH payload AS (SELECT :'payload'::jsonb AS data),
+            transferred AS (
+              UPDATE app.customer_case_carat_import_positions p
+              SET selection_status = 'transferred'
+              FROM payload
+              WHERE p.import_id = (data->>'import_id')::bigint
+                AND p.selection_status = 'selected'
+              RETURNING p.id
+            )
+            SELECT jsonb_build_object(
+              'ok', TRUE,
+              'transferred_count', (SELECT count(*) FROM transferred)
+            )::text
+            FROM payload;
+            """,
+            {"payload": json.dumps({"import_id": result["import_id"]})},
+        )
     return result
 
 

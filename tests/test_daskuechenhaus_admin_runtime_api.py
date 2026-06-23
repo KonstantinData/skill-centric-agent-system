@@ -116,6 +116,9 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "store_carat_prjz_analysis" in source
     assert "select_carat_import_positions" in source
     assert 'parts[3] == "carat-imports"' in source
+    assert "carat_action_invalid" in source
+    assert "selection_status = 'transferred'" in source
+    assert "selection_status IN ('selected', 'transferred')" in source
     assert "RETURNING import_id" in source
     assert "download_customer_case_document" in source
     assert "archive_customer_case_document" in source

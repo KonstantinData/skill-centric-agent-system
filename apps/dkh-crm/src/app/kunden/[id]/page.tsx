@@ -1393,6 +1393,9 @@ function CaseDesktop({
                 const selectedCount = caratImport.positions.filter(
                   (position) => position.selection_status === "selected",
                 ).length;
+                const transferredCount = caratImport.positions.filter(
+                  (position) => position.selection_status === "transferred",
+                ).length;
                 const supplierNames = Array.from(
                   new Set(
                     caratImport.positions.map(
@@ -1422,7 +1425,8 @@ function CaseDesktop({
                       <div className="flex flex-wrap gap-2">
                         <span className="badge">{caratImport.supplier_count} Lieferanten</span>
                         <span className="badge">{caratImport.position_count} Positionen</span>
-                        <span className="badge">{selectedCount} ausgewählt</span>
+                        <span className="badge">{transferredCount} übernommen</span>
+                        {selectedCount > 0 ? <span className="badge">{selectedCount} markiert</span> : null}
                       </div>
                     </div>
                     <div className="mt-3 grid gap-3">
@@ -1445,34 +1449,37 @@ function CaseDesktop({
                                 return (
                                   <label
                                     key={position.id}
-                                    className="grid gap-2 rounded-lg border border-[var(--border)] bg-white p-3 text-sm lg:grid-cols-[auto_minmax(0,1fr)_auto]"
+                                    className="grid gap-3 rounded-lg border border-[var(--border)] bg-white p-3 text-sm lg:grid-cols-[auto_minmax(0,1fr)_auto]"
                                   >
                                     <input
                                       className="mt-1"
                                       type="checkbox"
                                       name={`position_${position.id}`}
-                                      defaultChecked={position.selection_status === "selected"}
                                     />
                                     <span className="min-w-0">
-                                      <span className="block font-bold">
+                                      <span className="block text-sm font-bold leading-snug text-[var(--text)]">
                                         {position.position_number ? `Pos. ${position.position_number} · ` : ""}
                                         {position.title}
                                       </span>
-                                      <span className="mt-1 block text-xs text-[var(--muted)]">
-                                        {[
-                                          position.article_code,
-                                          displayImportQuantity(position.quantity),
-                                          dimensions ? `${dimensions} mm` : "",
-                                        ].filter(Boolean).join(" · ")}
+                                      <span className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+                                        {position.article_code ? (
+                                          <span className="badge font-mono">{position.article_code}</span>
+                                        ) : null}
+                                        <span className="badge">{displayImportQuantity(position.quantity)}</span>
+                                        {dimensions ? <span className="badge">{dimensions} mm</span> : null}
                                       </span>
                                       {position.description ? (
-                                        <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted)]">
+                                        <span className="mt-2 line-clamp-3 block text-xs leading-relaxed text-[var(--muted)]">
                                           {position.description}
                                         </span>
                                       ) : null}
                                     </span>
                                     <span className="badge h-fit">
-                                      {position.selection_status === "selected" ? "Übernommen" : "Kandidat"}
+                                      {position.selection_status === "transferred"
+                                        ? "Übernommen"
+                                        : position.selection_status === "selected"
+                                          ? "Markiert"
+                                          : "Kandidat"}
                                     </span>
                                   </label>
                                 );
@@ -1482,8 +1489,13 @@ function CaseDesktop({
                         );
                       })}
                     </div>
-                    <div className="mt-3 flex justify-end border-t border-[var(--border)] pt-3">
-                      <Button type="submit">Ausgewählte Positionen übernehmen</Button>
+                    <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
+                      <Button type="submit" name="carat_action" value="reset" variant="secondary">
+                        Ausgewählte Positionen zurücksetzen
+                      </Button>
+                      <Button type="submit" name="carat_action" value="transfer">
+                        Ausgewählte Positionen übernehmen
+                      </Button>
                     </div>
                   </form>
                 );
