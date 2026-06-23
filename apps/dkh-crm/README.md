@@ -141,6 +141,37 @@ Case status phases use the Das Kuechenhaus process labels: Anfrage, Beratung,
 Planung, Angebot, Auftrag, Bestellabwicklung, AB-Kontrolle, Lieferung und
 Montage, Rechnung, Kundendienst/Reklamation, and Abgeschlossen.
 
+## AB Cockpit Phase 1
+
+The AB Cockpit v1 lives in the `Bestellabwicklung` register of a customer case.
+It is intentionally conservative: only exact 1:1 position agreement can become
+green automatically. Business-relevant deviations are at least yellow, and
+context-risk or unsafe missing core data is red.
+
+CARAT PRJZ imports remain the first structured source for supplier orders. When
+users select CARAT import positions, the Hetzner Admin API creates or refreshes
+supplier orders and supplier order positions grouped by supplier. Manual AB
+entry then compares supplier confirmation lines against those order positions.
+
+Manual AB lines use this pipe-separated format:
+
+```text
+Artikelnummer | Titel | Menge | Netto-Preis | Liefer-KW | Lieferdatum YYYY-MM-DD | Beschreibung
+```
+
+The matching engine stores per-position severity, exceptions, confirmation
+status roll-up, and an audit trail for seller decisions. Sellers can accept an
+exception or request a corrected AB. Corrected-AB requests create a supplier
+communication draft and follow-up; v1 does not send email automatically.
+
+Deliberate v1 boundaries:
+
+- no automatic email attachment intake,
+- no OCR/provider automation,
+- no direct automatic supplier email sending,
+- no learning from repeated seller approvals,
+- no silent approval of price increases or article-number changes.
+
 Real file upload transport, Outlook/WhatsApp sending, voice transcription, and
 SCAS automation skills are intentionally separate follow-up layers. The desktop
 stores the manual infrastructure needed for those automations without pretending

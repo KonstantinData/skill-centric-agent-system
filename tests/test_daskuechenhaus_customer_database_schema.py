@@ -35,6 +35,14 @@ CARAT_IMPORT_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0012_carat_prjz_imports.sql"
 )
+SUPPLIER_CONFIRMATION_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0013_supplier_order_confirmations.sql"
+)
 
 
 def load_migration() -> str:
@@ -46,6 +54,7 @@ def test_customer_database_migration_exists() -> None:
     assert SEARCH_FIRST_MIGRATION_PATH.exists()
     assert CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.exists()
     assert CARAT_IMPORT_MIGRATION_PATH.exists()
+    assert SUPPLIER_CONFIRMATION_MIGRATION_PATH.exists()
 
 
 def test_customer_database_creates_expected_tables() -> None:
@@ -216,6 +225,39 @@ def test_customer_database_adds_carat_prjz_import_analysis_tables() -> None:
     assert "'application/zip'" in migration
     assert "'application/x-zip-compressed'" in migration
     assert "'application/octet-stream'" in migration
+    assert "tenant_daskuechenhaus_app" in migration
+
+
+def test_customer_database_adds_supplier_confirmation_cockpit_tables() -> None:
+    migration = SUPPLIER_CONFIRMATION_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    for table_name in (
+        "app.suppliers",
+        "app.supplier_contacts",
+        "app.supplier_orders",
+        "app.supplier_order_positions",
+        "app.supplier_confirmation_inbox_items",
+        "app.supplier_order_confirmations",
+        "app.supplier_order_confirmation_positions",
+        "app.supplier_order_confirmation_exceptions",
+        "app.supplier_order_confirmation_decisions",
+        "app.supplier_communications",
+        "app.supplier_follow_ups",
+    ):
+        assert f"CREATE TABLE IF NOT EXISTS {table_name}" in migration
+
+    assert (
+        "inbox_item_id BIGINT NOT NULL REFERENCES app.supplier_confirmation_inbox_items"
+        in migration
+    )
+    assert "'context_revision_required'" in migration
+    assert "match_rate NUMERIC" in migration
+    assert "difference_type IN (" in migration
+    assert "'missing_position'" in migration
+    assert "'extra_position'" in migration
+    assert "'corrected_ab_request'" in migration
+    assert "supplier_orders.manage" in migration
+    assert "supplier_confirmations.manage" in migration
     assert "tenant_daskuechenhaus_app" in migration
 
 

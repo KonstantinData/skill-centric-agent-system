@@ -94,6 +94,8 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert 'type ProxyKind = "overview" | "admin" | "customers"' in proxy
     assert "Disallowed API path" in proxy
     assert r"^cases\/\d+\/carat-imports\/\d+\/positions$" in proxy
+    assert r"^cases\/\d+\/confirmations$" in proxy
+    assert r"^confirmations\/\d+\/exceptions\/\d+\/decide$" in proxy
     assert "safeDecodeSegment" in proxy
     assert "/customers/search" in kunden_search
     assert 'upstream.searchParams.set("status", status)' in kunden_search
@@ -189,8 +191,14 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "const currentUserId = state.current_user.primary_user_id" in source
     assert "const assignableUsers =" in source
     assert "state.users.length > 0 || !currentUserId" in source
-    assert 'Select name="owner_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}' in source
-    assert 'Select name="responsible_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}' in source
+    assert (
+        'Select name="owner_user_id" '
+        "defaultValue={currentUserId ? String(currentUserId) : undefined}"
+    ) in source
+    assert (
+        'Select name="responsible_user_id" '
+        "defaultValue={currentUserId ? String(currentUserId) : undefined}"
+    ) in source
     assert "assignableUsers.map((user)" in source
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
@@ -304,10 +312,21 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "PRJZ-Projektdateien" in source
     assert "Ausgewählte Positionen übernehmen" in source
     assert "caratImports" in source
+    assert "AB-Cockpit" in source
+    assert "supplierOrders" in source
+    assert "supplierConfirmations" in source
+    assert "openConfirmationExceptionCount" in source
+    assert "Nur 1:1-Übereinstimmungen werden grün" in source
+    assert "AB prüfen" in source
+    assert "confirmation_positions" in source
+    assert "Änderungs-AB" in source
+    assert "Lieferantenkommunikation" in source
     assert "position.selection_status" in source
     assert "displayImportQuantity" in source
     assert "displayDimensions" in source
     assert "carat-imports/${caratImport.id}/positions" in source
+    assert "/confirmations?return_to=" in source
+    assert "/exceptions/${exception.id}/decide?return_to=" in source
     assert "Noch kein CARAT-Import in diesem Vorgang" in source
     assert "Informationen zu den Dringlichkeitsleveln" in source
     assert "Kontaktweg" in source
@@ -360,7 +379,9 @@ def test_dkh_crm_admin_user_save_preserves_existing_admin_role() -> None:
     assert 'activeSection === "firmenstammdaten"' in source
     assert 'activeSection === "integrationen"' in source
     assert 'activeSection === "system"' in source
-    assert 'const isLockedAdminRole = user.roles.includes("admin") && role.code === "admin"' in source
+    assert (
+        'const isLockedAdminRole = user.roles.includes("admin") && role.code === "admin"'
+    ) in source
     assert '<input name="role_admin" value="true" type="hidden" />' in source
     assert "defaultChecked={isLockedAdminRole || user.roles.includes(role.code)}" in source
     assert "disabled={isLockedAdminRole}" in source

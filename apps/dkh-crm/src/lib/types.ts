@@ -300,6 +300,108 @@ export type CaratImportRecord = {
   positions: CaratImportPositionRecord[];
 };
 
+export type SupplierOrderPositionRecord = {
+  id: number;
+  position_number: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit: string;
+  ordered_net_price: number | string | null;
+  ordered_delivery_week: string | null;
+  ordered_delivery_date: string | null;
+};
+
+export type SupplierOrderRecord = {
+  id: number;
+  customer_case_id: number;
+  supplier_id: number;
+  supplier_name: string;
+  source_carat_import_id: number | null;
+  order_number: string | null;
+  title: string;
+  status: string;
+  ordered_position_count: number;
+  created_at: string;
+  positions: SupplierOrderPositionRecord[];
+};
+
+export type SupplierConfirmationPositionRecord = {
+  id: number;
+  matched_order_position_id: number | null;
+  position_number: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit: string;
+  confirmed_net_price: number | string | null;
+  confirmed_delivery_week: string | null;
+  confirmed_delivery_date: string | null;
+  match_status: string;
+  severity: "green" | "yellow" | "red";
+};
+
+export type SupplierConfirmationExceptionRecord = {
+  id: number;
+  confirmation_position_id: number | null;
+  order_position_id: number | null;
+  difference_type: string;
+  severity: "yellow" | "red";
+  status: string;
+  ordered_value: string | null;
+  confirmed_value: string | null;
+  difference_value: number | string | null;
+  message: string;
+  resolution_action: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+};
+
+export type SupplierCommunicationRecord = {
+  id: number;
+  exception_id: number | null;
+  communication_type: string;
+  status: string;
+  recipient_email: string | null;
+  subject: string;
+  body: string;
+  created_at: string;
+};
+
+export type SupplierFollowUpRecord = {
+  id: number;
+  communication_id: number | null;
+  title: string;
+  status: string;
+  due_at: string | null;
+};
+
+export type SupplierOrderConfirmationRecord = {
+  id: number;
+  inbox_item_id: number;
+  customer_case_id: number;
+  supplier_order_id: number;
+  supplier_id: number;
+  supplier_name: string;
+  document_id: number | null;
+  confirmation_number: string | null;
+  status: string;
+  ordered_position_count: number;
+  confirmation_position_count: number;
+  matched_position_count: number;
+  unmatched_order_position_count: number;
+  unmatched_confirmation_position_count: number;
+  match_rate: number | string;
+  approved_at: string | null;
+  created_at: string;
+  positions: SupplierConfirmationPositionRecord[];
+  exceptions: SupplierConfirmationExceptionRecord[];
+  communications: SupplierCommunicationRecord[];
+  follow_ups: SupplierFollowUpRecord[];
+};
+
 export type CustomerCaseRecord = {
   id: number;
   customer_id: number | null;
@@ -323,6 +425,8 @@ export type CustomerCaseRecord = {
   sections?: Record<string, SectionPayload>;
   documents?: CustomerCaseDocumentRecord[];
   carat_imports?: CaratImportRecord[];
+  supplier_orders?: SupplierOrderRecord[];
+  supplier_order_confirmations?: SupplierOrderConfirmationRecord[];
   updated_at: string | null;
 };
 

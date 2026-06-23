@@ -115,7 +115,9 @@ boundary; the Streamlit app does not store passwords or authenticate users
 itself.
 
 The Daskuechenhaus CRM is deployed through the dedicated Next.js CRM workflow,
-not through the legacy Streamlit tenant UI or a customer-cases Worker.
+not through the legacy Streamlit tenant UI or a customer-cases Worker. The
+legacy `customer_cases_api_url` setting is therefore not used for the
+Daskuechenhaus CRM deployment path.
 
 ## Build-Only Plan
 

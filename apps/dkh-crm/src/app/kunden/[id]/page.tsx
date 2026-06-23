@@ -292,6 +292,52 @@ function displayDimensions(dimensions: Record<string, number | string | null | u
   return values.length > 0 ? values.join(" x ") : "";
 }
 
+function severityLabel(value: string): string {
+  if (value === "red") return "Rot";
+  if (value === "yellow") return "Gelb";
+  return "Grün";
+}
+
+function severityClass(value: string): string {
+  if (value === "red") return "border-red-300 bg-red-50 text-red-900";
+  if (value === "yellow") return "border-yellow-300 bg-yellow-50 text-yellow-900";
+  return "border-emerald-300 bg-emerald-50 text-emerald-900";
+}
+
+function confirmationStatusLabel(value: string): string {
+  const labels: Record<string, string> = {
+    draft: "Entwurf",
+    matching_in_progress: "Abgleich läuft",
+    matched: "Passt",
+    exceptions_open: "Abweichungen offen",
+    context_revision_required: "Kontext prüfen",
+    suspended: "Wartet auf Lieferant",
+    invalidated: "Ungültig",
+    replaced: "Ersetzt",
+    approved: "Freigegeben",
+    archived: "Archiviert",
+  };
+  return labels[value] ?? value;
+}
+
+function differenceTypeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    article_number: "Artikelnummer",
+    quantity: "Menge",
+    unit: "Einheit",
+    net_price: "Netto-Preis",
+    discount: "Rabatt",
+    delivery_date: "Liefertermin",
+    text: "Text",
+    extra_position: "Zusatzposition",
+    missing_position: "Fehlende Position",
+    unreadable_field: "Nicht lesbar",
+    replacement_article: "Ersatzartikel",
+    context: "Kontext",
+  };
+  return labels[value] ?? value;
+}
+
 function UrgencyInfoTooltip() {
   return (
     <div className="group relative inline-flex">
@@ -826,6 +872,16 @@ function CaseDesktop({
   const documents = selectedCase.sections?.documents;
   const caseDocuments = selectedCase.documents ?? [];
   const caratImports = selectedCase.carat_imports ?? [];
+  const supplierOrders = selectedCase.supplier_orders ?? [];
+  const supplierConfirmations = selectedCase.supplier_order_confirmations ?? [];
+  const openSupplierConfirmations = supplierConfirmations.filter((confirmation) =>
+    ["exceptions_open", "context_revision_required", "suspended"].includes(confirmation.status),
+  );
+  const openConfirmationExceptionCount = supplierConfirmations.reduce(
+    (count, confirmation) =>
+      count + confirmation.exceptions.filter((exception) => exception.status === "open").length,
+    0,
+  );
   const processControl = selectedCase.sections?.process_control;
   const activeTaskCount = selectedCaseTasks.filter((task) => task.status !== "done").length;
   const currentPhase = selectedCase.status_phase ?? 1;
@@ -1415,6 +1471,184 @@ function CaseDesktop({
               {caratImports.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
                   Noch kein CARAT-Import in diesem Vorgang. Laden Sie eine PRJZ-Datei im Dokumentenbereich hoch.
+                </div>
+              ) : null}
+            </div>
+          </Panel>
+          <Panel>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  <h3 className="section-title">AB-Cockpit</h3>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Lieferanten-ABs werden gegen die übernommenen CARAT-Bestellpositionen geprüft. Nur 1:1-Übereinstimmungen werden grün.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="badge">{supplierOrders.length} Bestellungen</span>
+                <span className="badge">{openSupplierConfirmations.length} offene ABs</span>
+                <span className="badge">{openConfirmationExceptionCount} offene Abweichungen</span>
+              </div>
+            </div>
+
+            <form
+              className="mt-4 grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+              action={`/api/kunden/cases/${selectedCase.id}/confirmations?return_to=${returnTo}`}
+              method="post"
+            >
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
+                <Label label="Bestellung">
+                  <Select name="supplier_order_id" required>
+                    <option value="">Bitte wählen</option>
+                    {supplierOrders.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        {order.supplier_name} · {order.order_number || order.title} · {order.ordered_position_count} Pos.
+                      </option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="AB-Nummer">
+                  <Field name="confirmation_number" placeholder="optional" />
+                </Label>
+                <Label label="AB-Dokument">
+                  <Select name="document_id" defaultValue="">
+                    <option value="">Ohne Dokument</option>
+                    {caseDocuments
+                      .filter((document) => document.document_category === "order_processing")
+                      .map((document) => (
+                        <option key={document.id} value={document.id}>
+                          {document.title}
+                        </option>
+                      ))}
+                  </Select>
+                </Label>
+              </div>
+              <Label label="AB-Positionen">
+                <Textarea
+                  name="confirmation_positions"
+                  className="min-h-32 font-mono text-xs"
+                  placeholder={"Artikelnummer | Titel | Menge | Netto-Preis | Liefer-KW | Lieferdatum YYYY-MM-DD | Beschreibung\nB123 | Unterschrank | 1 | 850,00 | KW 30 | 2026-07-22 | optional"}
+                  required
+                />
+              </Label>
+              <div className="flex justify-end">
+                <Button type="submit">AB prüfen</Button>
+              </div>
+            </form>
+
+            <div className="mt-4 grid gap-3">
+              {supplierConfirmations.map((confirmation) => {
+                const redCount = confirmation.exceptions.filter(
+                  (exception) => exception.status === "open" && exception.severity === "red",
+                ).length;
+                const yellowCount = confirmation.exceptions.filter(
+                  (exception) => exception.status === "open" && exception.severity === "yellow",
+                ).length;
+                const matchRate = Math.round(Number(confirmation.match_rate || 0) * 100);
+                return (
+                  <div key={confirmation.id} className="rounded-lg border border-[var(--border)] bg-white p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-md border px-2 py-1 text-xs font-bold ${severityClass(redCount > 0 ? "red" : yellowCount > 0 ? "yellow" : "green")}`}>
+                            {redCount > 0 ? `${redCount} rot` : yellowCount > 0 ? `${yellowCount} gelb` : "grün"}
+                          </span>
+                          <span className="badge">{confirmationStatusLabel(confirmation.status)}</span>
+                          <span className="badge">{matchRate}% Match</span>
+                        </div>
+                        <p className="mt-2 font-bold">
+                          {confirmation.supplier_name} · {confirmation.confirmation_number || `AB #${confirmation.id}`}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {confirmation.matched_position_count}/{confirmation.ordered_position_count} Bestellpositionen gematcht · {confirmation.created_at}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid gap-2">
+                      {confirmation.positions.map((position) => (
+                        <div key={position.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-bold">
+                                {position.position_number ? `Pos. ${position.position_number} · ` : ""}
+                                {position.title}
+                              </p>
+                              <p className="mt-1 text-xs text-[var(--muted)]">
+                                {[position.article_code, displayImportQuantity(position.quantity), position.confirmed_net_price ? `Netto ${position.confirmed_net_price}` : "", position.confirmed_delivery_week || position.confirmed_delivery_date || ""].filter(Boolean).join(" · ")}
+                              </p>
+                            </div>
+                            <span className={`rounded-md border px-2 py-1 text-xs font-bold ${severityClass(position.severity)}`}>
+                              {severityLabel(position.severity)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {confirmation.exceptions.length > 0 ? (
+                      <div className="mt-3 grid gap-2">
+                        {confirmation.exceptions.map((exception) => (
+                          <div key={exception.id} className={`rounded-lg border p-3 text-sm ${severityClass(exception.severity)}`}>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-bold">
+                                  {differenceTypeLabel(exception.difference_type)} · {exception.message}
+                                </p>
+                                <p className="mt-1 text-xs">
+                                  Soll: {exception.ordered_value || "-"} · AB: {exception.confirmed_value || "-"} · Status: {exception.status}
+                                </p>
+                                {exception.resolution_note ? (
+                                  <p className="mt-1 text-xs">Notiz: {exception.resolution_note}</p>
+                                ) : null}
+                              </div>
+                              {exception.status === "open" ? (
+                                <div className="flex flex-wrap gap-2">
+                                  <form
+                                    action={`/api/kunden/confirmations/${confirmation.id}/exceptions/${exception.id}/decide?return_to=${returnTo}`}
+                                    method="post"
+                                  >
+                                    <input type="hidden" name="action" value="accept" />
+                                    <Button type="submit" variant="secondary">Akzeptieren</Button>
+                                  </form>
+                                  <form
+                                    action={`/api/kunden/confirmations/${confirmation.id}/exceptions/${exception.id}/decide?return_to=${returnTo}`}
+                                    method="post"
+                                  >
+                                    <input type="hidden" name="action" value="request_corrected_ab" />
+                                    <Button type="submit" variant="secondary">Änderungs-AB</Button>
+                                  </form>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {confirmation.communications.length > 0 ? (
+                      <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                        <p className="font-bold">Lieferantenkommunikation</p>
+                        <div className="mt-2 grid gap-2">
+                          {confirmation.communications.map((communication) => (
+                            <details key={communication.id} className="rounded-lg bg-white p-3">
+                              <summary className="cursor-pointer font-bold">
+                                {communication.subject} · {communication.status}
+                              </summary>
+                              <pre className="mt-2 whitespace-pre-wrap text-xs text-[var(--muted)]">{communication.body}</pre>
+                            </details>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+              {supplierConfirmations.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
+                  Noch keine Lieferanten-AB erfasst. Übernehmen Sie zuerst CARAT-Positionen und erfassen Sie dann die AB-Positionen.
                 </div>
               ) : null}
             </div>

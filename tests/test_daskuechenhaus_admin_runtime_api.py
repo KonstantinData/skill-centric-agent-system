@@ -144,7 +144,21 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "object_storage_key" in source
     assert "customer_case_carat_imports" in source
     assert "customer_case_carat_import_positions" in source
+    assert "supplier_orders" in source
+    assert "supplier_order_confirmations" in source
+    assert "supplier_order_confirmation_exceptions" in source
+    assert "supplier_communications" in source
+    assert "supplier_follow_ups" in source
+    assert "sync_supplier_orders_from_carat_selection" in source
+    assert "create_supplier_order_confirmation" in source
+    assert "recompute_supplier_confirmation_matching" in source
+    assert "decide_supplier_confirmation_exception" in source
+    assert "create_supplier_communication_draft" in source
+    assert 'parts[3] == "confirmations"' in source
+    assert 'parts[:2] == ["customers", "confirmations"]' in source
     assert "'carat_imports', COALESCE((" in source
+    assert "'supplier_orders', COALESCE((" in source
+    assert "'supplier_order_confirmations', COALESCE((" in source
     assert "'positions', COALESCE((" in source
     assert '".prjz": "application/zip"' in source
     assert '"document_type": (' in source
@@ -237,6 +251,41 @@ def test_daskuechenhaus_admin_api_parses_carat_prjz_uploads() -> None:
     assert result["positions"][0]["quantity"] == 2.0
     assert result["positions"][0]["dimensions"]["width"] == 300.0
     assert result["positions"][0]["dimensions"]["depth"] == 2500.0
+
+
+def test_daskuechenhaus_admin_api_parses_manual_confirmation_positions() -> None:
+    spec = importlib.util.spec_from_file_location("dkh_admin_api", API_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["dkh_admin_api"] = module
+    spec.loader.exec_module(module)
+
+    rows = module.parse_confirmation_positions(
+        "B123 | Unterschrank | 1 | 850,00 | KW 30 | 2026-07-22 | passt\n"
+        "G456 | Gerät | 2 | 1200.50 | KW 31 |  | "
+    )
+
+    assert rows[0]["article_code"] == "B123"
+    assert rows[0]["title"] == "Unterschrank"
+    assert rows[0]["quantity"] == "1"
+    assert rows[0]["confirmed_net_price"] == "850.00"
+    assert rows[0]["confirmed_delivery_date"] == "2026-07-22"
+    assert rows[1]["confirmed_net_price"] == "1200.50"
+    assert rows[1]["confirmed_delivery_week"] == "KW 31"
+
+
+def test_daskuechenhaus_admin_api_encodes_ab_cockpit_tolerance_policy() -> None:
+    source = API_PATH.read_text(encoding="utf-8")
+
+    assert "matched_position_count == 0" in source
+    assert '"context_revision_required"' in source
+    assert "Liefertermin weicht mindestens eine Woche ab" in source
+    assert "Netto-Preis weicht ab und muss bestätigt werden" in source
+    assert "Bestellte Position fehlt in der AB" in source
+    assert "AB-Position ist keiner bestellten Position zugeordnet" in source
+    assert "supplier_order_confirmation_decisions" in source
+    assert "waiting_for_supplier" in source
+    assert "now() + interval '3 days'" in source
 
 
 def test_daskuechenhaus_admin_api_keeps_cockpit_actions_human_confirmed() -> None:

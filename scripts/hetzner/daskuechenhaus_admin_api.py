@@ -14,6 +14,7 @@ import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from email.parser import BytesParser
 from email.policy import default as email_policy
 from http import HTTPStatus
@@ -386,6 +387,81 @@ def normalize_carat_order_number(value: Any) -> str:
     if normalized and not CARAT_ORDER_NUMBER_PATTERN.fullmatch(normalized):
         raise ApiError(HTTPStatus.BAD_REQUEST, "carat_order_number_invalid")
     return normalized
+
+
+def normalize_supplier_name(value: Any) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized).strip()
+    return re.sub(r"\s+", " ", normalized)
+
+
+def parse_decimal_or_none(value: Any) -> str | None:
+    raw = str(value or "").strip().replace(",", ".")
+    if not raw:
+        return None
+    try:
+        return str(Decimal(raw))
+    except InvalidOperation as exc:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "decimal_value_invalid") from exc
+
+
+def parse_date_or_none(value: Any) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
+    except ValueError as exc:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "date_value_invalid") from exc
+
+
+def parse_confirmation_positions(value: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for line_number, raw_line in enumerate(str(value or "").splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = [part.strip() for part in line.split("|")]
+        while len(parts) < 7:
+            parts.append("")
+        (
+            article_code,
+            title,
+            quantity,
+            net_price,
+            delivery_week,
+            delivery_date,
+            description,
+        ) = parts[:7]
+        rows.append(
+            {
+                "position_number": str(line_number),
+                "article_code": article_code or None,
+                "title": title or article_code or f"AB Position {line_number}",
+                "quantity": parse_decimal_or_none(quantity),
+                "confirmed_net_price": parse_decimal_or_none(net_price),
+                "confirmed_delivery_week": delivery_week or None,
+                "confirmed_delivery_date": parse_date_or_none(delivery_date),
+                "description": description or None,
+            }
+        )
+    if not rows:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "confirmation_positions_required")
+    return rows
+
+
+def decimal_from(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except InvalidOperation:
+        return None
+
+
+def normalize_article_code(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or "").strip().upper())
 
 
 def admin_state() -> dict[str, Any]:
@@ -1797,6 +1873,184 @@ def customers_state(access_email: str) -> dict[str, Any]:
                   FROM app.customer_case_carat_imports ci
                   WHERE ci.customer_case_id = cc.id
                 ), '[]'::jsonb),
+                'supplier_orders', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', so.id,
+                      'customer_case_id', so.customer_case_id,
+                      'supplier_id', so.supplier_id,
+                      'supplier_name', s.name,
+                      'source_carat_import_id', so.source_carat_import_id,
+                      'order_number', so.order_number,
+                      'title', so.title,
+                      'status', so.status,
+                      'ordered_position_count', so.ordered_position_count,
+                      'created_at',
+                        to_char(
+                          so.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        ),
+                      'positions', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', sop.id,
+                            'position_number', sop.position_number,
+                            'article_code', sop.article_code,
+                            'title', sop.title,
+                            'description', sop.description,
+                            'quantity', sop.quantity,
+                            'unit', sop.unit,
+                            'ordered_net_price', sop.ordered_net_price,
+                            'ordered_delivery_week', sop.ordered_delivery_week,
+                            'ordered_delivery_date', sop.ordered_delivery_date
+                          )
+                          ORDER BY sop.id
+                        )
+                        FROM app.supplier_order_positions sop
+                        WHERE sop.supplier_order_id = so.id
+                      ), '[]'::jsonb)
+                    )
+                    ORDER BY so.updated_at DESC, so.id DESC
+                  )
+                  FROM app.supplier_orders so
+                  JOIN app.suppliers s ON s.id = so.supplier_id
+                  WHERE so.customer_case_id = cc.id
+                    AND so.status <> 'canceled'
+                ), '[]'::jsonb),
+                'supplier_order_confirmations', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', soc.id,
+                      'inbox_item_id', soc.inbox_item_id,
+                      'customer_case_id', soc.customer_case_id,
+                      'supplier_order_id', soc.supplier_order_id,
+                      'supplier_id', soc.supplier_id,
+                      'supplier_name', s.name,
+                      'document_id', soc.document_id,
+                      'confirmation_number', soc.confirmation_number,
+                      'status', soc.status,
+                      'ordered_position_count', soc.ordered_position_count,
+                      'confirmation_position_count', soc.confirmation_position_count,
+                      'matched_position_count', soc.matched_position_count,
+                      'unmatched_order_position_count', soc.unmatched_order_position_count,
+                      'unmatched_confirmation_position_count',
+                        soc.unmatched_confirmation_position_count,
+                      'match_rate', soc.match_rate,
+                      'approved_at',
+                        CASE
+                          WHEN soc.approved_at IS NULL THEN NULL
+                          ELSE to_char(
+                            soc.approved_at AT TIME ZONE 'Europe/Berlin',
+                            'YYYY-MM-DD HH24:MI'
+                          )
+                        END,
+                      'created_at',
+                        to_char(
+                          soc.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        ),
+                      'positions', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', cp.id,
+                            'matched_order_position_id', cp.matched_order_position_id,
+                            'position_number', cp.position_number,
+                            'article_code', cp.article_code,
+                            'title', cp.title,
+                            'description', cp.description,
+                            'quantity', cp.quantity,
+                            'unit', cp.unit,
+                            'confirmed_net_price', cp.confirmed_net_price,
+                            'confirmed_delivery_week', cp.confirmed_delivery_week,
+                            'confirmed_delivery_date', cp.confirmed_delivery_date,
+                            'match_status', cp.match_status,
+                            'severity', cp.severity
+                          )
+                          ORDER BY cp.id
+                        )
+                        FROM app.supplier_order_confirmation_positions cp
+                        WHERE cp.confirmation_id = soc.id
+                      ), '[]'::jsonb),
+                      'exceptions', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', ex.id,
+                            'confirmation_position_id', ex.confirmation_position_id,
+                            'order_position_id', ex.order_position_id,
+                            'difference_type', ex.difference_type,
+                            'severity', ex.severity,
+                            'status', ex.status,
+                            'ordered_value', ex.ordered_value,
+                            'confirmed_value', ex.confirmed_value,
+                            'difference_value', ex.difference_value,
+                            'message', ex.message,
+                            'resolution_action', ex.resolution_action,
+                            'resolution_note', ex.resolution_note,
+                            'resolved_at',
+                              CASE
+                                WHEN ex.resolved_at IS NULL THEN NULL
+                                ELSE to_char(
+                                  ex.resolved_at AT TIME ZONE 'Europe/Berlin',
+                                  'YYYY-MM-DD HH24:MI'
+                                )
+                              END
+                          )
+                          ORDER BY
+                            CASE ex.severity WHEN 'red' THEN 0 ELSE 1 END,
+                            ex.id
+                        )
+                        FROM app.supplier_order_confirmation_exceptions ex
+                        WHERE ex.confirmation_id = soc.id
+                      ), '[]'::jsonb),
+                      'communications', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', sc.id,
+                            'exception_id', sc.exception_id,
+                            'communication_type', sc.communication_type,
+                            'status', sc.status,
+                            'recipient_email', sc.recipient_email,
+                            'subject', sc.subject,
+                            'body', sc.body,
+                            'created_at',
+                              to_char(
+                                sc.created_at AT TIME ZONE 'Europe/Berlin',
+                                'YYYY-MM-DD HH24:MI'
+                              )
+                          )
+                          ORDER BY sc.created_at DESC, sc.id DESC
+                        )
+                        FROM app.supplier_communications sc
+                        WHERE sc.confirmation_id = soc.id
+                      ), '[]'::jsonb),
+                      'follow_ups', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', sf.id,
+                            'communication_id', sf.communication_id,
+                            'title', sf.title,
+                            'status', sf.status,
+                            'due_at',
+                              CASE
+                                WHEN sf.due_at IS NULL THEN NULL
+                                ELSE to_char(
+                                  sf.due_at AT TIME ZONE 'Europe/Berlin',
+                                  'YYYY-MM-DD HH24:MI'
+                                )
+                              END
+                          )
+                          ORDER BY sf.due_at NULLS LAST, sf.id
+                        )
+                        FROM app.supplier_follow_ups sf
+                        WHERE sf.confirmation_id = soc.id
+                      ), '[]'::jsonb)
+                    )
+                    ORDER BY soc.updated_at DESC, soc.id DESC
+                  )
+                  FROM app.supplier_order_confirmations soc
+                  JOIN app.suppliers s ON s.id = soc.supplier_id
+                  WHERE soc.customer_case_id = cc.id
+                ), '[]'::jsonb),
                 'updated_at',
                   to_char(
                     cc.updated_at AT TIME ZONE 'Europe/Berlin',
@@ -2601,7 +2855,13 @@ def simple_pdf(title: str, lines: list[str]) -> bytes:
             b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
         ),
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+        (
+            b"<< /Length "
+            + str(len(stream)).encode("ascii")
+            + b" >>\nstream\n"
+            + stream
+            + b"\nendstream"
+        ),
     ]
     output = BytesIO()
     output.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
@@ -2652,13 +2912,18 @@ def customer_export_pdf_lines(
         ]
         if part
     )
+    phone_value = (
+        customer.get("primary_phone")
+        or customer.get("primary_mobile")
+        or "Nicht hinterlegt"
+    )
     lines = [
         f"Exportiert am: {exported_at}",
         f"Kundennummer: {customer.get('customer_number') or 'ohne Nummer'}",
         f"Name: {customer.get('display_name') or ''}",
         f"Kundentyp: {customer.get('customer_type') or ''}",
         f"E-Mail: {customer.get('primary_email') or 'Nicht hinterlegt'}",
-        f"Telefon: {customer.get('primary_phone') or customer.get('primary_mobile') or 'Nicht hinterlegt'}",
+        f"Telefon: {phone_value}",
         f"Adresse: {address_line or 'Nicht hinterlegt'}",
         f"Notizen: {customer.get('notes') or ''}",
         "",
@@ -2680,7 +2945,9 @@ def customer_export_pdf_lines(
     return lines
 
 
-def customer_export_document_rows(customer_id: str, context: dict[str, Any]) -> list[dict[str, Any]]:
+def customer_export_document_rows(
+    customer_id: str, context: dict[str, Any]
+) -> list[dict[str, Any]]:
     result = psql_json(
         """
         WITH context AS (SELECT :'context'::jsonb AS data),
@@ -2816,11 +3083,12 @@ def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
     }
 
     buffer = BytesIO()
+    pdf_title = customer.get("display_name") or customer.get("customer_number") or customer_id
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             f"{root}/00_Stammdaten/Kundenakte_{root}.pdf",
             simple_pdf(
-                f"Kundenakte {customer.get('display_name') or customer.get('customer_number') or customer_id}",
+                f"Kundenakte {pdf_title}",
                 customer_export_pdf_lines(customer, customer_cases, exported_at),
             ),
         )
@@ -2916,7 +3184,10 @@ def save_customer_case(
             status_phase_id = NULLIF(data->>'status_phase_id', '')::smallint,
             status_phase = NULLIF(data->>'status_phase_id', '')::smallint,
             responsible_user_id = NULLIF(data->>'responsible_user_id', '')::bigint,
-            owner_user_id = COALESCE(cc.owner_user_id, NULLIF(data->>'responsible_user_id', '')::bigint),
+            owner_user_id = COALESCE(
+              cc.owner_user_id,
+              NULLIF(data->>'responsible_user_id', '')::bigint
+            ),
             updated_at = now()
           FROM payload
           WHERE cc.id = (SELECT id FROM visible_case)
@@ -2987,7 +3258,10 @@ def create_customer_case(data: dict[str, Any], access_email: str) -> dict[str, A
             data->>'case_number',
             visible_customer.display_name,
             NULLIF(data->>'status_phase_id', '')::smallint,
-            COALESCE(NULLIF(data->>'responsible_user_id', '')::bigint, visible_customer.owner_user_id),
+            COALESCE(
+              NULLIF(data->>'responsible_user_id', '')::bigint,
+              visible_customer.owner_user_id
+            ),
             visible_customer.id,
             NULLIF(data->>'case_title', ''),
             CASE
@@ -2999,7 +3273,10 @@ def create_customer_case(data: dict[str, Any], access_email: str) -> dict[str, A
             data->>'case_status',
             NULLIF(data->>'status_phase_id', '')::smallint,
             NULLIF(data->>'actor_user_id', '')::bigint,
-            COALESCE(NULLIF(data->>'responsible_user_id', '')::bigint, visible_customer.owner_user_id)
+            COALESCE(
+              NULLIF(data->>'responsible_user_id', '')::bigint,
+              visible_customer.owner_user_id
+            )
           FROM payload, visible_customer
           RETURNING id
         ),
@@ -3690,6 +3967,918 @@ def selected_carat_position_ids(data: dict[str, Any]) -> list[int]:
     return sorted(set(ids))
 
 
+def sync_supplier_orders_from_carat_selection(
+    import_id: int, actor_user_id: int | None
+) -> dict[str, Any]:
+    payload = {"import_id": import_id, "actor_user_id": actor_user_id}
+    return psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        selected_positions AS (
+          SELECT
+            ci.customer_case_id,
+            ci.id AS import_id,
+            cip.id AS carat_position_id,
+            COALESCE(NULLIF(cip.supplier_name, ''), 'Ohne Lieferant') AS supplier_name,
+            lower(regexp_replace(
+              COALESCE(NULLIF(cip.supplier_name, ''), 'Ohne Lieferant'),
+              '[^[:alnum:]]+',
+              ' ',
+              'g'
+            )) AS normalized_supplier_name,
+            cip.position_number,
+            cip.article_code,
+            cip.title,
+            cip.description,
+            cip.quantity,
+            cip.raw_json
+          FROM app.customer_case_carat_imports ci
+          JOIN app.customer_case_carat_import_positions cip ON cip.import_id = ci.id
+          WHERE ci.id = (SELECT (data->>'import_id')::bigint FROM payload)
+            AND cip.selection_status = 'selected'
+        ),
+        upserted_suppliers AS (
+          INSERT INTO app.suppliers (name, normalized_name)
+          SELECT DISTINCT supplier_name, normalized_supplier_name
+          FROM selected_positions
+          ON CONFLICT (normalized_name) DO UPDATE
+          SET name = EXCLUDED.name,
+              updated_at = now()
+          RETURNING id, normalized_name
+        ),
+        all_suppliers AS (
+          SELECT id, normalized_name FROM upserted_suppliers
+          UNION
+          SELECT s.id, s.normalized_name
+          FROM app.suppliers s
+          JOIN selected_positions sp ON sp.normalized_supplier_name = s.normalized_name
+        ),
+        upserted_orders AS (
+          INSERT INTO app.supplier_orders (
+            customer_case_id,
+            supplier_id,
+            source_carat_import_id,
+            order_number,
+            title,
+            status,
+            created_by_user_id
+          )
+          SELECT DISTINCT
+            sp.customer_case_id,
+            s.id,
+            sp.import_id,
+            cc.carat_order_number,
+            sp.supplier_name || ' Bestellung',
+            'ordered',
+            NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+          FROM selected_positions sp
+          JOIN all_suppliers s ON s.normalized_name = sp.normalized_supplier_name
+          JOIN app.customer_cases cc ON cc.id = sp.customer_case_id
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM app.supplier_orders existing
+            WHERE existing.customer_case_id = sp.customer_case_id
+              AND existing.supplier_id = s.id
+              AND existing.source_carat_import_id = sp.import_id
+          )
+          RETURNING id
+        ),
+        affected_orders AS (
+          SELECT so.id
+          FROM app.supplier_orders so
+          WHERE so.source_carat_import_id = (SELECT (data->>'import_id')::bigint FROM payload)
+        ),
+        removed_positions AS (
+          DELETE FROM app.supplier_order_positions sop
+          WHERE sop.supplier_order_id IN (SELECT id FROM affected_orders)
+            AND sop.source_carat_position_id IS NOT NULL
+        ),
+        inserted_positions AS (
+          INSERT INTO app.supplier_order_positions (
+            supplier_order_id,
+            source_carat_position_id,
+            position_number,
+            article_code,
+            title,
+            description,
+            quantity,
+            raw_json
+          )
+          SELECT
+            so.id,
+            sp.carat_position_id,
+            sp.position_number,
+            sp.article_code,
+            sp.title,
+            sp.description,
+            sp.quantity,
+            sp.raw_json
+          FROM selected_positions sp
+          JOIN all_suppliers s ON s.normalized_name = sp.normalized_supplier_name
+          JOIN app.supplier_orders so ON so.customer_case_id = sp.customer_case_id
+            AND so.supplier_id = s.id
+            AND so.source_carat_import_id = sp.import_id
+          RETURNING supplier_order_id
+        ),
+        updated_counts AS (
+          UPDATE app.supplier_orders so
+          SET
+            ordered_position_count = (
+              SELECT count(*)
+              FROM app.supplier_order_positions sop
+              WHERE sop.supplier_order_id = so.id
+            ),
+            updated_at = now()
+          WHERE so.id IN (SELECT id FROM affected_orders)
+          RETURNING so.id
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'supplier_order_count', (SELECT count(*) FROM updated_counts),
+          'supplier_order_position_count', (SELECT count(*) FROM inserted_positions)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+
+
+def fetch_confirmation_match_context(confirmation_id: int) -> dict[str, Any]:
+    return psql_json(
+        """
+        WITH confirmation AS (
+          SELECT *
+          FROM app.supplier_order_confirmations
+          WHERE id = :'confirmation_id'::bigint
+        )
+        SELECT jsonb_build_object(
+          'confirmation', COALESCE((SELECT to_jsonb(c) FROM confirmation c), '{}'::jsonb),
+          'order_positions', COALESCE((
+            SELECT jsonb_agg(to_jsonb(op) ORDER BY op.id)
+            FROM app.supplier_order_positions op
+            WHERE op.supplier_order_id = (SELECT supplier_order_id FROM confirmation)
+          ), '[]'::jsonb),
+          'confirmation_positions', COALESCE((
+            SELECT jsonb_agg(to_jsonb(cp) ORDER BY cp.id)
+            FROM app.supplier_order_confirmation_positions cp
+            WHERE cp.confirmation_id = :'confirmation_id'::bigint
+          ), '[]'::jsonb)
+        )::text;
+        """,
+        {"confirmation_id": str(confirmation_id)},
+    )
+
+
+def exception_payload(
+    confirmation_id: int,
+    difference_type: str,
+    severity: str,
+    message: str,
+    order_position_id: Any = None,
+    confirmation_position_id: Any = None,
+    ordered_value: Any = None,
+    confirmed_value: Any = None,
+    difference_value: Decimal | None = None,
+) -> dict[str, Any]:
+    return {
+        "confirmation_id": confirmation_id,
+        "difference_type": difference_type,
+        "severity": severity,
+        "message": message,
+        "order_position_id": order_position_id,
+        "confirmation_position_id": confirmation_position_id,
+        "ordered_value": None if ordered_value is None else str(ordered_value),
+        "confirmed_value": None if confirmed_value is None else str(confirmed_value),
+        "difference_value": None if difference_value is None else str(difference_value),
+    }
+
+
+def recompute_supplier_confirmation_matching(confirmation_id: int) -> dict[str, Any]:
+    context = fetch_confirmation_match_context(confirmation_id)
+    confirmation = context.get("confirmation") or {}
+    if not confirmation.get("id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "confirmation_not_found")
+
+    order_positions = context.get("order_positions") or []
+    confirmation_positions = context.get("confirmation_positions") or []
+    order_by_article = {
+        normalize_article_code(position.get("article_code")): position
+        for position in order_positions
+        if normalize_article_code(position.get("article_code"))
+    }
+    matched_order_ids: set[int] = set()
+    exceptions: list[dict[str, Any]] = []
+    updates: list[dict[str, Any]] = []
+
+    for position in confirmation_positions:
+        position_id = int(position["id"])
+        article_key = normalize_article_code(position.get("article_code"))
+        matched_order = order_by_article.get(article_key) if article_key else None
+        position_exceptions: list[dict[str, Any]] = []
+        severity = "green"
+        match_status = "matched"
+
+        if not matched_order:
+            severity = "red"
+            match_status = "manual_review_required"
+            position_exceptions.append(
+                exception_payload(
+                    confirmation_id,
+                    "extra_position",
+                    "red",
+                    "AB-Position ist keiner bestellten Position zugeordnet.",
+                    confirmation_position_id=position_id,
+                    confirmed_value=position.get("article_code") or position.get("title"),
+                )
+            )
+        else:
+            matched_order_ids.add(int(matched_order["id"]))
+            ordered_quantity = decimal_from(matched_order.get("quantity"))
+            confirmed_quantity = decimal_from(position.get("quantity"))
+            if ordered_quantity is not None and confirmed_quantity is not None:
+                quantity_delta = confirmed_quantity - ordered_quantity
+                if quantity_delta != 0:
+                    severity = "yellow"
+                    match_status = "matched_with_warning"
+                    position_exceptions.append(
+                        exception_payload(
+                            confirmation_id,
+                            "quantity",
+                            "yellow",
+                            "Menge weicht von der Bestellung ab.",
+                            matched_order["id"],
+                            position_id,
+                            ordered_quantity,
+                            confirmed_quantity,
+                            quantity_delta,
+                        )
+                    )
+            elif ordered_quantity is not None and confirmed_quantity is None:
+                severity = "red"
+                match_status = "manual_review_required"
+                position_exceptions.append(
+                    exception_payload(
+                        confirmation_id,
+                        "unreadable_field",
+                        "red",
+                        "Menge der AB-Position fehlt oder ist nicht lesbar.",
+                        matched_order["id"],
+                        position_id,
+                        ordered_quantity,
+                        None,
+                    )
+                )
+
+            ordered_price = decimal_from(matched_order.get("ordered_net_price"))
+            confirmed_price = decimal_from(position.get("confirmed_net_price"))
+            if ordered_price is not None and confirmed_price is not None:
+                price_delta = confirmed_price - ordered_price
+                if price_delta != 0:
+                    severity = "yellow" if severity != "red" else severity
+                    match_status = "matched_with_warning"
+                    position_exceptions.append(
+                        exception_payload(
+                            confirmation_id,
+                            "net_price",
+                            "yellow",
+                            "Netto-Preis weicht ab und muss bestätigt werden.",
+                            matched_order["id"],
+                            position_id,
+                            ordered_price,
+                            confirmed_price,
+                            price_delta,
+                        )
+                    )
+            elif ordered_price is not None and confirmed_price is None:
+                severity = "red"
+                match_status = "manual_review_required"
+                position_exceptions.append(
+                    exception_payload(
+                        confirmation_id,
+                        "unreadable_field",
+                        "red",
+                        "Netto-Preis der AB-Position fehlt oder ist nicht lesbar.",
+                        matched_order["id"],
+                        position_id,
+                        ordered_price,
+                        None,
+                    )
+                )
+
+            ordered_week = matched_order.get("ordered_delivery_week")
+            confirmed_week = position.get("confirmed_delivery_week")
+            ordered_date = matched_order.get("ordered_delivery_date")
+            confirmed_date = position.get("confirmed_delivery_date")
+            if ordered_date and confirmed_date:
+                ordered_dt = datetime.strptime(str(ordered_date), "%Y-%m-%d").date()
+                confirmed_dt = datetime.strptime(str(confirmed_date), "%Y-%m-%d").date()
+                day_delta = (confirmed_dt - ordered_dt).days
+                if day_delta >= 7:
+                    severity = "red"
+                    match_status = "manual_review_required"
+                    position_exceptions.append(
+                        exception_payload(
+                            confirmation_id,
+                            "delivery_date",
+                            "red",
+                            "Liefertermin weicht mindestens eine Woche ab.",
+                            matched_order["id"],
+                            position_id,
+                            ordered_date,
+                            confirmed_date,
+                            Decimal(day_delta),
+                        )
+                    )
+                elif day_delta > 0:
+                    severity = "yellow" if severity != "red" else severity
+                    match_status = "matched_with_warning"
+                    position_exceptions.append(
+                        exception_payload(
+                            confirmation_id,
+                            "delivery_date",
+                            "yellow",
+                            "Liefertermin weicht innerhalb des Montagepuffers ab.",
+                            matched_order["id"],
+                            position_id,
+                            ordered_date,
+                            confirmed_date,
+                            Decimal(day_delta),
+                        )
+                    )
+            elif ordered_week and confirmed_week and str(ordered_week) != str(confirmed_week):
+                severity = "yellow" if severity != "red" else severity
+                match_status = "matched_with_warning"
+                position_exceptions.append(
+                    exception_payload(
+                        confirmation_id,
+                        "delivery_date",
+                        "yellow",
+                        "Liefer-KW weicht von der Bestellung ab.",
+                        matched_order["id"],
+                        position_id,
+                        ordered_week,
+                        confirmed_week,
+                    )
+                )
+
+        exceptions.extend(position_exceptions)
+        updates.append(
+            {
+                "id": position_id,
+                "matched_order_position_id": matched_order.get("id") if matched_order else None,
+                "severity": severity,
+                "match_status": match_status,
+            }
+        )
+
+    for order_position in order_positions:
+        order_position_id = int(order_position["id"])
+        if order_position_id not in matched_order_ids:
+            exceptions.append(
+                exception_payload(
+                    confirmation_id,
+                    "missing_position",
+                    "red",
+                    "Bestellte Position fehlt in der AB.",
+                    order_position_id=order_position_id,
+                    ordered_value=order_position.get("article_code") or order_position.get("title"),
+                )
+            )
+
+    matched_position_count = len(matched_order_ids)
+    ordered_position_count = len(order_positions)
+    confirmation_position_count = len(confirmation_positions)
+    unmatched_order_position_count = max(ordered_position_count - matched_position_count, 0)
+    unmatched_confirmation_position_count = len(
+        [update for update in updates if not update.get("matched_order_position_id")]
+    )
+    match_rate = (
+        Decimal(matched_position_count) / Decimal(ordered_position_count)
+        if ordered_position_count
+        else Decimal("0")
+    )
+    status = (
+        "context_revision_required"
+        if ordered_position_count and matched_position_count == 0
+        else "exceptions_open"
+        if exceptions
+        else "matched"
+    )
+    payload = {
+        "confirmation_id": confirmation_id,
+        "updates": updates,
+        "exceptions": exceptions,
+        "ordered_position_count": ordered_position_count,
+        "confirmation_position_count": confirmation_position_count,
+        "matched_position_count": matched_position_count,
+        "unmatched_order_position_count": unmatched_order_position_count,
+        "unmatched_confirmation_position_count": unmatched_confirmation_position_count,
+        "match_rate": str(match_rate),
+        "status": status,
+    }
+    return psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        removed_exceptions AS (
+          DELETE FROM app.supplier_order_confirmation_exceptions
+          WHERE confirmation_id = (SELECT (data->>'confirmation_id')::bigint FROM payload)
+        ),
+        position_updates AS (
+          UPDATE app.supplier_order_confirmation_positions cp
+          SET
+            matched_order_position_id =
+              NULLIF(update_data->>'matched_order_position_id', '')::bigint,
+            severity = update_data->>'severity',
+            match_status = update_data->>'match_status',
+            updated_at = now()
+          FROM payload,
+          LATERAL jsonb_array_elements(data->'updates') AS update_data
+          WHERE cp.id = (update_data->>'id')::bigint
+          RETURNING cp.id
+        ),
+        inserted_exceptions AS (
+          INSERT INTO app.supplier_order_confirmation_exceptions (
+            confirmation_id,
+            confirmation_position_id,
+            order_position_id,
+            difference_type,
+            severity,
+            status,
+            ordered_value,
+            confirmed_value,
+            difference_value,
+            requires_confirmation,
+            message
+          )
+          SELECT
+            (exception->>'confirmation_id')::bigint,
+            NULLIF(exception->>'confirmation_position_id', '')::bigint,
+            NULLIF(exception->>'order_position_id', '')::bigint,
+            exception->>'difference_type',
+            exception->>'severity',
+            'open',
+            NULLIF(exception->>'ordered_value', ''),
+            NULLIF(exception->>'confirmed_value', ''),
+            NULLIF(exception->>'difference_value', '')::numeric,
+            TRUE,
+            exception->>'message'
+          FROM payload,
+          LATERAL jsonb_array_elements(data->'exceptions') AS exception
+        ),
+        updated_confirmation AS (
+          UPDATE app.supplier_order_confirmations soc
+          SET
+            status = (SELECT data->>'status' FROM payload),
+            ordered_position_count =
+              (SELECT (data->>'ordered_position_count')::integer FROM payload),
+            confirmation_position_count =
+              (SELECT (data->>'confirmation_position_count')::integer FROM payload),
+            matched_position_count =
+              (SELECT (data->>'matched_position_count')::integer FROM payload),
+            unmatched_order_position_count =
+              (SELECT (data->>'unmatched_order_position_count')::integer FROM payload),
+            unmatched_confirmation_position_count =
+              (SELECT (data->>'unmatched_confirmation_position_count')::integer FROM payload),
+            match_rate = (SELECT (data->>'match_rate')::numeric FROM payload),
+            updated_at = now()
+          WHERE soc.id = (SELECT (data->>'confirmation_id')::bigint FROM payload)
+          RETURNING soc.id, soc.status
+        ),
+        updated_inbox AS (
+          UPDATE app.supplier_confirmation_inbox_items inbox
+          SET
+            status = CASE
+              WHEN (SELECT status FROM updated_confirmation) = 'context_revision_required'
+                THEN 'context_revision_required'
+              ELSE 'matching_complete'
+            END,
+            review_required = EXISTS (
+              SELECT 1
+              FROM app.supplier_order_confirmation_exceptions ex
+              WHERE ex.confirmation_id = (SELECT id FROM updated_confirmation)
+                AND ex.status = 'open'
+            ),
+            review_reason = CASE
+              WHEN (SELECT status FROM updated_confirmation) = 'context_revision_required'
+                THEN 'possible_wrong_context'
+              ELSE review_reason
+            END,
+            updated_at = now()
+          FROM app.supplier_order_confirmations soc
+          WHERE soc.id = (SELECT id FROM updated_confirmation)
+            AND inbox.id = soc.inbox_item_id
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'confirmation_id', (SELECT id FROM updated_confirmation),
+          'status', (SELECT status FROM updated_confirmation),
+          'exception_count', jsonb_array_length((SELECT data->'exceptions' FROM payload))
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+
+
+def create_supplier_order_confirmation(
+    case_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    positions = parse_confirmation_positions(data.get("confirmation_positions"))
+    payload = {
+        "case_id": case_id,
+        "supplier_order_id": str(data.get("supplier_order_id", "")).strip(),
+        "document_id": str(data.get("document_id", "")).strip(),
+        "confirmation_number": str(data.get("confirmation_number", "")).strip(),
+        "positions": positions,
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        visible_order AS (
+          SELECT so.*
+          FROM app.supplier_orders so
+          WHERE so.id = NULLIF((SELECT data->>'supplier_order_id' FROM payload), '')::bigint
+            AND so.customer_case_id = (SELECT id FROM visible_case)
+          LIMIT 1
+        ),
+        inbox AS (
+          INSERT INTO app.supplier_confirmation_inbox_items (
+            customer_case_id,
+            document_id,
+            source_type,
+            status,
+            confirmed_supplier_id,
+            confirmed_order_id,
+            confirmed_case_id,
+            proposal_level,
+            review_required,
+            created_by_user_id
+          )
+          SELECT
+            (SELECT id FROM visible_case),
+            NULLIF(data->>'document_id', '')::bigint,
+            'manual_entry',
+            'context_confirmed',
+            (SELECT supplier_id FROM visible_order),
+            (SELECT id FROM visible_order),
+            (SELECT id FROM visible_case),
+            'strong_order_match',
+            FALSE,
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM visible_order)
+          RETURNING id
+        ),
+        confirmation AS (
+          INSERT INTO app.supplier_order_confirmations (
+            inbox_item_id,
+            customer_case_id,
+            supplier_order_id,
+            supplier_id,
+            document_id,
+            confirmation_number,
+            status,
+            created_by_user_id
+          )
+          SELECT
+            (SELECT id FROM inbox),
+            (SELECT id FROM visible_case),
+            (SELECT id FROM visible_order),
+            (SELECT supplier_id FROM visible_order),
+            NULLIF(data->>'document_id', '')::bigint,
+            NULLIF(data->>'confirmation_number', ''),
+            'matching_in_progress',
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM inbox)
+          RETURNING id
+        ),
+        inserted_positions AS (
+          INSERT INTO app.supplier_order_confirmation_positions (
+            confirmation_id,
+            position_number,
+            article_code,
+            title,
+            description,
+            quantity,
+            confirmed_net_price,
+            confirmed_delivery_week,
+            confirmed_delivery_date,
+            match_status,
+            severity,
+            raw_json
+          )
+          SELECT
+            (SELECT id FROM confirmation),
+            position->>'position_number',
+            NULLIF(position->>'article_code', ''),
+            COALESCE(NULLIF(position->>'title', ''), 'AB Position'),
+            NULLIF(position->>'description', ''),
+            NULLIF(position->>'quantity', '')::numeric,
+            NULLIF(position->>'confirmed_net_price', '')::numeric,
+            NULLIF(position->>'confirmed_delivery_week', ''),
+            NULLIF(position->>'confirmed_delivery_date', '')::date,
+            'manual_review_required',
+            'yellow',
+            position
+          FROM payload,
+          LATERAL jsonb_array_elements(data->'positions') AS position
+          WHERE EXISTS (SELECT 1 FROM confirmation)
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'confirmation_id', (SELECT id FROM confirmation),
+          'position_count', (SELECT count(*) FROM inserted_positions)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("confirmation_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "supplier_order_not_found")
+    recomputed = recompute_supplier_confirmation_matching(int(result["confirmation_id"]))
+    return {"ok": True, **result, "matching": recomputed}
+
+
+def create_supplier_communication_draft(
+    confirmation_id: int,
+    exception_id: int,
+    action: str,
+    note: str,
+    actor_user_id: int | None,
+) -> None:
+    communication_type = {
+        "request_corrected_ab": "corrected_ab_request",
+        "request_price_clarification": "price_clarification",
+        "request_delivery_clarification": "delivery_date_clarification",
+        "request_alternative_article": "alternative_article_request",
+        "request_quantity_clarification": "quantity_position_clarification",
+    }.get(action, "general_clarification")
+    payload = {
+        "confirmation_id": confirmation_id,
+        "exception_id": exception_id,
+        "communication_type": communication_type,
+        "note": note,
+        "actor_user_id": actor_user_id,
+    }
+    psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (
+          SELECT
+            soc.customer_case_id,
+            soc.supplier_id,
+            soc.confirmation_number,
+            so.order_number,
+            s.name AS supplier_name,
+            ex.message,
+            ex.difference_type
+          FROM app.supplier_order_confirmations soc
+          JOIN app.supplier_orders so ON so.id = soc.supplier_order_id
+          JOIN app.suppliers s ON s.id = soc.supplier_id
+          JOIN app.supplier_order_confirmation_exceptions ex ON ex.confirmation_id = soc.id
+          WHERE soc.id = (SELECT (data->>'confirmation_id')::bigint FROM payload)
+            AND ex.id = (SELECT (data->>'exception_id')::bigint FROM payload)
+        ),
+        communication AS (
+          INSERT INTO app.supplier_communications (
+            customer_case_id,
+            supplier_id,
+            confirmation_id,
+            exception_id,
+            communication_type,
+            status,
+            subject,
+            body,
+            created_by_user_id
+          )
+          SELECT
+            customer_case_id,
+            supplier_id,
+            (SELECT (data->>'confirmation_id')::bigint FROM payload),
+            (SELECT (data->>'exception_id')::bigint FROM payload),
+            (SELECT data->>'communication_type' FROM payload),
+            'draft',
+            'Rückfrage zur Auftragsbestätigung'
+              || COALESCE(' ' || NULLIF(confirmation_number, ''), ''),
+            'Guten Tag,' || chr(10) || chr(10)
+              || 'bitte prüfen Sie folgende Abweichung zu unserer Bestellung'
+              || COALESCE(' ' || NULLIF(order_number, ''), '')
+              || ':' || chr(10)
+              || message || chr(10) || chr(10)
+              || COALESCE(
+                NULLIF((SELECT data->>'note' FROM payload), ''),
+                'Bitte senden Sie uns eine Rückmeldung bzw. korrigierte AB.'
+              )
+              || chr(10) || chr(10)
+              || 'Vielen Dank.',
+            NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+          FROM context
+          RETURNING id, customer_case_id, supplier_id
+        ),
+        follow_up AS (
+          INSERT INTO app.supplier_follow_ups (
+            customer_case_id,
+            supplier_id,
+            communication_id,
+            confirmation_id,
+            title,
+            status,
+            due_at,
+            responsible_user_id
+          )
+          SELECT
+            customer_case_id,
+            supplier_id,
+            id,
+            (SELECT (data->>'confirmation_id')::bigint FROM payload),
+            'Lieferantenrückmeldung zur AB prüfen',
+            'waiting',
+            now() + interval '3 days',
+            NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+          FROM communication
+        )
+        SELECT jsonb_build_object('ok', TRUE)::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+
+
+def decide_supplier_confirmation_exception(
+    confirmation_id: str,
+    exception_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    action = str(data.get("action", "accept")).strip() or "accept"
+    note = str(data.get("note", "")).strip()
+    if action not in {
+        "accept",
+        "resolve",
+        "reject",
+        "request_corrected_ab",
+        "request_price_clarification",
+        "request_delivery_clarification",
+        "request_alternative_article",
+        "request_quantity_clarification",
+    }:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_exception_action")
+    new_status = "accepted" if action == "accept" else "resolved"
+    if action == "reject":
+        new_status = "rejected"
+    if action.startswith("request_"):
+        new_status = "waiting_for_supplier"
+    payload = {
+        "confirmation_id": confirmation_id,
+        "exception_id": exception_id,
+        "action": action,
+        "new_status": new_status,
+        "note": note,
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_confirmation AS (
+          SELECT soc.*
+          FROM app.supplier_order_confirmations soc
+          JOIN app.customer_cases cc ON cc.id = soc.customer_case_id
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE soc.id = NULLIF((SELECT data->>'confirmation_id' FROM payload), '')::bigint
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        visible_exception AS (
+          SELECT ex.*
+          FROM app.supplier_order_confirmation_exceptions ex
+          WHERE ex.id = NULLIF((SELECT data->>'exception_id' FROM payload), '')::bigint
+            AND ex.confirmation_id = (SELECT id FROM visible_confirmation)
+          LIMIT 1
+        ),
+        updated_exception AS (
+          UPDATE app.supplier_order_confirmation_exceptions ex
+          SET
+            status = (SELECT data->>'new_status' FROM payload),
+            resolved_by_user_id = NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint,
+            resolved_at = now(),
+            resolution_action = (SELECT data->>'action' FROM payload),
+            resolution_note = NULLIF((SELECT data->>'note' FROM payload), ''),
+            updated_at = now()
+          WHERE ex.id = (SELECT id FROM visible_exception)
+          RETURNING ex.*
+        ),
+        decision AS (
+          INSERT INTO app.supplier_order_confirmation_decisions (
+            confirmation_id,
+            exception_id,
+            actor_user_id,
+            action,
+            previous_status,
+            new_status,
+            ordered_value,
+            confirmed_value,
+            note
+          )
+          SELECT
+            (SELECT id FROM visible_confirmation),
+            (SELECT id FROM visible_exception),
+            NULLIF(data->>'actor_user_id', '')::bigint,
+            data->>'action',
+            (SELECT status FROM visible_exception),
+            data->>'new_status',
+            (SELECT ordered_value FROM visible_exception),
+            (SELECT confirmed_value FROM visible_exception),
+            NULLIF(data->>'note', '')
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM updated_exception)
+          RETURNING id
+        ),
+        open_exceptions AS (
+          SELECT count(*) AS count
+          FROM app.supplier_order_confirmation_exceptions ex
+          WHERE ex.confirmation_id = (SELECT id FROM visible_confirmation)
+            AND ex.status = 'open'
+            AND ex.id <> (SELECT id FROM visible_exception)
+        ),
+        updated_confirmation AS (
+          UPDATE app.supplier_order_confirmations soc
+          SET
+            status = CASE
+              WHEN (SELECT data->>'new_status' FROM payload) = 'waiting_for_supplier'
+                THEN 'suspended'
+              WHEN (SELECT count FROM open_exceptions) = 0
+                THEN 'approved'
+              ELSE soc.status
+            END,
+            approved_by_user_id = CASE
+              WHEN (SELECT count FROM open_exceptions) = 0
+                THEN NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+              ELSE approved_by_user_id
+            END,
+            approved_at = CASE
+              WHEN (SELECT count FROM open_exceptions) = 0 THEN now()
+              ELSE approved_at
+            END,
+            updated_at = now()
+          WHERE soc.id = (SELECT id FROM visible_confirmation)
+          RETURNING soc.id, soc.status
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'confirmation_id', (SELECT id FROM updated_confirmation),
+          'exception_id', (SELECT id FROM updated_exception),
+          'confirmation_status', (SELECT status FROM updated_confirmation),
+          'decision_id', (SELECT id FROM decision)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("exception_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "confirmation_exception_not_found")
+    if action.startswith("request_"):
+        create_supplier_communication_draft(
+            int(confirmation_id),
+            int(exception_id),
+            action,
+            note,
+            int(context["primary_user_id"]),
+        )
+    return result
+
+
 def select_carat_import_positions(
     case_id: str,
     import_id: str,
@@ -3777,6 +4966,10 @@ def select_carat_import_positions(
     )
     if not result.get("import_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "carat_import_not_found")
+    result["supplier_orders"] = sync_supplier_orders_from_carat_selection(
+        int(result["import_id"]),
+        int(context["primary_user_id"]),
+    )
     return result
 
 
@@ -4792,7 +5985,9 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[:2] == ["customers", "cases"]
                     and parts[3] == "sections"
                 ):
-                    self.write_json(save_customer_case_section(parts[2], parts[4], data, access_email))
+                    self.write_json(
+                        save_customer_case_section(parts[2], parts[4], data, access_email)
+                    )
                     return
                 if (
                     len(parts) == 4
@@ -4816,7 +6011,9 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[3] == "documents"
                     and parts[5] == "archive"
                 ):
-                    self.write_json(archive_customer_case_document(parts[2], parts[4], access_email))
+                    self.write_json(
+                        archive_customer_case_document(parts[2], parts[4], access_email)
+                    )
                     return
                 if (
                     len(parts) == 6
@@ -4826,6 +6023,30 @@ class Handler(BaseHTTPRequestHandler):
                 ):
                     self.write_json(
                         select_carat_import_positions(parts[2], parts[4], data, access_email)
+                    )
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "confirmations"
+                ):
+                    self.write_json(
+                        create_supplier_order_confirmation(parts[2], data, access_email)
+                    )
+                    return
+                if (
+                    len(parts) == 6
+                    and parts[:2] == ["customers", "confirmations"]
+                    and parts[3] == "exceptions"
+                    and parts[5] == "decide"
+                ):
+                    self.write_json(
+                        decide_supplier_confirmation_exception(
+                            parts[2],
+                            parts[4],
+                            data,
+                            access_email,
+                        )
                     )
                     return
                 if parts == ["overview", "tasks"]:

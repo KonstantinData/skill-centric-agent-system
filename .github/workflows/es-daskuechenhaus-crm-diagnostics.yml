@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: es-daskuechenhaus-crm-diagnostics
+  cancel-in-progress: false
+
 jobs:
   diagnostics:
     name: Read CRM service logs and origin response
