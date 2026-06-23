@@ -159,6 +159,16 @@ jobs:
             sudo -n systemctl start postgresql.service
           fi
           sudo -n systemctl is-active postgresql.service
+          if command -v pg_lsclusters >/dev/null 2>&1; then
+            pg_lsclusters
+            while read -r pg_version pg_cluster _pg_port pg_status _rest; do
+              if [ -n "${pg_version}" ] && [ "${pg_status}" != "online" ]; then
+                echo "PostgreSQL cluster ${pg_version}/${pg_cluster} is ${pg_status}; attempting start."
+                sudo -n pg_ctlcluster "${pg_version}" "${pg_cluster}" start
+              fi
+            done < <(pg_lsclusters --no-header)
+            pg_lsclusters
+          fi
 
           duplicate_phones="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
           WITH normalized AS (
