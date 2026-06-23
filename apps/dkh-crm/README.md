@@ -106,6 +106,34 @@ The customer quick-access card is labeled `Zuletzt verwendet` and shows the
 five most recently updated customer records by `updated_at`. It is separate from
 any Stammkunden/customer-master-data surface.
 
+## Customer File Desktop
+
+The `/kunden/[id]` customer file is an operational desktop, not the customer
+master-data record itself. It keeps a compact master-data snapshot on the left
+for quick phone, email, address, and ownership access. The customer's case shelf
+is placed below that snapshot; selecting a case opens the case folder on the
+large right-hand desktop area.
+
+The first case-folder slice stores flexible case sections through the Hetzner
+Admin API:
+
+- project objects with multi-select checkboxes, such as `Einbauküche`,
+  `Garderobe`, `Sideboard`, and related kitchen-furniture work,
+- project-specific contacts with a role label, including architect, developer,
+  partner, joinery, trades, installer, supplier, or other,
+- process-control metadata for the next critical step and due date,
+- a lightweight document register for document type and notes,
+- case-specific notes for calls, email drafts, and general history.
+
+Case status phases use the Das Kuechenhaus process labels: Anfrage, Beratung,
+Planung, Angebot, Auftrag, Bestellabwicklung, AB-Kontrolle, Lieferung und
+Montage, Rechnung, Kundendienst/Reklamation, and Abgeschlossen.
+
+Real file upload transport, Outlook/WhatsApp sending, voice transcription, and
+SCAS automation skills are intentionally separate follow-up layers. The desktop
+stores the manual infrastructure needed for those automations without pretending
+to send or upload files before the runtime endpoints exist.
+
 ## Legacy Route Compatibility
 
 Legacy `.php` entrypoints redirect to the new App Router pages with temporary

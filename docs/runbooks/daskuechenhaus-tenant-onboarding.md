@@ -85,13 +85,16 @@ customer-folder/case anchor and adds normalized customer tables:
 - `app.customer_addresses` for billing, delivery, installation, and other
   addresses.
 - `app.customer_contacts` for additional contacts under a customer.
-- `app.customer_case_status_phases` for phases 1-10 inside the customer
-  folder.
+- `app.customer_case_status_phases` for phases 1-11 inside the customer
+  folder, from Anfrage through Abgeschlossen.
 - `app.customer_case_participants` for the customer/contact roles on each case.
 - `app.customer_case_project_profiles` for kitchen-project details such as
   budget, room type, measurement date, and target installation date.
 - `app.customer_case_notes`, `app.customer_case_documents`, and
   `app.customer_case_audit_events` for the documented customer file.
+- `app.customer_file_sections` and `app.customer_case_sections` for flexible
+  customer-file desktop and case-folder sections that will later be promoted to
+  stricter tables where the workflow becomes stable.
 
 Customer names and customer emails are deliberately not unique. The system must
 allow different customers with the same name and must also allow operational

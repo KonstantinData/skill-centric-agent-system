@@ -19,6 +19,14 @@ SEARCH_FIRST_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0008_customer_search_first_deduplication.sql"
 )
+CUSTOMER_FILE_DESKTOP_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0009_customer_file_desktop.sql"
+)
 
 
 def load_migration() -> str:
@@ -28,6 +36,7 @@ def load_migration() -> str:
 def test_customer_database_migration_exists() -> None:
     assert CUSTOMER_DATABASE_MIGRATION_PATH.exists()
     assert SEARCH_FIRST_MIGRATION_PATH.exists()
+    assert CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.exists()
 
 
 def test_customer_database_creates_expected_tables() -> None:
@@ -88,29 +97,42 @@ def test_customer_database_extends_existing_customer_cases() -> None:
     assert "WHERE status_phase_id IS NULL" in migration
 
 
-def test_customer_database_seeds_ten_status_phases() -> None:
-    migration = load_migration()
+def test_customer_file_desktop_migration_seeds_eleven_status_phases() -> None:
+    migration = CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.read_text(encoding="utf-8")
 
     expected_phases = {
-        "(1, 'new_contact', 'Neuer Kontakt'",
-        "(2, 'consultation_planned', 'Erstberatung geplant'",
-        "(3, 'consultation_done', 'Beratung abgeschlossen'",
-        "(4, 'measurement_planning', 'Aufmass / Planung'",
-        "(5, 'offer_created', 'Angebot erstellt'",
-        "(6, 'order_confirmed', 'Auftrag erteilt'",
-        "(7, 'production_ordered', 'Bestellung / Produktion'",
-        "(8, 'delivery_installation', 'Lieferung / Montage'",
-        "(9, 'acceptance_invoice', 'Abnahme / Rechnung'",
-        "(10, 'aftersales_closed', 'Aftersales / Abgeschlossen'",
+        "(1, 'inquiry', 'Anfrage'",
+        "(2, 'consultation', 'Beratung'",
+        "(3, 'planning', 'Planung'",
+        "(4, 'offer', 'Angebot'",
+        "(5, 'order', 'Auftrag'",
+        "(6, 'order_processing', 'Bestellabwicklung'",
+        "(7, 'order_confirmation_check', 'AB-Kontrolle'",
+        "(8, 'delivery_installation', 'Lieferung und Montage'",
+        "(9, 'invoice', 'Rechnung'",
+        "(10, 'service_complaint', 'Kundendienst/Reklamation'",
+        "(11, 'closed', 'Abgeschlossen'",
     }
 
     for phase in expected_phases:
         assert phase in migration
 
     assert (
-        "CONSTRAINT customer_case_status_phases_range CHECK (phase BETWEEN 1 AND 10)"
+        "CONSTRAINT customer_case_status_phases_range CHECK (phase BETWEEN 1 AND 11)"
         in migration
     )
+
+
+def test_customer_file_desktop_migration_adds_flexible_sections() -> None:
+    migration = CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert "CREATE TABLE IF NOT EXISTS app.customer_file_sections" in migration
+    assert "CREATE TABLE IF NOT EXISTS app.customer_case_sections" in migration
+    assert "payload_json JSONB NOT NULL DEFAULT '{}'::jsonb" in migration
+    assert "customer_file_sections_customer_code_key" in migration
+    assert "customer_case_sections_case_code_key" in migration
+    assert "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE" in migration
+    assert "tenant_daskuechenhaus_app" in migration
 
 
 def test_customer_database_supports_customer_folder_documents_and_notes() -> None:

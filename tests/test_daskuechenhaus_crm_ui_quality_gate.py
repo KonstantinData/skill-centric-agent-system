@@ -148,3 +148,35 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "openCreateModal: false" in search_script
     assert 'caseDetails.hidden = !enabled' in search_script
     assert 'field.disabled = !enabled' in search_script
+
+
+def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
+    source = load_text(APP_ROOT / "src" / "app" / "kunden" / "[id]" / "page.tsx")
+    proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
+
+    assert "Stammdaten-Snapshot" in source
+    assert "Vorgangsregal" in source
+    assert "Desktop" in source
+    assert "Geöffnete Vorgangsmappe" in source
+    assert "PROJECT_OBJECTS" in source
+    assert "Einbauküche" in source
+    assert "Garderobe" in source
+    assert "Sideboard" in source
+    assert "CONTACT_ROLES" in source
+    assert "Architekt" in source
+    assert "Schreinerei" in source
+    assert "primary_contact_same_as_master" in source
+    assert "project_objects" in source
+    assert "project_contacts" in source
+    assert "process_control" in source
+    assert "Dokumentenregister speichern" in source
+    assert "Telefonnotiz speichern" in source
+    assert "Entwurf vormerken" in source
+    assert "/api/overview/tasks" in source
+    assert "/sections/project_objects" in source
+    assert "/sections/project_contacts" in source
+    assert "/sections/documents" in source
+    assert "/sections/process_control" in source
+    assert "Vorgang schließen" in source
+    assert r"^cases\/\d+$" in proxy
+    assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy

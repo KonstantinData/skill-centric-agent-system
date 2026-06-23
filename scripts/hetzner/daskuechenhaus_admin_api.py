@@ -1162,6 +1162,11 @@ def customers_state(access_email: str) -> dict[str, Any]:
                 'country', c.country,
                 'notes', c.notes,
                 'owner_user_id', c.owner_user_id,
+                'file_sections', COALESCE((
+                  SELECT jsonb_object_agg(cfs.section_code, cfs.payload_json)
+                  FROM app.customer_file_sections cfs
+                  WHERE cfs.customer_id = c.id
+                ), '{}'::jsonb),
                 'updated_at',
                   to_char(
                     c.updated_at AT TIME ZONE 'Europe/Berlin',
@@ -1226,6 +1231,11 @@ def customers_state(access_email: str) -> dict[str, Any]:
                   LEFT JOIN app.users u ON u.id = n.created_by_user_id
                   WHERE n.customer_case_id = cc.id
                 ), '[]'::jsonb),
+                'sections', COALESCE((
+                  SELECT jsonb_object_agg(ccs.section_code, ccs.payload_json)
+                  FROM app.customer_case_sections ccs
+                  WHERE ccs.customer_case_id = cc.id
+                ), '{}'::jsonb),
                 'updated_at',
                   to_char(
                     cc.updated_at AT TIME ZONE 'Europe/Berlin',
@@ -1915,6 +1925,279 @@ def save_customer(
     )
     if not result.get("customer_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+    return result
+
+
+def save_customer_section(
+    customer_id: str,
+    section_code: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "customer_id": customer_id,
+        "section_code": section_code,
+        "payload_json": {
+            key: value
+            for key, value in data.items()
+            if not key.startswith("_")
+        },
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.id = NULLIF((SELECT data->>'customer_id' FROM payload), '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        upserted AS (
+          INSERT INTO app.customer_file_sections (
+            customer_id,
+            section_code,
+            payload_json,
+            updated_by_user_id
+          )
+          SELECT
+            (SELECT id FROM visible_customer),
+            data->>'section_code',
+            data->'payload_json',
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM visible_customer)
+          ON CONFLICT (customer_id, section_code) DO UPDATE
+          SET
+            payload_json = EXCLUDED.payload_json,
+            updated_by_user_id = EXCLUDED.updated_by_user_id,
+            updated_at = now()
+          RETURNING id
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'section_id', (SELECT id FROM upserted))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("section_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+    return result
+
+
+def save_customer_case(
+    case_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "case_id": case_id,
+        "case_title": str(data.get("case_title", "")).strip(),
+        "carat_order_number": normalize_carat_order_number(data.get("carat_order_number", "")),
+        "case_status": str(data.get("case_status", "active")).strip() or "active",
+        "status_phase_id": str(data.get("status_phase_id") or "").strip(),
+        "responsible_user_id": str(
+            data.get("responsible_user_id")
+            or data.get("owner_user_id")
+            or context["primary_user_id"]
+        ).strip(),
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated AS (
+          UPDATE app.customer_cases cc
+          SET
+            case_title = NULLIF(data->>'case_title', ''),
+            carat_order_number = NULLIF(data->>'carat_order_number', ''),
+            case_status = data->>'case_status',
+            status_phase_id = NULLIF(data->>'status_phase_id', '')::smallint,
+            status_phase = NULLIF(data->>'status_phase_id', '')::smallint,
+            responsible_user_id = NULLIF(data->>'responsible_user_id', '')::bigint,
+            owner_user_id = COALESCE(cc.owner_user_id, NULLIF(data->>'responsible_user_id', '')::bigint),
+            updated_at = now()
+          FROM payload
+          WHERE cc.id = (SELECT id FROM visible_case)
+          RETURNING cc.id
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'case_id', (SELECT id FROM updated))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("case_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    return result
+
+
+def save_customer_case_section(
+    case_id: str,
+    section_code: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "case_id": case_id,
+        "section_code": section_code,
+        "payload_json": {
+            key: value
+            for key, value in data.items()
+            if not key.startswith("_")
+        },
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        upserted AS (
+          INSERT INTO app.customer_case_sections (
+            customer_case_id,
+            section_code,
+            payload_json,
+            updated_by_user_id
+          )
+          SELECT
+            (SELECT id FROM visible_case),
+            data->>'section_code',
+            data->'payload_json',
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM visible_case)
+          ON CONFLICT (customer_case_id, section_code) DO UPDATE
+          SET
+            payload_json = EXCLUDED.payload_json,
+            updated_by_user_id = EXCLUDED.updated_by_user_id,
+            updated_at = now()
+          RETURNING id
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'section_id', (SELECT id FROM upserted))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("section_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    return result
+
+
+def save_customer_case_note(
+    case_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    body = str(data.get("body", "")).strip()
+    if not body:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "case_note_body_required")
+    payload = {
+        "case_id": case_id,
+        "note_type": str(data.get("note_type", "general")).strip() or "general",
+        "body": body,
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        inserted AS (
+          INSERT INTO app.customer_case_notes (
+            customer_case_id,
+            note_type,
+            body,
+            created_by_user_id
+          )
+          SELECT
+            (SELECT id FROM visible_case),
+            data->>'note_type',
+            data->>'body',
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM visible_case)
+          RETURNING id
+        ),
+        touched AS (
+          UPDATE app.customer_cases cc
+          SET updated_at = now()
+          WHERE cc.id = (SELECT id FROM visible_case)
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'note_id', (SELECT id FROM inserted))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("note_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
     return result
 
 
@@ -2863,6 +3146,30 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if len(parts) == 3 and parts[:2] == ["customers", "customers"]:
                     self.write_json(save_customer(data, access_email, parts[2]))
+                    return
+                if (
+                    len(parts) == 5
+                    and parts[:2] == ["customers", "customers"]
+                    and parts[3] == "sections"
+                ):
+                    self.write_json(save_customer_section(parts[2], parts[4], data, access_email))
+                    return
+                if len(parts) == 3 and parts[:2] == ["customers", "cases"]:
+                    self.write_json(save_customer_case(parts[2], data, access_email))
+                    return
+                if (
+                    len(parts) == 5
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "sections"
+                ):
+                    self.write_json(save_customer_case_section(parts[2], parts[4], data, access_email))
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "notes"
+                ):
+                    self.write_json(save_customer_case_note(parts[2], data, access_email))
                     return
                 if parts == ["overview", "tasks"]:
                     self.write_json(create_task(data, files, access_email))
