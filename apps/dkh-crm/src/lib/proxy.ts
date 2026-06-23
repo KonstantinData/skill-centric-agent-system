@@ -64,6 +64,30 @@ function proxyHeaders(request: NextRequest) {
   return headers;
 }
 
+function isLocalRedirectHost(host: string): boolean {
+  const normalized = host.toLowerCase().split(":")[0];
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized.endsWith(".local")
+  );
+}
+
+function publicRedirectOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? "";
+  const host = forwardedHost || request.headers.get("host") || "";
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "";
+  const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+
+  if (host && !isLocalRedirectHost(host)) {
+    return `${proto}://${host}`;
+  }
+
+  const configured = process.env.DKH_CRM_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  return configured || "https://www.es-daskuechenhaus.de";
+}
+
 async function bodyFor(request: NextRequest) {
   if (request.method === "GET" || request.method === "HEAD") return undefined;
   const formData = await request.formData();
@@ -122,7 +146,7 @@ export async function proxyRoute(
       request.nextUrl.searchParams.get("return_to"),
       request.headers.get("referer") ? new URL(request.headers.get("referer")!).pathname : "/",
     );
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    return NextResponse.redirect(new URL(returnTo, publicRedirectOrigin(request)), 303);
   }
 
   const contentType = response.headers.get("content-type") ?? "application/json";

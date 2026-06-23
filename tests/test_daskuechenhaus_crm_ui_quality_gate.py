@@ -204,6 +204,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert r"^cases$" in proxy
     assert r"^cases\/\d+$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
+    assert "publicRedirectOrigin(request)" in proxy
+    assert "https://www.es-daskuechenhaus.de" in proxy
+    assert "isLocalRedirectHost(host)" in proxy
+    assert "new URL(returnTo, request.url)" not in proxy
 
 
 def test_dkh_crm_admin_user_save_preserves_existing_admin_role() -> None:
