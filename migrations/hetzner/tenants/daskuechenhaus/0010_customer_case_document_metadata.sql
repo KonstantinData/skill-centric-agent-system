@@ -29,6 +29,46 @@ WHERE title IS NULL
    OR document_status IS NULL
    OR version_label IS NULL;
 
+UPDATE app.customer_case_documents
+SET document_category = CASE
+      WHEN document_category IN (
+        'from_customer',
+        'measurement',
+        'planning',
+        'offer',
+        'order',
+        'order_processing',
+        'delivery_installation',
+        'complaint_service',
+        'invoice',
+        'customer_document',
+        'drawing_plan',
+        'offer_order',
+        'invoice_closure'
+      ) THEN document_category
+      ELSE 'customer_document'
+    END,
+    document_type = CASE
+      WHEN document_type IN (
+        'offer',
+        'measurement',
+        'order_confirmation',
+        'delivery_note',
+        'invoice',
+        'plan',
+        'photo',
+        'contract',
+        'email_attachment',
+        'customer_document',
+        'drawing_plan',
+        'offer_order',
+        'invoice_closure',
+        'carat_project',
+        'other'
+      ) THEN document_type
+      ELSE 'other'
+    END;
+
 DO $$
 BEGIN
   IF EXISTS (
@@ -57,6 +97,7 @@ BEGIN
         'drawing_plan',
         'offer_order',
         'invoice_closure',
+        'carat_project',
         'other'
       )
     );
@@ -97,6 +138,15 @@ BEGIN
   ALTER TABLE app.customer_case_documents
     ADD CONSTRAINT customer_case_documents_category CHECK (
       document_category IN (
+        'from_customer',
+        'measurement',
+        'planning',
+        'offer',
+        'order',
+        'order_processing',
+        'delivery_installation',
+        'complaint_service',
+        'invoice',
         'customer_document',
         'drawing_plan',
         'offer_order',

@@ -176,6 +176,10 @@ def test_customer_case_document_metadata_migration_extends_document_records() ->
     assert "ALTER COLUMN original_filename DROP NOT NULL" in migration
     assert "customer_case_documents_register_code" in migration
     assert "customer_case_documents_category" in migration
+    assert "'order_processing'" in migration
+    assert "'carat_project'" in migration
+    assert "ELSE 'customer_document'" in migration
+    assert "ELSE 'other'" in migration
     assert "customer_case_documents_status" in migration
     assert "customer_case_documents_case_register_idx" in migration
     assert "tenant_daskuechenhaus_app" in migration
