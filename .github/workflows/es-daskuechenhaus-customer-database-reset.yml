@@ -1,0 +1,357 @@
+name: es-daskuechenhaus.de Customer Database Reset
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_reset:
+        description: Apply destructive reset of DKH customer data
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_reset=true
+        required: true
+        type: boolean
+        default: false
+      confirmation_text:
+        description: Exact confirmation text for the destructive reset
+        required: true
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-customer-database-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    name: Reset customer database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    env:
+      APPLY_RESET: ${{ inputs.apply_reset }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      CONFIRMATION_TEXT: ${{ inputs.confirmation_text }}
+      REQUIRED_CONFIRMATION_TEXT: Ja, produktive DKH-Kundendatenbank leeren.
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+
+    steps:
+      - name: Validate destructive reset inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          if [ "${APPLY_RESET}" != "true" ]; then
+            echo "::error::apply_reset must be true for a destructive reset."
+            missing=1
+          fi
+          if [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for a production reset."
+            missing=1
+          fi
+          if [ "${CONFIRMATION_TEXT}" != "${REQUIRED_CONFIRMATION_TEXT}" ]; then
+            echo "::error::confirmation_text does not match the required phrase."
+            missing=1
+          fi
+
+          target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
+          target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
+          target_key="${SCAS_PROD_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}"
+          for pair in \
+            "TARGET_HETZNER_HOST:${target_host}" \
+            "TARGET_HETZNER_USER:${target_user}" \
+            "TARGET_HETZNER_SSH_KEY:${target_key}"
+          do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "${value}" ]; then
+              echo "::error::Missing required production Hetzner secret: ${name}"
+              missing=1
+            fi
+          done
+
+          if [[ "${target_key}" == *"__SCAS_HETZNER_SSH_KEY__"* ]]; then
+            echo "::error::Refusing to export HETZNER_SSH_KEY: value contains reserved delimiter."
+            missing=1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${target_key}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+          exit "${missing}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 0700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 0600 "${HOME}/.ssh/hetzner_key"
+          if ! ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null 2>&1; then
+            echo "::error::HETZNER_SSH_KEY must contain the complete private OpenSSH key block."
+            echo "::error::The configured key is missing the expected OpenSSH private key header."
+            exit 1
+          fi
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Reset customer data on Hetzner
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p es-daskuechenhaus-customer-database-reset
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" \
+            > es-daskuechenhaus-customer-database-reset/reset.md <<'REMOTE'
+          set -euo pipefail
+
+          evidence_dir="/tmp/dkh-customer-database-reset-${GITHUB_RUN_ID}"
+          install -d -m 0700 "${evidence_dir}"
+
+          psql_count() {
+            sudo -n -u postgres psql -d tenant_daskuechenhaus -X -q -t -A -v ON_ERROR_STOP=1 "$@"
+          }
+
+          write_counts() {
+            local title="$1"
+            printf '\n## %s\n\n' "${title}"
+            sudo -n -u postgres psql -d tenant_daskuechenhaus -X -q -t -A -F '|' -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT 'customers', count(*) FROM app.customers
+          UNION ALL SELECT 'customer_cases', count(*) FROM app.customer_cases
+          UNION ALL SELECT 'customer_addresses', count(*) FROM app.customer_addresses
+          UNION ALL SELECT 'customer_contacts', count(*) FROM app.customer_contacts
+          UNION ALL SELECT 'customer_file_sections', count(*) FROM app.customer_file_sections
+          UNION ALL SELECT 'customer_case_sections', count(*) FROM app.customer_case_sections
+          UNION ALL SELECT 'customer_case_notes', count(*) FROM app.customer_case_notes
+          UNION ALL SELECT 'customer_case_documents', count(*) FROM app.customer_case_documents
+          UNION ALL SELECT 'customer_case_audit_events', count(*) FROM app.customer_case_audit_events
+          UNION ALL SELECT 'customer_case_participants', count(*) FROM app.customer_case_participants
+          UNION ALL SELECT 'customer_case_project_profiles', count(*) FROM app.customer_case_project_profiles
+          UNION ALL SELECT 'case_linked_tasks', count(*) FROM app.tasks WHERE related_case_id IS NOT NULL
+          UNION ALL SELECT 'case_linked_appointments', count(*) FROM app.appointments WHERE related_case_id IS NOT NULL
+          UNION ALL SELECT 'email_case_links', count(*) FROM app.email_case_links
+          UNION ALL SELECT 'case_assignment_suggestions', count(*) FROM app.email_assignment_suggestions WHERE suggested_case_id IS NOT NULL
+          UNION ALL SELECT 'case_communication_events', count(*) FROM app.communication_events WHERE customer_case_id IS NOT NULL
+          UNION ALL SELECT 'users_preserved', count(*) FROM app.users
+          UNION ALL SELECT 'status_phases_preserved', count(*) FROM app.customer_case_status_phases
+          UNION ALL SELECT 'task_statuses_preserved', count(*) FROM app.task_statuses
+          ORDER BY 1;
+          SQL
+          }
+
+          printf '# es-daskuechenhaus.de Customer Database Reset Evidence\n\n'
+          printf -- '- Database: `tenant_daskuechenhaus`\n'
+          printf -- '- Scope: customer records, customer cases/files, customer contacts/addresses, case-specific notes/documents/sections, case-linked tasks, appointments, communication events, and case-email links/suggestions\n'
+          printf -- '- Preserved: users, roles, permissions, login/access configuration, task statuses, customer case status phases, mail account configuration, app code, deployment configuration\n'
+          printf -- '- Secret values in artifact: `none`\n'
+          printf -- '- Started at: `%s`\n' "$(date -Is)"
+
+          write_counts "Before reset"
+
+          sudo -n -u postgres psql -d tenant_daskuechenhaus -X -q -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+
+          CREATE TEMP TABLE dkh_reset_cases ON COMMIT DROP AS
+            SELECT id FROM app.customer_cases;
+
+          CREATE TEMP TABLE dkh_reset_customers ON COMMIT DROP AS
+            SELECT id FROM app.customers;
+
+          CREATE TEMP TABLE dkh_reset_tasks ON COMMIT DROP AS
+            SELECT id
+            FROM app.tasks
+            WHERE related_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          CREATE TEMP TABLE dkh_reset_email_messages ON COMMIT DROP AS
+            SELECT DISTINCT email_message_id
+            FROM app.email_case_links
+            WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.communication_events
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases)
+             OR task_id IN (SELECT id FROM dkh_reset_tasks)
+             OR email_message_id IN (SELECT email_message_id FROM dkh_reset_email_messages);
+
+          DELETE FROM app.email_assignment_suggestions
+          WHERE suggested_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.email_case_links
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.task_reminders
+          WHERE task_id IN (SELECT id FROM dkh_reset_tasks);
+
+          DELETE FROM app.task_attachments
+          WHERE task_id IN (SELECT id FROM dkh_reset_tasks);
+
+          DELETE FROM app.task_assignments
+          WHERE task_id IN (SELECT id FROM dkh_reset_tasks);
+
+          DELETE FROM app.tasks
+          WHERE id IN (SELECT id FROM dkh_reset_tasks);
+
+          DELETE FROM app.appointments
+          WHERE related_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_case_sections
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_case_notes
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_case_documents
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_case_audit_events
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_case_participants
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases)
+             OR customer_id IN (SELECT id FROM dkh_reset_customers);
+
+          DELETE FROM app.customer_case_project_profiles
+          WHERE customer_case_id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customer_file_sections
+          WHERE customer_id IN (SELECT id FROM dkh_reset_customers);
+
+          DELETE FROM app.customer_addresses
+          WHERE customer_id IN (SELECT id FROM dkh_reset_customers);
+
+          DELETE FROM app.customer_contacts
+          WHERE customer_id IN (SELECT id FROM dkh_reset_customers);
+
+          DELETE FROM app.customer_cases
+          WHERE id IN (SELECT id FROM dkh_reset_cases);
+
+          DELETE FROM app.customers
+          WHERE id IN (SELECT id FROM dkh_reset_customers);
+
+          DO $$
+          DECLARE
+            table_name text;
+            seq_name text;
+            remaining bigint;
+          BEGIN
+            FOREACH table_name IN ARRAY ARRAY[
+              'app.customers',
+              'app.customer_cases',
+              'app.customer_addresses',
+              'app.customer_contacts',
+              'app.customer_file_sections',
+              'app.customer_case_sections',
+              'app.customer_case_notes',
+              'app.customer_case_documents',
+              'app.customer_case_audit_events',
+              'app.customer_case_participants',
+              'app.customer_case_project_profiles'
+            ]
+            LOOP
+              EXECUTE format('SELECT count(*) FROM %s', table_name) INTO remaining;
+              EXECUTE format('SELECT pg_get_serial_sequence(%L, %L)', table_name, 'id') INTO seq_name;
+              IF remaining = 0 AND seq_name IS NOT NULL THEN
+                EXECUTE format('SELECT setval(%L, 1, false)', seq_name);
+              END IF;
+            END LOOP;
+          END $$;
+
+          COMMIT;
+          SQL
+
+          write_counts "After reset"
+
+          verification="$(psql_count <<'SQL'
+          SELECT jsonb_build_object(
+            'customers', (SELECT count(*) FROM app.customers),
+            'customer_cases', (SELECT count(*) FROM app.customer_cases),
+            'customer_addresses', (SELECT count(*) FROM app.customer_addresses),
+            'customer_contacts', (SELECT count(*) FROM app.customer_contacts),
+            'customer_file_sections', (SELECT count(*) FROM app.customer_file_sections),
+            'customer_case_sections', (SELECT count(*) FROM app.customer_case_sections),
+            'case_linked_tasks', (SELECT count(*) FROM app.tasks WHERE related_case_id IS NOT NULL),
+            'case_linked_appointments', (SELECT count(*) FROM app.appointments WHERE related_case_id IS NOT NULL),
+            'email_case_links', (SELECT count(*) FROM app.email_case_links),
+            'case_communication_events', (SELECT count(*) FROM app.communication_events WHERE customer_case_id IS NOT NULL),
+            'users_preserved', (SELECT count(*) FROM app.users),
+            'status_phases_preserved', (SELECT count(*) FROM app.customer_case_status_phases)
+          )::text;
+          SQL
+          )"
+
+          python3 - "${verification}" <<'PY'
+          import json
+          import sys
+
+          payload = json.loads(sys.argv[1])
+          expected_zero = (
+              "customers",
+              "customer_cases",
+              "customer_addresses",
+              "customer_contacts",
+              "customer_file_sections",
+              "customer_case_sections",
+              "case_linked_tasks",
+              "case_linked_appointments",
+              "email_case_links",
+              "case_communication_events",
+          )
+          failures = [key for key in expected_zero if payload.get(key) != 0]
+          if payload.get("users_preserved", 0) <= 0:
+              failures.append("users_preserved")
+          if payload.get("status_phases_preserved", 0) < 11:
+              failures.append("status_phases_preserved")
+          if failures:
+              raise SystemExit(f"Reset verification failed: {failures}; payload={payload}")
+          PY
+
+          token="$(sudo -n cat /etc/daskuechenhaus/admin-api-token)"
+          curl -fsS \
+            -H "x-dkh-admin-api-token: ${token}" \
+            -H "x-access-user-email: k.milonas@schober-daskuechenhaus.de" \
+            "http://127.0.0.1:8715/customers/state" \
+            > "${evidence_dir}/customers-state.json"
+
+          python3 - "${evidence_dir}/customers-state.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              payload = json.load(handle)
+          if payload.get("customers") != []:
+              raise SystemExit("customers/state still contains customers")
+          if payload.get("customer_cases") != []:
+              raise SystemExit("customers/state still contains customer cases")
+          PY
+
+          printf '\n## API Smoke\n\n'
+          printf -- '- `GET /customers/state`: `customers=[]`, `customer_cases=[]`\n'
+          printf -- '- Completed at: `%s`\n' "$(date -Is)"
+          REMOTE
+
+      - name: Store reset evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: es-daskuechenhaus-customer-database-reset-evidence
+          path: es-daskuechenhaus-customer-database-reset/reset.md
+          if-no-files-found: error

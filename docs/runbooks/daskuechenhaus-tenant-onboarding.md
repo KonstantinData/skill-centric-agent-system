@@ -101,6 +101,23 @@ allow different customers with the same name and must also allow operational
 duplicates where one real person appears in different business roles. Only a
 non-empty `customer_number`, when present, is unique.
 
+## Customer Database Reset
+
+Use `.github/workflows/es-daskuechenhaus-customer-database-reset.yml` only for
+an explicitly confirmed productive reset of Daskuechenhaus customer data. The
+manual workflow requires `apply_reset=true`, `confirm_production=true`, and the
+exact confirmation text `Ja, produktive DKH-Kundendatenbank leeren.`.
+
+The reset deletes customer records, customer cases/files, customer contacts and
+addresses, case sections, case notes/documents/audit rows, case-linked tasks,
+appointments, communication events, email case links, and case assignment
+suggestions. It preserves users, roles, permissions, login/access configuration,
+task statuses, customer case status phases, mail account configuration, app
+code, and deployment configuration.
+
+The workflow writes count-only evidence before and after the reset and verifies
+that `/customers/state` returns empty `customers` and `customer_cases` arrays.
+
 ## UI Branding
 
 The tenant UI uses Daskuechenhaus-owned branding only:
