@@ -1357,16 +1357,36 @@ function CaseDesktop({
                   <h3 className="section-title">CARAT-Importe</h3>
                 </div>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  PRJZ-Projektdateien werden aus den Vorgangsdokumenten analysiert. Positionen werden erst nach Auswahl übernommen.
+                  PRJZ-Projektdateien werden hier importiert und automatisch analysiert. Positionen werden erst nach Auswahl übernommen.
                 </p>
               </div>
-              <LinkButton
-                href={`/kunden/${customerId}?case=${selectedCase.id}&register=${DOCUMENTS_REGISTER.key}`}
-                variant="secondary"
+              <form
+                className="grid min-w-[min(100%,420px)] gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+                action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
+                encType="multipart/form-data"
+                method="post"
               >
-                <Upload size={16} aria-hidden="true" />
-                PRJZ hochladen
-              </LinkButton>
+                <input type="hidden" name="document_category" value="order_processing" />
+                <input type="hidden" name="document_type" value="carat_project" />
+                <input type="hidden" name="document_status" value="received" />
+                <input type="hidden" name="version_label" value="1" />
+                <input type="hidden" name="title" value="CARAT-Projektdatei" />
+                <Label label="CARAT-Projektdatei">
+                  <Field
+                    className="bg-white"
+                    name="file"
+                    type="file"
+                    accept=".prjz,application/zip,application/x-zip-compressed,application/octet-stream"
+                    required
+                  />
+                </Label>
+                <div className="flex justify-end">
+                  <Button type="submit">
+                    <Upload size={16} aria-hidden="true" />
+                    CARAT importieren
+                  </Button>
+                </div>
+              </form>
             </div>
             <div className="mt-4 grid gap-3">
               {caratImports.map((caratImport) => {
@@ -1470,7 +1490,7 @@ function CaseDesktop({
               })}
               {caratImports.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
-                  Noch kein CARAT-Import in diesem Vorgang. Laden Sie eine PRJZ-Datei im Dokumentenbereich hoch.
+                  Noch kein CARAT-Import in diesem Vorgang. Laden Sie eine PRJZ-Datei direkt hier hoch.
                 </div>
               ) : null}
             </div>
@@ -1858,7 +1878,7 @@ function CaseDesktop({
                           className="bg-white"
                           name="file"
                           type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.prjz,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip-compressed,application/octet-stream"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         />
                       </Label>
                       <Label label="Version">

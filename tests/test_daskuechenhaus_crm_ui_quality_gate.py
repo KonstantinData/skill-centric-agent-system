@@ -309,7 +309,11 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Notfall / Ersatzbedarf" in source
     assert "Bestehende Küche nicht nutzbar oder Schadenfall" in source
     assert "CARAT-Importe" in source
-    assert "PRJZ-Projektdateien" in source
+    assert "PRJZ-Projektdateien werden hier importiert" in source
+    assert "CARAT-Projektdatei" in source
+    assert 'name="document_category" value="order_processing"' in source
+    assert 'name="document_type" value="carat_project"' in source
+    assert "CARAT importieren" in source
     assert "Ausgewählte Positionen übernehmen" in source
     assert "caratImports" in source
     assert "AB-Cockpit" in source
@@ -325,9 +329,12 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "displayImportQuantity" in source
     assert "displayDimensions" in source
     assert "carat-imports/${caratImport.id}/positions" in source
+    assert (
+        "Noch kein CARAT-Import in diesem Vorgang. Laden Sie eine PRJZ-Datei direkt hier hoch."
+        in source
+    )
     assert "/confirmations?return_to=" in source
     assert "/exceptions/${exception.id}/decide?return_to=" in source
-    assert "Noch kein CARAT-Import in diesem Vorgang" in source
     assert "Informationen zu den Dringlichkeitsleveln" in source
     assert "Kontaktweg" in source
     assert "Vorhandene Unterlagen" in source
