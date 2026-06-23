@@ -99,25 +99,62 @@ const INQUIRY_SOURCES = [
 
 const DOCUMENT_GUIDE_CATEGORIES = [
   [
-    "customer_document",
-    "Kundenunterlage",
-    "Fotos, Grundrisse, erste Maße oder Unterlagen, die vom Kunden kommen.",
+    "from_customer",
+    "vom Kunden",
+    "Fotos, Skizzen, Wunschlisten, Grundrisse, Maße oder Unterlagen, die der Kunde selbst liefert.",
   ],
   [
-    "drawing_plan",
-    "Plan / Aufmaß",
-    "Planungsstände, Aufmaß, Installationsplan oder CARAT-Unterlagen.",
+    "measurement",
+    "Aufmaß",
+    "Vor-Ort-Aufmaß, Maßblatt, Raummaße, Anschlussmaße, Kontrollaufmaß oder Aufmaßfotos.",
   ],
   [
-    "offer_order",
-    "Angebot / Auftrag",
-    "Angebote, Auftragsbestätigungen, Kaufvertrag oder Freigaben.",
+    "planning",
+    "Planung",
+    "Küchenplanung, 3D-Ansichten, CARAT- oder Planungs-PDF, Installationsplan, Elektro-/Wasserplan, Teileliste oder Planungsvarianten.",
   ],
   [
-    "invoice_closure",
-    "Rechnung / Abschluss",
-    "Rechnungen, Zahlungsbelege, Gutschriften oder Abschlussunterlagen.",
+    "offer",
+    "Angebot",
+    "Angebots-PDF, Angebotsversionen, Kalkulation, Preisfreigaben oder Angebotsanhänge.",
   ],
+  [
+    "order",
+    "Auftrag",
+    "Auftrag, Kaufvertrag, Auftragsbestätigung an den Kunden, unterschriebene Freigaben oder Änderungsvereinbarungen.",
+  ],
+  [
+    "order_processing",
+    "Bestellabwicklung",
+    "Herstellerbestellungen, Lieferanten-Auftragsbestätigungen, Bestellfreigaben, Kommissionsunterlagen oder Lieferterminbestätigungen vom Lieferanten.",
+  ],
+  [
+    "delivery_installation",
+    "Lieferung / Montage",
+    "Lieferbelege, Montageunterlagen, Monteurpläne, Baustellenfotos, Abnahmeprotokoll oder Montagebericht.",
+  ],
+  [
+    "complaint_service",
+    "Reklamation / Kundendienst",
+    "Mängelbilder, Reklamationsnotizen, Kundendienstauftrag, Ersatzteilunterlagen oder Nachbesserungsprotokolle.",
+  ],
+  [
+    "invoice",
+    "Rechnung",
+    "Rechnung, E-Rechnung, Anzahlungsrechnung, Schlussrechnung, Zahlungsbeleg oder Gutschrift.",
+  ],
+] as const;
+
+const LEGACY_DOCUMENT_CATEGORIES = [
+  ["customer_document", "Kundenunterlage"],
+  ["drawing_plan", "Plan / Aufmaß"],
+  ["offer_order", "Angebot / Auftrag"],
+  ["invoice_closure", "Rechnung / Abschluss"],
+] as const;
+
+const DOCUMENT_CATEGORY_LABEL_OPTIONS = [
+  ...DOCUMENT_GUIDE_CATEGORIES,
+  ...LEGACY_DOCUMENT_CATEGORIES,
 ] as const;
 
 const DOCUMENT_STATUSES = [
@@ -1303,7 +1340,7 @@ function CaseDesktop({
                   <h3 className="section-title">Dokumente</h3>
                 </div>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  Wählen Sie zuerst die passende Dokumentart. Das System führt danach durch Ablage, Status und Freigabe.
+                  Wählen Sie zuerst die fachliche Dokumentart. Die Hinweise zeigen, welche Unterlagen in welchen Bereich gehören.
                 </p>
               </div>
               <span className="badge">Guide</span>
@@ -1329,11 +1366,14 @@ function CaseDesktop({
                 method="post"
               >
                 <Label label="Dokumentart">
-                  <Select name="document_category" defaultValue="customer_document">
+                  <Select name="document_category" defaultValue="from_customer">
                     {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
+                  <span className="mt-1 text-xs font-normal text-[var(--muted)]">
+                    Die Kacheln oberhalb erklären, welche Dokumente unter welche Dokumentart fallen.
+                  </span>
                 </Label>
                 <Label label="Register">
                   <Select name="register_code" defaultValue={phaseRegister}>
@@ -1385,7 +1425,7 @@ function CaseDesktop({
                     <div>
                       <p className="font-bold">{document.title}</p>
                       <p className="mt-1 text-xs text-[var(--muted)]">
-                        {optionLabel(DOCUMENT_GUIDE_CATEGORIES, document.document_category)}
+                        {optionLabel(DOCUMENT_CATEGORY_LABEL_OPTIONS, document.document_category)}
                         {" · "}
                         {optionLabel(CASE_REGISTERS.map((register) => [register.key, register.label] as const), document.register_code)}
                         {" · Version "}

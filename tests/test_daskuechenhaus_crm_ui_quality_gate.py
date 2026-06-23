@@ -207,11 +207,17 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Hochladen, herunterladen und per E-Mail versenden" in source
     assert 'activeRegister === DOCUMENTS_REGISTER.key' in source
     assert "DOCUMENT_GUIDE_CATEGORIES" in source
-    assert "Wählen Sie zuerst die passende Dokumentart" in source
-    assert "Kundenunterlage" in source
-    assert "Plan / Aufmaß" in source
-    assert "Angebot / Auftrag" in source
-    assert "Rechnung / Abschluss" in source
+    assert "Wählen Sie zuerst die fachliche Dokumentart" in source
+    assert "vom Kunden" in source
+    assert "Aufmaß" in source
+    assert "Planung" in source
+    assert "Angebot" in source
+    assert "Auftrag" in source
+    assert "Bestellabwicklung" in source
+    assert "Lieferung / Montage" in source
+    assert "Reklamation / Kundendienst" in source
+    assert "Rechnung" in source
+    assert "Die Kacheln oberhalb erklären" in source
     assert "Noch keine Dokumente in diesem Vorgang" in source
     assert "Dokument hinzufügen" in source
     assert "Dokument-Metadaten speichern" in source

@@ -106,6 +106,11 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "'documents', COALESCE((" in source
     assert "'register_code', d.register_code" in source
     assert "'document_category', d.document_category" in source
+    assert '"from_customer"' in source
+    assert '"planning"' in source
+    assert '"order_processing"' in source
+    assert '"delivery_installation"' in source
+    assert '"complaint_service"' in source
     assert "'document_status', d.document_status" in source
     assert "customer_display_name" in source
     assert "app.customers" in source

@@ -126,8 +126,16 @@ Admin API:
 - project-specific contacts with a role label, including architect, developer,
   partner, joinery, trades, installer, supplier, or other,
 - process-control metadata for the next critical step and due date,
-- a lightweight document register for document type and notes,
+- a lightweight document register for document category, register assignment,
+  status, version, and notes,
 - case-specific notes for calls, email drafts, and general history.
+
+The document register uses kitchen-studio process categories rather than file
+formats: `from_customer`, `measurement`, `planning`, `offer`, `order`,
+`order_processing`, `delivery_installation`, `complaint_service`, and
+`invoice`. The CRM keeps legacy metadata category labels displayable for
+already recorded documents while new form entries use the process-oriented
+categories.
 
 Case status phases use the Das Kuechenhaus process labels: Anfrage, Beratung,
 Planung, Angebot, Auftrag, Bestellabwicklung, AB-Kontrolle, Lieferung und

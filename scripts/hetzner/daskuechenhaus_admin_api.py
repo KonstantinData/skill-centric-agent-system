@@ -61,6 +61,15 @@ DOCUMENT_REGISTERS = {
 }
 
 DOCUMENT_CATEGORIES = {
+    "from_customer",
+    "measurement",
+    "planning",
+    "offer",
+    "order",
+    "order_processing",
+    "delivery_installation",
+    "complaint_service",
+    "invoice",
     "customer_document",
     "drawing_plan",
     "offer_order",
@@ -2425,7 +2434,7 @@ def create_customer_case_document_metadata(
             data,
             "document_category",
             DOCUMENT_CATEGORIES,
-            "customer_document",
+            "from_customer",
         ),
         "document_type": normalize_document_choice(
             data,
