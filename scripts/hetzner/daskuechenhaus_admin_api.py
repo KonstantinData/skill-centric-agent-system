@@ -8,15 +8,20 @@ import secrets
 import string
 import subprocess
 import traceback
+import unicodedata
+import zipfile
 from dataclasses import dataclass
+from datetime import datetime
 from email.parser import BytesParser
 from email.policy import default as email_policy
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 DATABASE = os.environ.get("DKH_ADMIN_DATABASE", "tenant_daskuechenhaus")
 HOST = os.environ.get("DKH_ADMIN_API_HOST", "127.0.0.1")
@@ -91,6 +96,38 @@ DOCUMENT_TYPES = {
     "offer_order",
     "invoice_closure",
     "other",
+}
+
+CUSTOMER_EXPORT_SECTION_CODE = "customer_export"
+CUSTOMER_EXPORT_CASE_FOLDERS = [
+    "01_Anfrage",
+    "02_Beratung",
+    "03_Planung",
+    "04_Angebot_Auftrag",
+    "05_Abwicklung",
+    "06_Rechnung_Abschluss",
+]
+CUSTOMER_EXPORT_DOCUMENT_FOLDERS = [
+    "vom_Kunden",
+    "Aufmass",
+    "Planung",
+    "Angebot",
+    "Auftrag",
+    "Bestellabwicklung",
+    "Lieferung_Montage",
+    "Reklamation_Kundendienst",
+    "Rechnung",
+]
+CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS = {
+    "from_customer": "vom_Kunden",
+    "measurement": "Aufmass",
+    "planning": "Planung",
+    "offer": "Angebot",
+    "order": "Auftrag",
+    "order_processing": "Bestellabwicklung",
+    "delivery_installation": "Lieferung_Montage",
+    "complaint_service": "Reklamation_Kundendienst",
+    "invoice": "Rechnung",
 }
 
 DOCUMENT_STATUSES = {
@@ -2102,6 +2139,289 @@ def save_customer_section(
     return result
 
 
+def berlin_now() -> datetime:
+    return datetime.now(ZoneInfo("Europe/Berlin"))
+
+
+def export_slug(value: Any, fallback: str = "Kundenakte") -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or fallback))
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "_", ascii_value).strip("_")
+    return slug or fallback
+
+
+def pdf_escape(value: Any) -> str:
+    text = str(value or "")
+    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def simple_pdf(title: str, lines: list[str]) -> bytes:
+    text_lines = [title, "", *lines]
+    content = ["BT", "/F1 11 Tf", "50 790 Td", "14 TL"]
+    for index, line in enumerate(text_lines[:52]):
+        if index:
+            content.append("T*")
+        content.append(f"({pdf_escape(line[:105])}) Tj")
+    content.append("ET")
+    stream = "\n".join(content).encode("latin-1", "replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    output = BytesIO()
+    output.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for number, obj in enumerate(objects, start=1):
+        offsets.append(output.tell())
+        output.write(f"{number} 0 obj\n".encode("ascii"))
+        output.write(obj)
+        output.write(b"\nendobj\n")
+    xref_offset = output.tell()
+    output.write(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    output.write(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        output.write(f"{offset:010d} 00000 n \n".encode("ascii"))
+    output.write(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    return output.getvalue()
+
+
+def export_folder(customer: dict[str, Any]) -> str:
+    number = export_slug(customer.get("customer_number"), f"Kunde_{customer.get('id')}")
+    name = export_slug(customer.get("display_name"), "Kundenakte")
+    return f"{number}_{name}"
+
+
+def export_timestamp(value: datetime) -> str:
+    return value.isoformat(timespec="seconds")
+
+
+def customer_export_pdf_lines(
+    customer: dict[str, Any],
+    cases: list[dict[str, Any]],
+    exported_at: str,
+) -> list[str]:
+    address = customer.get("address") or {}
+    address_line = " ".join(
+        str(part)
+        for part in [
+            address.get("street"),
+            address.get("house_number"),
+            address.get("postal_code"),
+            address.get("city"),
+            address.get("country") or customer.get("country"),
+        ]
+        if part
+    )
+    lines = [
+        f"Exportiert am: {exported_at}",
+        f"Kundennummer: {customer.get('customer_number') or 'ohne Nummer'}",
+        f"Name: {customer.get('display_name') or ''}",
+        f"Kundentyp: {customer.get('customer_type') or ''}",
+        f"E-Mail: {customer.get('primary_email') or 'Nicht hinterlegt'}",
+        f"Telefon: {customer.get('primary_phone') or customer.get('primary_mobile') or 'Nicht hinterlegt'}",
+        f"Adresse: {address_line or 'Nicht hinterlegt'}",
+        f"Notizen: {customer.get('notes') or ''}",
+        "",
+        f"Vorgaenge: {len(cases)}",
+    ]
+    for case in cases[:20]:
+        lines.append(
+            " - "
+            + " | ".join(
+                part
+                for part in [
+                    case.get("case_number") or f"Vorgang #{case.get('id')}",
+                    case.get("case_title") or "Kuechenprojekt",
+                    case.get("status_phase_name") or case.get("case_status") or "",
+                ]
+                if part
+            )
+        )
+    return lines
+
+
+def customer_export_document_rows(customer_id: str, context: dict[str, Any]) -> list[dict[str, Any]]:
+    result = psql_json(
+        """
+        WITH context AS (SELECT :'context'::jsonb AS data),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.id = NULLIF(:'customer_id', '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        )
+        SELECT COALESCE(jsonb_agg(
+          jsonb_build_object(
+            'case_id', cc.id,
+            'case_number', cc.case_number,
+            'document_id', d.id,
+            'register_code', d.register_code,
+            'document_category', d.document_category,
+            'title', COALESCE(d.title, d.original_filename, 'Dokument'),
+            'original_filename', d.original_filename,
+            'storage_path', d.storage_path,
+            'content_type', d.content_type
+          )
+          ORDER BY cc.id, d.id
+        ), '[]'::jsonb)::text
+        FROM app.customer_case_documents d
+        JOIN app.customer_cases cc ON cc.id = d.customer_case_id
+        WHERE cc.customer_id = (SELECT id FROM visible_customer)
+          AND d.archived_at IS NULL;
+        """,
+        {"customer_id": customer_id, "context": json.dumps(context)},
+    )
+    return result if isinstance(result, list) else []
+
+
+def add_existing_document_files(
+    archive: zipfile.ZipFile,
+    root: str,
+    rows: list[dict[str, Any]],
+) -> None:
+    used_names: set[str] = set()
+    for row in rows:
+        storage_path = str(row.get("storage_path") or "")
+        if not storage_path:
+            continue
+        path = Path(storage_path)
+        try:
+            resolved_path = path.resolve(strict=True)
+            upload_root = UPLOAD_ROOT.resolve(strict=False)
+        except OSError:
+            continue
+        if not resolved_path.is_relative_to(upload_root) or not resolved_path.is_file():
+            continue
+        case_folder = export_slug(row.get("case_number") or f"Vorgang_{row.get('case_id')}")
+        category_folder = CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS.get(
+            str(row.get("document_category") or ""),
+            export_slug(row.get("document_category"), "Dokumente"),
+        )
+        original_name = export_slug(row.get("original_filename") or row.get("title"), "Dokument")
+        suffix = path.suffix or Path(str(row.get("original_filename") or "")).suffix
+        filename = f"{original_name}{suffix if suffix and not original_name.endswith(suffix) else ''}"
+        archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{filename}"
+        if archive_name in used_names:
+            archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{row.get('document_id')}_{filename}"
+        used_names.add(archive_name)
+        archive.write(resolved_path, archive_name)
+
+
+def add_case_export_directories(archive: zipfile.ZipFile, root: str, case_folder: str) -> None:
+    for folder in CUSTOMER_EXPORT_CASE_FOLDERS:
+        archive.writestr(f"{root}/01_Vorgaenge/{case_folder}/{folder}/", "")
+    for folder in CUSTOMER_EXPORT_DOCUMENT_FOLDERS:
+        archive.writestr(f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{folder}/", "")
+
+
+def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    state = customers_state(access_email)
+    customer = next(
+        (item for item in state.get("customers", []) if str(item.get("id")) == str(customer_id)),
+        None,
+    )
+    if not customer:
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+
+    exported_at = export_timestamp(berlin_now())
+    customer_cases = [
+        case
+        for case in state.get("customer_cases", [])
+        if str(case.get("customer_id")) == str(customer.get("id"))
+    ]
+    document_rows = customer_export_document_rows(customer_id, context)
+    export_metadata = {
+        "last_exported_at": exported_at,
+        "last_exported_by": access_email,
+        "scope": "customer_file",
+        "format": "zip",
+    }
+    customer.setdefault("file_sections", {})[CUSTOMER_EXPORT_SECTION_CODE] = export_metadata
+
+    root = export_folder(customer)
+    filename = f"Kundenakte_{root}_{berlin_now().strftime('%Y-%m-%d_%H-%M')}.zip"
+    payload = {
+        "export": export_metadata,
+        "customer": customer,
+        "cases": customer_cases,
+        "document_files_included": len([row for row in document_rows if row.get("storage_path")]),
+    }
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            f"{root}/00_Stammdaten/Kundenakte_{root}.pdf",
+            simple_pdf(
+                f"Kundenakte {customer.get('display_name') or customer.get('customer_number') or customer_id}",
+                customer_export_pdf_lines(customer, customer_cases, exported_at),
+            ),
+        )
+        archive.writestr(
+            f"{root}/00_Stammdaten/customer.json",
+            json.dumps(customer, ensure_ascii=False, indent=2),
+        )
+        archive.writestr(
+            f"{root}/01_Vorgaenge/customer_cases.json",
+            json.dumps(customer_cases, ensure_ascii=False, indent=2),
+        )
+        archive.writestr(
+            f"{root}/metadata.json",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
+        for case in customer_cases:
+            case_folder = export_slug(case.get("case_number") or f"Vorgang_{case.get('id')}")
+            add_case_export_directories(archive, root, case_folder)
+            archive.writestr(
+                f"{root}/01_Vorgaenge/{case_folder}/Vorgangsakte.pdf",
+                simple_pdf(
+                    case.get("case_title") or case.get("case_number") or "Vorgangsakte",
+                    [
+                        f"Vorgangsnummer: {case.get('case_number') or 'ohne Nummer'}",
+                        f"CARAT: {case.get('carat_order_number') or 'Nicht hinterlegt'}",
+                        f"Status: {case.get('status_phase_name') or case.get('case_status') or ''}",
+                        f"Dokumente: {len(case.get('documents') or [])}",
+                        f"Notizen: {len(case.get('notes') or [])}",
+                    ],
+                ),
+            )
+            archive.writestr(
+                f"{root}/01_Vorgaenge/{case_folder}/metadata.json",
+                json.dumps(case, ensure_ascii=False, indent=2),
+            )
+        add_existing_document_files(archive, root, document_rows)
+
+    save_customer_section(customer_id, CUSTOMER_EXPORT_SECTION_CODE, export_metadata, access_email)
+    return {
+        "filename": filename,
+        "content_type": "application/zip",
+        "body": buffer.getvalue(),
+    }
+
+
 def save_customer_case(
     case_id: str,
     data: dict[str, Any],
@@ -3526,6 +3846,20 @@ class Handler(BaseHTTPRequestHandler):
                 customer_filter = params.get("status", ["all"])[0]
                 self.write_json(search_customers(query, access_email, customer_filter))
                 return
+            if (
+                self.command == "GET"
+                and len(parts) == 4
+                and parts[:2] == ["customers", "customers"]
+                and parts[3] == "export"
+            ):
+                access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                export = customer_file_export(parts[2], access_email)
+                self.write_binary(
+                    export["body"],
+                    export["content_type"],
+                    export["filename"],
+                )
+                return
             if self.command == "POST":
                 data, files = request_payload(self)
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
@@ -3658,6 +3992,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("content-type", "application/json; charset=utf-8")
         self.send_header("cache-control", "no-store")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def write_binary(
+        self,
+        body: bytes,
+        content_type: str,
+        filename: str,
+        status: HTTPStatus = HTTPStatus.OK,
+    ) -> None:
+        self.send_response(status)
+        self.send_header("content-type", content_type)
+        self.send_header("cache-control", "no-store")
+        self.send_header("content-disposition", f'attachment; filename="{filename}"')
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

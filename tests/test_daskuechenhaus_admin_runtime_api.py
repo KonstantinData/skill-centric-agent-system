@@ -69,6 +69,16 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
 
     assert 'parsed.path == "/customers/state"' in source
     assert 'parsed.path == "/customers/search"' in source
+    assert 'parts[3] == "export"' in source
+    assert "customer_file_export" in source
+    assert "write_binary" in source
+    assert "application/zip" in source
+    assert "simple_pdf" in source
+    assert "CUSTOMER_EXPORT_SECTION_CODE" in source
+    assert "CUSTOMER_EXPORT_CASE_FOLDERS" in source
+    assert "CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS" in source
+    assert "last_exported_at" in source
+    assert "content-disposition" in source
     assert 'parts == ["customers", "customers"]' in source
     assert 'parts[:2] == ["customers", "customers"]' in source
     assert "customers_state" in source

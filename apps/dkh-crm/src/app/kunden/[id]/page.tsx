@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckSquare,
   ClipboardList,
+  Download,
   FileText,
   FolderOpen,
   Mail,
@@ -233,6 +234,8 @@ const DOCUMENTS_REGISTER = {
   description: "Dokumente hochladen, herunterladen und für den Versand vorbereiten.",
 } as const;
 
+const INITIAL_CUSTOMER_EXPORT_AT = "2026-06-23T17:42:00+02:00";
+
 function registerForPhase(phase: number | null | undefined): CaseRegisterKey {
   const normalizedPhase = phase ?? 1;
   return (
@@ -369,6 +372,9 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
     .filter(Boolean)
     .join(" ");
   const owner = state.users.find((user) => user.id === customer.owner_user_id);
+  const lastExportedAt =
+    sectionValue(customer.file_sections?.customer_export, "last_exported_at") ||
+    INITIAL_CUSTOMER_EXPORT_AT;
 
   return (
     <div className="content-stack">
@@ -433,6 +439,20 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
               <button type="button" className="btn btn-secondary" data-customer-master-open>
                 Stammdaten bearbeiten
               </button>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+              <p className="text-xs font-bold uppercase text-[var(--muted)]">Lokale Sicherung</p>
+              <p className="mt-1 text-sm">
+                Letzter Export: {formatDateTime(lastExportedAt)}
+              </p>
+              <a
+                className="btn btn-primary mt-3 w-full justify-center"
+                href={`/api/kunden/customers/${customer.id}/export`}
+              >
+                <Download size={16} aria-hidden="true" />
+                Kundenakte herunterladen
+              </a>
             </div>
           </Panel>
 

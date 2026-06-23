@@ -152,11 +152,16 @@ export async function proxyRoute(
   }
 
   const contentType = response.headers.get("content-type") ?? "application/json";
+  const responseHeaders: Record<string, string> = {
+    "content-type": contentType,
+    "cache-control": "no-store",
+  };
+  const contentDisposition = response.headers.get("content-disposition");
+  if (contentDisposition) {
+    responseHeaders["content-disposition"] = contentDisposition;
+  }
   return new NextResponse(response.body, {
     status: response.status,
-    headers: {
-      "content-type": contentType,
-      "cache-control": "no-store",
-    },
+    headers: responseHeaders,
   });
 }

@@ -76,6 +76,7 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert "x-access-user-email" in proxy
     assert "x-access-user-email" in kunden_search
     assert "cf-access-authenticated-user-email" in kunden_search
+    assert "content-disposition" in proxy
     assert "withFallback" in dkh_api
     assert "CustomersState | null" in dkh_api
     assert "EMPTY_CUSTOMERS_STATE" in dkh_api
@@ -195,6 +196,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
     assert 'name="customer_id"' in source
     assert "Vorgang anlegen" in source
+    assert "Kundenakte herunterladen" in source
+    assert "Letzter Export:" in source
+    assert "INITIAL_CUSTOMER_EXPORT_AT" in source
+    assert "/api/kunden/customers/${customer.id}/export" in source
     assert "CASE_REGISTERS" in source
     assert "registerForPhase" in source
     assert "normalizeRegister" in source
