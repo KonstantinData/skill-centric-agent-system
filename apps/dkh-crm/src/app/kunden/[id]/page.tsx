@@ -35,6 +35,41 @@ const PROJECT_OBJECTS = [
   ["project_object_other", "Sonstiges"],
 ] as const;
 
+const PROJECT_SITUATIONS = [
+  ["", "Bitte wählen"],
+  ["new_build", "Neubau"],
+  ["existing", "Bestand"],
+  ["renovation", "Renovierung"],
+  ["rental", "Mietobjekt"],
+  ["commercial", "Gewerbe / Objekt"],
+] as const;
+
+const PROJECT_URGENCIES = [
+  ["", "Bitte wählen"],
+  ["normal", "Normal"],
+  ["time_critical", "Zeitkritisch"],
+  ["open", "Noch offen"],
+] as const;
+
+const BUDGET_RANGES = [
+  ["", "Bitte wählen"],
+  ["up_to_10000", "bis 10.000 EUR"],
+  ["10000_20000", "10.000-20.000 EUR"],
+  ["20000_35000", "20.000-35.000 EUR"],
+  ["over_35000", "über 35.000 EUR"],
+  ["open", "Offen"],
+] as const;
+
+const INQUIRY_SOURCES = [
+  ["", "Bitte wählen"],
+  ["phone", "Telefon"],
+  ["website", "Website"],
+  ["email", "E-Mail"],
+  ["walk_in", "Laufkundschaft"],
+  ["recommendation", "Empfehlung"],
+  ["other", "Sonstiges"],
+] as const;
+
 const CONTACT_ROLES = [
   ["architect", "Architekt"],
   ["developer", "Bauträger"],
@@ -730,13 +765,178 @@ function CaseDesktop({
 
       <div className="grid gap-4 2xl:grid-cols-[1fr_360px]">
         <div className="grid gap-4">
-          {["anfrage", "planung"].includes(activeRegister) ? (
+          {activeRegister === "anfrage" ? (
           <Panel>
             <div className="flex items-center gap-2">
               <ClipboardList size={18} aria-hidden="true" />
-              <h3 className="section-title">
-                {activeRegister === "anfrage" ? "Projektgrundlagen" : "Projektobjekte / Planung"}
-              </h3>
+              <h3 className="section-title">Projektgrundlagen</h3>
+            </div>
+            <form
+              className="mt-4 grid gap-4"
+              action={`/api/kunden/cases/${selectedCase.id}/sections/project_objects?return_to=${returnTo}`}
+              method="post"
+            >
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {PROJECT_OBJECTS.map(([key, label]) => (
+                  <label key={key} className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-white px-3 text-sm font-bold">
+                    <input
+                      type="checkbox"
+                      name={key}
+                      defaultChecked={sectionChecked(projectObjects, key)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <Label label="Objekt / Immobilie">
+                  <Field
+                    name="property_label"
+                    defaultValue={sectionValue(projectObjects, "property_label")}
+                    placeholder="z. B. Wohnung Stuttgart"
+                  />
+                </Label>
+                <Label label="Situation">
+                  <Select
+                    name="project_situation"
+                    defaultValue={sectionValue(projectObjects, "project_situation")}
+                  >
+                    {PROJECT_SITUATIONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Liefer-/Montageort PLZ">
+                  <Field
+                    name="delivery_postal_code"
+                    defaultValue={sectionValue(projectObjects, "delivery_postal_code")}
+                    inputMode="numeric"
+                    placeholder="z. B. 70173"
+                  />
+                </Label>
+                <Label label="Liefer-/Montageort Ort">
+                  <Field
+                    name="delivery_city"
+                    defaultValue={sectionValue(projectObjects, "delivery_city")}
+                    placeholder="z. B. Stuttgart"
+                  />
+                </Label>
+                <Label label="Gewünschter Zeitraum">
+                  <Field
+                    name="desired_timeline"
+                    defaultValue={sectionValue(projectObjects, "desired_timeline")}
+                    placeholder="z. B. Herbst, KW 42, noch offen"
+                  />
+                </Label>
+                <Label label="Dringlichkeit">
+                  <Select
+                    name="urgency"
+                    defaultValue={sectionValue(projectObjects, "urgency")}
+                  >
+                    {PROJECT_URGENCIES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Grund für Terminwunsch">
+                  <Field
+                    name="timeline_reason"
+                    defaultValue={sectionValue(projectObjects, "timeline_reason")}
+                    placeholder="z. B. Umzug, Übergabe, Wasserschaden"
+                  />
+                </Label>
+                <Label label="Budgetrahmen">
+                  <Select
+                    name="budget_range"
+                    defaultValue={sectionValue(projectObjects, "budget_range")}
+                  >
+                    {BUDGET_RANGES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Budget besprochen">
+                  <Select
+                    name="budget_discussed"
+                    defaultValue={sectionValue(projectObjects, "budget_discussed")}
+                  >
+                    <option value="">Bitte wählen</option>
+                    <option value="yes">Ja</option>
+                    <option value="no">Nein</option>
+                  </Select>
+                </Label>
+                <Label label="Kontaktweg">
+                  <Select
+                    name="inquiry_source"
+                    defaultValue={sectionValue(projectObjects, "inquiry_source")}
+                  >
+                    {INQUIRY_SOURCES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Empfehlung / Quelle">
+                  <Field
+                    name="referral_source"
+                    defaultValue={sectionValue(projectObjects, "referral_source")}
+                    placeholder="z. B. Name, Anzeige, Google"
+                  />
+                </Label>
+                <Label label="Erster Termin gewünscht">
+                  <Select
+                    name="first_appointment_wanted"
+                    defaultValue={sectionValue(projectObjects, "first_appointment_wanted")}
+                  >
+                    <option value="">Bitte wählen</option>
+                    <option value="yes">Ja</option>
+                    <option value="no">Nein</option>
+                    <option value="open">Noch offen</option>
+                  </Select>
+                </Label>
+              </div>
+              <div>
+                <p className="text-sm font-bold">Vorhandene Unterlagen</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    ["has_floor_plan", "Grundriss"],
+                    ["has_measurements", "Maße"],
+                    ["has_photos", "Fotos"],
+                    ["has_architect_plan", "Architektenplan"],
+                  ].map(([key, label]) => (
+                    <label key={key} className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-white px-3 text-sm font-bold">
+                      <input
+                        type="checkbox"
+                        name={key}
+                        defaultChecked={sectionChecked(projectObjects, key)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Label label="Wunsch / Anlass">
+                <Textarea
+                  name="planning_notes"
+                  defaultValue={sectionValue(projectObjects, "planning_notes")}
+                  placeholder="Kurze Zusammenfassung aus dem ersten Kontakt"
+                />
+              </Label>
+              <Label label="Interne Notiz für den ersten Termin">
+                <Textarea
+                  name="intake_notes"
+                  defaultValue={sectionValue(projectObjects, "intake_notes")}
+                />
+              </Label>
+              <Button type="submit">Projektgrundlagen speichern</Button>
+            </form>
+          </Panel>
+          ) : null}
+
+          {activeRegister === "planung" ? (
+          <Panel>
+            <div className="flex items-center gap-2">
+              <ClipboardList size={18} aria-hidden="true" />
+              <h3 className="section-title">Projektobjekte / Planung</h3>
             </div>
             <form
               className="mt-4 grid gap-4"
@@ -763,7 +963,7 @@ function CaseDesktop({
                     placeholder="z. B. Wohnung Stuttgart"
                   />
                 </Label>
-                <Label label="Liefer-/Montageadresse">
+                <Label label="Liefer-/Montageort">
                   <Field
                     name="delivery_address"
                     defaultValue={sectionValue(projectObjects, "delivery_address")}
@@ -776,7 +976,7 @@ function CaseDesktop({
                   defaultValue={sectionValue(projectObjects, "planning_notes")}
                 />
               </Label>
-              <Button type="submit">Projekt speichern</Button>
+              <Button type="submit">Planung speichern</Button>
             </form>
           </Panel>
           ) : null}

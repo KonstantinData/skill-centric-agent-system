@@ -205,9 +205,24 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
+    assert "PROJECT_SITUATIONS" in source
+    assert "PROJECT_URGENCIES" in source
+    assert "BUDGET_RANGES" in source
+    assert "INQUIRY_SOURCES" in source
     assert "Einbauküche" in source
     assert "Garderobe" in source
     assert "Sideboard" in source
+    assert "Liefer-/Montageort PLZ" in source
+    assert "Liefer-/Montageort Ort" in source
+    assert 'name="delivery_postal_code"' in source
+    assert 'name="delivery_city"' in source
+    assert "Gewünschter Zeitraum" in source
+    assert "Budgetrahmen" in source
+    assert "Kontaktweg" in source
+    assert "Vorhandene Unterlagen" in source
+    assert "Interne Notiz für den ersten Termin" in source
+    assert "Projektgrundlagen speichern" in source
+    assert "Planung speichern" in source
     assert "CONTACT_ROLES" in source
     assert "Architekt" in source
     assert "Schreinerei" in source
