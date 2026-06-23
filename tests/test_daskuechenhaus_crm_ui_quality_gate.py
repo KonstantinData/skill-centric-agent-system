@@ -62,6 +62,30 @@ def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
     assert "jwtVerify" in middleware
 
 
+def test_dkh_crm_supports_dark_mode_theme_toggle() -> None:
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+    layout = load_text(APP_ROOT / "src" / "app" / "layout.tsx")
+    top_bar = load_text(APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx")
+    sidebar = load_text(APP_ROOT / "src" / "components" / "chrome" / "sidebar.tsx")
+    bottom_nav = load_text(APP_ROOT / "src" / "components" / "chrome" / "bottom-nav.tsx")
+    theme_toggle = load_text(APP_ROOT / "src" / "components" / "chrome" / "theme-toggle.tsx")
+    theme_script = load_text(APP_ROOT / "src" / "components" / "chrome" / "theme-script.tsx")
+
+    assert '[data-theme="dark"]' in globals_css
+    assert "--field-surface" in globals_css
+    assert "--chrome-surface" in globals_css
+    assert ".bg-white" in globals_css
+    assert "ThemeScript" in layout
+    assert "ThemeToggle" in top_bar
+    assert "bg-[var(--chrome-surface)]" in sidebar
+    assert "bg-[var(--chrome-surface)]" in bottom_nav
+    assert "dkh-crm-theme" in theme_toggle
+    assert "prefers-color-scheme: dark" in theme_toggle
+    assert "localStorage.setItem" in theme_toggle
+    assert "Systemmodus aktiv" in theme_toggle
+    assert "dangerouslySetInnerHTML" in theme_script
+
+
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
     kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
