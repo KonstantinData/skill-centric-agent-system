@@ -60,6 +60,7 @@ def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
     kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
+    dkh_api = load_text(APP_ROOT / "src" / "lib" / "dkh-api.ts")
 
     assert 'type ProxyKind = "overview" | "admin" | "customers"' in proxy
     assert "Disallowed API path" in proxy
@@ -70,6 +71,9 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert "x-access-user-email" in proxy
     assert "x-access-user-email" in kunden_search
     assert "cf-access-authenticated-user-email" in kunden_search
+    assert "withFallback" in dkh_api
+    assert "CustomersState | null" in dkh_api
+    assert "EMPTY_CUSTOMERS_STATE" in dkh_api
 
 
 def test_dkh_crm_surface_uses_new_routes_not_php_worker_routes() -> None:

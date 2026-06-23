@@ -1082,7 +1082,7 @@ def customer_display_name(data: dict[str, Any]) -> str:
 
 def customers_state(access_email: str) -> dict[str, Any]:
     context = require_primary_user(access_email)
-    return psql_json(
+    state = psql_json(
         """
         WITH context AS (
           SELECT :'context'::jsonb AS data
@@ -1254,6 +1254,15 @@ def customers_state(access_email: str) -> dict[str, Any]:
         """,
         {"context": json.dumps(context)},
     )
+    if state is None:
+        return {
+            "current_user": context,
+            "users": [],
+            "status_phases": [],
+            "customers": [],
+            "customer_cases": [],
+        }
+    return state
 
 
 def search_customers(
