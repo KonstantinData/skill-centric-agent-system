@@ -921,6 +921,8 @@ function CaseDesktop({
               </a>
             );
           })}
+        </div>
+        <div className="mt-3 grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)]">
           <a
             href={`/kunden/${customerId}?case=${selectedCase.id}&register=${DOCUMENTS_REGISTER.key}`}
             className={`rounded-lg border p-3 text-sm transition ${
@@ -940,6 +942,23 @@ function CaseDesktop({
               Hochladen, herunterladen und per E-Mail versenden.
             </p>
           </a>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold">Dokumentenarten</p>
+              <span className="badge">Guide</span>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+              {DOCUMENT_GUIDE_CATEGORIES.map(([value, label, description]) => (
+                <div
+                  key={value}
+                  className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
+                >
+                  <p className="font-bold">{label}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </Panel>
 
@@ -1363,18 +1382,6 @@ function CaseDesktop({
                   Wählen Sie zuerst die fachliche Dokumentart. Die Hinweise zeigen, welche Unterlagen in welchen Bereich gehören.
                 </p>
               </div>
-              <span className="badge">Guide</span>
-            </div>
-            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-              {DOCUMENT_GUIDE_CATEGORIES.map(([value, label, description]) => (
-                <div
-                  key={value}
-                  className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
-                >
-                  <p className="font-bold">{label}</p>
-                  <p className="mt-2 text-xs text-[var(--muted)]">{description}</p>
-                </div>
-              ))}
             </div>
             <details className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
               <summary className="cursor-pointer border-b border-[var(--border)] px-4 py-3 text-sm font-bold">
