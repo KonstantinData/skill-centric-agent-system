@@ -77,6 +77,8 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert "x-access-user-email" in kunden_search
     assert "cf-access-authenticated-user-email" in kunden_search
     assert "content-disposition" in proxy
+    assert "multipart/form-data" in proxy
+    assert "request.arrayBuffer()" in proxy
     assert "withFallback" in dkh_api
     assert "CustomersState | null" in dkh_api
     assert "EMPTY_CUSTOMERS_STATE" in dkh_api
@@ -225,15 +227,19 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Die Kacheln oberhalb erklären" in source
     assert "Noch keine Dokumente in diesem Vorgang" in source
     assert "Dokument hinzufügen" in source
-    assert "Dokument-Metadaten speichern" in source
+    assert "Dokument hochladen" in source
+    assert 'encType="multipart/form-data"' in source
+    assert 'name="file"' in source
+    assert "/download" in source
+    assert "Herunterladen" in source
     assert 'name="document_category"' in source
-    assert 'name="register_code"' in source
+    assert 'name="register_code"' not in source
     assert 'name="document_status"' in source
     assert 'name="version_label"' in source
     assert "caseDocuments" in source
     assert "Archivieren" in source
     assert "Noch ohne Datei" in source
-    assert "Aktuell werden Dokument-Metadaten gespeichert" in source
+    assert "Die Dokumentart legt automatisch fest" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
@@ -277,6 +283,7 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "/sections/documents" in source
     assert "/documents?return_to=" in source
     assert "/documents/${document.id}/archive?return_to=" in source
+    assert "/documents/${document.id}/download" in source
     assert "/sections/process_control" in source
     assert "Vorgang schließen" in source
     assert r"^cases$" in proxy

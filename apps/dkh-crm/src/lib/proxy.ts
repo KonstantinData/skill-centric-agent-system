@@ -90,8 +90,14 @@ function publicRedirectOrigin(request: NextRequest): string {
   return configured || "https://www.es-daskuechenhaus.de";
 }
 
-async function bodyFor(request: NextRequest) {
+async function bodyAndHeadersFor(request: NextRequest, headers: Headers) {
   if (request.method === "GET" || request.method === "HEAD") return undefined;
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    headers.set("content-type", contentType);
+    return await request.arrayBuffer();
+  }
+  headers.set("content-type", "application/x-www-form-urlencoded");
   const formData = await request.formData();
   return new URLSearchParams(
     Array.from(formData.entries()).map(([key, value]) => [
@@ -120,14 +126,12 @@ export async function proxyRoute(
   }
 
   const headers = proxyHeaders(request);
-  if (!["GET", "HEAD"].includes(method)) {
-    headers.set("content-type", "application/x-www-form-urlencoded");
-  }
+  const body = await bodyAndHeadersFor(request, headers);
 
   const response = await fetch(built.upstream, {
     method,
     headers,
-    body: await bodyFor(request),
+    body,
     redirect: "manual",
     cache: "no-store",
   });

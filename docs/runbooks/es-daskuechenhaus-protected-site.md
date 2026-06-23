@@ -59,6 +59,32 @@ npm --prefix apps/dkh-crm run build
     hostnames, include both audience tags in `CF_ACCESS_AUD` separated by
     whitespace or commas.
 
+## Customer Document Storage
+
+Customer documents uploaded through the `Dokumente` card are stored in Hetzner
+Object Storage and indexed in the tenant PostgreSQL database. PostgreSQL remains
+the access-control and metadata source of truth; object storage stores only the
+file bytes.
+
+Production uses:
+
+- bucket: `dkh-crm-documents`
+- endpoint: `https://fsn1.your-objectstorage.com`
+- region: `fsn1`
+- runtime env file: `/etc/daskuechenhaus/object-storage.env`
+
+The Admin API deploy workflow writes the object-storage env file from the
+GitHub environment secrets `DKH_OBJECT_STORAGE_ACCESS_KEY_ID` and
+`DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY`. Do not commit those values. The same
+workflow applies `0011_customer_document_object_storage.sql`, which adds the
+document storage backend, bucket, object key, and SHA-256 metadata fields.
+
+The CRM proxy must forward `multipart/form-data` uploads unchanged. The Admin
+API validates supported document file types, writes files to object storage,
+stores object metadata in `app.customer_case_documents`, serves authorized
+downloads through `/customers/cases/{case_id}/documents/{document_id}/download`,
+and includes object-storage files in customer-file ZIP exports.
+
 ## Access Configuration Workflow
 
 Manage the DKH CRM Cloudflare Access app through:
@@ -122,6 +148,14 @@ Then verify in Cloudflare:
 - `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` do not route to a
   Worker,
 - Access logs show the expected authenticated email and application audience.
+
+For document storage, also verify:
+
+- `GET /health` on the Admin API reports `object_storage.configured = true`,
+- a document upload in a customer case creates a row with
+  `storage_backend = 'object_storage'` and an `object_storage_key`,
+- the document download link returns the uploaded file,
+- the customer-file ZIP export contains the uploaded document.
 
 ## Rollback
 

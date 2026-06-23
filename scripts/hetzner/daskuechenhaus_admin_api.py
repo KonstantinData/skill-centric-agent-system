@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -19,7 +21,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
+from urllib.request import Request, urlopen
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -35,7 +38,10 @@ OBJECT_STORAGE_ENDPOINT = os.environ.get(
 ).strip().rstrip("/")
 OBJECT_STORAGE_REGION = os.environ.get("DKH_OBJECT_STORAGE_REGION", "fsn1").strip()
 OBJECT_STORAGE_ACCESS_KEY_ID = os.environ.get("DKH_OBJECT_STORAGE_ACCESS_KEY_ID", "").strip()
-OBJECT_STORAGE_SECRET_ACCESS_KEY = os.environ.get("DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY", "").strip()
+OBJECT_STORAGE_SECRET_ACCESS_KEY = os.environ.get(
+    "DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY",
+    "",
+).strip()
 ALLOWED_EMAILS = {
     email.strip().lower()
     for email in os.environ.get(
@@ -57,6 +63,25 @@ ALLOWED_TASK_ATTACHMENT_EXTENSIONS = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+ALLOWED_DOCUMENT_FILE_TYPES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+ALLOWED_DOCUMENT_FILE_EXTENSIONS = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
@@ -149,6 +174,18 @@ DOCUMENT_STATUSES = {
     "archived",
 }
 
+DOCUMENT_CATEGORY_REGISTERS = {
+    "from_customer": "anfrage",
+    "measurement": "planung",
+    "planning": "planung",
+    "offer": "angebot_auftrag",
+    "order": "angebot_auftrag",
+    "order_processing": "abwicklung",
+    "complaint_service": "kommunikation",
+    "delivery_installation": "abwicklung",
+    "invoice": "rechnung_abschluss",
+}
+
 
 @dataclass(frozen=True)
 class FileUpload:
@@ -186,6 +223,99 @@ def object_storage_configured() -> bool:
             OBJECT_STORAGE_SECRET_ACCESS_KEY,
         ]
     )
+
+
+def sha256_hex(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def s3_signing_key(secret_key: str, date_stamp: str, region: str) -> bytes:
+    key_date = hmac.new(
+        f"AWS4{secret_key}".encode(),
+        date_stamp.encode(),
+        hashlib.sha256,
+    ).digest()
+    key_region = hmac.new(key_date, region.encode("utf-8"), hashlib.sha256).digest()
+    key_service = hmac.new(key_region, b"s3", hashlib.sha256).digest()
+    return hmac.new(key_service, b"aws4_request", hashlib.sha256).digest()
+
+
+def object_storage_url(object_key: str) -> str:
+    encoded_key = "/".join(quote(part, safe="") for part in object_key.split("/"))
+    return f"{OBJECT_STORAGE_ENDPOINT}/{OBJECT_STORAGE_BUCKET}/{encoded_key}"
+
+
+def object_storage_request(
+    method: str,
+    object_key: str,
+    body: bytes = b"",
+    content_type: str = "application/octet-stream",
+) -> bytes:
+    if not object_storage_configured():
+        raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "object_storage_not_configured")
+
+    parsed = urlparse(OBJECT_STORAGE_ENDPOINT)
+    host = parsed.netloc
+    now = datetime.utcnow()
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+    payload_hash = sha256_hex(body)
+    encoded_key = "/".join(quote(part, safe="") for part in object_key.split("/"))
+    canonical_uri = f"/{OBJECT_STORAGE_BUCKET}/{encoded_key}"
+    canonical_headers = (
+        f"host:{host}\n"
+        f"x-amz-content-sha256:{payload_hash}\n"
+        f"x-amz-date:{amz_date}\n"
+    )
+    signed_headers = "host;x-amz-content-sha256;x-amz-date"
+    canonical_request = "\n".join(
+        [
+            method,
+            canonical_uri,
+            "",
+            canonical_headers,
+            signed_headers,
+            payload_hash,
+        ]
+    )
+    credential_scope = f"{date_stamp}/{OBJECT_STORAGE_REGION}/s3/aws4_request"
+    string_to_sign = "\n".join(
+        [
+            "AWS4-HMAC-SHA256",
+            amz_date,
+            credential_scope,
+            sha256_hex(canonical_request.encode("utf-8")),
+        ]
+    )
+    signature = hmac.new(
+        s3_signing_key(OBJECT_STORAGE_SECRET_ACCESS_KEY, date_stamp, OBJECT_STORAGE_REGION),
+        string_to_sign.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    authorization = (
+        "AWS4-HMAC-SHA256 "
+        f"Credential={OBJECT_STORAGE_ACCESS_KEY_ID}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+    headers = {
+        "Authorization": authorization,
+        "x-amz-content-sha256": payload_hash,
+        "x-amz-date": amz_date,
+    }
+    if method != "GET":
+        headers["Content-Type"] = content_type
+        headers["Content-Length"] = str(len(body))
+    request = Request(
+        object_storage_url(object_key),
+        data=body if method != "GET" else None,
+        headers=headers,
+        method=method,
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            return response.read()
+    except Exception as exc:
+        raise ApiError(HTTPStatus.BAD_GATEWAY, "object_storage_request_failed") from exc
 
 
 def psql_json(sql: str, variables: dict[str, str] | None = None) -> Any:
@@ -844,6 +974,37 @@ def normalize_attachment_type(upload: FileUpload) -> str:
     raise ApiError(HTTPStatus.BAD_REQUEST, "unsupported_task_attachment_type")
 
 
+def normalize_document_file_type(upload: FileUpload) -> str:
+    extension = Path(upload.filename).suffix.lower()
+    expected_type = ALLOWED_DOCUMENT_FILE_EXTENSIONS.get(extension)
+    if upload.content_type in ALLOWED_DOCUMENT_FILE_TYPES:
+        return upload.content_type
+    if expected_type:
+        return expected_type
+    raise ApiError(HTTPStatus.BAD_REQUEST, "unsupported_document_file_type")
+
+
+def first_document_upload(files: list[FileUpload]) -> FileUpload | None:
+    for upload in files:
+        if upload.field_name == "file":
+            return upload
+    return files[0] if files else None
+
+
+def customer_case_document_object_key(
+    customer_id: int,
+    case_id: str,
+    document_category: str,
+    filename: str,
+) -> str:
+    safe_name = safe_upload_filename(filename)
+    safe_category = re.sub(r"[^a-z0-9_-]+", "_", document_category.lower()).strip("_") or "document"
+    return (
+        f"customers/{customer_id}/cases/{case_id}/documents/"
+        f"{safe_category}/{uuid4().hex}-{safe_name}"
+    )
+
+
 def selected_roles(data: dict[str, Any]) -> list[str]:
     roles = []
     for code in ("admin", "employee", "sales"):
@@ -1365,7 +1526,9 @@ def customers_state(access_email: str) -> dict[str, Any]:
                       'version_label', d.version_label,
                       'is_current_version', d.is_current_version,
                       'replaces_document_id', d.replaces_document_id,
-                      'has_file', d.storage_path IS NOT NULL,
+                      'has_file', d.storage_path IS NOT NULL OR d.object_storage_key IS NOT NULL,
+                      'storage_backend', d.storage_backend,
+                      'content_sha256', d.content_sha256,
                       'original_filename', d.original_filename,
                       'content_type', d.content_type,
                       'file_size_bytes', d.file_size_bytes,
@@ -2303,6 +2466,8 @@ def customer_export_document_rows(customer_id: str, context: dict[str, Any]) -> 
             'title', COALESCE(d.title, d.original_filename, 'Dokument'),
             'original_filename', d.original_filename,
             'storage_path', d.storage_path,
+            'storage_backend', d.storage_backend,
+            'object_storage_key', d.object_storage_key,
             'content_type', d.content_type
           )
           ORDER BY cc.id, d.id
@@ -2324,6 +2489,31 @@ def add_existing_document_files(
 ) -> None:
     used_names: set[str] = set()
     for row in rows:
+        case_folder = export_slug(row.get("case_number") or f"Vorgang_{row.get('case_id')}")
+        category_folder = CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS.get(
+            str(row.get("document_category") or ""),
+            export_slug(row.get("document_category"), "Dokumente"),
+        )
+        original_name = export_slug(row.get("original_filename") or row.get("title"), "Dokument")
+        suffix = Path(str(row.get("original_filename") or "")).suffix
+        filename = (
+            f"{original_name}{suffix}"
+            if suffix and not original_name.endswith(suffix)
+            else original_name
+        )
+        archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{filename}"
+        if archive_name in used_names:
+            archive_name = (
+                f"{root}/01_Vorgaenge/{case_folder}/Dokumente/"
+                f"{category_folder}/{row.get('document_id')}_{filename}"
+            )
+        used_names.add(archive_name)
+        if row.get("storage_backend") == "object_storage" and row.get("object_storage_key"):
+            archive.writestr(
+                archive_name,
+                object_storage_request("GET", str(row["object_storage_key"])),
+            )
+            continue
         storage_path = str(row.get("storage_path") or "")
         if not storage_path:
             continue
@@ -2335,18 +2525,6 @@ def add_existing_document_files(
             continue
         if not resolved_path.is_relative_to(upload_root) or not resolved_path.is_file():
             continue
-        case_folder = export_slug(row.get("case_number") or f"Vorgang_{row.get('case_id')}")
-        category_folder = CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS.get(
-            str(row.get("document_category") or ""),
-            export_slug(row.get("document_category"), "Dokumente"),
-        )
-        original_name = export_slug(row.get("original_filename") or row.get("title"), "Dokument")
-        suffix = path.suffix or Path(str(row.get("original_filename") or "")).suffix
-        filename = f"{original_name}{suffix if suffix and not original_name.endswith(suffix) else ''}"
-        archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{filename}"
-        if archive_name in used_names:
-            archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{row.get('document_id')}_{filename}"
-        used_names.add(archive_name)
         archive.write(resolved_path, archive_name)
 
 
@@ -2752,9 +2930,45 @@ def normalize_document_choice(
     return value if value in allowed else default
 
 
+def visible_customer_case(case_id: str, context: dict[str, Any]) -> dict[str, Any]:
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        )
+        SELECT COALESCE((
+          SELECT jsonb_build_object(
+            'id', cc.id,
+            'customer_id', cc.customer_id,
+            'case_number', cc.case_number
+          )
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ), '{}'::jsonb)::text;
+        """,
+        {"payload": json.dumps({"case_id": case_id, "context": context})},
+    )
+    if not result.get("id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    return result
+
+
 def create_customer_case_document_metadata(
     case_id: str,
     data: dict[str, Any],
+    files: list[FileUpload],
     access_email: str,
 ) -> dict[str, Any]:
     context = require_primary_user(access_email)
@@ -2762,20 +2976,47 @@ def create_customer_case_document_metadata(
     if not title:
         raise ApiError(HTTPStatus.BAD_REQUEST, "document_title_required")
 
+    visible_case = visible_customer_case(case_id, context)
+    document_category = normalize_document_choice(
+        data,
+        "document_category",
+        DOCUMENT_CATEGORIES,
+        "from_customer",
+    )
+    register_code = DOCUMENT_CATEGORY_REGISTERS.get(document_category, "anfrage")
+    upload = first_document_upload(files)
+    file_payload: dict[str, Any] = {
+        "original_filename": None,
+        "content_type": None,
+        "file_size_bytes": None,
+        "storage_backend": "local",
+        "object_storage_bucket": None,
+        "object_storage_key": None,
+        "content_sha256": None,
+    }
+    if upload:
+        content_type = normalize_document_file_type(upload)
+        object_key = customer_case_document_object_key(
+            int(visible_case.get("customer_id") or 0),
+            case_id,
+            document_category,
+            upload.filename,
+        )
+        object_storage_request("PUT", object_key, upload.content, content_type)
+        file_payload = {
+            "original_filename": safe_upload_filename(upload.filename),
+            "content_type": content_type,
+            "file_size_bytes": len(upload.content),
+            "storage_backend": "object_storage",
+            "object_storage_bucket": OBJECT_STORAGE_BUCKET,
+            "object_storage_key": object_key,
+            "content_sha256": sha256_hex(upload.content),
+        }
+
     payload = {
         "case_id": case_id,
-        "register_code": normalize_document_choice(
-            data,
-            "register_code",
-            DOCUMENT_REGISTERS,
-            "anfrage",
-        ),
-        "document_category": normalize_document_choice(
-            data,
-            "document_category",
-            DOCUMENT_CATEGORIES,
-            "from_customer",
-        ),
+        "register_code": register_code,
+        "document_category": document_category,
         "document_type": normalize_document_choice(
             data,
             "document_type",
@@ -2794,6 +3035,7 @@ def create_customer_case_document_metadata(
         "replaces_document_id": str(data.get("replaces_document_id", "")).strip(),
         "actor_user_id": context["primary_user_id"],
         "context": context,
+        **file_payload,
     }
     result = psql_json(
         """
@@ -2844,6 +3086,14 @@ def create_customer_case_document_metadata(
             version_label,
             is_current_version,
             replaces_document_id,
+            original_filename,
+            storage_path,
+            content_type,
+            file_size_bytes,
+            storage_backend,
+            object_storage_bucket,
+            object_storage_key,
+            content_sha256,
             uploaded_by_user_id,
             source_system
           )
@@ -2858,6 +3108,14 @@ def create_customer_case_document_metadata(
             data->>'version_label',
             TRUE,
             (SELECT id FROM replacement),
+            NULLIF(data->>'original_filename', ''),
+            NULL,
+            NULLIF(data->>'content_type', ''),
+            NULLIF(data->>'file_size_bytes', '')::bigint,
+            COALESCE(NULLIF(data->>'storage_backend', ''), 'local'),
+            NULLIF(data->>'object_storage_bucket', ''),
+            NULLIF(data->>'object_storage_key', ''),
+            NULLIF(data->>'content_sha256', ''),
             NULLIF(data->>'actor_user_id', '')::bigint,
             'manual_upload'
           FROM payload
@@ -2876,6 +3134,89 @@ def create_customer_case_document_metadata(
     if not result.get("document_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
     return result
+
+
+def download_customer_case_document(
+    case_id: str,
+    document_id: str,
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "case_id": case_id,
+        "document_id": document_id,
+        "context": context,
+    }
+    document = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        )
+        SELECT COALESCE((
+          SELECT jsonb_build_object(
+            'id', d.id,
+            'title', d.title,
+            'original_filename', d.original_filename,
+            'storage_path', d.storage_path,
+            'content_type', d.content_type,
+            'storage_backend', d.storage_backend,
+            'object_storage_key', d.object_storage_key
+          )
+          FROM app.customer_case_documents d
+          WHERE d.id = NULLIF((SELECT data->>'document_id' FROM payload), '')::bigint
+            AND d.customer_case_id = (SELECT id FROM visible_case)
+            AND d.document_status <> 'archived'
+          LIMIT 1
+        ), '{}'::jsonb)::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not document.get("id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_not_found")
+
+    content_type = str(document.get("content_type") or "application/octet-stream")
+    filename = safe_upload_filename(
+        str(document.get("original_filename") or document.get("title") or f"dokument-{document_id}")
+    )
+    if document.get("storage_backend") == "object_storage" and document.get("object_storage_key"):
+        return {
+            "body": object_storage_request("GET", str(document["object_storage_key"])),
+            "content_type": content_type,
+            "filename": filename,
+        }
+
+    storage_path = str(document.get("storage_path") or "")
+    if not storage_path:
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_file_not_found")
+    try:
+        resolved_path = Path(storage_path).resolve(strict=True)
+        upload_root = UPLOAD_ROOT.resolve(strict=False)
+    except OSError as exc:
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_file_not_found") from exc
+    if not resolved_path.is_relative_to(upload_root) or not resolved_path.is_file():
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_file_not_found")
+    return {
+        "body": resolved_path.read_bytes(),
+        "content_type": content_type,
+        "filename": filename,
+    }
 
 
 def archive_customer_case_document(
@@ -3890,6 +4231,21 @@ class Handler(BaseHTTPRequestHandler):
                     export["filename"],
                 )
                 return
+            if (
+                self.command == "GET"
+                and len(parts) == 6
+                and parts[:2] == ["customers", "cases"]
+                and parts[3] == "documents"
+                and parts[5] == "download"
+            ):
+                access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                download = download_customer_case_document(parts[2], parts[4], access_email)
+                self.write_binary(
+                    download["body"],
+                    download["content_type"],
+                    download["filename"],
+                )
+                return
             if self.command == "POST":
                 data, files = request_payload(self)
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
@@ -3949,7 +4305,9 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[:2] == ["customers", "cases"]
                     and parts[3] == "documents"
                 ):
-                    self.write_json(create_customer_case_document_metadata(parts[2], data, access_email))
+                    self.write_json(
+                        create_customer_case_document_metadata(parts[2], data, files, access_email)
+                    )
                     return
                 if (
                     len(parts) == 6

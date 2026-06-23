@@ -163,6 +163,34 @@ def test_customer_case_document_metadata_migration_extends_document_records() ->
     assert "tenant_daskuechenhaus_app" in migration
 
 
+def test_customer_case_document_object_storage_migration_adds_file_backend_contract() -> None:
+    migration = (
+        REPO_ROOT
+        / "migrations"
+        / "hetzner"
+        / "tenants"
+        / "daskuechenhaus"
+        / "0011_customer_document_object_storage.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS storage_backend" in migration
+    assert "ADD COLUMN IF NOT EXISTS object_storage_bucket" in migration
+    assert "ADD COLUMN IF NOT EXISTS object_storage_key" in migration
+    assert "ADD COLUMN IF NOT EXISTS content_sha256" in migration
+    assert "customer_case_documents_object_storage_complete" in migration
+    assert "customer_case_documents_content_sha256" in migration
+    assert "customer_case_documents_object_storage_idx" in migration
+    assert "'from_customer'" in migration
+    assert "'measurement'" in migration
+    assert "'planning'" in migration
+    assert "'offer'" in migration
+    assert "'order_processing'" in migration
+    assert "'complaint_service'" in migration
+    assert "'delivery_installation'" in migration
+    assert "'invoice'" in migration
+    assert "tenant_daskuechenhaus_app" in migration
+
+
 def test_customer_database_supports_customer_folder_documents_and_notes() -> None:
     migration = load_migration()
 

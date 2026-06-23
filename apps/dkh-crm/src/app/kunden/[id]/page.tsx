@@ -1383,6 +1383,7 @@ function CaseDesktop({
               <form
                 className="mt-4 grid gap-3 lg:grid-cols-3"
                 action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
+                encType="multipart/form-data"
                 method="post"
               >
                 <Label label="Dokumentart">
@@ -1395,20 +1396,19 @@ function CaseDesktop({
                     Die Kacheln oberhalb erklären, welche Dokumente unter welche Dokumentart fallen.
                   </span>
                 </Label>
-                <Label label="Register">
-                  <Select name="register_code" defaultValue={phaseRegister}>
-                    {CASE_REGISTERS.filter((register) => register.key !== "kommunikation").map((register) => (
-                      <option key={register.key} value={register.key}>{register.label}</option>
-                    ))}
-                    <option value="kommunikation">Kommunikation</option>
-                  </Select>
-                </Label>
                 <Label label="Status">
                   <Select name="document_status" defaultValue="received">
                     {DOCUMENT_STATUSES.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </Select>
+                </Label>
+                <Label label="Datei">
+                  <Field
+                    name="file"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  />
                 </Label>
                 <Label label="Titel" className="lg:col-span-2">
                   <Field
@@ -1429,8 +1429,8 @@ function CaseDesktop({
                 <input type="hidden" name="document_type" value="other" />
                 <div className="lg:col-span-3">
                   <Button type="submit">
-                    <FileText size={16} aria-hidden="true" />
-                    Dokument-Metadaten speichern
+                    <Upload size={16} aria-hidden="true" />
+                    Dokument hochladen
                   </Button>
                 </div>
               </form>
@@ -1459,6 +1459,15 @@ function CaseDesktop({
                       <span className="badge">
                         {optionLabel(DOCUMENT_STATUSES, document.document_status)}
                       </span>
+                      {document.has_file ? (
+                        <LinkButton
+                          href={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/download`}
+                          variant="secondary"
+                        >
+                          <Download size={16} aria-hidden="true" />
+                          Herunterladen
+                        </LinkButton>
+                      ) : null}
                       <form
                         action={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/archive?return_to=${returnTo}`}
                         method="post"
@@ -1483,7 +1492,7 @@ function CaseDesktop({
               ) : null}
             </div>
             <p className="mt-4 text-xs text-[var(--muted)]">
-              Aktuell werden Dokument-Metadaten gespeichert. Datei-Upload, Versionierung und Download-Pakete werden im nächsten Schritt angebunden.
+              Die Dokumentart legt automatisch fest, in welchem Register das Dokument geführt wird. Version und Notiz bleiben als interne Einordnung erhalten.
             </p>
           </Panel>
           ) : null}

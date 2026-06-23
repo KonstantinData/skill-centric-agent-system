@@ -256,6 +256,8 @@ export type CustomerCaseDocumentRecord = {
   is_current_version: boolean;
   replaces_document_id: number | null;
   has_file: boolean;
+  storage_backend: string | null;
+  content_sha256: string | null;
   original_filename: string | null;
   content_type: string | null;
   file_size_bytes: number | null;
