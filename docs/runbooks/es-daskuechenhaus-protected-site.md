@@ -77,7 +77,10 @@ The Admin API deploy workflow writes the object-storage env file from the
 GitHub environment secrets `DKH_OBJECT_STORAGE_ACCESS_KEY_ID` and
 `DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY`. Do not commit those values. The same
 workflow applies `0011_customer_document_object_storage.sql`, which adds the
-document storage backend, bucket, object key, and SHA-256 metadata fields.
+document storage backend, bucket, object key, and SHA-256 metadata fields. It
+also applies `0012_carat_prjz_imports.sql`, which stores CARAT PRJZ analysis
+runs and individually selectable import positions linked to the original
+document.
 
 The CRM proxy must forward `multipart/form-data` uploads unchanged. The Admin
 API validates supported document file types, writes files to object storage,

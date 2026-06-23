@@ -27,6 +27,14 @@ CUSTOMER_FILE_DESKTOP_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0009_customer_file_desktop.sql"
 )
+CARAT_IMPORT_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0012_carat_prjz_imports.sql"
+)
 
 
 def load_migration() -> str:
@@ -37,6 +45,7 @@ def test_customer_database_migration_exists() -> None:
     assert CUSTOMER_DATABASE_MIGRATION_PATH.exists()
     assert SEARCH_FIRST_MIGRATION_PATH.exists()
     assert CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.exists()
+    assert CARAT_IMPORT_MIGRATION_PATH.exists()
 
 
 def test_customer_database_creates_expected_tables() -> None:
@@ -192,6 +201,21 @@ def test_customer_case_document_object_storage_migration_adds_file_backend_contr
     assert "'complaint_service'" in migration
     assert "'delivery_installation'" in migration
     assert "'invoice'" in migration
+    assert "tenant_daskuechenhaus_app" in migration
+
+
+def test_customer_database_adds_carat_prjz_import_analysis_tables() -> None:
+    migration = CARAT_IMPORT_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert "CREATE TABLE IF NOT EXISTS app.customer_case_carat_imports" in migration
+    assert "CREATE TABLE IF NOT EXISTS app.customer_case_carat_import_positions" in migration
+    assert "document_id BIGINT NOT NULL REFERENCES app.customer_case_documents" in migration
+    assert "selection_status IN ('candidate', 'selected', 'ignored', 'transferred')" in migration
+    assert "customer_case_carat_imports_document_unique" in migration
+    assert "'carat_project'" in migration
+    assert "'application/zip'" in migration
+    assert "'application/x-zip-compressed'" in migration
+    assert "'application/octet-stream'" in migration
     assert "tenant_daskuechenhaus_app" in migration
 
 

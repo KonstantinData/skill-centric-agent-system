@@ -73,6 +73,9 @@ ALLOWED_DOCUMENT_FILE_TYPES = {
     "image/webp",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/octet-stream",
 }
 
 ALLOWED_DOCUMENT_FILE_EXTENSIONS = {
@@ -83,6 +86,7 @@ ALLOWED_DOCUMENT_FILE_EXTENSIONS = {
     ".webp": "image/webp",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".prjz": "application/zip",
 }
 
 NUMBER_ALPHABET = string.ascii_uppercase + string.digits
@@ -128,8 +132,11 @@ DOCUMENT_TYPES = {
     "drawing_plan",
     "offer_order",
     "invoice_closure",
+    "carat_project",
     "other",
 }
+
+CARAT_PRJZ_PARSER_VERSION = "carat-prjz-v1"
 
 CUSTOMER_EXPORT_SECTION_CODE = "customer_export"
 CUSTOMER_EXPORT_CASE_FOLDERS = [
@@ -977,10 +984,13 @@ def normalize_attachment_type(upload: FileUpload) -> str:
 def normalize_document_file_type(upload: FileUpload) -> str:
     extension = Path(upload.filename).suffix.lower()
     expected_type = ALLOWED_DOCUMENT_FILE_EXTENSIONS.get(extension)
-    if upload.content_type in ALLOWED_DOCUMENT_FILE_TYPES:
-        return upload.content_type
     if expected_type:
         return expected_type
+    if (
+        upload.content_type in ALLOWED_DOCUMENT_FILE_TYPES
+        and upload.content_type != "application/octet-stream"
+    ):
+        return upload.content_type
     raise ApiError(HTTPStatus.BAD_REQUEST, "unsupported_document_file_type")
 
 
@@ -1003,6 +1013,179 @@ def customer_case_document_object_key(
         f"customers/{customer_id}/cases/{case_id}/documents/"
         f"{safe_category}/{uuid4().hex}-{safe_name}"
     )
+
+
+def is_carat_prjz_upload(upload: FileUpload) -> bool:
+    return Path(upload.filename).suffix.lower() == ".prjz" and upload.content.startswith(b"PK")
+
+
+def split_prj_line(line: str) -> list[str]:
+    if line.endswith("|*"):
+        line = line[:-2]
+    elif line.endswith("*"):
+        line = line[:-1]
+    return [part.strip() for part in line.split("|")]
+
+
+def prj_value_after_code(parts: list[str], code_prefix: str) -> str:
+    if len(parts) < 2 or not parts[1].startswith(code_prefix):
+        return ""
+    value = parts[1][len(code_prefix):].strip()
+    trailing = " ".join(part for part in parts[2:] if part).strip()
+    return " ".join(part for part in (value, trailing) if part).strip()
+
+
+def parse_decimal(value: str) -> float | None:
+    normalized = value.strip().replace(",", ".")
+    if not normalized:
+        return None
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
+    try:
+        with zipfile.ZipFile(BytesIO(content)) as archive:
+            prj_names = [
+                name
+                for name in archive.namelist()
+                if name.lower().endswith(".prj") and not name.endswith("/")
+            ]
+            if not prj_names:
+                raise ValueError("prj_file_missing")
+            prj_name = prj_names[0]
+            prj_content = archive.read(prj_name)
+    except zipfile.BadZipFile as exc:
+        raise ValueError("invalid_prjz_zip") from exc
+
+    text = prj_content.decode("cp1252", errors="replace")
+    lines = [line for line in text.splitlines() if line.strip()]
+    parsed_lines = [split_prj_line(line) for line in lines]
+    summary: dict[str, Any] = {
+        "source_filename": safe_upload_filename(filename),
+        "inner_filename": prj_name,
+        "line_count": len(lines),
+        "parser_version": CARAT_PRJZ_PARSER_VERSION,
+        "carat_version": None,
+        "project_number": None,
+        "project_name": None,
+        "customer_name": None,
+        "currency": None,
+        "suppliers": [],
+        "positions": [],
+    }
+
+    if parsed_lines:
+        first = parsed_lines[0]
+        if len(first) > 2:
+            summary["carat_version"] = first[2] or None
+        if len(first) > 3:
+            summary["project_number"] = first[3] or None
+
+    supplier_by_suffix: dict[str, dict[str, Any]] = {}
+    for parts in parsed_lines:
+        if len(parts) < 2:
+            continue
+        section = parts[0]
+        code = parts[1]
+        if section == "001" and code == "0020" and len(parts) > 2 and parts[2]:
+            summary["customer_name"] = parts[2]
+            summary["project_name"] = parts[2]
+        if section == "001" and code == "2150" and len(parts) > 2 and parts[2]:
+            summary["currency"] = parts[2]
+        if section == "002" and code.startswith("2000") and len(parts) > 2:
+            name = parts[2].strip()
+            if not name:
+                continue
+            supplier = {
+                "code": code,
+                "name": name,
+                "catalog": parts[4] if len(parts) > 4 else "",
+                "catalog_date": parts[5] if len(parts) > 5 else "",
+                "kind": parts[6] if len(parts) > 6 else "",
+            }
+            summary["suppliers"].append(supplier)
+            suffix = code[4:].lstrip("0") or code[4:] or code
+            supplier_by_suffix[suffix] = supplier
+
+    article_markers = [
+        index
+        for index, parts in enumerate(parsed_lines)
+        if len(parts) >= 2 and parts[1] == "9999.Artikel"
+    ]
+    for marker_index, start in enumerate(article_markers):
+        end = (
+            article_markers[marker_index + 1]
+            if marker_index + 1 < len(article_markers)
+            else len(parsed_lines)
+        )
+        block = parsed_lines[start:end]
+        source_line = start + 1
+        position_number = ""
+        article_code = ""
+        title = ""
+        description_parts: list[str] = []
+        supplier_code = ""
+        supplier_name = ""
+        quantity: float | None = None
+        dimensions: dict[str, Any] = {}
+
+        for parts in block[:80]:
+            if len(parts) < 2:
+                continue
+            code = parts[1]
+            if code.startswith("4500") and len(parts) > 2:
+                position_number = parts[2].lstrip("0") or parts[2]
+            if code.startswith("4510"):
+                text_value = prj_value_after_code(parts, "4510")
+                if text_value:
+                    description_parts.append(text_value)
+            if code.startswith("4512"):
+                values = [parse_decimal(part) for part in parts[2:5]]
+                dimension_keys = ("width", "depth", "height")
+                dimensions = {
+                    key: value
+                    for key, value in zip(dimension_keys, values, strict=False)
+                    if value not in (None, 0)
+                }
+            if code.startswith("4600"):
+                article_code = code
+                if len(parts) > 3 and parts[3]:
+                    title = parts[3]
+                suffix = code[4:].lstrip("0") or code[4:] or code
+                for known_suffix, supplier in supplier_by_suffix.items():
+                    if suffix.endswith(known_suffix) or known_suffix.endswith(suffix):
+                        supplier_code = supplier["code"]
+                        supplier_name = supplier["name"]
+                        break
+            if code.startswith("4627") and len(parts) > 4:
+                quantity = parse_decimal(parts[4])
+
+        if not title and description_parts:
+            title = description_parts[0][:120]
+        if not title:
+            continue
+        summary["positions"].append(
+            {
+                "source_line": source_line,
+                "position_number": position_number,
+                "supplier_code": supplier_code,
+                "supplier_name": supplier_name,
+                "article_code": article_code,
+                "title": title,
+                "description": "\n".join(description_parts[:6]),
+                "quantity": quantity,
+                "dimensions": dimensions,
+                "raw": {
+                    "marker_line": lines[start],
+                    "block_size": len(block),
+                },
+            }
+        )
+
+    return summary
 
 
 def selected_roles(data: dict[str, Any]) -> list[str]:
@@ -1550,6 +1733,69 @@ def customers_state(access_email: str) -> dict[str, Any]:
                   LEFT JOIN app.users u ON u.id = d.uploaded_by_user_id
                   WHERE d.customer_case_id = cc.id
                     AND d.document_status <> 'archived'
+                ), '[]'::jsonb),
+                'carat_imports', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', ci.id,
+                      'customer_case_id', ci.customer_case_id,
+                      'document_id', ci.document_id,
+                      'parser_version', ci.parser_version,
+                      'source_filename', ci.source_filename,
+                      'carat_version', ci.carat_version,
+                      'project_number', ci.project_number,
+                      'project_name', ci.project_name,
+                      'customer_name', ci.customer_name,
+                      'currency', ci.currency,
+                      'supplier_count', ci.supplier_count,
+                      'position_count', ci.position_count,
+                      'status', ci.status,
+                      'summary', ci.summary_json,
+                      'created_at',
+                        to_char(
+                          ci.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        ),
+                      'positions', COALESCE((
+                        SELECT jsonb_agg(
+                          jsonb_build_object(
+                            'id', cip.id,
+                            'source_line', cip.source_line,
+                            'position_number', cip.position_number,
+                            'supplier_code', cip.supplier_code,
+                            'supplier_name', cip.supplier_name,
+                            'article_code', cip.article_code,
+                            'title', cip.title,
+                            'description', cip.description,
+                            'quantity', cip.quantity,
+                            'dimensions', cip.dimensions_json,
+                            'selection_status', cip.selection_status,
+                            'selected_at',
+                              CASE
+                                WHEN cip.selected_at IS NULL THEN NULL
+                                ELSE to_char(
+                                  cip.selected_at AT TIME ZONE 'Europe/Berlin',
+                                  'YYYY-MM-DD HH24:MI'
+                                )
+                              END
+                          )
+                          ORDER BY
+                            COALESCE(cip.supplier_name, ''),
+                            CASE
+                              WHEN cip.position_number ~ '^[0-9]+$'
+                                THEN cip.position_number::integer
+                              ELSE NULL
+                            END NULLS LAST,
+                            cip.id
+                        )
+                        FROM app.customer_case_carat_import_positions cip
+                        WHERE cip.import_id = ci.id
+                      ), '[]'::jsonb)
+                    )
+                    ORDER BY ci.created_at DESC, ci.id DESC
+                  )
+                  FROM app.customer_case_carat_imports ci
+                  WHERE ci.customer_case_id = cc.id
                 ), '[]'::jsonb),
                 'updated_at',
                   to_char(
@@ -2977,14 +3223,17 @@ def create_customer_case_document_metadata(
         raise ApiError(HTTPStatus.BAD_REQUEST, "document_title_required")
 
     visible_case = visible_customer_case(case_id, context)
+    upload = first_document_upload(files)
+    is_carat_upload = bool(upload and is_carat_prjz_upload(upload))
     document_category = normalize_document_choice(
         data,
         "document_category",
         DOCUMENT_CATEGORIES,
         "from_customer",
     )
+    if is_carat_upload:
+        document_category = "order_processing"
     register_code = DOCUMENT_CATEGORY_REGISTERS.get(document_category, "anfrage")
-    upload = first_document_upload(files)
     file_payload: dict[str, Any] = {
         "original_filename": None,
         "content_type": None,
@@ -3017,11 +3266,15 @@ def create_customer_case_document_metadata(
         "case_id": case_id,
         "register_code": register_code,
         "document_category": document_category,
-        "document_type": normalize_document_choice(
-            data,
-            "document_type",
-            DOCUMENT_TYPES,
-            "other",
+        "document_type": (
+            "carat_project"
+            if is_carat_upload
+            else normalize_document_choice(
+                data,
+                "document_type",
+                DOCUMENT_TYPES,
+                "other",
+            )
         ),
         "document_status": normalize_document_choice(
             data,
@@ -3133,7 +3386,155 @@ def create_customer_case_document_metadata(
     )
     if not result.get("document_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    if upload and is_carat_prjz_upload(upload):
+        store_carat_prjz_analysis(
+            int(case_id),
+            int(result["document_id"]),
+            upload,
+            context,
+        )
     return result
+
+
+def store_carat_prjz_analysis(
+    case_id: int,
+    document_id: int,
+    upload: FileUpload,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        analysis = parse_prjz_content(upload.content, upload.filename)
+        status = "analysis_ready"
+        error = None
+    except ValueError as exc:
+        analysis = {
+            "source_filename": safe_upload_filename(upload.filename),
+            "parser_version": CARAT_PRJZ_PARSER_VERSION,
+            "line_count": 0,
+            "suppliers": [],
+            "positions": [],
+        }
+        status = "failed"
+        error = str(exc)
+    summary = {
+        key: value
+        for key, value in analysis.items()
+        if key not in {"positions"}
+    }
+    if error:
+        summary["error"] = error
+    payload = {
+        "case_id": case_id,
+        "document_id": document_id,
+        "parser_version": CARAT_PRJZ_PARSER_VERSION,
+        "source_filename": analysis.get("source_filename") or safe_upload_filename(upload.filename),
+        "carat_version": analysis.get("carat_version"),
+        "project_number": analysis.get("project_number"),
+        "project_name": analysis.get("project_name"),
+        "customer_name": analysis.get("customer_name"),
+        "currency": analysis.get("currency"),
+        "supplier_count": len(analysis.get("suppliers") or []),
+        "position_count": len(analysis.get("positions") or []),
+        "status": status,
+        "summary_json": summary,
+        "positions": analysis.get("positions") or [],
+        "actor_user_id": context.get("primary_user_id"),
+    }
+    return psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        removed_old_positions AS (
+          DELETE FROM app.customer_case_carat_import_positions p
+          USING app.customer_case_carat_imports i, payload
+          WHERE p.import_id = i.id
+            AND i.document_id = (payload.data->>'document_id')::bigint
+        ),
+        upserted_import AS (
+          INSERT INTO app.customer_case_carat_imports (
+            customer_case_id,
+            document_id,
+            parser_version,
+            source_filename,
+            carat_version,
+            project_number,
+            project_name,
+            customer_name,
+            currency,
+            supplier_count,
+            position_count,
+            status,
+            summary_json,
+            created_by_user_id
+          )
+          SELECT
+            (data->>'case_id')::bigint,
+            (data->>'document_id')::bigint,
+            data->>'parser_version',
+            NULLIF(data->>'source_filename', ''),
+            NULLIF(data->>'carat_version', ''),
+            NULLIF(data->>'project_number', ''),
+            NULLIF(data->>'project_name', ''),
+            NULLIF(data->>'customer_name', ''),
+            NULLIF(data->>'currency', ''),
+            COALESCE((data->>'supplier_count')::integer, 0),
+            COALESCE((data->>'position_count')::integer, 0),
+            data->>'status',
+            data->'summary_json',
+            NULLIF(data->>'actor_user_id', '')::bigint
+          FROM payload
+          ON CONFLICT (document_id) DO UPDATE
+          SET
+            parser_version = EXCLUDED.parser_version,
+            source_filename = EXCLUDED.source_filename,
+            carat_version = EXCLUDED.carat_version,
+            project_number = EXCLUDED.project_number,
+            project_name = EXCLUDED.project_name,
+            customer_name = EXCLUDED.customer_name,
+            currency = EXCLUDED.currency,
+            supplier_count = EXCLUDED.supplier_count,
+            position_count = EXCLUDED.position_count,
+            status = EXCLUDED.status,
+            summary_json = EXCLUDED.summary_json,
+            updated_at = now()
+          RETURNING id
+        ),
+        inserted_positions AS (
+          INSERT INTO app.customer_case_carat_import_positions (
+            import_id,
+            source_line,
+            position_number,
+            supplier_code,
+            supplier_name,
+            article_code,
+            title,
+            description,
+            quantity,
+            dimensions_json,
+            raw_json
+          )
+          SELECT
+            (SELECT id FROM upserted_import),
+            NULLIF(position->>'source_line', '')::integer,
+            NULLIF(position->>'position_number', ''),
+            NULLIF(position->>'supplier_code', ''),
+            NULLIF(position->>'supplier_name', ''),
+            NULLIF(position->>'article_code', ''),
+            COALESCE(NULLIF(position->>'title', ''), 'CARAT Position'),
+            NULLIF(position->>'description', ''),
+            NULLIF(position->>'quantity', '')::numeric,
+            COALESCE(position->'dimensions', '{}'::jsonb),
+            position
+          FROM payload,
+          LATERAL jsonb_array_elements(data->'positions') AS position
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'import_id', (SELECT id FROM upserted_import),
+          'position_count', (SELECT count(*) FROM inserted_positions)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
 
 
 def download_customer_case_document(
@@ -3276,6 +3677,106 @@ def archive_customer_case_document(
     )
     if not result.get("document_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_not_found")
+    return result
+
+
+def selected_carat_position_ids(data: dict[str, Any]) -> list[int]:
+    ids: list[int] = []
+    for key, value in data.items():
+        if key.startswith("position_") and normalize_bool(value) == "true":
+            raw_id = key.removeprefix("position_")
+            if raw_id.isdigit():
+                ids.append(int(raw_id))
+    return sorted(set(ids))
+
+
+def select_carat_import_positions(
+    case_id: str,
+    import_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    position_ids = selected_carat_position_ids(data)
+    payload = {
+        "case_id": case_id,
+        "import_id": import_id,
+        "position_ids": position_ids,
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        visible_import AS (
+          SELECT ci.id
+          FROM app.customer_case_carat_imports ci
+          WHERE ci.id = NULLIF((SELECT data->>'import_id' FROM payload), '')::bigint
+            AND ci.customer_case_id = (SELECT id FROM visible_case)
+          LIMIT 1
+        ),
+        requested_positions AS (
+          SELECT jsonb_array_elements_text(data->'position_ids')::bigint AS id
+          FROM payload
+        ),
+        reset_positions AS (
+          UPDATE app.customer_case_carat_import_positions p
+          SET
+            selection_status = 'candidate',
+            selected_by_user_id = NULL,
+            selected_at = NULL
+          WHERE p.import_id = (SELECT id FROM visible_import)
+            AND p.selection_status = 'selected'
+        ),
+        selected_positions AS (
+          UPDATE app.customer_case_carat_import_positions p
+          SET
+            selection_status = 'selected',
+            selected_by_user_id = NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint,
+            selected_at = now()
+          WHERE p.import_id = (SELECT id FROM visible_import)
+            AND p.id IN (SELECT id FROM requested_positions)
+          RETURNING p.id
+        ),
+        import_status AS (
+          UPDATE app.customer_case_carat_imports ci
+          SET
+            status = CASE
+              WHEN EXISTS (SELECT 1 FROM selected_positions) THEN 'partially_transferred'
+              ELSE 'analysis_ready'
+            END,
+            updated_at = now()
+          WHERE ci.id = (SELECT id FROM visible_import)
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'selected_count', (SELECT count(*) FROM selected_positions),
+          'import_id', (SELECT id FROM visible_import)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("import_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "carat_import_not_found")
     return result
 
 
@@ -4316,6 +4817,16 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[5] == "archive"
                 ):
                     self.write_json(archive_customer_case_document(parts[2], parts[4], access_email))
+                    return
+                if (
+                    len(parts) == 6
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "carat-imports"
+                    and parts[5] == "positions"
+                ):
+                    self.write_json(
+                        select_carat_import_positions(parts[2], parts[4], data, access_email)
+                    )
                     return
                 if parts == ["overview", "tasks"]:
                     self.write_json(create_task(data, files, access_email))

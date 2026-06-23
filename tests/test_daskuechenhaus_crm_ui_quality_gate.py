@@ -93,6 +93,7 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
 
     assert 'type ProxyKind = "overview" | "admin" | "customers"' in proxy
     assert "Disallowed API path" in proxy
+    assert r"^cases\/\d+\/carat-imports\/\d+\/positions$" in proxy
     assert "safeDecodeSegment" in proxy
     assert "/customers/search" in kunden_search
     assert 'upstream.searchParams.set("status", status)' in kunden_search
@@ -263,6 +264,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Dokument hochladen" in source
     assert 'encType="multipart/form-data"' in source
     assert 'name="file"' in source
+    assert ".prjz" in source
+    assert "application/zip" in source
     assert "lg:grid-cols-[minmax(0,1fr)_360px]" in source
     assert "lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]" in source
     assert "Legt automatisch fest, in welchem Register" in source
@@ -297,6 +300,15 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Terminrelevant" in source
     assert "Notfall / Ersatzbedarf" in source
     assert "Bestehende Küche nicht nutzbar oder Schadenfall" in source
+    assert "CARAT-Importe" in source
+    assert "PRJZ-Projektdateien" in source
+    assert "Ausgewählte Positionen übernehmen" in source
+    assert "caratImports" in source
+    assert "position.selection_status" in source
+    assert "displayImportQuantity" in source
+    assert "displayDimensions" in source
+    assert "carat-imports/${caratImport.id}/positions" in source
+    assert "Noch kein CARAT-Import in diesem Vorgang" in source
     assert "Informationen zu den Dringlichkeitsleveln" in source
     assert "Kontaktweg" in source
     assert "Vorhandene Unterlagen" in source

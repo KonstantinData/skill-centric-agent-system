@@ -266,6 +266,40 @@ export type CustomerCaseDocumentRecord = {
   updated_at: string;
 };
 
+export type CaratImportPositionRecord = {
+  id: number;
+  source_line: number | null;
+  position_number: string | null;
+  supplier_code: string | null;
+  supplier_name: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  dimensions: Record<string, number | string | null | undefined>;
+  selection_status: string;
+  selected_at: string | null;
+};
+
+export type CaratImportRecord = {
+  id: number;
+  customer_case_id: number;
+  document_id: number;
+  parser_version: string;
+  source_filename: string | null;
+  carat_version: string | null;
+  project_number: string | null;
+  project_name: string | null;
+  customer_name: string | null;
+  currency: string | null;
+  supplier_count: number;
+  position_count: number;
+  status: string;
+  summary: Record<string, unknown>;
+  created_at: string;
+  positions: CaratImportPositionRecord[];
+};
+
 export type CustomerCaseRecord = {
   id: number;
   customer_id: number | null;
@@ -288,6 +322,7 @@ export type CustomerCaseRecord = {
   }>;
   sections?: Record<string, SectionPayload>;
   documents?: CustomerCaseDocumentRecord[];
+  carat_imports?: CaratImportRecord[];
   updated_at: string | null;
 };
 

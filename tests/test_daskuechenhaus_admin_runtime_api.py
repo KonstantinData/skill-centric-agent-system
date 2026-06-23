@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
+from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 API_PATH = REPO_ROOT / "scripts" / "hetzner" / "daskuechenhaus_admin_api.py"
@@ -108,6 +112,10 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "save_customer_case_section" in source
     assert "save_customer_case_note" in source
     assert "create_customer_case_document_metadata" in source
+    assert "parse_prjz_content" in source
+    assert "store_carat_prjz_analysis" in source
+    assert "select_carat_import_positions" in source
+    assert 'parts[3] == "carat-imports"' in source
     assert "download_customer_case_document" in source
     assert "archive_customer_case_document" in source
     assert "app.customer_file_sections" in source
@@ -134,6 +142,14 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "content_sha256" in source
     assert "storage_backend" in source
     assert "object_storage_key" in source
+    assert "customer_case_carat_imports" in source
+    assert "customer_case_carat_import_positions" in source
+    assert "'carat_imports', COALESCE((" in source
+    assert "'positions', COALESCE((" in source
+    assert '".prjz": "application/zip"' in source
+    assert '"document_type": (' in source
+    assert '"carat_project"' in source
+    assert 'document_category = "order_processing"' in source
     assert "'document_status', d.document_status" in source
     assert "customer_display_name" in source
     assert "app.customers" in source
@@ -173,6 +189,54 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "'customer_cases', COALESCE((" in source
     assert "'carat_order_number', cc.carat_order_number" in source
     assert "customer_number = NULLIF(data->>'customer_number', '')" not in source
+
+
+def test_daskuechenhaus_admin_api_parses_carat_prjz_uploads() -> None:
+    spec = importlib.util.spec_from_file_location("dkh_admin_api", API_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["dkh_admin_api"] = module
+    spec.loader.exec_module(module)
+
+    prj_lines = "\r\n".join(
+        [
+            "001| 000000000251200000000000000000000|V2026.2.1.2    |                2512|*",
+            "001| 0020|Ben Ali                       |*",
+            "001| 2150|EUR|*",
+            (
+                "002| 20006024011|NOBILIA K                |"
+                "                         |17/26          |20.04.26       |K"
+            ),
+            "003| 9999.Artikel",
+            (
+                "003| 45000000012011|0000000003|00528482436|1|1|1|"
+                "                    |0000000000|       0|00000000000|00000000000|"
+                "00000000000|00000000000|00000000000|00000000000|00000000000|"
+                "0000000000|0"
+            ),
+            "003| 4512         0|       300|      2500|*",
+            (
+                "003| 46006024011|00|Unterschrank|                         |"
+                "               |               |               |  |               |*"
+            ),
+            "003| 4627|20260617|KONSTANTIN|       2.00|0|*",
+        ]
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        archive.writestr("2512_05.PRJ", prj_lines.encode("cp1252"))
+
+    result = module.parse_prjz_content(buffer.getvalue(), "2512_05.PRJZ")
+
+    assert result["carat_version"] == "V2026.2.1.2"
+    assert result["project_number"] == "2512"
+    assert result["customer_name"] == "Ben Ali"
+    assert result["currency"] == "EUR"
+    assert result["suppliers"][0]["name"] == "NOBILIA K"
+    assert result["positions"][0]["title"] == "Unterschrank"
+    assert result["positions"][0]["quantity"] == 2.0
+    assert result["positions"][0]["dimensions"]["width"] == 300.0
+    assert result["positions"][0]["dimensions"]["depth"] == 2500.0
 
 
 def test_daskuechenhaus_admin_api_keeps_cockpit_actions_human_confirmed() -> None:

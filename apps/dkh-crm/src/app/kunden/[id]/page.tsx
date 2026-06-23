@@ -278,6 +278,20 @@ function optionLabel(
   return options.find(([key]) => key === value)?.[1] ?? value ?? "";
 }
 
+function displayImportQuantity(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "Menge offen";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return `Menge ${value}`;
+  return `Menge ${numeric.toLocaleString("de-DE", { maximumFractionDigits: 3 })}`;
+}
+
+function displayDimensions(dimensions: Record<string, number | string | null | undefined>) {
+  const values = [dimensions.width, dimensions.depth, dimensions.height]
+    .filter((value) => value !== null && value !== undefined && value !== "")
+    .map((value) => String(value));
+  return values.length > 0 ? values.join(" x ") : "";
+}
+
 function UrgencyInfoTooltip() {
   return (
     <div className="group relative inline-flex">
@@ -811,6 +825,7 @@ function CaseDesktop({
   const projectContacts = selectedCase.sections?.project_contacts;
   const documents = selectedCase.sections?.documents;
   const caseDocuments = selectedCase.documents ?? [];
+  const caratImports = selectedCase.carat_imports ?? [];
   const processControl = selectedCase.sections?.process_control;
   const activeTaskCount = selectedCaseTasks.filter((task) => task.status !== "done").length;
   const currentPhase = selectedCase.status_phase ?? 1;
@@ -1231,6 +1246,7 @@ function CaseDesktop({
           ) : null}
 
           {activeRegister === "abwicklung" ? (
+          <>
           <Panel>
             <div className="flex items-center gap-2">
               <CheckSquare size={18} aria-hidden="true" />
@@ -1277,6 +1293,133 @@ function CaseDesktop({
               ) : null}
             </div>
           </Panel>
+          <Panel>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ClipboardList size={18} aria-hidden="true" />
+                  <h3 className="section-title">CARAT-Importe</h3>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  PRJZ-Projektdateien werden aus den Vorgangsdokumenten analysiert. Positionen werden erst nach Auswahl übernommen.
+                </p>
+              </div>
+              <LinkButton
+                href={`/kunden/${customerId}?case=${selectedCase.id}&register=${DOCUMENTS_REGISTER.key}`}
+                variant="secondary"
+              >
+                <Upload size={16} aria-hidden="true" />
+                PRJZ hochladen
+              </LinkButton>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {caratImports.map((caratImport) => {
+                const selectedCount = caratImport.positions.filter(
+                  (position) => position.selection_status === "selected",
+                ).length;
+                const supplierNames = Array.from(
+                  new Set(
+                    caratImport.positions.map(
+                      (position) => position.supplier_name || "Ohne Lieferant",
+                    ),
+                  ),
+                );
+                return (
+                  <form
+                    key={caratImport.id}
+                    className="rounded-lg border border-[var(--border)] bg-white p-3"
+                    action={`/api/kunden/cases/${selectedCase.id}/carat-imports/${caratImport.id}/positions?return_to=${returnTo}`}
+                    method="post"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold">
+                          {caratImport.source_filename || `CARAT-Import ${caratImport.id}`}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {caratImport.project_number ? `Projekt ${caratImport.project_number}` : "Projekt ohne Nummer"}
+                          {caratImport.carat_version ? ` · ${caratImport.carat_version}` : ""}
+                          {caratImport.customer_name ? ` · ${caratImport.customer_name}` : ""}
+                          {caratImport.created_at ? ` · ${caratImport.created_at}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="badge">{caratImport.supplier_count} Lieferanten</span>
+                        <span className="badge">{caratImport.position_count} Positionen</span>
+                        <span className="badge">{selectedCount} ausgewählt</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3">
+                      {supplierNames.map((supplierName) => {
+                        const positions = caratImport.positions.filter(
+                          (position) => (position.supplier_name || "Ohne Lieferant") === supplierName,
+                        );
+                        return (
+                          <div
+                            key={`${caratImport.id}-${supplierName}`}
+                            className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-bold">{supplierName}</p>
+                              <span className="badge">{positions.length} Positionen</span>
+                            </div>
+                            <div className="mt-2 grid gap-2">
+                              {positions.map((position) => {
+                                const dimensions = displayDimensions(position.dimensions);
+                                return (
+                                  <label
+                                    key={position.id}
+                                    className="grid gap-2 rounded-lg border border-[var(--border)] bg-white p-3 text-sm lg:grid-cols-[auto_minmax(0,1fr)_auto]"
+                                  >
+                                    <input
+                                      className="mt-1"
+                                      type="checkbox"
+                                      name={`position_${position.id}`}
+                                      defaultChecked={position.selection_status === "selected"}
+                                    />
+                                    <span className="min-w-0">
+                                      <span className="block font-bold">
+                                        {position.position_number ? `Pos. ${position.position_number} · ` : ""}
+                                        {position.title}
+                                      </span>
+                                      <span className="mt-1 block text-xs text-[var(--muted)]">
+                                        {[
+                                          position.article_code,
+                                          displayImportQuantity(position.quantity),
+                                          dimensions ? `${dimensions} mm` : "",
+                                        ].filter(Boolean).join(" · ")}
+                                      </span>
+                                      {position.description ? (
+                                        <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted)]">
+                                          {position.description}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="badge h-fit">
+                                      {position.selection_status === "selected" ? "Übernommen" : "Kandidat"}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 flex justify-end border-t border-[var(--border)] pt-3">
+                      <Button type="submit">Ausgewählte Positionen übernehmen</Button>
+                    </div>
+                  </form>
+                );
+              })}
+              {caratImports.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
+                  Noch kein CARAT-Import in diesem Vorgang. Laden Sie eine PRJZ-Datei im Dokumentenbereich hoch.
+                </div>
+              ) : null}
+            </div>
+          </Panel>
+          </>
           ) : null}
 
           {["angebot_auftrag", "rechnung_abschluss"].includes(activeRegister) ? (
@@ -1481,7 +1624,7 @@ function CaseDesktop({
                           className="bg-white"
                           name="file"
                           type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.prjz,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip-compressed,application/octet-stream"
                         />
                       </Label>
                       <Label label="Version">
