@@ -105,6 +105,17 @@ export async function proxyRoute(
   });
 
   if (!["GET", "HEAD"].includes(method)) {
+    const acceptsJson = request.headers.get("accept")?.includes("application/json");
+    if (acceptsJson || !response.ok) {
+      const contentType = response.headers.get("content-type") ?? "application/json";
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: {
+          "content-type": contentType,
+          "cache-control": "no-store",
+        },
+      });
+    }
     const returnTo = safeReturnTo(
       request.nextUrl.searchParams.get("return_to"),
       request.headers.get("referer") ? new URL(request.headers.get("referer")!).pathname : "/",

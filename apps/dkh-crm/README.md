@@ -65,6 +65,24 @@ the search has matches or is unavailable, and opens as a centered modal only
 after the customer search returns no matches for a query with at least three
 characters.
 
+The create form switches fields by customer type. `Privatkunde` captures person,
+address, country, tax treatment, ownership, notes, and optional direct case data.
+`Objektkunde` captures company data first, including object-customer label,
+country, optional legal/register/tax identifiers, tax treatment, and then a
+primary contact person.
+
+On save, new customers with an email address are checked against existing active
+customers. If the email already exists, the API returns a warning and the UI
+shows a read-only customer snapshot with a link to open the existing file. The
+user can close the check to correct the form or confirm `Trotzdem speichern`,
+which resubmits with the explicit `allow_duplicate_email` override. Email
+duplicates are therefore a deliberate warning, not a database hard stop. Primary
+phone and mobile duplicates still remain hard-blocked by the backend.
+
+Tax treatment is stored as CRM metadata only. Third-country exports, Switzerland
+exports, and NATO/US-forces cases require manual verification and supporting
+documents before any invoice logic relies on the selected treatment.
+
 The `Kunden direkt Suche` card is a live search for opening existing customer
 files. It uses the same minimum query length but never opens the creation modal
 when there is no result. Its status filter supports active customers, closed

@@ -120,6 +120,12 @@
   const createModal = document.querySelector("[data-customer-create-modal]");
   const createCaseToggle = document.querySelector("[data-customer-create-case-toggle]");
   const caseDetails = document.querySelector("[data-customer-case-details]");
+  const createForm = document.querySelector("[data-customer-create-form]");
+  const customerTypeSelect = document.querySelector("[data-customer-type-select]");
+  const emailDuplicateModal = document.querySelector("[data-customer-email-duplicate-modal]");
+  const emailDuplicateResults = document.querySelector("[data-customer-email-duplicate-results]");
+  const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
+  let pendingDuplicateFormData = null;
 
   const closeCreateModal = () => {
     if (createModal) createModal.hidden = true;
@@ -132,6 +138,19 @@
     for (const field of caseDetails.querySelectorAll("input, select, textarea")) {
       if (!field.name) continue;
       field.disabled = !enabled;
+    }
+  };
+
+  const syncCustomerTypeSections = () => {
+    if (!customerTypeSelect) return;
+    const selectedType = customerTypeSelect.value || "private";
+    for (const section of document.querySelectorAll("[data-customer-type-section]")) {
+      const enabled = section.getAttribute("data-customer-type-section") === selectedType;
+      section.hidden = !enabled;
+      for (const field of section.querySelectorAll("input, select, textarea")) {
+        if (!field.name) continue;
+        field.disabled = !enabled;
+      }
     }
   };
 
@@ -195,6 +214,73 @@
     }
   };
 
+  const closeEmailDuplicateModal = () => {
+    pendingDuplicateFormData = null;
+    if (emailDuplicateModal) emailDuplicateModal.hidden = true;
+  };
+
+  const renderDuplicateMatches = (matches) => {
+    if (!emailDuplicateResults) return;
+    emailDuplicateResults.innerHTML = "";
+    for (const customer of matches) {
+      const row = document.createElement("article");
+      row.className = "rounded-lg border border-[var(--border)] bg-white p-4";
+
+      const title = document.createElement("p");
+      title.className = "font-bold";
+      title.textContent = customer.display_name || "Unbenannter Kunde";
+
+      const meta = document.createElement("p");
+      meta.className = "text-sm text-[var(--muted)]";
+      const location = [customer.postal_code, customer.city].filter(Boolean).join(" ");
+      meta.textContent = [
+        customer.customer_number || "Ohne Kundennummer",
+        customer.primary_email,
+        customer.primary_phone,
+        location,
+      ].filter(Boolean).join(" · ");
+
+      const cases = document.createElement("p");
+      cases.className = "mt-1 text-sm text-[var(--muted)]";
+      cases.textContent = "Aktive Vorgänge: " + (customer.active_case_count || 0);
+
+      const action = document.createElement("a");
+      action.className = "btn btn-secondary mt-3";
+      action.href = "/kunden/" + encodeURIComponent(customer.customer_id);
+      action.target = "_blank";
+      action.rel = "noopener";
+      action.setAttribute("data-customer-file-link", "");
+      action.setAttribute("data-customer-id", String(customer.customer_id));
+      action.textContent = "Kundenakte öffnen";
+
+      row.append(title, meta, cases, action);
+      emailDuplicateResults.append(row);
+    }
+  };
+
+  const submitCreateForm = async (formData) => {
+    if (!createForm) return;
+    const response = await fetch(createForm.action, {
+      method: "POST",
+      headers: { accept: "application/json" },
+      body: formData,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 409 && payload.error === "customer_email_duplicate_found") {
+      pendingDuplicateFormData = formData;
+      renderDuplicateMatches(Array.isArray(payload.matches) ? payload.matches : []);
+      if (emailDuplicateModal) emailDuplicateModal.hidden = false;
+      return;
+    }
+    if (!response.ok || !payload.ok) {
+      alert("Kunde konnte nicht gespeichert werden.");
+      return;
+    }
+    window.location.href = payload.customer_id
+      ? "/kunden/" + encodeURIComponent(payload.customer_id)
+      : "/kunden";
+  };
+
   if (createModal) {
     createModal.addEventListener("click", (event) => {
       if (event.target === createModal) closeCreateModal();
@@ -211,6 +297,41 @@
   if (createCaseToggle) {
     createCaseToggle.addEventListener("change", syncCaseDetails);
     syncCaseDetails();
+  }
+
+  if (customerTypeSelect) {
+    customerTypeSelect.addEventListener("change", syncCustomerTypeSections);
+    syncCustomerTypeSections();
+  }
+
+  if (createForm) {
+    createForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitCreateForm(new FormData(createForm));
+    });
+  }
+
+  if (emailDuplicateModal) {
+    emailDuplicateModal.addEventListener("click", (event) => {
+      if (event.target === emailDuplicateModal) closeEmailDuplicateModal();
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-customer-email-duplicate-close]")
+        : null;
+      if (closeButton) closeEmailDuplicateModal();
+    });
+  }
+
+  if (emailDuplicateConfirm) {
+    emailDuplicateConfirm.addEventListener("click", () => {
+      if (!pendingDuplicateFormData) return;
+      const confirmedData = new FormData();
+      for (const [key, value] of pendingDuplicateFormData.entries()) {
+        confirmedData.append(key, value);
+      }
+      confirmedData.set("allow_duplicate_email", "true");
+      if (emailDuplicateModal) emailDuplicateModal.hidden = true;
+      submitCreateForm(confirmedData);
+    });
   }
 
   setupSearch(document.querySelector("[data-customer-search-first]"), {

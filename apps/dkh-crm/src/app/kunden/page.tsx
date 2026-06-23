@@ -126,10 +126,15 @@ export default async function CustomersPage() {
               Schließen
             </button>
           </div>
-          <form className="mt-4 grid gap-3" action="/api/kunden/customers?return_to=/kunden" method="post">
+          <form
+            data-customer-create-form
+            className="mt-4 grid gap-3"
+            action="/api/kunden/customers?return_to=/kunden"
+            method="post"
+          >
             <div className="grid gap-3 md:grid-cols-2">
               <Label label="Kundentyp">
-                <Select name="customer_type" defaultValue="private">
+                <Select name="customer_type" defaultValue="private" data-customer-type-select>
                   <option value="private">Privatkunde</option>
                   <option value="company">Objektkunde</option>
                 </Select>
@@ -138,38 +143,156 @@ export default async function CustomersPage() {
                 <Field value="Wird beim Speichern automatisch vergeben" disabled />
               </Label>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Label label="Vorname">
-                <Field name="first_name" />
-              </Label>
-              <Label label="Nachname">
-                <Field name="last_name" />
-              </Label>
+            <div data-customer-type-section="private" className="grid gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Vorname">
+                  <Field name="first_name" />
+                </Label>
+                <Label label="Nachname">
+                  <Field name="last_name" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="E-Mail">
+                  <Field name="primary_email" type="email" />
+                </Label>
+                <Label label="Telefon">
+                  <Field name="primary_phone" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Label label="Straße" className="md:col-span-2">
+                  <Field name="street" />
+                </Label>
+                <Label label="Hausnummer">
+                  <Field name="house_number" />
+                </Label>
+                <Label label="PLZ">
+                  <Field name="postal_code" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Ort">
+                  <Field name="city" />
+                </Label>
+                <Label label="Land">
+                  <Select name="country" defaultValue="DE">
+                    <option value="DE">Deutschland</option>
+                    <option value="CH">Schweiz</option>
+                    <option value="US">USA</option>
+                    <option value="AT">Österreich</option>
+                    <option value="FR">Frankreich</option>
+                    <option value="ZZ">Anderes Land</option>
+                  </Select>
+                </Label>
+              </div>
             </div>
-            <Label label="Firma">
-              <Field name="company_name" />
+            <div data-customer-type-section="company" className="grid gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Firma">
+                  <Field name="company_name" />
+                </Label>
+                <Label label="Objektkunden-Art">
+                  <Select name="object_customer_label" defaultValue="">
+                    <option value="">Bitte wählen</option>
+                    <option value="architect">Architekt</option>
+                    <option value="developer">Bauträger</option>
+                    <option value="company">Firma</option>
+                    <option value="partner">Partner</option>
+                    <option value="joinery">Schreinerei</option>
+                    <option value="contractor">Handwerker</option>
+                    <option value="other">Sonstiges</option>
+                  </Select>
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="E-Mail">
+                  <Field name="primary_email" type="email" />
+                </Label>
+                <Label label="Telefon">
+                  <Field name="primary_phone" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Label label="Straße" className="md:col-span-2">
+                  <Field name="street" />
+                </Label>
+                <Label label="Hausnummer">
+                  <Field name="house_number" />
+                </Label>
+                <Label label="PLZ">
+                  <Field name="postal_code" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Ort">
+                  <Field name="city" />
+                </Label>
+                <Label label="Land">
+                  <Select name="country" defaultValue="DE">
+                    <option value="DE">Deutschland</option>
+                    <option value="CH">Schweiz</option>
+                    <option value="US">USA</option>
+                    <option value="AT">Österreich</option>
+                    <option value="FR">Frankreich</option>
+                    <option value="ZZ">Anderes Land</option>
+                  </Select>
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Rechtsform">
+                  <Field name="legal_form" placeholder="z. B. GmbH, KG, AG" />
+                </Label>
+                <Label label="USt-IdNr.">
+                  <Field name="vat_id" placeholder="z. B. DE123456789" />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Handelsregisternummer">
+                  <Field name="registry_number" placeholder="z. B. HRB 12345" />
+                </Label>
+                <Label label="Registergericht">
+                  <Field name="registry_court" placeholder="z. B. Amtsgericht Stuttgart" />
+                </Label>
+              </div>
+              <Label label="Steuernummer">
+                <Field name="tax_number" />
+              </Label>
+              <div className="grid gap-3 border-t border-[var(--border)] pt-3">
+                <h3 className="section-title">Ansprechpartner</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Label label="Vorname">
+                    <Field name="contact_first_name" />
+                  </Label>
+                  <Label label="Nachname">
+                    <Field name="contact_last_name" />
+                  </Label>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Label label="E-Mail Ansprechpartner">
+                    <Field name="contact_email" type="email" />
+                  </Label>
+                  <Label label="Telefon Ansprechpartner">
+                    <Field name="contact_phone" />
+                  </Label>
+                </div>
+              </div>
+            </div>
+            <Label label="Steuerbehandlung">
+              <Select name="tax_treatment" defaultValue="standard_de">
+                <option value="standard_de">Deutschland Standard</option>
+                <option value="eu_business">EU-Unternehmen mit USt-IdNr.</option>
+                <option value="third_country_export">Drittland / Ausfuhr prüfen</option>
+                <option value="switzerland_export">Schweiz / Ausfuhr prüfen</option>
+                <option value="nato_forces">NATO / US-Streitkräfte prüfen</option>
+                <option value="custom">Abweichend / manuell prüfen</option>
+              </Select>
             </Label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Label label="E-Mail">
-                <Field name="primary_email" type="email" />
-              </Label>
-              <Label label="Telefon">
-                <Field name="primary_phone" />
-              </Label>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Label label="Straße">
-                <Field name="street" />
-              </Label>
-              <Label label="Hausnummer">
-                <Field name="house_number" />
-              </Label>
-              <Label label="PLZ">
-                <Field name="postal_code" />
-              </Label>
-            </div>
-            <Label label="Ort">
-              <Field name="city" />
+            <Label label="Hinweis zur Steuerbehandlung">
+              <Textarea
+                name="tax_treatment_note"
+                placeholder="z. B. Ausfuhrnachweis erforderlich, NATO-Bescheinigung prüfen"
+              />
             </Label>
             <Label label="Zuständig">
               <Select name="owner_user_id">
@@ -233,6 +356,44 @@ export default async function CustomersPage() {
             </div>
             <Button type="submit">Kunde speichern</Button>
           </form>
+        </Panel>
+      </div>
+      <div
+        data-customer-email-duplicate-modal
+        hidden
+        className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-email-duplicate-title"
+      >
+        <Panel className="w-full max-w-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="customer-email-duplicate-title" className="section-title">
+                E-Mail bereits vorhanden
+              </h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Prüfen Sie den bestehenden Kunden, bevor Sie diese E-Mail erneut verwenden.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-customer-email-duplicate-close
+              aria-label="Dublettenprüfung schließen"
+            >
+              Schließen
+            </button>
+          </div>
+          <div data-customer-email-duplicate-results className="mt-4 grid gap-3" />
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
+            <button type="button" className="btn btn-secondary" data-customer-email-duplicate-close>
+              Prüfung schließen
+            </button>
+            <button type="button" className="btn btn-primary" data-customer-email-duplicate-confirm>
+              Trotzdem speichern
+            </button>
+          </div>
         </Panel>
       </div>
       <Script src="/customer-search.v1.js" strategy="afterInteractive" />

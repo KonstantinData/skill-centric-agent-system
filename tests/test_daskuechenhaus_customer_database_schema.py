@@ -164,9 +164,19 @@ def test_customer_search_first_migration_adds_deduplication_contract() -> None:
     assert "primary_mobile_normalized" in migration
     assert "phone_normalized" in migration
     assert "mobile_normalized" in migration
-    assert "customers_primary_email_unique_idx" in migration
+    assert "DROP INDEX IF EXISTS app.customers_primary_email_unique_idx" in migration
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS customers_primary_email_unique_idx" not in migration
     assert "customers_primary_phone_normalized_unique_idx" in migration
     assert "customers_primary_mobile_normalized_unique_idx" in migration
+    assert "object_customer_label TEXT" in migration
+    assert "customers_object_customer_label CHECK" in migration
+    assert "'architect'" in migration
+    assert "'developer'" in migration
+    assert "'joinery'" in migration
+    assert "tax_treatment TEXT" in migration
+    assert "customers_tax_treatment CHECK" in migration
+    assert "'switzerland_export'" in migration
+    assert "'nato_forces'" in migration
     assert "customers_source CHECK" in migration
     assert "'walk_in'" in migration
     assert "'website'" in migration

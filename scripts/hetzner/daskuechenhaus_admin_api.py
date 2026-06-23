@@ -60,10 +60,16 @@ class FileUpload:
 
 
 class ApiError(Exception):
-    def __init__(self, status: HTTPStatus, message: str) -> None:
+    def __init__(
+        self,
+        status: HTTPStatus,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.message = message
+        self.details = details or {}
 
 
 def read_token() -> str:
@@ -1145,6 +1151,15 @@ def customers_state(access_email: str) -> dict[str, Any]:
                 'primary_phone', c.primary_phone,
                 'primary_mobile', c.primary_mobile,
                 'preferred_contact_channel', c.preferred_contact_channel,
+                'legal_form', c.legal_form,
+                'vat_id', c.vat_id,
+                'tax_number', c.tax_number,
+                'registry_court', c.registry_court,
+                'registry_number', c.registry_number,
+                'object_customer_label', c.object_customer_label,
+                'tax_treatment', c.tax_treatment,
+                'tax_treatment_note', c.tax_treatment_note,
+                'country', c.country,
                 'notes', c.notes,
                 'owner_user_id', c.owner_user_id,
                 'updated_at',
@@ -1368,7 +1383,10 @@ def search_customers(
     )
 
 
-def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def customer_duplicate_matches(
+    payload: dict[str, Any],
+    match_scope: str = "all",
+) -> list[dict[str, Any]]:
     result = psql_json(
         """
         WITH payload AS (SELECT :'payload'::jsonb AS data),
@@ -1376,6 +1394,20 @@ def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
           SELECT DISTINCT
             c.id,
             c.display_name,
+            c.customer_number,
+            c.customer_type,
+            c.primary_email,
+            c.primary_phone,
+            ca.postal_code,
+            ca.city,
+            ca.street,
+            ca.house_number,
+            (
+              SELECT count(*)
+              FROM app.customer_cases cc
+              WHERE cc.customer_id = c.id
+                AND cc.is_active = TRUE
+            ) AS active_case_count,
             CASE
               WHEN NULLIF(data->>'primary_email', '') IS NOT NULL
                 AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
@@ -1397,7 +1429,15 @@ def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 THEN 'name_postal_code'
               ELSE 'unknown'
             END AS match_type
-          FROM app.customers c, payload
+          FROM app.customers c
+          LEFT JOIN LATERAL (
+            SELECT postal_code, city, street, house_number
+            FROM app.customer_addresses ca
+            WHERE ca.customer_id = c.id
+            ORDER BY ca.is_primary DESC, ca.id
+            LIMIT 1
+          ) ca ON TRUE,
+          payload
           WHERE c.is_active = TRUE
             AND c.id <> COALESCE(NULLIF(data->>'customer_id', '')::bigint, 0)
             AND (
@@ -1424,6 +1464,14 @@ def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 )
               )
             )
+            AND (
+              :'match_scope' = 'all'
+              OR (
+                :'match_scope' = 'email'
+                AND NULLIF(data->>'primary_email', '') IS NOT NULL
+                AND lower(COALESCE(c.primary_email, '')) = lower(data->>'primary_email')
+              )
+            )
           ORDER BY c.display_name, c.id
           LIMIT 5
         )
@@ -1433,6 +1481,15 @@ def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
               jsonb_build_object(
                 'customer_id', id,
                 'display_name', display_name,
+                'customer_number', customer_number,
+                'customer_type', customer_type,
+                'primary_email', primary_email,
+                'primary_phone', primary_phone,
+                'postal_code', postal_code,
+                'city', city,
+                'street', street,
+                'house_number', house_number,
+                'active_case_count', active_case_count,
                 'match_type', match_type
               )
               ORDER BY display_name, id
@@ -1441,7 +1498,7 @@ def customer_duplicate_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
           ), '[]'::jsonb)
         )::text;
         """,
-        {"payload": json.dumps(payload)},
+        {"payload": json.dumps(payload), "match_scope": match_scope},
     )
     matches = result.get("matches") if result else []
     return matches if isinstance(matches, list) else []
@@ -1459,6 +1516,16 @@ def save_customer(
         raise ApiError(HTTPStatus.BAD_REQUEST, "customer_name_required")
     customer_type = str(data.get("customer_type", "private")).strip() or "private"
     create_case = normalize_bool(data.get("create_case"))
+    allow_duplicate_email = normalize_bool(data.get("allow_duplicate_email"))
+    is_company = customer_type == "company"
+    contact_first_name = str(data.get("contact_first_name", "")).strip()
+    contact_last_name = str(data.get("contact_last_name", "")).strip()
+    contact_email = str(data.get("contact_email", "")).strip().lower()
+    contact_phone = str(data.get("contact_phone", "")).strip()
+    contact_display_name = " ".join(
+        part for part in [contact_first_name, contact_last_name] if part
+    )
+    country = str(data.get("country", "DE")).strip().upper() or "DE"
     payload = {
         "customer_id": str(customer_id or "").strip(),
         "customer_number": ""
@@ -1467,9 +1534,26 @@ def save_customer(
         "customer_type": customer_type,
         "salutation": str(data.get("salutation", "")).strip(),
         "title": str(data.get("title", "")).strip(),
-        "first_name": str(data.get("first_name", "")).strip(),
-        "last_name": str(data.get("last_name", "")).strip(),
+        "first_name": "" if is_company else str(data.get("first_name", "")).strip(),
+        "last_name": "" if is_company else str(data.get("last_name", "")).strip(),
         "company_name": str(data.get("company_name", "")).strip(),
+        "legal_form": str(data.get("legal_form", "")).strip() if is_company else "",
+        "vat_id": str(data.get("vat_id", "")).strip() if is_company else "",
+        "tax_number": str(data.get("tax_number", "")).strip() if is_company else "",
+        "registry_court": str(data.get("registry_court", "")).strip() if is_company else "",
+        "registry_number": str(data.get("registry_number", "")).strip() if is_company else "",
+        "object_customer_label": str(data.get("object_customer_label", "")).strip()
+        if is_company
+        else "",
+        "country": country,
+        "tax_treatment": str(data.get("tax_treatment", "standard_de")).strip() or "standard_de",
+        "tax_treatment_note": str(data.get("tax_treatment_note", "")).strip(),
+        "contact_first_name": contact_first_name,
+        "contact_last_name": contact_last_name,
+        "contact_display_name": contact_display_name,
+        "contact_email": contact_email,
+        "contact_phone": contact_phone,
+        "contact_phone_normalized": normalize_phone_number(contact_phone),
         "display_name": display_name,
         "primary_email": str(data.get("primary_email", "")).strip().lower(),
         "primary_phone": str(data.get("primary_phone", "")).strip(),
@@ -1503,9 +1587,28 @@ def save_customer(
         "actor_user_id": actor_user_id,
         "context": context,
     }
-    duplicate_matches = customer_duplicate_matches(payload)
+    email_duplicate_matches = customer_duplicate_matches(payload, "email")
+    if (
+        email_duplicate_matches
+        and not allow_duplicate_email
+        and not customer_id
+    ):
+        raise ApiError(
+            HTTPStatus.CONFLICT,
+            "customer_email_duplicate_found",
+            {"matches": email_duplicate_matches},
+        )
+    duplicate_matches = [
+        match
+        for match in customer_duplicate_matches(payload)
+        if match.get("match_type") != "email"
+    ]
     if duplicate_matches:
-        raise ApiError(HTTPStatus.CONFLICT, "customer_duplicate_found")
+        raise ApiError(
+            HTTPStatus.CONFLICT,
+            "customer_duplicate_found",
+            {"matches": duplicate_matches},
+        )
     result = psql_json(
         """
         WITH payload AS (SELECT :'payload'::jsonb AS data),
@@ -1534,6 +1637,12 @@ def save_customer(
             first_name = NULLIF(data->>'first_name', ''),
             last_name = NULLIF(data->>'last_name', ''),
             company_name = NULLIF(data->>'company_name', ''),
+            vat_id = NULLIF(data->>'vat_id', ''),
+            tax_number = NULLIF(data->>'tax_number', ''),
+            legal_form = NULLIF(data->>'legal_form', ''),
+            registry_court = NULLIF(data->>'registry_court', ''),
+            registry_number = NULLIF(data->>'registry_number', ''),
+            object_customer_label = NULLIF(data->>'object_customer_label', ''),
             display_name = data->>'display_name',
             primary_email = NULLIF(data->>'primary_email', ''),
             primary_phone = NULLIF(data->>'primary_phone', ''),
@@ -1541,6 +1650,10 @@ def save_customer(
             primary_mobile = NULLIF(data->>'primary_mobile', ''),
             primary_mobile_normalized = NULLIF(data->>'primary_mobile_normalized', ''),
             preferred_contact_channel = data->>'preferred_contact_channel',
+            country = NULLIF(data->>'country', ''),
+            iso_country_code = NULLIF(data->>'country', ''),
+            tax_treatment = NULLIF(data->>'tax_treatment', ''),
+            tax_treatment_note = NULLIF(data->>'tax_treatment_note', ''),
             notes = NULLIF(data->>'notes', ''),
             owner_user_id = NULLIF(data->>'owner_user_id', '')::bigint,
             updated_at = now()
@@ -1557,6 +1670,12 @@ def save_customer(
             first_name,
             last_name,
             company_name,
+            vat_id,
+            tax_number,
+            legal_form,
+            registry_court,
+            registry_number,
+            object_customer_label,
             display_name,
             primary_email,
             primary_phone,
@@ -1564,6 +1683,10 @@ def save_customer(
             primary_mobile,
             primary_mobile_normalized,
             preferred_contact_channel,
+            country,
+            iso_country_code,
+            tax_treatment,
+            tax_treatment_note,
             notes,
             owner_user_id,
             created_by_user_id
@@ -1576,6 +1699,12 @@ def save_customer(
             NULLIF(data->>'first_name', ''),
             NULLIF(data->>'last_name', ''),
             NULLIF(data->>'company_name', ''),
+            NULLIF(data->>'vat_id', ''),
+            NULLIF(data->>'tax_number', ''),
+            NULLIF(data->>'legal_form', ''),
+            NULLIF(data->>'registry_court', ''),
+            NULLIF(data->>'registry_number', ''),
+            NULLIF(data->>'object_customer_label', ''),
             data->>'display_name',
             NULLIF(data->>'primary_email', ''),
             NULLIF(data->>'primary_phone', ''),
@@ -1583,6 +1712,10 @@ def save_customer(
             NULLIF(data->>'primary_mobile', ''),
             NULLIF(data->>'primary_mobile_normalized', ''),
             data->>'preferred_contact_channel',
+            NULLIF(data->>'country', ''),
+            NULLIF(data->>'country', ''),
+            NULLIF(data->>'tax_treatment', ''),
+            NULLIF(data->>'tax_treatment_note', ''),
             NULLIF(data->>'notes', ''),
             NULLIF(data->>'owner_user_id', '')::bigint,
             (data->>'actor_user_id')::bigint
@@ -1618,6 +1751,8 @@ def save_customer(
             house_number = NULLIF(data->>'house_number', ''),
             postal_code = data->>'postal_code',
             city = data->>'city',
+            country = NULLIF(data->>'country', ''),
+            iso_country_code = NULLIF(data->>'country', ''),
             updated_at = now(),
             is_primary = TRUE
           FROM address_input
@@ -1632,6 +1767,8 @@ def save_customer(
             house_number,
             postal_code,
             city,
+            country,
+            iso_country_code,
             is_primary
           )
           SELECT
@@ -1642,9 +1779,76 @@ def save_customer(
             NULLIF(data->>'house_number', ''),
             data->>'postal_code',
             data->>'city',
+            data->>'country',
+            data->>'country',
             TRUE
           FROM address_input
           WHERE NOT EXISTS (SELECT 1 FROM existing_address)
+        ),
+        contact_input AS (
+          SELECT data
+          FROM payload
+          WHERE data->>'customer_type' = 'company'
+            AND (
+              NULLIF(data->>'contact_display_name', '') IS NOT NULL
+              OR NULLIF(data->>'contact_email', '') IS NOT NULL
+              OR NULLIF(data->>'contact_phone', '') IS NOT NULL
+            )
+        ),
+        existing_contact AS (
+          SELECT cc.id
+          FROM app.customer_contacts cc
+          WHERE cc.customer_id = (SELECT id FROM target_customer)
+            AND cc.contact_type = 'primary'
+          ORDER BY cc.is_primary DESC, cc.id
+          LIMIT 1
+        ),
+        updated_contact AS (
+          UPDATE app.customer_contacts cc
+          SET
+            first_name = NULLIF(data->>'contact_first_name', ''),
+            last_name = NULLIF(data->>'contact_last_name', ''),
+            display_name = COALESCE(
+              NULLIF(data->>'contact_display_name', ''),
+              NULLIF(data->>'contact_email', ''),
+              NULLIF(data->>'contact_phone', '')
+            ),
+            email = NULLIF(data->>'contact_email', ''),
+            phone = NULLIF(data->>'contact_phone', ''),
+            phone_normalized = NULLIF(data->>'contact_phone_normalized', ''),
+            updated_at = now(),
+            is_primary = TRUE
+          FROM contact_input
+          WHERE cc.id = (SELECT id FROM existing_contact)
+        ),
+        inserted_contact AS (
+          INSERT INTO app.customer_contacts (
+            customer_id,
+            contact_type,
+            first_name,
+            last_name,
+            display_name,
+            email,
+            phone,
+            phone_normalized,
+            is_primary
+          )
+          SELECT
+            (SELECT id FROM target_customer),
+            'primary',
+            NULLIF(data->>'contact_first_name', ''),
+            NULLIF(data->>'contact_last_name', ''),
+            COALESCE(
+              NULLIF(data->>'contact_display_name', ''),
+              NULLIF(data->>'contact_email', ''),
+              NULLIF(data->>'contact_phone', '')
+            ),
+            NULLIF(data->>'contact_email', ''),
+            NULLIF(data->>'contact_phone', ''),
+            NULLIF(data->>'contact_phone_normalized', ''),
+            TRUE
+          FROM contact_input
+          WHERE NOT EXISTS (SELECT 1 FROM existing_contact)
         ),
         created_case AS (
           INSERT INTO app.customer_cases (
@@ -2686,7 +2890,9 @@ class Handler(BaseHTTPRequestHandler):
                     return
             raise ApiError(HTTPStatus.NOT_FOUND, "not_found")
         except ApiError as error:
-            self.write_json({"ok": False, "error": error.message}, error.status)
+            payload = {"ok": False, "error": error.message}
+            payload.update(error.details)
+            self.write_json(payload, error.status)
         except Exception:
             traceback.print_exc()
             self.write_json(

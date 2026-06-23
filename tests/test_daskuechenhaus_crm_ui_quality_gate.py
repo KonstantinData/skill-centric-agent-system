@@ -35,6 +35,10 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "/kunden/" in search_script
     assert "maxOpenFiles = 3" in search_script
     assert "[data-customer-create-modal]" in search_script
+    assert "[data-customer-email-duplicate-modal]" in search_script
+    assert "customer_email_duplicate_found" in search_script
+    assert 'confirmedData.set("allow_duplicate_email", "true")' in search_script
+    assert "syncCustomerTypeSections" in search_script
     assert "options.openCreateModal && createModal" in search_script
     assert "closeCreateModal" in search_script
     assert "Escape" in search_script
@@ -90,8 +94,12 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "Suche, Dubletten-sensible Neuanlage" not in source
     assert "eyebrow = \"das küchenhaus\"" in hero
     assert "data-customer-create-modal" in source
+    assert "data-customer-create-form" in source
     assert "role=\"dialog\"" in source
     assert "data-customer-create-close" in source
+    assert "data-customer-email-duplicate-modal" in source
+    assert "data-customer-email-duplicate-results" in source
+    assert "Trotzdem speichern" in source
     assert "Neukundenanlage" in source
     assert "Kunde suchen" not in source
     assert "data-customer-direct-search" in source
@@ -103,6 +111,23 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "xl:grid-cols-2" in source
     assert "data-customer-search-empty" not in source
     assert "name=\"create_case\"" in source
+    assert "data-customer-type-select" in source
+    assert "data-customer-type-section=\"private\"" in source
+    assert "data-customer-type-section=\"company\"" in source
+    assert "name=\"object_customer_label\"" in source
+    assert "Architekt" in source
+    assert "Bauträger" in source
+    assert "Schreinerei" in source
+    assert "name=\"legal_form\"" in source
+    assert "name=\"vat_id\"" in source
+    assert "name=\"registry_number\"" in source
+    assert "name=\"registry_court\"" in source
+    assert "name=\"contact_first_name\"" in source
+    assert "name=\"contact_email\"" in source
+    assert "name=\"country\"" in source
+    assert "Schweiz" in source
+    assert "name=\"tax_treatment\"" in source
+    assert "NATO / US-Streitkräfte prüfen" in source
     assert "data-customer-create-case-toggle" in source
     assert "data-customer-case-details" in source
     assert "defaultChecked" not in source

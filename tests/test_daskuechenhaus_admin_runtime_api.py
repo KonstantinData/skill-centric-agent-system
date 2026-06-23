@@ -85,7 +85,16 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "customer_name_required" in source
     assert "customer_not_found" in source
     assert "customer_duplicate_found" in source
+    assert "customer_email_duplicate_found" in source
+    assert "allow_duplicate_email" in source
+    assert "match_scope: str = \"all\"" in source
+    assert '{"matches": email_duplicate_matches}' in source
     assert "customer_duplicate_matches" in source
+    assert '"object_customer_label":' in source
+    assert '"tax_treatment": str(data.get("tax_treatment", "standard_de")).strip()' in source
+    assert "app.customer_contacts" in source
+    assert "contact_input AS" in source
+    assert "inserted_contact AS" in source
     assert "normalize_phone_number" in source
     assert '"primary_email": str(data.get("primary_email", "")).strip().lower()' in source
     assert (

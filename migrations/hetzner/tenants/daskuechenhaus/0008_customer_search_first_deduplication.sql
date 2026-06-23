@@ -1,6 +1,12 @@
 ALTER TABLE app.customers
   ADD COLUMN IF NOT EXISTS primary_phone_normalized TEXT,
-  ADD COLUMN IF NOT EXISTS primary_mobile_normalized TEXT;
+  ADD COLUMN IF NOT EXISTS primary_mobile_normalized TEXT,
+  ADD COLUMN IF NOT EXISTS legal_form TEXT,
+  ADD COLUMN IF NOT EXISTS registry_court TEXT,
+  ADD COLUMN IF NOT EXISTS registry_number TEXT,
+  ADD COLUMN IF NOT EXISTS object_customer_label TEXT,
+  ADD COLUMN IF NOT EXISTS tax_treatment TEXT,
+  ADD COLUMN IF NOT EXISTS tax_treatment_note TEXT;
 
 ALTER TABLE app.customer_contacts
   ADD COLUMN IF NOT EXISTS phone_normalized TEXT,
@@ -73,10 +79,56 @@ BEGIN
 END;
 $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS customers_primary_email_unique_idx
-  ON app.customers (lower(primary_email))
-  WHERE primary_email IS NOT NULL
-    AND is_active = TRUE;
+DROP INDEX IF EXISTS app.customers_primary_email_unique_idx;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customers_object_customer_label'
+      AND conrelid = 'app.customers'::regclass
+  ) THEN
+    ALTER TABLE app.customers
+      ADD CONSTRAINT customers_object_customer_label CHECK (
+        object_customer_label IS NULL
+        OR object_customer_label IN (
+          'architect',
+          'developer',
+          'company',
+          'partner',
+          'joinery',
+          'contractor',
+          'other'
+        )
+      );
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customers_tax_treatment'
+      AND conrelid = 'app.customers'::regclass
+  ) THEN
+    ALTER TABLE app.customers
+      ADD CONSTRAINT customers_tax_treatment CHECK (
+        tax_treatment IS NULL
+        OR tax_treatment IN (
+          'standard_de',
+          'eu_business',
+          'third_country_export',
+          'switzerland_export',
+          'nato_forces',
+          'custom'
+        )
+      );
+  END IF;
+END;
+$$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS customers_primary_phone_normalized_unique_idx
   ON app.customers (primary_phone_normalized)
