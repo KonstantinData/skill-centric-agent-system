@@ -23,6 +23,7 @@ def test_daskuechenhaus_admin_api_runs_on_hetzner_runtime_plane_only() -> None:
     assert "ThreadingHTTPServer((HOST, PORT), Handler)" in source
     assert '"127.0.0.1"' in source
     assert "psql" in source
+    assert "ON_ERROR_STOP=1" in source
     assert "DKH_ADMIN_API_TOKEN_FILE" in source
     assert "x-dkh-admin-api-token" in source
     assert "x-access-user-email" in source

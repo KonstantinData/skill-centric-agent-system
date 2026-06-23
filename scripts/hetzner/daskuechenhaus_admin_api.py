@@ -78,7 +78,7 @@ def read_token() -> str:
 
 
 def psql_json(sql: str, variables: dict[str, str] | None = None) -> Any:
-    command = ["psql", "-X", "-q", "-t", "-A", "-d", DATABASE]
+    command = ["psql", "-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1", "-d", DATABASE]
     for key, value in (variables or {}).items():
         command.extend(["-v", f"{key}={value}"])
     result = subprocess.run(

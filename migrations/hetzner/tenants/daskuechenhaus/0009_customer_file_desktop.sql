@@ -96,6 +96,42 @@ CREATE TABLE IF NOT EXISTS app.customer_case_sections (
 CREATE UNIQUE INDEX IF NOT EXISTS customer_case_sections_case_code_key
   ON app.customer_case_sections (customer_case_id, section_code);
 
+ALTER TABLE app.customer_file_sections
+  ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE app.customer_case_sections
+  ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'app'
+      AND table_name = 'customer_file_sections'
+      AND column_name = 'payload'
+  ) THEN
+    UPDATE app.customer_file_sections
+    SET payload_json = payload
+    WHERE payload_json = '{}'::jsonb
+      AND payload IS NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'app'
+      AND table_name = 'customer_case_sections'
+      AND column_name = 'payload'
+  ) THEN
+    UPDATE app.customer_case_sections
+    SET payload_json = payload
+    WHERE payload_json = '{}'::jsonb
+      AND payload IS NOT NULL;
+  END IF;
+END;
+$$;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tenant_daskuechenhaus_app') THEN
