@@ -128,6 +128,12 @@
   let pendingDuplicateFormData = null;
 
   const closeCreateModal = () => {
+    pendingDuplicateFormData = null;
+    if (emailDuplicateResults) emailDuplicateResults.innerHTML = "";
+    if (emailDuplicateModal) emailDuplicateModal.hidden = true;
+    if (createForm) createForm.reset();
+    syncCustomerTypeSections();
+    syncCaseDetails();
     if (createModal) createModal.hidden = true;
   };
 

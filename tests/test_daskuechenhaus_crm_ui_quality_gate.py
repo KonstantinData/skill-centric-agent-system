@@ -41,6 +41,11 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "syncCustomerTypeSections" in search_script
     assert "options.openCreateModal && createModal" in search_script
     assert "closeCreateModal" in search_script
+    assert "if (createForm) createForm.reset()" in search_script
+    assert "pendingDuplicateFormData = null" in search_script
+    assert "if (emailDuplicateResults) emailDuplicateResults.innerHTML = \"\"" in search_script
+    assert "syncCustomerTypeSections();" in search_script
+    assert "syncCaseDetails();" in search_script
     assert "Escape" in search_script
 
 
