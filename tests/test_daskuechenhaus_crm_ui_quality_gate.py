@@ -236,7 +236,7 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "DOCUMENTS_REGISTER" in source
     assert "Dokumentenbereich öffnen" in source
     assert "Hochladen, herunterladen und per E-Mail versenden" in source
-    assert "xl:grid-cols-[260px_minmax(0,1fr)]" in source
+    assert "2xl:grid-cols-[minmax(0,1fr)_420px]" in source
     assert "Dokumentenarten" in source
     assert 'activeRegister === DOCUMENTS_REGISTER.key' in source
     assert "DOCUMENT_GUIDE_CATEGORIES" in source
