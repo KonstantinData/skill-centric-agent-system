@@ -1376,58 +1376,66 @@ function CaseDesktop({
                 </div>
               ))}
             </div>
-            <details className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3">
-              <summary className="cursor-pointer text-sm font-bold">
+            <details className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
+              <summary className="cursor-pointer border-b border-[var(--border)] px-4 py-3 text-sm font-bold">
                 Dokument hinzufügen
               </summary>
               <form
-                className="mt-4 grid gap-3 lg:grid-cols-3"
+                className="grid gap-4 bg-white p-4"
                 action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
                 encType="multipart/form-data"
                 method="post"
               >
-                <Label label="Dokumentart">
-                  <Select name="document_category" defaultValue="from_customer">
-                    {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
-                  <span className="mt-1 text-xs font-normal text-[var(--muted)]">
-                    Die Kacheln oberhalb erklären, welche Dokumente unter welche Dokumentart fallen.
-                  </span>
-                </Label>
-                <Label label="Status">
-                  <Select name="document_status" defaultValue="received">
-                    {DOCUMENT_STATUSES.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
-                </Label>
-                <Label label="Datei">
-                  <Field
-                    name="file"
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  />
-                </Label>
-                <Label label="Titel" className="lg:col-span-2">
-                  <Field
-                    name="title"
-                    required
-                    placeholder="z. B. Grundriss Kunde, Angebot V1, Rechnung"
-                  />
-                </Label>
-                <Label label="Version">
-                  <Field name="version_label" defaultValue="1" />
-                </Label>
-                <Label label="Notiz" className="lg:col-span-3">
-                  <Textarea
-                    name="note"
-                    placeholder="Kurzer Hinweis, was abgelegt werden soll."
-                  />
-                </Label>
+                <div className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]">
+                  <Label label="Datei">
+                    <Field
+                      className="bg-white"
+                      name="file"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    />
+                  </Label>
+                  <Label label="Version">
+                    <Field className="bg-white" name="version_label" defaultValue="1" />
+                  </Label>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                  <Label label="Dokumentart">
+                    <Select name="document_category" defaultValue="from_customer">
+                      {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Select>
+                    <span className="mt-1 text-xs font-normal leading-relaxed text-[var(--muted)]">
+                      Legt automatisch fest, in welchem Register das Dokument geführt wird.
+                    </span>
+                  </Label>
+                  <Label label="Status">
+                    <Select name="document_status" defaultValue="received">
+                      {DOCUMENT_STATUSES.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Select>
+                  </Label>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
+                  <Label label="Titel">
+                    <Field
+                      name="title"
+                      required
+                      placeholder="z. B. Grundriss Kunde, Angebot V1, Rechnung"
+                    />
+                  </Label>
+                  <Label label="Notiz">
+                    <Textarea
+                      className="min-h-10"
+                      name="note"
+                      placeholder="Kurzer interner Hinweis"
+                    />
+                  </Label>
+                </div>
                 <input type="hidden" name="document_type" value="other" />
-                <div className="lg:col-span-3">
+                <div className="flex justify-end border-t border-[var(--border)] pt-3">
                   <Button type="submit">
                     <Upload size={16} aria-hidden="true" />
                     Dokument hochladen

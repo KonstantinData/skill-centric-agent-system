@@ -224,12 +224,14 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Lieferung / Montage" in source
     assert "Reklamation / Kundendienst" in source
     assert "Rechnung" in source
-    assert "Die Kacheln oberhalb erklären" in source
+    assert "Legt automatisch fest, in welchem Register das Dokument geführt wird" in source
     assert "Noch keine Dokumente in diesem Vorgang" in source
     assert "Dokument hinzufügen" in source
     assert "Dokument hochladen" in source
     assert 'encType="multipart/form-data"' in source
     assert 'name="file"' in source
+    assert "lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]" in source
+    assert "Legt automatisch fest, in welchem Register" in source
     assert "/download" in source
     assert "Herunterladen" in source
     assert 'name="document_category"' in source
