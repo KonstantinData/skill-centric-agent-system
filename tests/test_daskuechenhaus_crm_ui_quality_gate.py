@@ -177,12 +177,20 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
 def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     source = load_text(APP_ROOT / "src" / "app" / "kunden" / "[id]" / "page.tsx")
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
+    search_js = load_text(APP_ROOT / "public" / "customer-search.v1.js")
 
     assert "notFound" not in source
     assert "Kundenakte nicht gefunden" in source
     assert "Zur Kundensuche" in source
     assert "Stammdaten-Snapshot" in source
     assert "Vorgangsregal" in source
+    assert "data-customer-master-open" in source
+    assert "data-customer-master-modal" in source
+    assert "Kundenstammdaten bearbeiten" in source
+    assert "data-customer-master-type-section" in source
+    assert 'Script src="/customer-search.v1.js"' in source
+    assert "data-customer-master-open" in search_js
+    assert "syncCustomerMasterTypeSections" in search_js
     assert "Neuen Vorgang anlegen" in source
     assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
     assert 'name="customer_id"' in source

@@ -9,6 +9,7 @@ import {
   Search,
   Upload,
 } from "lucide-react";
+import Script from "next/script";
 import { PageHero } from "@/components/chrome/page-hero";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Field, Label, Select, Textarea } from "@/components/ui/form";
@@ -256,39 +257,11 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
               </a>
             </div>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-bold">Stammdaten bearbeiten</summary>
-              <form
-                className="mt-3 grid gap-3"
-                action={`/api/kunden/customers/${customer.id}?return_to=/kunden/${customer.id}`}
-                method="post"
-              >
-                <input type="hidden" name="customer_type" value={customer.customer_type} />
-                <Label label="Name">
-                  <Field name="first_name" defaultValue={customer.first_name ?? ""} />
-                </Label>
-                <Label label="Nachname / Firma">
-                  <Field
-                    name={customer.customer_type === "company" ? "company_name" : "last_name"}
-                    defaultValue={
-                      customer.customer_type === "company"
-                        ? customer.company_name ?? ""
-                        : customer.last_name ?? ""
-                    }
-                  />
-                </Label>
-                <Label label="E-Mail">
-                  <Field name="primary_email" defaultValue={customer.primary_email ?? ""} />
-                </Label>
-                <Label label="Telefon">
-                  <Field name="primary_phone" defaultValue={customer.primary_phone ?? ""} />
-                </Label>
-                <Label label="Notizen">
-                  <Textarea name="notes" defaultValue={customer.notes ?? ""} />
-                </Label>
-                <Button type="submit">Speichern</Button>
-              </form>
-            </details>
+            <div className="mt-4">
+              <button type="button" className="btn btn-secondary" data-customer-master-open>
+                Stammdaten bearbeiten
+              </button>
+            </div>
           </Panel>
 
           <Panel>
@@ -404,6 +377,216 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
           )}
         </main>
       </div>
+      <div
+        data-customer-master-modal
+        hidden
+        className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-master-title"
+      >
+        <Panel className="max-h-[92vh] w-full max-w-3xl overflow-y-auto">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="customer-master-title" className="section-title">Kundenstammdaten bearbeiten</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Vollständiges Stammdatenblatt zur geöffneten Kundenakte.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-customer-master-close
+              aria-label="Stammdatenblatt schließen"
+            >
+              Schließen
+            </button>
+          </div>
+          <form
+            className="mt-4 grid gap-3"
+            action={`/api/kunden/customers/${customer.id}?return_to=${encodeURIComponent(selectedCaseReturnPath)}`}
+            method="post"
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Kundentyp">
+                <Select name="customer_type" defaultValue={customer.customer_type} data-customer-master-type-select>
+                  <option value="private">Privatkunde</option>
+                  <option value="company">Objektkunde</option>
+                </Select>
+              </Label>
+              <Label label="Kundennummer">
+                <Field value={customer.customer_number || "Wird beim Speichern automatisch vergeben"} disabled />
+              </Label>
+            </div>
+            <div data-customer-master-type-section="private" className="grid gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Vorname">
+                  <Field name="first_name" defaultValue={customer.first_name ?? ""} />
+                </Label>
+                <Label label="Nachname">
+                  <Field name="last_name" defaultValue={customer.last_name ?? ""} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="E-Mail">
+                  <Field name="primary_email" type="email" defaultValue={customer.primary_email ?? ""} />
+                </Label>
+                <Label label="Telefon">
+                  <Field name="primary_phone" defaultValue={customer.primary_phone ?? ""} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Label label="Straße" className="md:col-span-2">
+                  <Field name="street" defaultValue={customer.address?.street ?? ""} />
+                </Label>
+                <Label label="Hausnummer">
+                  <Field name="house_number" defaultValue={customer.address?.house_number ?? ""} />
+                </Label>
+                <Label label="PLZ">
+                  <Field name="postal_code" defaultValue={customer.address?.postal_code ?? ""} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Ort">
+                  <Field name="city" defaultValue={customer.address?.city ?? ""} />
+                </Label>
+                <Label label="Land">
+                  <Select name="country" defaultValue={customer.address?.country || customer.country || "DE"}>
+                    <option value="DE">Deutschland</option>
+                    <option value="CH">Schweiz</option>
+                    <option value="US">USA</option>
+                    <option value="AT">Österreich</option>
+                    <option value="FR">Frankreich</option>
+                    <option value="ZZ">Anderes Land</option>
+                  </Select>
+                </Label>
+              </div>
+            </div>
+            <div data-customer-master-type-section="company" className="grid gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Firma">
+                  <Field name="company_name" defaultValue={customer.company_name ?? ""} />
+                </Label>
+                <Label label="Objektkunden-Art">
+                  <Select name="object_customer_label" defaultValue={sectionValue(customer.file_sections?.customer_profile, "object_customer_label")}>
+                    <option value="">Bitte wählen</option>
+                    <option value="architect">Architekt</option>
+                    <option value="developer">Bauträger</option>
+                    <option value="company">Firma</option>
+                    <option value="partner">Partner</option>
+                    <option value="joinery">Schreinerei</option>
+                    <option value="contractor">Handwerker</option>
+                    <option value="other">Sonstiges</option>
+                  </Select>
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="E-Mail">
+                  <Field name="primary_email" type="email" defaultValue={customer.primary_email ?? ""} />
+                </Label>
+                <Label label="Telefon">
+                  <Field name="primary_phone" defaultValue={customer.primary_phone ?? ""} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Label label="Straße" className="md:col-span-2">
+                  <Field name="street" defaultValue={customer.address?.street ?? ""} />
+                </Label>
+                <Label label="Hausnummer">
+                  <Field name="house_number" defaultValue={customer.address?.house_number ?? ""} />
+                </Label>
+                <Label label="PLZ">
+                  <Field name="postal_code" defaultValue={customer.address?.postal_code ?? ""} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Ort">
+                  <Field name="city" defaultValue={customer.address?.city ?? ""} />
+                </Label>
+                <Label label="Land">
+                  <Select name="country" defaultValue={customer.address?.country || customer.country || "DE"}>
+                    <option value="DE">Deutschland</option>
+                    <option value="CH">Schweiz</option>
+                    <option value="US">USA</option>
+                    <option value="AT">Österreich</option>
+                    <option value="FR">Frankreich</option>
+                    <option value="ZZ">Anderes Land</option>
+                  </Select>
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Rechtsform">
+                  <Field name="legal_form" defaultValue={sectionValue(customer.file_sections?.legal_tax, "legal_form")} />
+                </Label>
+                <Label label="USt-IdNr.">
+                  <Field name="vat_id" defaultValue={sectionValue(customer.file_sections?.legal_tax, "vat_id")} />
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Handelsregisternummer">
+                  <Field name="registry_number" defaultValue={sectionValue(customer.file_sections?.legal_tax, "registry_number")} />
+                </Label>
+                <Label label="Registergericht">
+                  <Field name="registry_court" defaultValue={sectionValue(customer.file_sections?.legal_tax, "registry_court")} />
+                </Label>
+              </div>
+              <Label label="Steuernummer">
+                <Field name="tax_number" defaultValue={sectionValue(customer.file_sections?.legal_tax, "tax_number")} />
+              </Label>
+              <div className="grid gap-3 border-t border-[var(--border)] pt-3">
+                <h3 className="section-title">Ansprechpartner</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Label label="Vorname">
+                    <Field name="contact_first_name" defaultValue={sectionValue(customer.file_sections?.customer_profile, "contact_first_name")} />
+                  </Label>
+                  <Label label="Nachname">
+                    <Field name="contact_last_name" defaultValue={sectionValue(customer.file_sections?.customer_profile, "contact_last_name")} />
+                  </Label>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Label label="E-Mail Ansprechpartner">
+                    <Field name="contact_email" type="email" defaultValue={sectionValue(customer.file_sections?.customer_profile, "contact_email")} />
+                  </Label>
+                  <Label label="Telefon Ansprechpartner">
+                    <Field name="contact_phone" defaultValue={sectionValue(customer.file_sections?.customer_profile, "contact_phone")} />
+                  </Label>
+                </div>
+              </div>
+            </div>
+            <Label label="Steuerbehandlung">
+              <Select name="tax_treatment" defaultValue={customer.tax_treatment ?? "standard_de"}>
+                <option value="standard_de">Deutschland Standard</option>
+                <option value="eu_business">EU-Unternehmen mit USt-IdNr.</option>
+                <option value="third_country_export">Drittland / Ausfuhr prüfen</option>
+                <option value="switzerland_export">Schweiz / Ausfuhr prüfen</option>
+                <option value="nato_forces">NATO / US-Streitkräfte prüfen</option>
+                <option value="custom">Abweichend / manuell prüfen</option>
+              </Select>
+            </Label>
+            <Label label="Hinweis zur Steuerbehandlung">
+              <Textarea
+                name="tax_treatment_note"
+                defaultValue={customer.tax_treatment_note ?? ""}
+                placeholder="z. B. Ausfuhrnachweis erforderlich, NATO-Bescheinigung prüfen"
+              />
+            </Label>
+            <Label label="Zuständig">
+              <Select name="owner_user_id" defaultValue={customer.owner_user_id ? String(customer.owner_user_id) : undefined}>
+                {state.users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {displayName(user.first_name, user.last_name) || user.email}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label label="Notizen">
+              <Textarea name="notes" defaultValue={customer.notes ?? ""} />
+            </Label>
+            <Button type="submit">Stammdaten speichern</Button>
+          </form>
+        </Panel>
+      </div>
+      <Script src="/customer-search.v1.js" strategy="afterInteractive" />
     </div>
   );
 }

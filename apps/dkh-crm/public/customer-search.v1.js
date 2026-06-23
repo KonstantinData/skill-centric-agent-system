@@ -122,6 +122,8 @@
   const caseDetails = document.querySelector("[data-customer-case-details]");
   const createForm = document.querySelector("[data-customer-create-form]");
   const customerTypeSelect = document.querySelector("[data-customer-type-select]");
+  const customerMasterModal = document.querySelector("[data-customer-master-modal]");
+  const customerMasterTypeSelect = document.querySelector("[data-customer-master-type-select]");
   const emailDuplicateModal = document.querySelector("[data-customer-email-duplicate-modal]");
   const emailDuplicateResults = document.querySelector("[data-customer-email-duplicate-results]");
   const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
@@ -152,6 +154,23 @@
     const selectedType = customerTypeSelect.value || "private";
     for (const section of document.querySelectorAll("[data-customer-type-section]")) {
       const enabled = section.getAttribute("data-customer-type-section") === selectedType;
+      section.hidden = !enabled;
+      for (const field of section.querySelectorAll("input, select, textarea")) {
+        if (!field.name) continue;
+        field.disabled = !enabled;
+      }
+    }
+  };
+
+  const closeCustomerMasterModal = () => {
+    if (customerMasterModal) customerMasterModal.hidden = true;
+  };
+
+  const syncCustomerMasterTypeSections = () => {
+    if (!customerMasterTypeSelect) return;
+    const selectedType = customerMasterTypeSelect.value || "private";
+    for (const section of document.querySelectorAll("[data-customer-master-type-section]")) {
+      const enabled = section.getAttribute("data-customer-master-type-section") === selectedType;
       section.hidden = !enabled;
       for (const field of section.querySelectorAll("input, select, textarea")) {
         if (!field.name) continue;
@@ -300,6 +319,27 @@
     });
   }
 
+  if (customerMasterModal) {
+    document.addEventListener("click", (event) => {
+      const openButton = event.target instanceof Element
+        ? event.target.closest("[data-customer-master-open]")
+        : null;
+      if (openButton) {
+        customerMasterModal.hidden = false;
+        syncCustomerMasterTypeSections();
+        return;
+      }
+      if (event.target === customerMasterModal) closeCustomerMasterModal();
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-customer-master-close]")
+        : null;
+      if (closeButton) closeCustomerMasterModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCustomerMasterModal();
+    });
+  }
+
   if (createCaseToggle) {
     createCaseToggle.addEventListener("change", syncCaseDetails);
     syncCaseDetails();
@@ -308,6 +348,11 @@
   if (customerTypeSelect) {
     customerTypeSelect.addEventListener("change", syncCustomerTypeSections);
     syncCustomerTypeSections();
+  }
+
+  if (customerMasterTypeSelect) {
+    customerMasterTypeSelect.addEventListener("change", syncCustomerMasterTypeSections);
+    syncCustomerMasterTypeSections();
   }
 
   if (createForm) {
