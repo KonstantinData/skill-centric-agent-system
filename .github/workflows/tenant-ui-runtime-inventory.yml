@@ -208,8 +208,26 @@ jobs:
           section "Candidate systemd units"
           if command -v systemctl >/dev/null 2>&1; then
             systemctl list-units --type=service --all --no-pager \
-              | grep -Ei 'streamlit|tenant|scas|condata' \
+              | grep -Ei 'streamlit|tenant|scas|condata|daskuechenhaus' \
               | redact || true
+          else
+            printf 'systemctl command not available.\n'
+          fi
+
+          section "Daskuechenhaus CRM status"
+          if command -v systemctl >/dev/null 2>&1; then
+            sudo -n systemctl status daskuechenhaus-crm.service --no-pager -l 2>&1 | redact || true
+            printf '\n### Origin `/kunden` response\n\n'
+            curl -sS -D - \
+              -H 'x-dkh-user-email: k.milonas@schober-daskuechenhaus.de' \
+              'http://127.0.0.1:3001/kunden' \
+              -o /tmp/dkh-crm-kunden-body.txt 2>&1 | redact || true
+            printf '\n'
+            head -c 1200 /tmp/dkh-crm-kunden-body.txt 2>/dev/null | redact || true
+            printf '\n\n### CRM journal\n\n'
+            sudo -n journalctl -u daskuechenhaus-crm.service -n 160 --no-pager -o short-iso 2>&1 | redact || true
+            printf '\n### Admin API journal\n\n'
+            sudo -n journalctl -u daskuechenhaus-admin-api.service -n 120 --no-pager -o short-iso 2>&1 | redact || true
           else
             printf 'systemctl command not available.\n'
           fi
