@@ -154,6 +154,12 @@ jobs:
             "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' REMOTE_DESKTOP_MIGRATION='${remote_desktop_migration}' REMOTE_DOCUMENT_MIGRATION='${remote_document_migration}' bash -s" <<'REMOTE'
           set -euo pipefail
 
+          if ! sudo -n systemctl is-active --quiet postgresql.service; then
+            echo "PostgreSQL is not active; attempting to start postgresql.service."
+            sudo -n systemctl start postgresql.service
+          fi
+          sudo -n systemctl is-active postgresql.service
+
           duplicate_phones="$(sudo -n -u postgres psql -d tenant_daskuechenhaus -At <<'SQL'
           WITH normalized AS (
             SELECT NULLIF(regexp_replace(COALESCE(primary_phone, ''), '[^0-9+]', '', 'g'), '') AS phone
