@@ -206,6 +206,9 @@ def test_customer_case_document_object_storage_migration_adds_file_backend_contr
     assert "'image/webp'" in migration
     assert "'application/vnd.openxmlformats-officedocument.wordprocessingml.document'" in migration
     assert "'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'" in migration
+    assert "'application/zip'" in migration
+    assert "'application/x-zip-compressed'" in migration
+    assert "'application/octet-stream'" in migration
     assert "'from_customer'" in migration
     assert "'measurement'" in migration
     assert "'planning'" in migration
