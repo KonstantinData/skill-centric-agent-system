@@ -10,6 +10,7 @@ import {
   Phone,
   Search,
   Upload,
+  X,
 } from "lucide-react";
 import Script from "next/script";
 import { PageHero } from "@/components/chrome/page-hero";
@@ -1352,98 +1353,46 @@ function CaseDesktop({
           ) : null}
 
           {activeRegister === DOCUMENTS_REGISTER.key ? (
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
+          <>
             <Panel>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <FileText size={18} aria-hidden="true" />
-                    <h3 className="section-title">Dokumente</h3>
+                    <h3 className="section-title">Vorgangsdokumente</h3>
                   </div>
                   <p className="mt-1 text-sm text-[var(--muted)]">
-                    Wählen Sie zuerst die fachliche Dokumentart. Die Hinweise zeigen, welche Unterlagen in welchen Bereich gehören.
+                    Alle hochgeladenen Dokumente zu diesem Vorgang. Die Dokumentart ist pro Eintrag direkt sichtbar.
                   </p>
                 </div>
-              </div>
-              <details className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
-                <summary className="cursor-pointer border-b border-[var(--border)] px-4 py-3 text-sm font-bold">
+                <Button type="button" data-document-upload-open>
+                  <Upload size={16} aria-hidden="true" />
                   Dokument hinzufügen
-                </summary>
-                <form
-                  className="grid gap-4 bg-white p-4"
-                  action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
-                  encType="multipart/form-data"
-                  method="post"
-                >
-                  <div className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]">
-                    <Label label="Datei">
-                      <Field
-                        className="bg-white"
-                        name="file"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                      />
-                    </Label>
-                    <Label label="Version">
-                      <Field className="bg-white" name="version_label" defaultValue="1" />
-                    </Label>
-                  </div>
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                    <Label label="Dokumentart">
-                      <Select name="document_category" defaultValue="from_customer">
-                        {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </Select>
-                      <span className="mt-1 text-xs font-normal leading-relaxed text-[var(--muted)]">
-                        Legt automatisch fest, in welchem Register das Dokument geführt wird.
-                      </span>
-                    </Label>
-                    <Label label="Status">
-                      <Select name="document_status" defaultValue="received">
-                        {DOCUMENT_STATUSES.map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </Select>
-                    </Label>
-                  </div>
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
-                    <Label label="Titel">
-                      <Field
-                        name="title"
-                        required
-                        placeholder="z. B. Grundriss Kunde, Angebot V1, Rechnung"
-                      />
-                    </Label>
-                    <Label label="Notiz">
-                      <Textarea
-                        className="min-h-10"
-                        name="note"
-                        placeholder="Kurzer interner Hinweis"
-                      />
-                    </Label>
-                  </div>
-                  <input type="hidden" name="document_type" value="other" />
-                  <div className="flex justify-end border-t border-[var(--border)] pt-3">
-                    <Button type="submit">
-                      <Upload size={16} aria-hidden="true" />
-                      Dokument hochladen
-                    </Button>
-                  </div>
-                </form>
-              </details>
+                </Button>
+              </div>
               <div className="mt-4 grid gap-2">
-                {caseDocuments.map((document) => (
+                {caseDocuments.map((document) => {
+                  const documentCategoryLabel = optionLabel(
+                    DOCUMENT_CATEGORY_LABEL_OPTIONS,
+                    document.document_category,
+                  );
+                  return (
                   <div
                     key={document.id}
                     className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold">{document.title}</p>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md border border-[var(--accent)] bg-[var(--surface-soft)] px-2 py-1 text-xs font-bold text-[var(--foreground)]">
+                            {documentCategoryLabel}
+                          </span>
+                          <span className="badge">
+                            {optionLabel(DOCUMENT_STATUSES, document.document_status)}
+                          </span>
+                        </div>
+                        <p className="mt-2 font-bold">{document.title}</p>
                         <p className="mt-1 text-xs text-[var(--muted)]">
-                          {optionLabel(DOCUMENT_CATEGORY_LABEL_OPTIONS, document.document_category)}
-                          {" · "}
                           {optionLabel(CASE_REGISTERS.map((register) => [register.key, register.label] as const), document.register_code)}
                           {" · Version "}
                           {document.version_label}
@@ -1453,9 +1402,6 @@ function CaseDesktop({
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="badge">
-                          {optionLabel(DOCUMENT_STATUSES, document.document_status)}
-                        </span>
                         {document.has_file ? (
                           <LinkButton
                             href={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/download`}
@@ -1481,35 +1427,131 @@ function CaseDesktop({
                       {document.created_at ? ` · ${document.created_at}` : ""}
                     </p>
                   </div>
-                ))}
+                  );
+                })}
                 {caseDocuments.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
                     Noch keine Dokumente in diesem Vorgang.
                   </div>
                 ) : null}
               </div>
-              <p className="mt-4 text-xs text-[var(--muted)]">
-                Die Dokumentart legt automatisch fest, in welchem Register das Dokument geführt wird. Version und Notiz bleiben als interne Einordnung erhalten.
-              </p>
             </Panel>
-            <aside className="grid h-fit gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold">Dokumentenarten</p>
-                <span className="badge">Guide</span>
-              </div>
-              <div className="grid gap-2">
-                {DOCUMENT_GUIDE_CATEGORIES.map(([value, label, description]) => (
-                  <div
-                    key={value}
-                    className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
-                  >
-                    <p className="font-bold">{label}</p>
-                    <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{description}</p>
+            <div
+              className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+              data-document-upload-modal
+              hidden
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="document-upload-title"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 cursor-default"
+                data-document-upload-backdrop
+                aria-label="Dokument hinzufügen schließen"
+              />
+              <div className="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-lg border border-[var(--border)] bg-white shadow-xl">
+                <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--border)] bg-white px-4 py-3">
+                  <div>
+                    <h3 id="document-upload-title" className="section-title">Dokument hinzufügen</h3>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      Die Dokumentart ordnet den Upload automatisch dem passenden Register zu.
+                    </p>
                   </div>
-                ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="aspect-square p-2"
+                    data-document-upload-close
+                    aria-label="Dokument hinzufügen schließen"
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </Button>
+                </div>
+                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                  <form
+                    className="grid h-fit gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4"
+                    action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
+                    encType="multipart/form-data"
+                    method="post"
+                  >
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]">
+                      <Label label="Datei">
+                        <Field
+                          className="bg-white"
+                          name="file"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        />
+                      </Label>
+                      <Label label="Version">
+                        <Field className="bg-white" name="version_label" defaultValue="1" />
+                      </Label>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                      <Label label="Dokumentart">
+                        <Select name="document_category" defaultValue="from_customer">
+                          {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </Select>
+                        <span className="mt-1 text-xs font-normal leading-relaxed text-[var(--muted)]">
+                          Legt automatisch fest, in welchem Register das Dokument geführt wird.
+                        </span>
+                      </Label>
+                      <Label label="Status">
+                        <Select name="document_status" defaultValue="received">
+                          {DOCUMENT_STATUSES.map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </Select>
+                      </Label>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
+                      <Label label="Titel">
+                        <Field
+                          name="title"
+                          required
+                          placeholder="z. B. Grundriss Kunde, Angebot V1, Rechnung"
+                        />
+                      </Label>
+                      <Label label="Notiz">
+                        <Textarea
+                          className="min-h-10"
+                          name="note"
+                          placeholder="Kurzer interner Hinweis"
+                        />
+                      </Label>
+                    </div>
+                    <input type="hidden" name="document_type" value="other" />
+                    <div className="flex justify-end border-t border-[var(--border)] pt-3">
+                      <Button type="submit">
+                        <Upload size={16} aria-hidden="true" />
+                        Dokument hochladen
+                      </Button>
+                    </div>
+                  </form>
+                  <aside className="grid h-fit gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold">Dokumentenarten</p>
+                      <span className="badge">Guide</span>
+                    </div>
+                    <div className="grid gap-2">
+                      {DOCUMENT_GUIDE_CATEGORIES.map(([value, label, description]) => (
+                        <div
+                          key={value}
+                          className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
+                        >
+                          <p className="font-bold">{label}</p>
+                          <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </aside>
+                </div>
               </div>
-            </aside>
-          </div>
+            </div>
+          </>
           ) : null}
         </div>
 

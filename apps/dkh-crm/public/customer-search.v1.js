@@ -124,6 +124,7 @@
   const customerTypeSelect = document.querySelector("[data-customer-type-select]");
   const customerMasterModal = document.querySelector("[data-customer-master-modal]");
   const customerMasterTypeSelect = document.querySelector("[data-customer-master-type-select]");
+  const documentUploadModal = document.querySelector("[data-document-upload-modal]");
   const emailDuplicateModal = document.querySelector("[data-customer-email-duplicate-modal]");
   const emailDuplicateResults = document.querySelector("[data-customer-email-duplicate-results]");
   const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
@@ -164,6 +165,17 @@
 
   const closeCustomerMasterModal = () => {
     if (customerMasterModal) customerMasterModal.hidden = true;
+  };
+
+  const openDocumentUploadModal = () => {
+    if (!documentUploadModal) return;
+    documentUploadModal.hidden = false;
+    const firstField = documentUploadModal.querySelector("input, select, textarea, button");
+    if (firstField instanceof HTMLElement) firstField.focus();
+  };
+
+  const closeDocumentUploadModal = () => {
+    if (documentUploadModal) documentUploadModal.hidden = true;
   };
 
   const syncCustomerMasterTypeSections = () => {
@@ -337,6 +349,25 @@
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeCustomerMasterModal();
+    });
+  }
+
+  if (documentUploadModal) {
+    document.addEventListener("click", (event) => {
+      const openButton = event.target instanceof Element
+        ? event.target.closest("[data-document-upload-open]")
+        : null;
+      if (openButton) {
+        openDocumentUploadModal();
+        return;
+      }
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-document-upload-close], [data-document-upload-backdrop]")
+        : null;
+      if (closeButton) closeDocumentUploadModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeDocumentUploadModal();
     });
   }
 

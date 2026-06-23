@@ -218,6 +218,9 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert 'Script src="/customer-search.v1.js"' in source
     assert "data-customer-master-open" in search_js
     assert "syncCustomerMasterTypeSections" in search_js
+    assert "data-document-upload-modal" in search_js
+    assert "openDocumentUploadModal" in search_js
+    assert "closeDocumentUploadModal" in search_js
     assert "Neuen Vorgang anlegen" in source
     assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
     assert 'name="customer_id"' in source
@@ -236,11 +239,15 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "DOCUMENTS_REGISTER" in source
     assert "Dokumentenbereich öffnen" in source
     assert "Hochladen, herunterladen und per E-Mail versenden" in source
-    assert "2xl:grid-cols-[minmax(0,1fr)_420px]" in source
+    assert "Vorgangsdokumente" in source
+    assert "data-document-upload-open" in source
+    assert "data-document-upload-modal" in source
+    assert "data-document-upload-close" in source
+    assert "data-document-upload-backdrop" in source
     assert "Dokumentenarten" in source
     assert 'activeRegister === DOCUMENTS_REGISTER.key' in source
     assert "DOCUMENT_GUIDE_CATEGORIES" in source
-    assert "Wählen Sie zuerst die fachliche Dokumentart" in source
+    assert "Die Dokumentart ist pro Eintrag direkt sichtbar" in source
     assert "vom Kunden" in source
     assert "Aufmaß" in source
     assert "Planung" in source
@@ -256,6 +263,7 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Dokument hochladen" in source
     assert 'encType="multipart/form-data"' in source
     assert 'name="file"' in source
+    assert "lg:grid-cols-[minmax(0,1fr)_360px]" in source
     assert "lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]" in source
     assert "Legt automatisch fest, in welchem Register" in source
     assert "/download" in source
@@ -265,9 +273,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert 'name="document_status"' in source
     assert 'name="version_label"' in source
     assert "caseDocuments" in source
+    assert "documentCategoryLabel" in source
     assert "Archivieren" in source
     assert "Noch ohne Datei" in source
-    assert "Die Dokumentart legt automatisch fest" in source
+    assert "Die Dokumentart ordnet den Upload automatisch dem passenden Register zu" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
