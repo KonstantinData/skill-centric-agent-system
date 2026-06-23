@@ -212,7 +212,15 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Rechnung / Abschluss" in source
     assert "Noch keine Dokumente in diesem Vorgang" in source
     assert "Dokument hinzufügen" in source
-    assert "Upload, Versionierung und Download-Pakete" in source
+    assert "Dokument-Metadaten speichern" in source
+    assert 'name="document_category"' in source
+    assert 'name="register_code"' in source
+    assert 'name="document_status"' in source
+    assert 'name="version_label"' in source
+    assert "caseDocuments" in source
+    assert "Archivieren" in source
+    assert "Noch ohne Datei" in source
+    assert "Aktuell werden Dokument-Metadaten gespeichert" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
@@ -254,10 +262,14 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "/sections/project_objects" in source
     assert "/sections/project_contacts" in source
     assert "/sections/documents" in source
+    assert "/documents?return_to=" in source
+    assert "/documents/${document.id}/archive?return_to=" in source
     assert "/sections/process_control" in source
     assert "Vorgang schließen" in source
     assert r"^cases$" in proxy
     assert r"^cases\/\d+$" in proxy
+    assert r"^cases\/\d+\/documents$" in proxy
+    assert r"^cases\/\d+\/documents\/\d+\/archive$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
     assert "publicRedirectOrigin(request)" in proxy
     assert "https://www.es-daskuechenhaus.de" in proxy

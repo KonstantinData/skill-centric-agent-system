@@ -243,6 +243,27 @@ export type CustomerRecord = {
   updated_at: string | null;
 };
 
+export type CustomerCaseDocumentRecord = {
+  id: number;
+  customer_case_id: number;
+  register_code: string;
+  document_category: string;
+  document_type: string;
+  document_status: string;
+  title: string;
+  note: string | null;
+  version_label: string;
+  is_current_version: boolean;
+  replaces_document_id: number | null;
+  has_file: boolean;
+  original_filename: string | null;
+  content_type: string | null;
+  file_size_bytes: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CustomerCaseRecord = {
   id: number;
   customer_id: number | null;
@@ -264,6 +285,7 @@ export type CustomerCaseRecord = {
     created_at: string;
   }>;
   sections?: Record<string, SectionPayload>;
+  documents?: CustomerCaseDocumentRecord[];
   updated_at: string | null;
 };
 

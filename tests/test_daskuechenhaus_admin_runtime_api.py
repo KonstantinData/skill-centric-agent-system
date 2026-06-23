@@ -94,10 +94,19 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "save_customer_case(" in source
     assert "save_customer_case_section" in source
     assert "save_customer_case_note" in source
+    assert "create_customer_case_document_metadata" in source
+    assert "archive_customer_case_document" in source
     assert "app.customer_file_sections" in source
     assert "app.customer_case_sections" in source
+    assert "app.customer_case_documents" in source
     assert 'parts[3] == "sections"' in source
     assert 'parts[3] == "notes"' in source
+    assert 'parts[3] == "documents"' in source
+    assert 'parts[5] == "archive"' in source
+    assert "'documents', COALESCE((" in source
+    assert "'register_code', d.register_code" in source
+    assert "'document_category', d.document_category" in source
+    assert "'document_status', d.document_status" in source
     assert "customer_display_name" in source
     assert "app.customers" in source
     assert "app.customer_addresses" in source

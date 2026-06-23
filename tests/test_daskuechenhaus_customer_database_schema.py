@@ -140,6 +140,29 @@ def test_customer_file_desktop_migration_adds_flexible_sections() -> None:
     assert "tenant_daskuechenhaus_app" in migration
 
 
+def test_customer_case_document_metadata_migration_extends_document_records() -> None:
+    migration = (
+        REPO_ROOT
+        / "migrations"
+        / "hetzner"
+        / "tenants"
+        / "daskuechenhaus"
+        / "0010_customer_case_document_metadata.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "ALTER TABLE app.customer_case_documents" in migration
+    assert "ADD COLUMN IF NOT EXISTS register_code" in migration
+    assert "ADD COLUMN IF NOT EXISTS document_category" in migration
+    assert "ADD COLUMN IF NOT EXISTS document_status" in migration
+    assert "ADD COLUMN IF NOT EXISTS version_label" in migration
+    assert "ALTER COLUMN original_filename DROP NOT NULL" in migration
+    assert "customer_case_documents_register_code" in migration
+    assert "customer_case_documents_category" in migration
+    assert "customer_case_documents_status" in migration
+    assert "customer_case_documents_case_register_idx" in migration
+    assert "tenant_daskuechenhaus_app" in migration
+
+
 def test_customer_database_supports_customer_folder_documents_and_notes() -> None:
     migration = load_migration()
 

@@ -50,6 +50,51 @@ ALLOWED_TASK_ATTACHMENT_EXTENSIONS = {
 NUMBER_ALPHABET = string.ascii_uppercase + string.digits
 CARAT_ORDER_NUMBER_PATTERN = re.compile(r"^[A-Za-z0-9]{1,5}-[A-Za-z0-9]{1,3}$")
 
+DOCUMENT_REGISTERS = {
+    "anfrage",
+    "beratung",
+    "planung",
+    "angebot_auftrag",
+    "abwicklung",
+    "rechnung_abschluss",
+    "kommunikation",
+}
+
+DOCUMENT_CATEGORIES = {
+    "customer_document",
+    "drawing_plan",
+    "offer_order",
+    "invoice_closure",
+}
+
+DOCUMENT_TYPES = {
+    "offer",
+    "measurement",
+    "order_confirmation",
+    "delivery_note",
+    "invoice",
+    "plan",
+    "photo",
+    "contract",
+    "email_attachment",
+    "customer_document",
+    "drawing_plan",
+    "offer_order",
+    "invoice_closure",
+    "other",
+}
+
+DOCUMENT_STATUSES = {
+    "draft",
+    "received",
+    "in_review",
+    "approved",
+    "sent_to_customer",
+    "confirmed_by_customer",
+    "replaced",
+    "archived",
+}
+
 
 @dataclass(frozen=True)
 class FileUpload:
@@ -1240,6 +1285,43 @@ def customers_state(access_email: str) -> dict[str, Any]:
                   FROM app.customer_case_sections ccs
                   WHERE ccs.customer_case_id = cc.id
                 ), '{}'::jsonb),
+                'documents', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', d.id,
+                      'customer_case_id', d.customer_case_id,
+                      'register_code', d.register_code,
+                      'document_category', d.document_category,
+                      'document_type', d.document_type,
+                      'document_status', d.document_status,
+                      'title', COALESCE(d.title, d.original_filename),
+                      'note', d.note,
+                      'version_label', d.version_label,
+                      'is_current_version', d.is_current_version,
+                      'replaces_document_id', d.replaces_document_id,
+                      'has_file', d.storage_path IS NOT NULL,
+                      'original_filename', d.original_filename,
+                      'content_type', d.content_type,
+                      'file_size_bytes', d.file_size_bytes,
+                      'created_by', COALESCE(u.first_name || ' ' || u.last_name, u.email),
+                      'created_at',
+                        to_char(
+                          d.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        ),
+                      'updated_at',
+                        to_char(
+                          d.updated_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        )
+                    )
+                    ORDER BY d.is_current_version DESC, d.created_at DESC, d.id DESC
+                  )
+                  FROM app.customer_case_documents d
+                  LEFT JOIN app.users u ON u.id = d.uploaded_by_user_id
+                  WHERE d.customer_case_id = cc.id
+                    AND d.document_status <> 'archived'
+                ), '[]'::jsonb),
                 'updated_at',
                   to_char(
                     cc.updated_at AT TIME ZONE 'Europe/Berlin',
@@ -2311,6 +2393,202 @@ def save_customer_case_note(
     return result
 
 
+def normalize_document_choice(
+    data: dict[str, Any],
+    key: str,
+    allowed: set[str],
+    default: str,
+) -> str:
+    value = str(data.get(key, "")).strip()
+    return value if value in allowed else default
+
+
+def create_customer_case_document_metadata(
+    case_id: str,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    title = str(data.get("title", "")).strip()
+    if not title:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "document_title_required")
+
+    payload = {
+        "case_id": case_id,
+        "register_code": normalize_document_choice(
+            data,
+            "register_code",
+            DOCUMENT_REGISTERS,
+            "anfrage",
+        ),
+        "document_category": normalize_document_choice(
+            data,
+            "document_category",
+            DOCUMENT_CATEGORIES,
+            "customer_document",
+        ),
+        "document_type": normalize_document_choice(
+            data,
+            "document_type",
+            DOCUMENT_TYPES,
+            "other",
+        ),
+        "document_status": normalize_document_choice(
+            data,
+            "document_status",
+            DOCUMENT_STATUSES,
+            "received",
+        ),
+        "title": title,
+        "note": str(data.get("note", "")).strip(),
+        "version_label": str(data.get("version_label", "1")).strip() or "1",
+        "replaces_document_id": str(data.get("replaces_document_id", "")).strip(),
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        replacement AS (
+          SELECT d.id
+          FROM app.customer_case_documents d
+          WHERE d.id = NULLIF((SELECT data->>'replaces_document_id' FROM payload), '')::bigint
+            AND d.customer_case_id = (SELECT id FROM visible_case)
+          LIMIT 1
+        ),
+        marked_replaced AS (
+          UPDATE app.customer_case_documents d
+          SET
+            document_status = 'replaced',
+            is_current_version = FALSE,
+            updated_at = now()
+          WHERE d.id = (SELECT id FROM replacement)
+        ),
+        inserted AS (
+          INSERT INTO app.customer_case_documents (
+            customer_case_id,
+            register_code,
+            document_category,
+            document_type,
+            document_status,
+            title,
+            note,
+            version_label,
+            is_current_version,
+            replaces_document_id,
+            uploaded_by_user_id,
+            source_system
+          )
+          SELECT
+            (SELECT id FROM visible_case),
+            data->>'register_code',
+            data->>'document_category',
+            data->>'document_type',
+            data->>'document_status',
+            data->>'title',
+            NULLIF(data->>'note', ''),
+            data->>'version_label',
+            TRUE,
+            (SELECT id FROM replacement),
+            NULLIF(data->>'actor_user_id', '')::bigint,
+            'manual_upload'
+          FROM payload
+          WHERE EXISTS (SELECT 1 FROM visible_case)
+          RETURNING id
+        ),
+        touched AS (
+          UPDATE app.customer_cases cc
+          SET updated_at = now()
+          WHERE cc.id = (SELECT id FROM visible_case)
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'document_id', (SELECT id FROM inserted))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("document_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
+    return result
+
+
+def archive_customer_case_document(
+    case_id: str,
+    document_id: str,
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "case_id": case_id,
+        "document_id": document_id,
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        archived AS (
+          UPDATE app.customer_case_documents d
+          SET
+            document_status = 'archived',
+            is_current_version = FALSE,
+            archived_at = now(),
+            archived_by_user_id = NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint,
+            updated_at = now()
+          WHERE d.id = NULLIF((SELECT data->>'document_id' FROM payload), '')::bigint
+            AND d.customer_case_id = (SELECT id FROM visible_case)
+          RETURNING id
+        ),
+        touched AS (
+          UPDATE app.customer_cases cc
+          SET updated_at = now()
+          WHERE cc.id = (SELECT id FROM visible_case)
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'document_id', (SELECT id FROM archived))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("document_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_document_not_found")
+    return result
+
+
 def save_task_attachment(task_id: int, upload: FileUpload, uploaded_by_user_id: int) -> None:
     content_type = normalize_attachment_type(upload)
     safe_name = safe_upload_filename(upload.filename)
@@ -3292,6 +3570,21 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[3] == "notes"
                 ):
                     self.write_json(save_customer_case_note(parts[2], data, access_email))
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "documents"
+                ):
+                    self.write_json(create_customer_case_document_metadata(parts[2], data, access_email))
+                    return
+                if (
+                    len(parts) == 6
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "documents"
+                    and parts[5] == "archive"
+                ):
+                    self.write_json(archive_customer_case_document(parts[2], parts[4], access_email))
                     return
                 if parts == ["overview", "tasks"]:
                     self.write_json(create_task(data, files, access_email))

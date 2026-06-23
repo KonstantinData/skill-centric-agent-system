@@ -100,21 +100,33 @@ const INQUIRY_SOURCES = [
 
 const DOCUMENT_GUIDE_CATEGORIES = [
   [
+    "customer_document",
     "Kundenunterlage",
     "Fotos, Grundrisse, erste Maße oder Unterlagen, die vom Kunden kommen.",
   ],
   [
+    "drawing_plan",
     "Plan / Aufmaß",
     "Planungsstände, Aufmaß, Installationsplan oder CARAT-Unterlagen.",
   ],
   [
+    "offer_order",
     "Angebot / Auftrag",
     "Angebote, Auftragsbestätigungen, Kaufvertrag oder Freigaben.",
   ],
   [
+    "invoice_closure",
     "Rechnung / Abschluss",
     "Rechnungen, Zahlungsbelege, Gutschriften oder Abschlussunterlagen.",
   ],
+] as const;
+
+const DOCUMENT_STATUSES = [
+  ["received", "Eingegangen"],
+  ["in_review", "In Prüfung"],
+  ["approved", "Freigegeben"],
+  ["sent_to_customer", "An Kunde gesendet"],
+  ["confirmed_by_customer", "Vom Kunden bestätigt"],
 ] as const;
 
 const CONTACT_ROLES = [
@@ -207,6 +219,13 @@ function sectionValue(
 function sectionChecked(section: SectionPayload | undefined, key: string): boolean {
   const value = section?.[key];
   return value === true || value === "true" || value === "on" || value === "1";
+}
+
+function optionLabel(
+  options: readonly (readonly string[])[],
+  value: string | null | undefined,
+): string {
+  return options.find(([key]) => key === value)?.[1] ?? value ?? "";
 }
 
 function UrgencyInfoTooltip() {
@@ -724,6 +743,7 @@ function CaseDesktop({
   const projectObjects = selectedCase.sections?.project_objects;
   const projectContacts = selectedCase.sections?.project_contacts;
   const documents = selectedCase.sections?.documents;
+  const caseDocuments = selectedCase.documents ?? [];
   const processControl = selectedCase.sections?.process_control;
   const activeTaskCount = selectedCaseTasks.filter((task) => task.status !== "done").length;
   const currentPhase = selectedCase.status_phase ?? 1;
@@ -1272,9 +1292,9 @@ function CaseDesktop({
               <span className="badge">Guide</span>
             </div>
             <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-              {DOCUMENT_GUIDE_CATEGORIES.map(([label, description]) => (
+              {DOCUMENT_GUIDE_CATEGORIES.map(([value, label, description]) => (
                 <div
-                  key={label}
+                  key={value}
                   className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
                 >
                   <p className="font-bold">{label}</p>
@@ -1282,18 +1302,112 @@ function CaseDesktop({
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
-              Noch keine Dokumente in diesem Vorgang.
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Button type="button" disabled className="opacity-60">
-                <Upload size={16} aria-hidden="true" />
+            <details className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3">
+              <summary className="cursor-pointer text-sm font-bold">
                 Dokument hinzufügen
-              </Button>
-              <span className="text-xs text-[var(--muted)]">
-                Upload, Versionierung und Download-Pakete werden im nächsten Schritt angebunden.
-              </span>
+              </summary>
+              <form
+                className="mt-4 grid gap-3 lg:grid-cols-3"
+                action={`/api/kunden/cases/${selectedCase.id}/documents?return_to=${returnTo}`}
+                method="post"
+              >
+                <Label label="Dokumentart">
+                  <Select name="document_category" defaultValue="customer_document">
+                    {DOCUMENT_GUIDE_CATEGORIES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Register">
+                  <Select name="register_code" defaultValue={activeRegister}>
+                    {CASE_REGISTERS.filter((register) => register.key !== "kommunikation").map((register) => (
+                      <option key={register.key} value={register.key}>{register.label}</option>
+                    ))}
+                    <option value="kommunikation">Kommunikation</option>
+                  </Select>
+                </Label>
+                <Label label="Status">
+                  <Select name="document_status" defaultValue="received">
+                    {DOCUMENT_STATUSES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Titel" className="lg:col-span-2">
+                  <Field
+                    name="title"
+                    required
+                    placeholder="z. B. Grundriss Kunde, Angebot V1, Rechnung"
+                  />
+                </Label>
+                <Label label="Version">
+                  <Field name="version_label" defaultValue="1" />
+                </Label>
+                <Label label="Notiz" className="lg:col-span-3">
+                  <Textarea
+                    name="note"
+                    placeholder="Kurzer Hinweis, was abgelegt werden soll."
+                  />
+                </Label>
+                <input type="hidden" name="document_type" value="other" />
+                <div className="lg:col-span-3">
+                  <Button type="submit">
+                    <FileText size={16} aria-hidden="true" />
+                    Dokument-Metadaten speichern
+                  </Button>
+                </div>
+              </form>
+            </details>
+            <div className="mt-4 grid gap-2">
+              {caseDocuments.map((document) => (
+                <div
+                  key={document.id}
+                  className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold">{document.title}</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">
+                        {optionLabel(DOCUMENT_GUIDE_CATEGORIES, document.document_category)}
+                        {" · "}
+                        {optionLabel(CASE_REGISTERS.map((register) => [register.key, register.label] as const), document.register_code)}
+                        {" · Version "}
+                        {document.version_label}
+                      </p>
+                      {document.note ? (
+                        <p className="mt-2 text-xs text-[var(--muted)]">{document.note}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="badge">
+                        {optionLabel(DOCUMENT_STATUSES, document.document_status)}
+                      </span>
+                      <form
+                        action={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/archive?return_to=${returnTo}`}
+                        method="post"
+                      >
+                        <Button type="submit" variant="secondary">
+                          Archivieren
+                        </Button>
+                      </form>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--muted)]">
+                    {document.has_file ? "Datei vorhanden" : "Noch ohne Datei"}
+                    {document.created_by ? ` · angelegt von ${document.created_by}` : ""}
+                    {document.created_at ? ` · ${document.created_at}` : ""}
+                  </p>
+                </div>
+              ))}
+              {caseDocuments.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
+                  Noch keine Dokumente in diesem Vorgang.
+                </div>
+              ) : null}
             </div>
+            <p className="mt-4 text-xs text-[var(--muted)]">
+              Aktuell werden Dokument-Metadaten gespeichert. Datei-Upload, Versionierung und Download-Pakete werden im nächsten Schritt angebunden.
+            </p>
           </Panel>
         </div>
 

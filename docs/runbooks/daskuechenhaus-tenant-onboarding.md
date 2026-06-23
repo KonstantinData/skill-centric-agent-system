@@ -92,6 +92,11 @@ customer-folder/case anchor and adds normalized customer tables:
   budget, room type, measurement date, and target installation date.
 - `app.customer_case_notes`, `app.customer_case_documents`, and
   `app.customer_case_audit_events` for the documented customer file.
+- `0010_customer_case_document_metadata.sql` extends
+  `app.customer_case_documents` for the guided Vorgangsregister document
+  workflow: register assignment, category, status, title, note, version label,
+  current-version marker, and archival metadata before binary file upload is
+  enabled.
 - `app.customer_file_sections` and `app.customer_case_sections` for flexible
   customer-file desktop and case-folder sections that will later be promoted to
   stricter tables where the workflow becomes stable.

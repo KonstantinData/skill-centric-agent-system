@@ -610,6 +610,8 @@ def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
 
     assert "0008_customer_search_first_deduplication.sql" in workflow
     assert "0009_customer_file_desktop.sql" in workflow
+    assert "0010_customer_case_document_metadata.sql" in workflow
+    assert "REMOTE_DOCUMENT_MIGRATION" in workflow
     assert "daskuechenhaus_admin_api.py" in workflow
     assert "daskuechenhaus-admin-api.service" in workflow
     assert (
