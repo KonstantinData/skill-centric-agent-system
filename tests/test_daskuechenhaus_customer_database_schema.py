@@ -179,7 +179,11 @@ def test_customer_case_document_object_storage_migration_adds_file_backend_contr
     assert "ADD COLUMN IF NOT EXISTS content_sha256" in migration
     assert "customer_case_documents_object_storage_complete" in migration
     assert "customer_case_documents_content_sha256" in migration
+    assert "customer_case_documents_allowed_content_type" in migration
     assert "customer_case_documents_object_storage_idx" in migration
+    assert "'image/webp'" in migration
+    assert "'application/vnd.openxmlformats-officedocument.wordprocessingml.document'" in migration
+    assert "'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'" in migration
     assert "'from_customer'" in migration
     assert "'measurement'" in migration
     assert "'planning'" in migration

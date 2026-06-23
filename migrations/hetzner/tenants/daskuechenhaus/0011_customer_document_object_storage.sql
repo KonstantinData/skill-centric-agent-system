@@ -53,6 +53,29 @@ BEGIN
   IF EXISTS (
     SELECT 1
     FROM pg_constraint
+    WHERE conname = 'customer_case_documents_allowed_content_type'
+      AND conrelid = 'app.customer_case_documents'::regclass
+  ) THEN
+    ALTER TABLE app.customer_case_documents
+      DROP CONSTRAINT customer_case_documents_allowed_content_type;
+  END IF;
+
+  ALTER TABLE app.customer_case_documents
+    ADD CONSTRAINT customer_case_documents_allowed_content_type CHECK (
+      content_type IS NULL
+      OR content_type IN (
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    );
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
     WHERE conname = 'customer_case_documents_object_storage_complete'
       AND conrelid = 'app.customer_case_documents'::regclass
   ) THEN
