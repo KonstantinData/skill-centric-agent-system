@@ -153,6 +153,16 @@ BEGIN
       DROP CONSTRAINT customer_case_documents_file_size_positive;
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customer_case_documents_file_size_non_negative'
+      AND conrelid = 'app.customer_case_documents'::regclass
+  ) THEN
+    ALTER TABLE app.customer_case_documents
+      DROP CONSTRAINT customer_case_documents_file_size_non_negative;
+  END IF;
+
   ALTER TABLE app.customer_case_documents
     ADD CONSTRAINT customer_case_documents_file_size_non_negative CHECK (
       file_size_bytes IS NULL OR file_size_bytes >= 0
