@@ -37,6 +37,8 @@ jobs:
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
       SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      DKH_OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.DKH_OBJECT_STORAGE_ACCESS_KEY_ID }}
+      DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Check out repository
@@ -73,10 +75,27 @@ jobs:
             echo "::error::Refusing to export HETZNER_SSH_KEY: value contains reserved delimiter."
             missing=1
           fi
+          for name in DKH_OBJECT_STORAGE_ACCESS_KEY_ID DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY
+          do
+            if [ -n "${!name:-}" ]; then
+              echo "::add-mask::${!name}"
+            fi
+          done
+          if [ "${APPLY_DEPLOY}" = "true" ]; then
+            if [ -z "${DKH_OBJECT_STORAGE_ACCESS_KEY_ID:-}" ] || [ -z "${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY:-}" ]; then
+              echo "::warning::Object storage GitHub secrets are not both configured; Admin API deploy will keep object storage disabled."
+            fi
+          fi
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
             printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            echo 'DKH_OBJECT_STORAGE_ACCESS_KEY_ID<<__DKH_OBJECT_STORAGE_ACCESS_KEY_ID__'
+            printf '%s\n' "${DKH_OBJECT_STORAGE_ACCESS_KEY_ID:-}"
+            echo '__DKH_OBJECT_STORAGE_ACCESS_KEY_ID__'
+            echo 'DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY<<__DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY__'
+            printf '%s\n' "${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY:-}"
+            echo '__DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY__'
             echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
             printf '%s\n' "${target_key}"
             echo '__SCAS_HETZNER_SSH_KEY__'
@@ -151,7 +170,7 @@ jobs:
 
           ssh -i "${HOME}/.ssh/hetzner_key" \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' REMOTE_DESKTOP_MIGRATION='${remote_desktop_migration}' REMOTE_DOCUMENT_MIGRATION='${remote_document_migration}' bash -s" <<'REMOTE'
+            "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' REMOTE_DESKTOP_MIGRATION='${remote_desktop_migration}' REMOTE_DOCUMENT_MIGRATION='${remote_document_migration}' DKH_OBJECT_STORAGE_ACCESS_KEY_ID='${DKH_OBJECT_STORAGE_ACCESS_KEY_ID}' DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY='${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           if ! sudo -n systemctl is-active --quiet postgresql.service; then
@@ -240,6 +259,18 @@ jobs:
           sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_DESKTOP_MIGRATION}"
           sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_DOCUMENT_MIGRATION}"
           sudo -n install -d -o tenant_daskuechenhaus_app -g tenant_daskuechenhaus_app -m 0750 /opt/daskuechenhaus/admin-api
+          sudo -n install -d -o root -g tenant_daskuechenhaus_app -m 0750 /etc/daskuechenhaus
+          object_storage_env="/tmp/daskuechenhaus-object-storage-${RANDOM}.env"
+          if [ -n "${DKH_OBJECT_STORAGE_ACCESS_KEY_ID:-}" ] && [ -n "${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY:-}" ]; then
+            {
+              printf 'DKH_OBJECT_STORAGE_ACCESS_KEY_ID=%s\n' "${DKH_OBJECT_STORAGE_ACCESS_KEY_ID}"
+              printf 'DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY=%s\n' "${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY}"
+            } > "${object_storage_env}"
+            sudo -n install -o root -g tenant_daskuechenhaus_app -m 0640 "${object_storage_env}" /etc/daskuechenhaus/object-storage.env
+          else
+            sudo -n rm -f /etc/daskuechenhaus/object-storage.env
+          fi
+          rm -f "${object_storage_env}"
           sudo -n install -o tenant_daskuechenhaus_app -g tenant_daskuechenhaus_app -m 0750 "${REMOTE_APP}" /opt/daskuechenhaus/admin-api/app.py
           sudo -n install -o root -g root -m 0644 "${REMOTE_SERVICE}" /etc/systemd/system/daskuechenhaus-admin-api.service
           sudo -n systemctl daemon-reload

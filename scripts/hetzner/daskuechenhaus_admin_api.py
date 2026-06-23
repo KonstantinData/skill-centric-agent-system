@@ -28,6 +28,14 @@ HOST = os.environ.get("DKH_ADMIN_API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("DKH_ADMIN_API_PORT", "8715"))
 TOKEN_FILE = os.environ.get("DKH_ADMIN_API_TOKEN_FILE", "/etc/daskuechenhaus/admin-api-token")
 UPLOAD_ROOT = Path(os.environ.get("DKH_ADMIN_UPLOAD_ROOT", "/var/lib/daskuechenhaus/uploads"))
+OBJECT_STORAGE_BUCKET = os.environ.get("DKH_OBJECT_STORAGE_BUCKET", "dkh-crm-documents").strip()
+OBJECT_STORAGE_ENDPOINT = os.environ.get(
+    "DKH_OBJECT_STORAGE_ENDPOINT",
+    "https://fsn1.your-objectstorage.com",
+).strip().rstrip("/")
+OBJECT_STORAGE_REGION = os.environ.get("DKH_OBJECT_STORAGE_REGION", "fsn1").strip()
+OBJECT_STORAGE_ACCESS_KEY_ID = os.environ.get("DKH_OBJECT_STORAGE_ACCESS_KEY_ID", "").strip()
+OBJECT_STORAGE_SECRET_ACCESS_KEY = os.environ.get("DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY", "").strip()
 ALLOWED_EMAILS = {
     email.strip().lower()
     for email in os.environ.get(
@@ -166,6 +174,18 @@ class ApiError(Exception):
 def read_token() -> str:
     with open(TOKEN_FILE, encoding="utf-8") as token_file:
         return token_file.read().strip()
+
+
+def object_storage_configured() -> bool:
+    return all(
+        [
+            OBJECT_STORAGE_BUCKET,
+            OBJECT_STORAGE_ENDPOINT,
+            OBJECT_STORAGE_REGION,
+            OBJECT_STORAGE_ACCESS_KEY_ID,
+            OBJECT_STORAGE_SECRET_ACCESS_KEY,
+        ]
+    )
 
 
 def psql_json(sql: str, variables: dict[str, str] | None = None) -> Any:
@@ -3826,7 +3846,17 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             parts = [part for part in parsed.path.split("/") if part]
             if self.command == "GET" and parsed.path == "/health":
-                self.write_json({"ok": True})
+                self.write_json(
+                    {
+                        "ok": True,
+                        "object_storage": {
+                            "configured": object_storage_configured(),
+                            "bucket": OBJECT_STORAGE_BUCKET,
+                            "endpoint": OBJECT_STORAGE_ENDPOINT,
+                            "region": OBJECT_STORAGE_REGION,
+                        },
+                    }
+                )
                 return
             if self.command == "GET" and parsed.path == "/admin/state":
                 self.write_json(admin_state())

@@ -8,9 +8,13 @@ Type=oneshot
 User=tenant_daskuechenhaus_app
 Group=tenant_daskuechenhaus_app
 WorkingDirectory=/opt/daskuechenhaus/mail-importer
+EnvironmentFile=-/etc/daskuechenhaus/object-storage.env
 Environment=DKH_ADMIN_DATABASE=tenant_daskuechenhaus
 Environment=DKH_MAIL_ENV_FILE=/etc/daskuechenhaus/mail.env
 Environment=DKH_ADMIN_UPLOAD_ROOT=/var/lib/daskuechenhaus/uploads
+Environment=DKH_OBJECT_STORAGE_BUCKET=dkh-crm-documents
+Environment=DKH_OBJECT_STORAGE_ENDPOINT=https://fsn1.your-objectstorage.com
+Environment=DKH_OBJECT_STORAGE_REGION=fsn1
 ExecStart=/usr/bin/python3 /opt/daskuechenhaus/mail-importer/app.py --once
 NoNewPrivileges=true
 PrivateTmp=true

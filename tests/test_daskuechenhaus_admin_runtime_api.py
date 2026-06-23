@@ -31,6 +31,9 @@ def test_daskuechenhaus_admin_api_runs_on_hetzner_runtime_plane_only() -> None:
     assert "User=tenant_daskuechenhaus_app" in service
     assert "DKH_ADMIN_API_HOST=127.0.0.1" in service
     assert "DKH_ADMIN_API_PORT=8715" in service
+    assert "EnvironmentFile=-/etc/daskuechenhaus/object-storage.env" in service
+    assert "DKH_OBJECT_STORAGE_BUCKET=dkh-crm-documents" in service
+    assert "DKH_OBJECT_STORAGE_ENDPOINT=https://fsn1.your-objectstorage.com" in service
 
 
 def test_daskuechenhaus_admin_api_exposes_required_admin_routes() -> None:
@@ -190,6 +193,9 @@ def test_daskuechenhaus_admin_api_handles_task_uploads_on_hetzner() -> None:
     assert "DKH_ADMIN_UPLOAD_ROOT=" in service
     assert "/var/lib/daskuechenhaus/uploads" in service
     assert "ReadWritePaths=/var/lib/daskuechenhaus/uploads" in service
+    assert "object_storage_configured" in source
+    assert "OBJECT_STORAGE_BUCKET" in source
+    assert "OBJECT_STORAGE_ACCESS_KEY_ID" in source
 
 
 def test_daskuechenhaus_admin_migration_seeds_initial_admin_and_company() -> None:

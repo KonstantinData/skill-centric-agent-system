@@ -598,6 +598,9 @@ def test_es_daskuechenhaus_admin_api_deploy_workflow_is_production_guarded() -> 
     assert "SCAS_PROD_HETZNER_HOST" in workflow
     assert "SCAS_PROD_HETZNER_SSH_KEY" in workflow
     assert "SCAS_PROD_HETZNER_USER" in workflow
+    assert "DKH_OBJECT_STORAGE_ACCESS_KEY_ID" in workflow
+    assert "DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY" in workflow
+    assert "/etc/daskuechenhaus/object-storage.env" in workflow
     assert "confirm_production must be true when apply_deploy=true" in workflow
     assert "TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
     assert "HETZNER_SSH_KEY must contain the complete private OpenSSH key block" in workflow
