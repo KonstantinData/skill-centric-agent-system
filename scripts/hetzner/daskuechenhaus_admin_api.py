@@ -2076,6 +2076,103 @@ def save_customer_case(
     return result
 
 
+def create_customer_case(data: dict[str, Any], access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "customer_id": str(data.get("customer_id") or "").strip(),
+        "case_number": generate_case_number(),
+        "case_title": str(data.get("case_title", "")).strip(),
+        "carat_order_number": normalize_carat_order_number(data.get("carat_order_number", "")),
+        "case_type": str(data.get("case_type", "")).strip(),
+        "case_status": str(data.get("case_status", "active")).strip() or "active",
+        "status_phase_id": str(data.get("status_phase_id") or "1").strip(),
+        "responsible_user_id": str(
+            data.get("responsible_user_id")
+            or data.get("owner_user_id")
+            or context["primary_user_id"]
+        ).strip(),
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id, c.display_name, c.customer_type, c.owner_user_id
+          FROM app.customers c
+          WHERE c.id = NULLIF((SELECT data->>'customer_id' FROM payload), '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        created AS (
+          INSERT INTO app.customer_cases (
+            case_number,
+            customer_display_name,
+            status_phase,
+            owner_user_id,
+            customer_id,
+            case_title,
+            case_type,
+            carat_order_number,
+            case_status,
+            status_phase_id,
+            created_by_user_id,
+            responsible_user_id
+          )
+          SELECT
+            data->>'case_number',
+            visible_customer.display_name,
+            NULLIF(data->>'status_phase_id', '')::smallint,
+            COALESCE(NULLIF(data->>'responsible_user_id', '')::bigint, visible_customer.owner_user_id),
+            visible_customer.id,
+            NULLIF(data->>'case_title', ''),
+            CASE
+              WHEN NULLIF(data->>'case_type', '') IS NOT NULL THEN data->>'case_type'
+              WHEN visible_customer.customer_type = 'company' THEN 'kitchen_project_b2b'
+              ELSE 'kitchen_project'
+            END,
+            NULLIF(data->>'carat_order_number', ''),
+            data->>'case_status',
+            NULLIF(data->>'status_phase_id', '')::smallint,
+            NULLIF(data->>'actor_user_id', '')::bigint,
+            COALESCE(NULLIF(data->>'responsible_user_id', '')::bigint, visible_customer.owner_user_id)
+          FROM payload, visible_customer
+          RETURNING id
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            actor_user_id,
+            title,
+            body
+          )
+          SELECT
+            'customer_case_created',
+            created.id,
+            NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint,
+            COALESCE(NULLIF((SELECT data->>'case_title' FROM payload), ''), 'Neuer Vorgang'),
+            NULL
+          FROM created
+        )
+        SELECT jsonb_build_object('ok', TRUE, 'case_id', (SELECT id FROM created))::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("case_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+    return result
+
+
 def save_customer_case_section(
     case_id: str,
     section_code: str,
@@ -3166,6 +3263,9 @@ class Handler(BaseHTTPRequestHandler):
                     and parts[3] == "sections"
                 ):
                     self.write_json(save_customer_section(parts[2], parts[4], data, access_email))
+                    return
+                if parts == ["customers", "cases"]:
+                    self.write_json(create_customer_case(data, access_email))
                     return
                 if len(parts) == 3 and parts[:2] == ["customers", "cases"]:
                     self.write_json(save_customer_case(parts[2], data, access_email))

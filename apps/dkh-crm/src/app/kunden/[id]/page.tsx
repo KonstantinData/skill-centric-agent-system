@@ -261,6 +261,51 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
                 <p className="text-sm text-[var(--muted)]">Keine Vorgänge zu diesem Kunden.</p>
               ) : null}
             </div>
+            <details className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3" open={cases.length === 0}>
+              <summary className="cursor-pointer text-sm font-bold">Neuen Vorgang anlegen</summary>
+              <form
+                className="mt-3 grid gap-3"
+                action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}
+                method="post"
+              >
+                <input type="hidden" name="customer_id" value={customer.id} />
+                <input type="hidden" name="case_status" value="active" />
+                <Label label="Vorgangstitel">
+                  <Field name="case_title" placeholder="z. B. Küchenplanung" />
+                </Label>
+                <Label label="CARAT Vorgangsnummer">
+                  <Field
+                    name="carat_order_number"
+                    pattern="[A-Za-z0-9]{1,5}-[A-Za-z0-9]{1,3}"
+                    maxLength={9}
+                    placeholder="z. B. 12345-123"
+                    title="Maximal 5 Zeichen, Bindestrich, maximal 3 Zeichen"
+                  />
+                </Label>
+                <Label label="Statusphase">
+                  <Select name="status_phase_id" defaultValue="1">
+                    {state.status_phases.map((phase) => (
+                      <option key={phase.phase} value={phase.phase}>
+                        {phase.phase}. {phase.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Vorgang verantwortlich">
+                  <Select
+                    name="responsible_user_id"
+                    defaultValue={state.current_user.primary_user_id ? String(state.current_user.primary_user_id) : undefined}
+                  >
+                    {state.users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {displayName(user.first_name, user.last_name) || user.email}
+                      </option>
+                    ))}
+                  </Select>
+                </Label>
+                <Button type="submit">Vorgang anlegen</Button>
+              </form>
+            </details>
           </Panel>
         </aside>
 

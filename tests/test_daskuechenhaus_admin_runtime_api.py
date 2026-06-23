@@ -87,6 +87,8 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "COALESCE(csp.is_terminal, FALSE) = TRUE" in source
     assert "LIMIT 20" in source
     assert "save_customer" in source
+    assert "create_customer_case" in source
+    assert 'parts == ["customers", "cases"]' in source
     assert "save_customer_section" in source
     assert "save_customer_case(" in source
     assert "save_customer_case_section" in source

@@ -174,6 +174,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Zur Kundensuche" in source
     assert "Stammdaten-Snapshot" in source
     assert "Vorgangsregal" in source
+    assert "Neuen Vorgang anlegen" in source
+    assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
+    assert 'name="customer_id"' in source
+    assert "Vorgang anlegen" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
@@ -191,11 +195,13 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Telefonnotiz speichern" in source
     assert "Entwurf vormerken" in source
     assert "/api/overview/tasks" in source
+    assert "/api/kunden/cases?return_to=/kunden/${customer.id}" in source
     assert "/sections/project_objects" in source
     assert "/sections/project_contacts" in source
     assert "/sections/documents" in source
     assert "/sections/process_control" in source
     assert "Vorgang schließen" in source
+    assert r"^cases$" in proxy
     assert r"^cases\/\d+$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
 

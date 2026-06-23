@@ -24,6 +24,7 @@ const ALLOWED_WRITE_PATHS: Record<ProxyKind, RegExp[]> = {
     /^integrations$/,
   ],
   customers: [
+    /^cases$/,
     /^customers$/,
     /^customers\/\d+$/,
     /^customers\/\d+\/sections\/[a-z0-9_-]+$/i,
