@@ -233,6 +233,9 @@ jobs:
             printf '\n### Stopped containers\n\n'
             docker container prune -f || true
 
+            printf '\n### Dangling images\n\n'
+            docker image prune -f || true
+
             printf '\n### Build cache\n\n'
             docker builder prune -f --filter until=24h || true
           else
