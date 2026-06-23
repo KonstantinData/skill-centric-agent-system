@@ -192,6 +192,33 @@ jobs:
           printf -- '- Remote hostname: `%s`\n' "$(hostname -f 2>/dev/null || hostname)"
           printf -- '- Collected at: `%s`\n' "$(date -Is)"
 
+          section "Disk usage"
+          df -hT 2>&1 | redact || true
+          printf '\n### Inodes\n\n'
+          df -ih 2>&1 | redact || true
+          printf '\n### Block devices\n\n'
+          lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINTS 2>&1 | redact || true
+          printf '\n### Top-level directory sizes\n\n'
+          sudo -n du -xh --max-depth=1 / /opt /var /tmp 2>/dev/null \
+            | sort -h \
+            | redact || true
+          printf '\n### Daskuechenhaus directory sizes\n\n'
+          sudo -n du -xh --max-depth=3 /opt/daskuechenhaus /var/lib/daskuechenhaus 2>/dev/null \
+            | sort -h \
+            | tail -n 80 \
+            | redact || true
+          printf '\n### PostgreSQL directory sizes\n\n'
+          sudo -n du -xh --max-depth=2 /var/lib/postgresql 2>/dev/null \
+            | sort -h \
+            | tail -n 60 \
+            | redact || true
+          printf '\n### Docker disk usage\n\n'
+          if command -v docker >/dev/null 2>&1; then
+            docker system df -v 2>&1 | redact || true
+          else
+            printf 'docker command not available.\n'
+          fi
+
           section "Listening ports"
           if command -v ss >/dev/null 2>&1; then
             ss -tulpn 2>/dev/null | grep -Ei 'streamlit|python|8501|80|443|nginx|caddy|apache' | redact || true
