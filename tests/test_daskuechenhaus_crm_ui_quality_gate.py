@@ -204,6 +204,15 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Aktueller Bereich" in source
     assert "Downloadbereich geplant" in source
     assert "Dokumentenpakete und Freigaben gesammelt herunterladen" in source
+    assert "DOCUMENT_GUIDE_CATEGORIES" in source
+    assert "Wählen Sie zuerst die passende Dokumentart" in source
+    assert "Kundenunterlage" in source
+    assert "Plan / Aufmaß" in source
+    assert "Angebot / Auftrag" in source
+    assert "Rechnung / Abschluss" in source
+    assert "Noch keine Dokumente in diesem Vorgang" in source
+    assert "Dokument hinzufügen" in source
+    assert "Upload, Versionierung und Download-Pakete" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source

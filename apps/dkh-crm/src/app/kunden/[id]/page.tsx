@@ -3,6 +3,7 @@ import {
   CheckSquare,
   ClipboardList,
   Download,
+  FileText,
   FolderOpen,
   Mail,
   MessageSquareText,
@@ -95,6 +96,25 @@ const INQUIRY_SOURCES = [
   ["walk_in", "Laufkundschaft"],
   ["recommendation", "Empfehlung"],
   ["other", "Sonstiges"],
+] as const;
+
+const DOCUMENT_GUIDE_CATEGORIES = [
+  [
+    "Kundenunterlage",
+    "Fotos, Grundrisse, erste Maße oder Unterlagen, die vom Kunden kommen.",
+  ],
+  [
+    "Plan / Aufmaß",
+    "Planungsstände, Aufmaß, Installationsplan oder CARAT-Unterlagen.",
+  ],
+  [
+    "Angebot / Auftrag",
+    "Angebote, Auftragsbestätigungen, Kaufvertrag oder Freigaben.",
+  ],
+  [
+    "Rechnung / Abschluss",
+    "Rechnungen, Zahlungsbelege, Gutschriften oder Abschlussunterlagen.",
+  ],
 ] as const;
 
 const CONTACT_ROLES = [
@@ -1237,6 +1257,44 @@ function CaseDesktop({
             </form>
           </Panel>
           ) : null}
+
+          <Panel>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <FileText size={18} aria-hidden="true" />
+                  <h3 className="section-title">Dokumente</h3>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Wählen Sie zuerst die passende Dokumentart. Das System führt danach durch Ablage, Status und Freigabe.
+                </p>
+              </div>
+              <span className="badge">Guide</span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {DOCUMENT_GUIDE_CATEGORIES.map(([label, description]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-[var(--border)] bg-white p-3 text-sm"
+                >
+                  <p className="font-bold">{label}</p>
+                  <p className="mt-2 text-xs text-[var(--muted)]">{description}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-lg border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
+              Noch keine Dokumente in diesem Vorgang.
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button type="button" disabled className="opacity-60">
+                <Upload size={16} aria-hidden="true" />
+                Dokument hinzufügen
+              </Button>
+              <span className="text-xs text-[var(--muted)]">
+                Upload, Versionierung und Download-Pakete werden im nächsten Schritt angebunden.
+              </span>
+            </div>
+          </Panel>
         </div>
 
         {["abwicklung", "kommunikation", "rechnung_abschluss"].includes(activeRegister) ? (
