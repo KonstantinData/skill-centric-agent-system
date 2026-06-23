@@ -114,6 +114,10 @@ for quick phone, email, address, and ownership access. The customer's case shelf
 is placed below that snapshot; selecting a case opens the case folder on the
 large right-hand desktop area.
 
+If a requested customer ID is not present in the visible customer state, the
+route stays inside the CRM shell and offers a return to `/kunden` instead of
+rendering the generic Next.js 404 page.
+
 The first case-folder slice stores flexible case sections through the Hetzner
 Admin API:
 

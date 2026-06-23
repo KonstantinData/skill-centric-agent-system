@@ -158,6 +158,9 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     source = load_text(APP_ROOT / "src" / "app" / "kunden" / "[id]" / "page.tsx")
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
 
+    assert "notFound" not in source
+    assert "Kundenakte nicht gefunden" in source
+    assert "Zur Kundensuche" in source
     assert "Stammdaten-Snapshot" in source
     assert "Vorgangsregal" in source
     assert "Desktop" in source

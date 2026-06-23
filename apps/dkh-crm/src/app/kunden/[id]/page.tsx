@@ -6,9 +6,9 @@ import {
   Mail,
   MessageSquareText,
   Phone,
+  Search,
   Upload,
 } from "lucide-react";
-import { notFound } from "next/navigation";
 import { PageHero } from "@/components/chrome/page-hero";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Field, Label, Select, Textarea } from "@/components/ui/form";
@@ -74,7 +74,33 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
     fetchOverviewState(userEmail),
   ]);
   const customer = state.customers.find((item) => String(item.id) === id);
-  if (!customer) notFound();
+  if (!customer) {
+    return (
+      <div className="content-stack">
+        <PageHero
+          title="Kundenakte nicht gefunden"
+          subtitle={`Für die ID ${id} ist keine sichtbare Kundenakte vorhanden.`}
+        />
+        <Panel>
+          <div className="grid min-h-[360px] place-items-center rounded-lg border border-dashed border-[var(--border)] bg-white p-8 text-center">
+            <div className="max-w-lg">
+              <Search size={36} className="mx-auto text-[var(--accent-strong)]" aria-hidden="true" />
+              <h2 className="mt-3 text-xl font-bold">Kunde über Suche öffnen</h2>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Die angeforderte Kundenakte ist nicht in den aktuell geladenen Kundendaten enthalten.
+                Öffnen Sie die Kundensuche, um den richtigen Datensatz auszuwählen.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <LinkButton href="/kunden" variant="primary">
+                  Zur Kundensuche
+                </LinkButton>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   const cases = state.customer_cases.filter(
     (item) => item.customer_id === customer.id,
