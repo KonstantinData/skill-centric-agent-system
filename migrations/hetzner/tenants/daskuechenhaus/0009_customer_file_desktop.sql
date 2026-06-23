@@ -96,6 +96,60 @@ CREATE TABLE IF NOT EXISTS app.customer_case_sections (
 CREATE UNIQUE INDEX IF NOT EXISTS customer_case_sections_case_code_key
   ON app.customer_case_sections (customer_case_id, section_code);
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customer_file_sections_code'
+      AND conrelid = 'app.customer_file_sections'::regclass
+  ) THEN
+    ALTER TABLE app.customer_file_sections
+      DROP CONSTRAINT customer_file_sections_code;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customer_file_sections_code_format'
+      AND conrelid = 'app.customer_file_sections'::regclass
+  ) THEN
+    ALTER TABLE app.customer_file_sections
+      DROP CONSTRAINT customer_file_sections_code_format;
+  END IF;
+
+  ALTER TABLE app.customer_file_sections
+    ADD CONSTRAINT customer_file_sections_code_format CHECK (
+      section_code ~ '^[a-z][a-z0-9_]*$'
+    );
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customer_case_sections_code'
+      AND conrelid = 'app.customer_case_sections'::regclass
+  ) THEN
+    ALTER TABLE app.customer_case_sections
+      DROP CONSTRAINT customer_case_sections_code;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'customer_case_sections_code_format'
+      AND conrelid = 'app.customer_case_sections'::regclass
+  ) THEN
+    ALTER TABLE app.customer_case_sections
+      DROP CONSTRAINT customer_case_sections_code_format;
+  END IF;
+
+  ALTER TABLE app.customer_case_sections
+    ADD CONSTRAINT customer_case_sections_code_format CHECK (
+      section_code ~ '^[a-z][a-z0-9_]*$'
+    );
+END;
+$$;
+
 ALTER TABLE app.customer_file_sections
   ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;
 

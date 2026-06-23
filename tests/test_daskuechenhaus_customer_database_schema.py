@@ -131,6 +131,9 @@ def test_customer_file_desktop_migration_adds_flexible_sections() -> None:
     assert "payload_json JSONB NOT NULL DEFAULT '{}'::jsonb" in migration
     assert "ADD COLUMN IF NOT EXISTS payload_json" in migration
     assert "SET payload_json = payload" in migration
+    assert "DROP CONSTRAINT customer_file_sections_code;" in migration
+    assert "DROP CONSTRAINT customer_case_sections_code;" in migration
+    assert "section_code ~ '^[a-z][a-z0-9_]*$'" in migration
     assert "customer_file_sections_customer_code_key" in migration
     assert "customer_case_sections_case_code_key" in migration
     assert "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE" in migration
