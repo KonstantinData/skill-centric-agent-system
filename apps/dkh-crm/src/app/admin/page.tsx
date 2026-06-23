@@ -5,21 +5,87 @@ import { Panel } from "@/components/ui/panel";
 import { getUserEmail } from "@/lib/auth";
 import { fetchAdminState } from "@/lib/dkh-api";
 
-export default async function AdminPage() {
+type AdminPageProps = {
+  searchParams: Promise<{ bereich?: string }>;
+};
+
+const ADMIN_SECTIONS = [
+  {
+    key: "benutzer",
+    title: "Benutzer",
+    description: "Mitarbeiterübersicht, Neuanlage und Bearbeitung.",
+  },
+  {
+    key: "firmenstammdaten",
+    title: "Firmenstammdaten",
+    description: "Adresse, Kontakt, Handelsregister und zentrale Einstellungen pflegen.",
+  },
+  {
+    key: "integrationen",
+    title: "Integrationen",
+    description: "Externe Dienste konfigurieren, ohne API-Schlüssel im Klartext zu speichern.",
+  },
+  {
+    key: "system",
+    title: "System",
+    description: "Systemfunktionen und technische Verwaltung.",
+  },
+] as const;
+
+type AdminSectionKey = (typeof ADMIN_SECTIONS)[number]["key"];
+
+function normalizeSection(value: string | undefined): AdminSectionKey | null {
+  return ADMIN_SECTIONS.some((section) => section.key === value)
+    ? (value as AdminSectionKey)
+    : null;
+}
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
+  const { bereich } = await searchParams;
+  const activeSection = normalizeSection(bereich);
   const userEmail = await getUserEmail();
   const state = await fetchAdminState(userEmail);
   const settings = state.company_settings;
+  const usersReturnTo = encodeURIComponent("/admin?bereich=benutzer");
+  const companyReturnTo = encodeURIComponent("/admin?bereich=firmenstammdaten");
+  const integrationsReturnTo = encodeURIComponent("/admin?bereich=integrationen");
 
   return (
     <div className="content-stack">
       <PageHero
-        title="Administration"
-        subtitle="Mitarbeiter, Rollen, Arbeitsgrunddaten und Integrationsreferenzen verwalten."
+        title="Admin Bereich"
+        subtitle="Zentrale Verwaltung für Mitarbeiter, Firmenstammdaten, Integrationen und System."
       />
+      {!activeSection ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {ADMIN_SECTIONS.map((section) => (
+            <a
+              key={section.key}
+              href={`/admin?bereich=${section.key}`}
+              className="rounded-lg border border-[var(--border)] bg-white p-4 shadow-sm transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)]"
+            >
+              <h2 className="text-base font-bold">{section.title}</h2>
+              <p className="mt-5 text-sm font-bold leading-relaxed text-[var(--ink)]">
+                {section.description}
+              </p>
+            </a>
+          ))}
+        </div>
+      ) : null}
+
+      {activeSection ? (
+        <div>
+          <a className="btn btn-secondary" href="/admin">
+            Zur Admin-Übersicht
+          </a>
+        </div>
+      ) : null}
+
+      {activeSection === "benutzer" ? (
       <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
         <Panel>
           <h2 className="section-title">Mitarbeiter anlegen</h2>
-          <form className="mt-4 grid gap-3" action="/api/admin/users?return_to=/admin" method="post">
+          <form className="mt-4 grid gap-3" action={`/api/admin/users?return_to=${usersReturnTo}`} method="post">
             <div className="grid gap-3 md:grid-cols-2">
               <Label label="Vorname">
                 <Field name="first_name" required />
@@ -69,7 +135,7 @@ export default async function AdminPage() {
               <article key={user.id} className="rounded-lg border border-[var(--border)] bg-white p-4">
                 <form
                   className="grid gap-3"
-                  action={`/api/admin/users/${user.id}?return_to=/admin`}
+                  action={`/api/admin/users/${user.id}?return_to=${usersReturnTo}`}
                   method="post"
                 >
                   <div className="grid gap-3 md:grid-cols-2">
@@ -132,7 +198,7 @@ export default async function AdminPage() {
                     <Button type="submit">Speichern</Button>
                     <Button
                       type="submit"
-                      formAction={`/api/admin/users/${user.id}/delete?return_to=/admin`}
+                      formAction={`/api/admin/users/${user.id}/delete?return_to=${usersReturnTo}`}
                       variant="danger"
                     >
                       Deaktivieren
@@ -148,11 +214,17 @@ export default async function AdminPage() {
           </div>
         </Panel>
       </div>
+      ) : null}
 
+      {activeSection === "firmenstammdaten" ? (
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel>
           <h2 className="section-title">Firmendaten</h2>
-          <form className="mt-4 grid gap-3" action="/api/admin/company-settings?return_to=/admin" method="post">
+          <form
+            className="mt-4 grid gap-3"
+            action={`/api/admin/company-settings?return_to=${companyReturnTo}`}
+            method="post"
+          >
             <Label label="Unternehmen">
               <Field name="company_name" defaultValue={settings.company_name ?? ""} />
             </Label>
@@ -181,10 +253,18 @@ export default async function AdminPage() {
             <Button type="submit">Firmendaten speichern</Button>
           </form>
         </Panel>
+      </div>
+      ) : null}
 
+      {activeSection === "integrationen" ? (
+      <div className="grid gap-4 xl:grid-cols-2">
         <Panel>
           <h2 className="section-title">Integration anlegen</h2>
-          <form className="mt-4 grid gap-3" action="/api/admin/integrations?return_to=/admin" method="post">
+          <form
+            className="mt-4 grid gap-3"
+            action={`/api/admin/integrations?return_to=${integrationsReturnTo}`}
+            method="post"
+          >
             <div className="grid gap-3 md:grid-cols-2">
               <Label label="Code">
                 <Field name="integration_code" placeholder="google_calendar" required />
@@ -225,6 +305,16 @@ export default async function AdminPage() {
           </div>
         </Panel>
       </div>
+      ) : null}
+
+      {activeSection === "system" ? (
+        <Panel>
+          <h2 className="section-title">System</h2>
+          <p className="mt-3 text-sm text-[var(--muted)]">
+            Die Funktionen für diesen Bereich werden separat festgelegt.
+          </p>
+        </Panel>
+      ) : null}
     </div>
   );
 }

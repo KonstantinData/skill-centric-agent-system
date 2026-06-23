@@ -209,6 +209,17 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
 def test_dkh_crm_admin_user_save_preserves_existing_admin_role() -> None:
     source = load_text(APP_ROOT / "src" / "app" / "admin" / "page.tsx")
 
+    assert 'title="Admin Bereich"' in source
+    assert "ADMIN_SECTIONS" in source
+    assert 'key: "benutzer"' in source
+    assert 'key: "firmenstammdaten"' in source
+    assert 'key: "integrationen"' in source
+    assert 'key: "system"' in source
+    assert "Zur Admin-Übersicht" in source
+    assert 'activeSection === "benutzer"' in source
+    assert 'activeSection === "firmenstammdaten"' in source
+    assert 'activeSection === "integrationen"' in source
+    assert 'activeSection === "system"' in source
     assert 'const isLockedAdminRole = user.roles.includes("admin") && role.code === "admin"' in source
     assert '<input name="role_admin" value="true" type="hidden" />' in source
     assert "defaultChecked={isLockedAdminRole || user.roles.includes(role.code)}" in source
