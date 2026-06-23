@@ -17,6 +17,19 @@ function customerUpdatedTime(customer: CustomerRecord): number {
 export default async function CustomersPage() {
   const userEmail = await getUserEmail();
   const state = await fetchCustomersState(userEmail);
+  const currentUserId = state.current_user.primary_user_id;
+  const assignableUsers =
+    state.users.length > 0 || !currentUserId
+      ? state.users
+      : [
+          {
+            id: currentUserId,
+            first_name: state.current_user.display_name,
+            last_name: "",
+            email: state.current_user.email,
+            roles: [],
+          },
+        ];
   const recentlyUsedCustomers = [...state.customers]
     .sort((left, right) => customerUpdatedTime(right) - customerUpdatedTime(left))
     .slice(0, 5);
@@ -295,8 +308,8 @@ export default async function CustomersPage() {
               />
             </Label>
             <Label label="Zuständig">
-              <Select name="owner_user_id">
-                {state.users.map((user) => (
+              <Select name="owner_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}>
+                {assignableUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {displayName(user.first_name, user.last_name) || user.email}
                   </option>
@@ -345,8 +358,8 @@ export default async function CustomersPage() {
                 </Label>
               </div>
               <Label label="Vorgang verantwortlich">
-                <Select name="responsible_user_id">
-                  {state.users.map((user) => (
+                <Select name="responsible_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}>
+                  {assignableUsers.map((user) => (
                     <option key={user.id} value={user.id}>
                       {displayName(user.first_name, user.last_name) || user.email}
                     </option>

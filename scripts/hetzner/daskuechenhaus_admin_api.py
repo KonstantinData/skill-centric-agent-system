@@ -1102,6 +1102,11 @@ def customers_state(access_email: str) -> dict[str, Any]:
               OR cc.owner_user_id IN (SELECT id FROM scope_users)
               OR cc.responsible_user_id IN (SELECT id FROM scope_users)
             )
+        ),
+        assignable_users AS (
+          SELECT u.*
+          FROM app.users u
+          WHERE u.is_active = TRUE
         )
         SELECT jsonb_build_object(
           'current_user', (SELECT data FROM context),
@@ -1121,8 +1126,7 @@ def customers_state(access_email: str) -> dict[str, Any]:
               )
               ORDER BY u.last_name, u.first_name, u.id
             )
-            FROM app.users u
-            WHERE u.is_active = TRUE
+            FROM assignable_users u
           ), '[]'::jsonb),
           'status_phases', COALESCE((
             SELECT jsonb_agg(

@@ -144,6 +144,12 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert ".slice(0, 5)" in source
     assert "Zuletzt verwendet" in source
     assert "Aktuelle Kunden" not in source
+    assert "const currentUserId = state.current_user.primary_user_id" in source
+    assert "const assignableUsers =" in source
+    assert "state.users.length > 0 || !currentUserId" in source
+    assert 'Select name="owner_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}' in source
+    assert 'Select name="responsible_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}' in source
+    assert "assignableUsers.map((user)" in source
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
     assert "syncCaseDetails" in search_script

@@ -70,6 +70,8 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert 'parts == ["customers", "customers"]' in source
     assert 'parts[:2] == ["customers", "customers"]' in source
     assert "customers_state" in source
+    assert "assignable_users AS" in source
+    assert "FROM assignable_users u" in source
     assert "if state is None:" in source
     assert '"customers": []' in source
     assert '"customer_cases": []' in source
