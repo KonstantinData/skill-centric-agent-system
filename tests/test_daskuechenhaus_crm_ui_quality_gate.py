@@ -87,11 +87,20 @@ def test_dkh_crm_surface_uses_new_routes_not_php_worker_routes() -> None:
         for path in (APP_ROOT / "src").rglob("*.tsx")
     )
 
-    for route in ("/termine", "/aufgaben", "/emails", "/kunden", "/vorgaenge", "/admin"):
+    for route in ("/termine", "/aufgaben", "/emails", "/kunden", "/admin"):
         assert route in source
 
     assert ".php" not in source
     assert "tenant-assets/daskuechenhaus" not in source
+
+
+def test_dkh_crm_cases_route_redirects_to_customer_files() -> None:
+    source = load_text(APP_ROOT / "src" / "app" / "vorgaenge" / "page.tsx")
+    nav = load_text(APP_ROOT / "src" / "components" / "chrome" / "nav-items.ts")
+
+    assert 'redirect("/kunden")' in source
+    assert 'href: "/vorgaenge"' not in nav
+    assert 'label: "Vorgänge"' not in nav
 
 
 def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
