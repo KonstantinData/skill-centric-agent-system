@@ -20,7 +20,7 @@ import { displayName, formatDateTime } from "@/lib/utils";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ case?: string }>;
+  searchParams: Promise<{ case?: string; register?: string }>;
 };
 
 const PROJECT_OBJECTS = [
@@ -48,6 +48,71 @@ const CONTACT_ROLES = [
   ["other", "Sonstige"],
 ] as const;
 
+const CASE_REGISTERS = [
+  {
+    key: "anfrage",
+    label: "Anfrage",
+    phaseRange: [1, 1],
+    description: "Projektgrundlagen und erster Anlass.",
+  },
+  {
+    key: "beratung",
+    label: "Beratung",
+    phaseRange: [2, 2],
+    description: "Ansprechpartner und Abstimmung.",
+  },
+  {
+    key: "planung",
+    label: "Planung",
+    phaseRange: [3, 3],
+    description: "Objekte, Räume und Planungsnotizen.",
+  },
+  {
+    key: "angebot_auftrag",
+    label: "Angebot / Auftrag",
+    phaseRange: [4, 5],
+    description: "Angebote, Auftragsunterlagen und Dokumente.",
+  },
+  {
+    key: "abwicklung",
+    label: "Abwicklung",
+    phaseRange: [6, 8],
+    description: "Aufgaben, Termine und kritische Schritte.",
+  },
+  {
+    key: "rechnung_abschluss",
+    label: "Rechnung / Abschluss",
+    phaseRange: [9, 11],
+    description: "Rechnung, Abschluss und Vorgangshistorie.",
+  },
+  {
+    key: "kommunikation",
+    label: "Kommunikation",
+    phaseRange: [1, 11],
+    description: "Telefonnotizen, E-Mail-Entwürfe und Historie.",
+  },
+] as const;
+
+type CaseRegisterKey = (typeof CASE_REGISTERS)[number]["key"];
+
+function registerForPhase(phase: number | null | undefined): CaseRegisterKey {
+  const normalizedPhase = phase ?? 1;
+  return (
+    CASE_REGISTERS.find(
+      (register) =>
+        normalizedPhase >= register.phaseRange[0] &&
+        normalizedPhase <= register.phaseRange[1] &&
+        register.key !== "kommunikation",
+    )?.key ?? "anfrage"
+  );
+}
+
+function normalizeRegister(value: string | undefined, phase: number | null | undefined): CaseRegisterKey {
+  return CASE_REGISTERS.some((register) => register.key === value)
+    ? (value as CaseRegisterKey)
+    : registerForPhase(phase);
+}
+
 function sectionValue(
   section: SectionPayload | undefined,
   key: string,
@@ -67,7 +132,7 @@ function caseLabel(item: CustomerCaseRecord): string {
 
 export default async function CustomerFilePage({ params, searchParams }: PageProps) {
   const { id } = await params;
-  const { case: selectedCaseId } = await searchParams;
+  const { case: selectedCaseId, register } = await searchParams;
   const userEmail = await getUserEmail();
   const [state, overview] = await Promise.all([
     fetchCustomersState(userEmail),
@@ -116,9 +181,11 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
         (event) => event.customer_case?.id === selectedCase.id,
       )
     : [];
-  const returnTo = selectedCase
-    ? encodeURIComponent(`/kunden/${customer.id}?case=${selectedCase.id}`)
-    : encodeURIComponent(`/kunden/${customer.id}`);
+  const activeRegister = selectedCase ? normalizeRegister(register, selectedCase.status_phase) : null;
+  const selectedCaseReturnPath = selectedCase
+    ? `/kunden/${customer.id}?case=${selectedCase.id}${activeRegister ? `&register=${activeRegister}` : ""}`
+    : `/kunden/${customer.id}`;
+  const returnTo = encodeURIComponent(selectedCaseReturnPath);
   const address = [
     customer.address?.street,
     customer.address?.house_number,
@@ -319,6 +386,7 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
               selectedCaseEvents={selectedCaseEvents}
               users={state.users}
               statusPhases={state.status_phases}
+              activeRegister={activeRegister ?? registerForPhase(selectedCase.status_phase)}
               returnTo={returnTo}
             />
           ) : (
@@ -348,6 +416,7 @@ function CaseDesktop({
   selectedCaseEvents,
   users,
   statusPhases,
+  activeRegister,
   returnTo,
 }: {
   customerId: number;
@@ -359,6 +428,7 @@ function CaseDesktop({
   >;
   users: Awaited<ReturnType<typeof fetchCustomersState>>["users"];
   statusPhases: Awaited<ReturnType<typeof fetchCustomersState>>["status_phases"];
+  activeRegister: CaseRegisterKey;
   returnTo: string;
 }) {
   const projectObjects = selectedCase.sections?.project_objects;
@@ -366,6 +436,9 @@ function CaseDesktop({
   const documents = selectedCase.sections?.documents;
   const processControl = selectedCase.sections?.process_control;
   const activeTaskCount = selectedCaseTasks.filter((task) => task.status !== "done").length;
+  const currentPhase = selectedCase.status_phase ?? 1;
+  const phaseRegister = registerForPhase(currentPhase);
+  const registerMeta = CASE_REGISTERS.find((register) => register.key === activeRegister) ?? CASE_REGISTERS[0];
 
   return (
     <div className="grid gap-4">
@@ -433,12 +506,54 @@ function CaseDesktop({
         </form>
       </Panel>
 
+      <Panel>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="section-title">Register</h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">{registerMeta.description}</p>
+          </div>
+          <span className="badge">
+            Aktuell: {selectedCase.status_phase_name || `Phase ${currentPhase}`}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {CASE_REGISTERS.map((register) => {
+            const isActive = register.key === activeRegister;
+            const isPhaseRegister = register.key === phaseRegister;
+            const isPast = register.phaseRange[1] < currentPhase;
+            const isFuture = register.phaseRange[0] > currentPhase;
+            return (
+              <a
+                key={register.key}
+                href={`/kunden/${customerId}?case=${selectedCase.id}&register=${register.key}`}
+                className={`rounded-lg border p-3 text-sm transition ${
+                  isActive
+                    ? "border-[var(--accent)] bg-[var(--surface-soft)]"
+                    : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold">{register.label}</span>
+                  {isPhaseRegister ? <span className="badge">Status</span> : null}
+                </div>
+                <p className="mt-2 text-xs text-[var(--muted)]">
+                  {isPast ? "Vergangenheit" : isFuture ? "Zukunft" : "Aktueller Bereich"}
+                </p>
+              </a>
+            );
+          })}
+        </div>
+      </Panel>
+
       <div className="grid gap-4 2xl:grid-cols-[1fr_360px]">
         <div className="grid gap-4">
+          {["anfrage", "planung"].includes(activeRegister) ? (
           <Panel>
             <div className="flex items-center gap-2">
               <ClipboardList size={18} aria-hidden="true" />
-              <h3 className="section-title">Projektobjekte</h3>
+              <h3 className="section-title">
+                {activeRegister === "anfrage" ? "Projektgrundlagen" : "Projektobjekte / Planung"}
+              </h3>
             </div>
             <form
               className="mt-4 grid gap-4"
@@ -481,7 +596,9 @@ function CaseDesktop({
               <Button type="submit">Projekt speichern</Button>
             </form>
           </Panel>
+          ) : null}
 
+          {activeRegister === "beratung" ? (
           <Panel>
             <div className="flex items-center gap-2">
               <MessageSquareText size={18} aria-hidden="true" />
@@ -542,7 +659,9 @@ function CaseDesktop({
               <Button type="submit">Kontaktbereich speichern</Button>
             </form>
           </Panel>
+          ) : null}
 
+          {activeRegister === "abwicklung" ? (
           <Panel>
             <div className="flex items-center gap-2">
               <CheckSquare size={18} aria-hidden="true" />
@@ -589,11 +708,15 @@ function CaseDesktop({
               ) : null}
             </div>
           </Panel>
+          ) : null}
 
+          {["angebot_auftrag", "rechnung_abschluss"].includes(activeRegister) ? (
           <Panel>
             <div className="flex items-center gap-2">
               <Upload size={18} aria-hidden="true" />
-              <h3 className="section-title">Dokumente</h3>
+              <h3 className="section-title">
+                {activeRegister === "angebot_auftrag" ? "Angebot / Auftrag" : "Rechnung / Abschluss"}
+              </h3>
             </div>
             <form
               className="mt-4 grid gap-3 lg:grid-cols-[180px_1fr]"
@@ -622,43 +745,9 @@ function CaseDesktop({
               </div>
             </form>
           </Panel>
-        </div>
+          ) : null}
 
-        <aside className="grid h-fit gap-4">
-          <Panel>
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={18} aria-hidden="true" />
-              <h3 className="section-title">Cockpit</h3>
-            </div>
-            <div className="mt-4 grid gap-2 text-sm">
-              <div className="rounded-lg bg-[var(--surface-soft)] p-3">
-                <p className="font-bold">{activeTaskCount} offene Aufgaben</p>
-                <p className="text-[var(--muted)]">Aus dem Aufgabenbereich zum geöffneten Vorgang.</p>
-              </div>
-              <form
-                className="grid gap-2 rounded-lg bg-white p-3"
-                action={`/api/kunden/cases/${selectedCase.id}/sections/process_control?return_to=${returnTo}`}
-                method="post"
-              >
-                <Label label="Nächster kritischer Schritt">
-                  <Field
-                    name="next_control_step"
-                    defaultValue={sectionValue(processControl, "next_control_step")}
-                    placeholder="z. B. AB prüfen"
-                  />
-                </Label>
-                <Label label="Fällig am">
-                  <Field
-                    name="next_control_due"
-                    type="date"
-                    defaultValue={sectionValue(processControl, "next_control_due")}
-                  />
-                </Label>
-                <Button type="submit" variant="secondary">Speichern</Button>
-              </form>
-            </div>
-          </Panel>
-
+          {activeRegister === "kommunikation" ? (
           <Panel>
             <h3 className="section-title">Kommunikation</h3>
             <form
@@ -692,7 +781,48 @@ function CaseDesktop({
               </Button>
             </form>
           </Panel>
+          ) : null}
+        </div>
 
+        {["abwicklung", "kommunikation", "rechnung_abschluss"].includes(activeRegister) ? (
+        <aside className="grid h-fit gap-4">
+          {activeRegister === "abwicklung" ? (
+          <Panel>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} aria-hidden="true" />
+              <h3 className="section-title">Cockpit</h3>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm">
+              <div className="rounded-lg bg-[var(--surface-soft)] p-3">
+                <p className="font-bold">{activeTaskCount} offene Aufgaben</p>
+                <p className="text-[var(--muted)]">Aus dem Aufgabenbereich zum geöffneten Vorgang.</p>
+              </div>
+              <form
+                className="grid gap-2 rounded-lg bg-white p-3"
+                action={`/api/kunden/cases/${selectedCase.id}/sections/process_control?return_to=${returnTo}`}
+                method="post"
+              >
+                <Label label="Nächster kritischer Schritt">
+                  <Field
+                    name="next_control_step"
+                    defaultValue={sectionValue(processControl, "next_control_step")}
+                    placeholder="z. B. AB prüfen"
+                  />
+                </Label>
+                <Label label="Fällig am">
+                  <Field
+                    name="next_control_due"
+                    type="date"
+                    defaultValue={sectionValue(processControl, "next_control_due")}
+                  />
+                </Label>
+                <Button type="submit" variant="secondary">Speichern</Button>
+              </form>
+            </div>
+          </Panel>
+          ) : null}
+
+          {["kommunikation", "rechnung_abschluss"].includes(activeRegister) ? (
           <Panel>
             <h3 className="section-title">Historie</h3>
             <div className="mt-4 grid gap-2">
@@ -711,7 +841,9 @@ function CaseDesktop({
               ) : null}
             </div>
           </Panel>
+          ) : null}
         </aside>
+        ) : null}
       </div>
     </div>
   );

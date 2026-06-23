@@ -187,6 +187,13 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
     assert 'name="customer_id"' in source
     assert "Vorgang anlegen" in source
+    assert "CASE_REGISTERS" in source
+    assert "registerForPhase" in source
+    assert "normalizeRegister" in source
+    assert "activeRegister" in source
+    assert "Vergangenheit" in source
+    assert "Zukunft" in source
+    assert "Aktueller Bereich" in source
     assert "Desktop" in source
     assert "Geöffnete Vorgangsmappe" in source
     assert "PROJECT_OBJECTS" in source
