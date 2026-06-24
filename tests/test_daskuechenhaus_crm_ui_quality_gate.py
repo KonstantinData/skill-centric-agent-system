@@ -257,9 +257,21 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "data-customer-master-modal" in source
     assert "Kundenstammdaten bearbeiten" in source
     assert "data-customer-master-type-section" in source
+    assert "data-customer-master-country-select" in source
+    assert "data-customer-master-tax-treatment" in source
+    assert "data-customer-master-custom-vat" in source
+    assert "data-customer-master-custom-vat-rate" in source
+    assert "data-customer-master-custom-vat-label" in source
+    assert "customer.has_custom_vat" in source
+    assert "customer.custom_vat_rate" in source
+    assert "customer.custom_vat_rate_label" in source
+    assert "name=\"salutation\"" in source
+    assert "Prof. Dr." in source
     assert 'Script src="/customer-search.v1.js"' in source
     assert "data-customer-master-open" in search_js
     assert "syncCustomerMasterTypeSections" in search_js
+    assert "syncCustomerMasterCustomVat" in search_js
+    assert "[data-customer-master-country-select]" in search_js
     assert "data-document-upload-modal" in search_js
     assert "openDocumentUploadModal" in search_js
     assert "closeDocumentUploadModal" in search_js

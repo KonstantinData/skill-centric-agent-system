@@ -235,6 +235,9 @@ export type CustomerRecord = {
   country: string | null;
   tax_treatment: string | null;
   tax_treatment_note: string | null;
+  has_custom_vat?: boolean | null;
+  custom_vat_rate?: string | number | null;
+  custom_vat_rate_label?: string | null;
   notes: string | null;
   owner_user_id: number | null;
   address: CustomerAddress | null;

@@ -201,6 +201,9 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert '"has_custom_vat": has_custom_vat' in source
     assert '"custom_vat_rate": custom_vat_rate' in source
     assert '"custom_vat_rate_label": str(data.get("custom_vat_rate_label", "")).strip()' in source
+    assert "'has_custom_vat', c.has_custom_vat" in source
+    assert "'custom_vat_rate', c.custom_vat_rate" in source
+    assert "'custom_vat_rate_label', c.custom_vat_rate_label" in source
     assert "has_custom_vat = (data->>'has_custom_vat')::boolean" in source
     assert "custom_vat_rate = NULLIF(data->>'custom_vat_rate', '')::numeric" in source
     assert "custom_vat_rate_label = NULLIF(data->>'custom_vat_rate_label', '')" in source
