@@ -140,14 +140,25 @@ DOCUMENT_TYPES = {
 CARAT_PRJZ_PARSER_VERSION = "carat-prjz-v1"
 
 CUSTOMER_EXPORT_SECTION_CODE = "customer_export"
-CUSTOMER_EXPORT_CASE_FOLDERS = [
-    "01_Anfrage",
-    "02_Beratung",
-    "03_Planung",
-    "04_Angebot_Auftrag",
-    "05_Abwicklung",
-    "06_Rechnung_Abschluss",
+CUSTOMER_EXPORT_CASE_REGISTERS = [
+    ("anfrage", "Anfrage", "01_Anfrage"),
+    ("beratung", "Beratung", "02_Beratung"),
+    ("planung", "Planung", "03_Planung"),
+    ("angebot_auftrag", "Angebot / Auftrag", "04_Angebot_Auftrag"),
+    ("abwicklung", "Abwicklung", "05_Abwicklung"),
+    ("rechnung_abschluss", "Rechnung / Abschluss", "06_Rechnung_Abschluss"),
+    ("kommunikation", "Kommunikation", "07_Kommunikation"),
+    ("dokumente", "Dokumente", "08_Dokumente"),
 ]
+CUSTOMER_EXPORT_CASE_FOLDERS = [
+    folder for _register_code, _label, folder in CUSTOMER_EXPORT_CASE_REGISTERS
+]
+CUSTOMER_EXPORT_REGISTER_FOLDERS = {
+    register_code: folder for register_code, _label, folder in CUSTOMER_EXPORT_CASE_REGISTERS
+}
+CUSTOMER_EXPORT_REGISTER_LABELS = {
+    register_code: label for register_code, label, _folder in CUSTOMER_EXPORT_CASE_REGISTERS
+}
 CUSTOMER_EXPORT_DOCUMENT_FOLDERS = [
     "vom_Kunden",
     "Aufmass",
@@ -3041,57 +3052,443 @@ def customer_export_document_rows(
     return result if isinstance(result, list) else []
 
 
+def customer_export_task_rows(customer_id: str, context: dict[str, Any]) -> list[dict[str, Any]]:
+    result = psql_json(
+        """
+        WITH context AS (SELECT :'context'::jsonb AS data),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.id = NULLIF(:'customer_id', '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        )
+        SELECT COALESCE(jsonb_agg(
+          jsonb_build_object(
+            'id', t.id,
+            'customer_case_id', t.related_case_id,
+            'case_number', cc.case_number,
+            'title', t.title,
+            'description', t.description,
+            'status', ts.code,
+            'status_name', ts.name,
+            'priority', t.priority,
+            'due_at',
+              CASE
+                WHEN t.due_at IS NULL THEN NULL
+                ELSE to_char(t.due_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+              END,
+            'reminder_at',
+              CASE
+                WHEN t.reminder_at IS NULL THEN NULL
+                ELSE to_char(t.reminder_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+              END,
+            'created_at',
+              to_char(t.created_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI'),
+            'attachments', COALESCE((
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'id', tatt.id,
+                  'task_id', tatt.task_id,
+                  'original_filename', tatt.original_filename,
+                  'storage_path', tatt.storage_path,
+                  'content_type', tatt.content_type,
+                  'file_size_bytes', tatt.file_size_bytes,
+                  'created_at',
+                    to_char(tatt.created_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+                )
+                ORDER BY tatt.created_at DESC, tatt.id DESC
+              )
+              FROM app.task_attachments tatt
+              WHERE tatt.task_id = t.id
+            ), '[]'::jsonb)
+          )
+          ORDER BY t.due_at NULLS LAST, t.created_at DESC, t.id DESC
+        ), '[]'::jsonb)::text
+        FROM app.tasks t
+        JOIN app.customer_cases cc ON cc.id = t.related_case_id
+        JOIN app.task_statuses ts ON ts.id = t.status_id
+        WHERE cc.customer_id = (SELECT id FROM visible_customer)
+          AND t.archived_at IS NULL
+          AND t.deleted_at IS NULL;
+        """,
+        {"customer_id": customer_id, "context": json.dumps(context)},
+    )
+    return result if isinstance(result, list) else []
+
+
+def customer_export_email_rows(customer_id: str, context: dict[str, Any]) -> list[dict[str, Any]]:
+    result = psql_json(
+        """
+        WITH context AS (SELECT :'context'::jsonb AS data),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_customer AS (
+          SELECT c.id
+          FROM app.customers c
+          LEFT JOIN app.customer_cases cc ON cc.customer_id = c.id
+          WHERE c.id = NULLIF(:'customer_id', '')::bigint
+            AND c.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        )
+        SELECT COALESCE(jsonb_agg(
+          jsonb_build_object(
+            'id', em.id,
+            'customer_case_id', ecl.customer_case_id,
+            'case_number', cc.case_number,
+            'subject', em.subject,
+            'snippet', em.snippet,
+            'direction', em.direction,
+            'received_at',
+              CASE
+                WHEN em.received_at IS NULL THEN NULL
+                ELSE to_char(em.received_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+              END,
+            'sent_at',
+              CASE
+                WHEN em.sent_at IS NULL THEN NULL
+                ELSE to_char(em.sent_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+              END,
+            'assigned_at',
+              to_char(ecl.assigned_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI'),
+            'participants', COALESCE((
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'type', ep.participant_type,
+                  'display_name', ep.display_name,
+                  'email_address', ep.email_address
+                )
+                ORDER BY ep.id
+              )
+              FROM app.email_participants ep
+              WHERE ep.email_message_id = em.id
+            ), '[]'::jsonb),
+            'attachments', COALESCE((
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'id', ea.id,
+                  'email_message_id', ea.email_message_id,
+                  'original_filename', ea.original_filename,
+                  'storage_path', ea.storage_path,
+                  'content_type', ea.content_type,
+                  'file_size_bytes', ea.file_size_bytes,
+                  'created_at',
+                    to_char(ea.created_at AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD HH24:MI')
+                )
+                ORDER BY ea.created_at DESC, ea.id DESC
+              )
+              FROM app.email_attachments ea
+              WHERE ea.email_message_id = em.id
+            ), '[]'::jsonb)
+          )
+          ORDER BY
+            ecl.customer_case_id,
+            em.received_at DESC NULLS LAST,
+            em.created_at DESC,
+            em.id DESC
+        ), '[]'::jsonb)::text
+        FROM app.email_case_links ecl
+        JOIN app.customer_cases cc ON cc.id = ecl.customer_case_id
+        JOIN app.email_messages em ON em.id = ecl.email_message_id
+        WHERE cc.customer_id = (SELECT id FROM visible_customer)
+          AND em.archived_at IS NULL
+          AND em.deleted_at IS NULL;
+        """,
+        {"customer_id": customer_id, "context": json.dumps(context)},
+    )
+    return result if isinstance(result, list) else []
+
+
+def rows_by_case(
+    rows: list[dict[str, Any]], case_id_key: str = "customer_case_id"
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row.get(case_id_key)), []).append(row)
+    return grouped
+
+
+def archive_write_local_file(
+    archive: zipfile.ZipFile,
+    archive_name: str,
+    storage_path: Any,
+) -> bool:
+    path_value = str(storage_path or "")
+    if not path_value:
+        return False
+    path = Path(path_value)
+    try:
+        resolved_path = path.resolve(strict=True)
+        upload_root = UPLOAD_ROOT.resolve(strict=False)
+    except OSError:
+        return False
+    if not resolved_path.is_relative_to(upload_root) or not resolved_path.is_file():
+        return False
+    archive.write(resolved_path, archive_name)
+    return True
+
+
+def document_export_filename(row: dict[str, Any]) -> str:
+    original_name = export_slug(row.get("original_filename") or row.get("title"), "Dokument")
+    suffix = Path(str(row.get("original_filename") or "")).suffix
+    if suffix and not original_name.endswith(suffix):
+        return f"{original_name}{suffix}"
+    return original_name
+
+
 def add_existing_document_files(
     archive: zipfile.ZipFile,
     root: str,
     rows: list[dict[str, Any]],
-) -> None:
+) -> int:
     used_names: set[str] = set()
+    included_count = 0
     for row in rows:
         case_folder = export_slug(row.get("case_number") or f"Vorgang_{row.get('case_id')}")
         category_folder = CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS.get(
             str(row.get("document_category") or ""),
             export_slug(row.get("document_category"), "Dokumente"),
         )
-        original_name = export_slug(row.get("original_filename") or row.get("title"), "Dokument")
-        suffix = Path(str(row.get("original_filename") or "")).suffix
-        filename = (
-            f"{original_name}{suffix}"
-            if suffix and not original_name.endswith(suffix)
-            else original_name
-        )
-        archive_name = f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{filename}"
-        if archive_name in used_names:
-            archive_name = (
-                f"{root}/01_Vorgaenge/{case_folder}/Dokumente/"
-                f"{category_folder}/{row.get('document_id')}_{filename}"
+        filename = document_export_filename(row)
+        archive_names = [
+            f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{category_folder}/{filename}",
+        ]
+        register_folder = CUSTOMER_EXPORT_REGISTER_FOLDERS.get(str(row.get("register_code") or ""))
+        if register_folder:
+            archive_names.append(
+                f"{root}/01_Vorgaenge/{case_folder}/{register_folder}/Dateien/{filename}"
             )
-        used_names.add(archive_name)
+        unique_archive_names = []
+        for archive_name in archive_names:
+            if archive_name in used_names:
+                archive_name = str(
+                    Path(archive_name).with_name(f"{row.get('document_id')}_{filename}")
+                )
+            used_names.add(archive_name)
+            unique_archive_names.append(archive_name)
         if row.get("storage_backend") == "object_storage" and row.get("object_storage_key"):
-            archive.writestr(
-                archive_name,
-                object_storage_request("GET", str(row["object_storage_key"])),
+            file_body = object_storage_request("GET", str(row["object_storage_key"]))
+            for archive_name in unique_archive_names:
+                archive.writestr(archive_name, file_body)
+            included_count += 1
+            continue
+        written = False
+        for archive_name in unique_archive_names:
+            written = (
+                archive_write_local_file(archive, archive_name, row.get("storage_path"))
+                or written
             )
-            continue
-        storage_path = str(row.get("storage_path") or "")
-        if not storage_path:
-            continue
-        path = Path(storage_path)
-        try:
-            resolved_path = path.resolve(strict=True)
-            upload_root = UPLOAD_ROOT.resolve(strict=False)
-        except OSError:
-            continue
-        if not resolved_path.is_relative_to(upload_root) or not resolved_path.is_file():
-            continue
-        archive.write(resolved_path, archive_name)
+        if written:
+            included_count += 1
+    return included_count
+
+
+def add_attachment_files(
+    archive: zipfile.ZipFile,
+    root: str,
+    rows: list[dict[str, Any]],
+    register_folder: str,
+    subfolder: str,
+    attachment_key: str,
+    parent_id_key: str,
+) -> int:
+    included_count = 0
+    used_names: set[str] = set()
+    for row in rows:
+        case_folder = export_slug(
+            row.get("case_number") or f"Vorgang_{row.get('customer_case_id')}"
+        )
+        for attachment in row.get(attachment_key) or []:
+            filename = export_slug(
+                attachment.get("original_filename"),
+                f"Anhang_{attachment.get('id')}",
+            )
+            suffix = Path(str(attachment.get("original_filename") or "")).suffix
+            if suffix and not filename.endswith(suffix):
+                filename = f"{filename}{suffix}"
+            archive_name = (
+                f"{root}/01_Vorgaenge/{case_folder}/{register_folder}/"
+                f"{subfolder}/{row.get(parent_id_key)}_{filename}"
+            )
+            if archive_name in used_names:
+                archive_name = str(
+                    Path(archive_name).with_name(f"{attachment.get('id')}_{filename}")
+                )
+            used_names.add(archive_name)
+            if archive_write_local_file(archive, archive_name, attachment.get("storage_path")):
+                included_count += 1
+    return included_count
 
 
 def add_case_export_directories(archive: zipfile.ZipFile, root: str, case_folder: str) -> None:
     for folder in CUSTOMER_EXPORT_CASE_FOLDERS:
         archive.writestr(f"{root}/01_Vorgaenge/{case_folder}/{folder}/", "")
+        archive.writestr(f"{root}/01_Vorgaenge/{case_folder}/{folder}/Dateien/", "")
     for folder in CUSTOMER_EXPORT_DOCUMENT_FOLDERS:
         archive.writestr(f"{root}/01_Vorgaenge/{case_folder}/Dokumente/{folder}/", "")
+
+
+def documents_for_register(case: dict[str, Any], register_code: str) -> list[dict[str, Any]]:
+    documents = case.get("documents") or []
+    if register_code == "dokumente":
+        return documents
+    return [
+        document
+        for document in documents
+        if str(document.get("register_code") or "") == register_code
+    ]
+
+
+def supplier_communications(case: dict[str, Any]) -> list[dict[str, Any]]:
+    communications: list[dict[str, Any]] = []
+    for confirmation in case.get("supplier_order_confirmations") or []:
+        for communication in confirmation.get("communications") or []:
+            communications.append(
+                {
+                    **communication,
+                    "confirmation_id": confirmation.get("id"),
+                    "supplier_name": confirmation.get("supplier_name"),
+                    "confirmation_number": confirmation.get("confirmation_number"),
+                }
+            )
+    return communications
+
+
+def case_register_payload(
+    case: dict[str, Any],
+    register_code: str,
+    tasks: list[dict[str, Any]],
+    emails: list[dict[str, Any]],
+) -> dict[str, Any]:
+    sections = case.get("sections") or {}
+    payload: dict[str, Any] = {
+        "register_code": register_code,
+        "register_label": CUSTOMER_EXPORT_REGISTER_LABELS[register_code],
+        "case": {
+            "id": case.get("id"),
+            "case_number": case.get("case_number"),
+            "case_title": case.get("case_title"),
+            "case_status": case.get("case_status"),
+            "status_phase": case.get("status_phase"),
+            "status_phase_name": case.get("status_phase_name"),
+            "carat_order_number": case.get("carat_order_number"),
+        },
+        "documents": documents_for_register(case, register_code),
+    }
+    if register_code in {"anfrage", "planung"}:
+        payload["project_objects"] = sections.get("project_objects") or {}
+    if register_code == "beratung":
+        payload["project_contacts"] = sections.get("project_contacts") or {}
+    if register_code in {"angebot_auftrag", "rechnung_abschluss"}:
+        payload["document_section"] = sections.get("documents") or {}
+    if register_code == "planung":
+        payload["carat_imports"] = case.get("carat_imports") or []
+    if register_code == "abwicklung":
+        payload["process_control"] = sections.get("process_control") or {}
+        payload["tasks"] = tasks
+        payload["supplier_orders"] = case.get("supplier_orders") or []
+        payload["supplier_order_confirmations"] = (
+            case.get("supplier_order_confirmations") or []
+        )
+    if register_code == "rechnung_abschluss":
+        payload["supplier_order_confirmations"] = (
+            case.get("supplier_order_confirmations") or []
+        )
+    if register_code == "kommunikation":
+        payload["notes"] = case.get("notes") or []
+        payload["emails"] = emails
+        payload["supplier_communications"] = supplier_communications(case)
+    if register_code == "dokumente":
+        payload["document_section"] = sections.get("documents") or {}
+        payload["document_count"] = len(payload["documents"])
+    return payload
+
+
+def register_export_pdf_lines(payload: dict[str, Any]) -> list[str]:
+    case = payload.get("case") or {}
+    lines = [
+        f"Register: {payload.get('register_label')}",
+        f"Vorgangsnummer: {case.get('case_number') or 'ohne Nummer'}",
+        f"Titel: {case.get('case_title') or 'Kuechenprojekt'}",
+        f"Status: {case.get('status_phase_name') or case.get('case_status') or ''}",
+        f"Dokumente: {len(payload.get('documents') or [])}",
+    ]
+    for key, label in [
+        ("project_objects", "Projektgrundlagen"),
+        ("project_contacts", "Kontakte"),
+        ("document_section", "Dokumentenregister"),
+        ("process_control", "Prozesssteuerung"),
+    ]:
+        value = payload.get(key)
+        if isinstance(value, dict) and value:
+            lines.append(f"{label}: {len(value)} Felder")
+    for key, label in [
+        ("tasks", "Aufgaben"),
+        ("notes", "Notizen"),
+        ("emails", "E-Mails"),
+        ("carat_imports", "CARAT-Importe"),
+        ("supplier_orders", "Lieferantenbestellungen"),
+        ("supplier_order_confirmations", "Lieferanten-AB"),
+        ("supplier_communications", "Lieferantenkommunikation"),
+    ]:
+        value = payload.get(key)
+        if isinstance(value, list):
+            lines.append(f"{label}: {len(value)}")
+    documents = payload.get("documents") or []
+    for document in documents[:12]:
+        lines.append(
+            " - Dokument: "
+            + str(
+                document.get("title")
+                or document.get("original_filename")
+                or document.get("id")
+                or ""
+            )
+        )
+    return lines
+
+
+def add_case_register_exports(
+    archive: zipfile.ZipFile,
+    root: str,
+    case: dict[str, Any],
+    tasks: list[dict[str, Any]],
+    emails: list[dict[str, Any]],
+) -> None:
+    case_folder = export_slug(case.get("case_number") or f"Vorgang_{case.get('id')}")
+    for register_code, label, folder in CUSTOMER_EXPORT_CASE_REGISTERS:
+        payload = case_register_payload(case, register_code, tasks, emails)
+        register_root = f"{root}/01_Vorgaenge/{case_folder}/{folder}"
+        archive.writestr(
+            f"{register_root}/register.json",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
+        archive.writestr(
+            f"{register_root}/Registerakte.pdf",
+            simple_pdf(
+                f"{label} {case.get('case_number') or ''}",
+                register_export_pdf_lines(payload),
+            ),
+        )
 
 
 def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
@@ -3111,6 +3508,10 @@ def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
         if str(case.get("customer_id")) == str(customer.get("id"))
     ]
     document_rows = customer_export_document_rows(customer_id, context)
+    task_rows = customer_export_task_rows(customer_id, context)
+    email_rows = customer_export_email_rows(customer_id, context)
+    tasks_by_case = rows_by_case(task_rows)
+    emails_by_case = rows_by_case(email_rows)
     export_metadata = {
         "last_exported_at": exported_at,
         "last_exported_by": access_email,
@@ -3125,7 +3526,12 @@ def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
         "export": export_metadata,
         "customer": customer,
         "cases": customer_cases,
-        "document_files_included": len([row for row in document_rows if row.get("storage_path")]),
+        "registers": CUSTOMER_EXPORT_CASE_REGISTERS,
+        "tasks": task_rows,
+        "emails": email_rows,
+        "document_files_included": 0,
+        "task_attachment_files_included": 0,
+        "email_attachment_files_included": 0,
     }
 
     buffer = BytesIO()
@@ -3145,10 +3551,6 @@ def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
         archive.writestr(
             f"{root}/01_Vorgaenge/customer_cases.json",
             json.dumps(customer_cases, ensure_ascii=False, indent=2),
-        )
-        archive.writestr(
-            f"{root}/metadata.json",
-            json.dumps(payload, ensure_ascii=False, indent=2),
         )
         for case in customer_cases:
             case_folder = export_slug(case.get("case_number") or f"Vorgang_{case.get('id')}")
@@ -3170,7 +3572,40 @@ def customer_file_export(customer_id: str, access_email: str) -> dict[str, Any]:
                 f"{root}/01_Vorgaenge/{case_folder}/metadata.json",
                 json.dumps(case, ensure_ascii=False, indent=2),
             )
-        add_existing_document_files(archive, root, document_rows)
+            add_case_register_exports(
+                archive,
+                root,
+                case,
+                tasks_by_case.get(str(case.get("id")), []),
+                emails_by_case.get(str(case.get("id")), []),
+            )
+        payload["document_files_included"] = add_existing_document_files(
+            archive,
+            root,
+            document_rows,
+        )
+        payload["task_attachment_files_included"] = add_attachment_files(
+            archive,
+            root,
+            task_rows,
+            CUSTOMER_EXPORT_REGISTER_FOLDERS["abwicklung"],
+            "Aufgaben_Anhaenge",
+            "attachments",
+            "id",
+        )
+        payload["email_attachment_files_included"] = add_attachment_files(
+            archive,
+            root,
+            email_rows,
+            CUSTOMER_EXPORT_REGISTER_FOLDERS["kommunikation"],
+            "E-Mail_Anhaenge",
+            "attachments",
+            "id",
+        )
+        archive.writestr(
+            f"{root}/metadata.json",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
 
     save_customer_section(customer_id, CUSTOMER_EXPORT_SECTION_CODE, export_metadata, access_email)
     return {

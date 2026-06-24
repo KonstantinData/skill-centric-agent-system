@@ -82,10 +82,26 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "application/zip" in source
     assert "simple_pdf" in source
     assert "CUSTOMER_EXPORT_SECTION_CODE" in source
+    assert "CUSTOMER_EXPORT_CASE_REGISTERS" in source
     assert "CUSTOMER_EXPORT_CASE_FOLDERS" in source
+    assert "CUSTOMER_EXPORT_REGISTER_FOLDERS" in source
     assert "CUSTOMER_EXPORT_DOCUMENT_CATEGORY_FOLDERS" in source
+    assert '"07_Kommunikation"' in source
+    assert '"08_Dokumente"' in source
     assert "last_exported_at" in source
     assert "content-disposition" in source
+    assert "customer_export_task_rows" in source
+    assert "customer_export_email_rows" in source
+    assert "case_register_payload" in source
+    assert "add_case_register_exports" in source
+    assert "register.json" in source
+    assert "Registerakte.pdf" in source
+    assert "task_attachment_files_included" in source
+    assert "email_attachment_files_included" in source
+    assert "Aufgaben_Anhaenge" in source
+    assert "E-Mail_Anhaenge" in source
+    assert "app.email_attachments" in source
+    assert "app.task_attachments" in source
     assert 'parts == ["customers", "customers"]' in source
     assert 'parts[:2] == ["customers", "customers"]' in source
     assert "customers_state" in source
@@ -317,6 +333,54 @@ def test_daskuechenhaus_admin_api_parses_manual_confirmation_positions() -> None
     assert rows[0]["confirmed_delivery_date"] == "2026-07-22"
     assert rows[1]["confirmed_net_price"] == "1200.50"
     assert rows[1]["confirmed_delivery_week"] == "KW 31"
+
+
+def test_daskuechenhaus_customer_export_register_payloads_group_case_data() -> None:
+    spec = importlib.util.spec_from_file_location("dkh_admin_api", API_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["dkh_admin_api"] = module
+    spec.loader.exec_module(module)
+
+    case = {
+        "id": 42,
+        "case_number": "V-00000042",
+        "case_title": "Musterkueche",
+        "sections": {
+            "project_objects": {"budget_range": "30000_40000"},
+            "project_contacts": {"contact_name": "Max Beispiel"},
+            "process_control": {"next_control_step": "AB pruefen"},
+            "documents": {"document_note": "Angebot liegt vor"},
+        },
+        "notes": [{"id": 1, "body": "Telefonnotiz"}],
+        "documents": [
+            {"id": 10, "register_code": "anfrage", "title": "Grundriss"},
+            {"id": 11, "register_code": "abwicklung", "title": "AB"},
+        ],
+        "supplier_order_confirmations": [
+            {
+                "id": 7,
+                "supplier_name": "Nobilia",
+                "communications": [{"id": 8, "subject": "Rueckfrage"}],
+            }
+        ],
+    }
+
+    anfrage = module.case_register_payload(case, "anfrage", [], [])
+    abwicklung = module.case_register_payload(case, "abwicklung", [{"id": 2}], [])
+    kommunikation = module.case_register_payload(case, "kommunikation", [], [{"id": 3}])
+    dokumente = module.case_register_payload(case, "dokumente", [], [])
+
+    assert anfrage["project_objects"]["budget_range"] == "30000_40000"
+    assert [document["id"] for document in anfrage["documents"]] == [10]
+    assert abwicklung["process_control"]["next_control_step"] == "AB pruefen"
+    assert abwicklung["tasks"] == [{"id": 2}]
+    assert [document["id"] for document in abwicklung["documents"]] == [11]
+    assert kommunikation["notes"] == [{"id": 1, "body": "Telefonnotiz"}]
+    assert kommunikation["emails"] == [{"id": 3}]
+    assert kommunikation["supplier_communications"][0]["supplier_name"] == "Nobilia"
+    assert dokumente["document_count"] == 2
+    assert [document["id"] for document in dokumente["documents"]] == [10, 11]
 
 
 def test_daskuechenhaus_admin_api_encodes_ab_cockpit_tolerance_policy() -> None:
