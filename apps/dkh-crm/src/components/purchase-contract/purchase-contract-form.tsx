@@ -297,7 +297,7 @@ export function PurchaseContractForm({
         className="purchase-contract-screen grid gap-4"
         onSubmit={(event) => event.preventDefault()}
       >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="grid gap-4">
           <Panel>
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
