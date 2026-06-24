@@ -357,6 +357,22 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "data-budget-range-other-note" in source
     assert "budget_range_other_note" in source
     assert "syncBudgetRangeOtherNote" in search_js
+    assert "data-project-basics-panel" in source
+    assert 'data-project-basics-state="locked"' in source
+    assert "data-project-basics-edit" in source
+    assert "data-project-basics-status" in source
+    assert "data-project-basics-locked-note" in source
+    assert "data-project-basics-form" in source
+    assert "data-project-basics-fields" in source
+    assert "data-project-basics-save" in source
+    assert source.count("data-project-basics-fields") >= 6
+    assert "Gesperrt" in source
+    assert "Bearbeiten" in source
+    assert "setProjectBasicsEditing" in search_js
+    assert "[data-project-basics-panel]" in search_js
+    assert "[data-project-basics-edit]" in search_js
+    assert "Bearbeitung aktiv" in search_js
+    assert "projectBasicsSave.disabled = !editing" in search_js
     assert "INQUIRY_SOURCES" in source
     assert "UrgencyInfoTooltip" in source
     assert "hasRegisterAside" in source

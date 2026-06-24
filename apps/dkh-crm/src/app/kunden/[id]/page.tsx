@@ -1176,7 +1176,11 @@ function CaseDesktop({
       <div className={`grid gap-4 ${hasRegisterAside ? "2xl:grid-cols-[1fr_360px]" : ""}`}>
         <div className="grid gap-4">
           {activeRegister === "anfrage" ? (
-          <Panel>
+          <Panel
+            className="relative"
+            data-project-basics-panel
+            data-project-basics-state="locked"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -1187,13 +1191,39 @@ function CaseDesktop({
                   Erste Einordnung der Anfrage, Terminlage und vorhandenen Unterlagen.
                 </p>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="badge border-[var(--border)] bg-[var(--surface-soft)] text-[var(--muted)]"
+                  data-project-basics-status
+                >
+                  Gesperrt
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-project-basics-edit
+                >
+                  Bearbeiten
+                </button>
+              </div>
+            </div>
+            <div
+              className="mt-4 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm text-[var(--muted)]"
+              data-project-basics-locked-note
+            >
+              Dieser Bereich ist gesperrt. Über „Bearbeiten“ können die Projektgrundlagen geändert werden.
             </div>
             <form
               className="mt-5 grid gap-6"
               action={`/api/kunden/cases/${selectedCase.id}/sections/project_objects?return_to=${returnTo}`}
               method="post"
+              data-project-basics-form
             >
-              <fieldset className="grid gap-3">
+              <fieldset
+                className="grid gap-3 transition disabled:opacity-60"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Projektart</legend>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {PROJECT_OBJECTS.map(([key, label]) => (
@@ -1223,7 +1253,11 @@ function CaseDesktop({
                 </div>
               </fieldset>
 
-              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+              <fieldset
+                className="grid gap-3 border-t border-[var(--border)] pt-4 transition disabled:opacity-60"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Objekt und Montageort</legend>
                 <div className="grid gap-3 lg:grid-cols-4">
                   <Label label="Objekt / Immobilie" className="lg:col-span-2">
@@ -1261,7 +1295,11 @@ function CaseDesktop({
                 </div>
               </fieldset>
 
-              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+              <fieldset
+                className="grid gap-3 border-t border-[var(--border)] pt-4 transition disabled:opacity-60"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Zeit und Dringlichkeit</legend>
                 <div className="grid gap-3 lg:grid-cols-4">
                   <Label label="Gewünschter Zeitraum" className="lg:col-span-2">
@@ -1307,7 +1345,11 @@ function CaseDesktop({
                 </div>
               </fieldset>
 
-              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+              <fieldset
+                className="grid gap-3 border-t border-[var(--border)] pt-4 transition disabled:opacity-60"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Budget und Herkunft</legend>
                 <div className="grid gap-3 lg:grid-cols-4">
                   <Label label="Budgetrahmen">
@@ -1364,7 +1406,11 @@ function CaseDesktop({
                 </div>
               </fieldset>
 
-              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+              <fieldset
+                className="grid gap-3 border-t border-[var(--border)] pt-4 transition disabled:opacity-60"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Vorhandene Unterlagen</legend>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {[
@@ -1385,7 +1431,11 @@ function CaseDesktop({
                 </div>
               </fieldset>
 
-              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4 lg:grid-cols-2">
+              <fieldset
+                className="grid gap-3 border-t border-[var(--border)] pt-4 transition disabled:opacity-60 lg:grid-cols-2"
+                data-project-basics-fields
+                disabled
+              >
                 <legend className="text-sm font-bold">Notizen</legend>
                 <Label label="Wunsch / Anlass">
                   <Textarea
@@ -1402,7 +1452,9 @@ function CaseDesktop({
                 </Label>
               </fieldset>
               <div className="flex justify-end">
-                <Button type="submit">Projektgrundlagen speichern</Button>
+                <Button type="submit" data-project-basics-save disabled>
+                  Projektgrundlagen speichern
+                </Button>
               </div>
             </form>
           </Panel>

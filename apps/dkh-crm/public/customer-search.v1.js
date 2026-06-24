@@ -142,6 +142,11 @@
   const projectObjectOtherNote = document.querySelector("[data-project-object-other-note]");
   const budgetRangeSelect = document.querySelector("[data-budget-range-select]");
   const budgetRangeOtherNote = document.querySelector("[data-budget-range-other-note]");
+  const projectBasicsPanel = document.querySelector("[data-project-basics-panel]");
+  const projectBasicsEdit = document.querySelector("[data-project-basics-edit]");
+  const projectBasicsStatus = document.querySelector("[data-project-basics-status]");
+  const projectBasicsLockedNote = document.querySelector("[data-project-basics-locked-note]");
+  const projectBasicsSave = document.querySelector("[data-project-basics-save]");
   let pendingDuplicateFormData = null;
 
   const closeCreateModal = () => {
@@ -172,6 +177,28 @@
   const syncBudgetRangeOtherNote = () => {
     if (!budgetRangeSelect || !budgetRangeOtherNote) return;
     budgetRangeOtherNote.hidden = budgetRangeSelect.value !== "other";
+  };
+
+  const setProjectBasicsEditing = (editing) => {
+    if (!projectBasicsPanel) return;
+    projectBasicsPanel.setAttribute(
+      "data-project-basics-state",
+      editing ? "editing" : "locked",
+    );
+    projectBasicsPanel.style.boxShadow = editing ? "0 0 0 2px var(--accent)" : "";
+    for (const fieldset of projectBasicsPanel.querySelectorAll("[data-project-basics-fields]")) {
+      fieldset.disabled = !editing;
+    }
+    if (projectBasicsSave) projectBasicsSave.disabled = !editing;
+    if (projectBasicsEdit) projectBasicsEdit.hidden = editing;
+    if (projectBasicsStatus) {
+      projectBasicsStatus.textContent = editing ? "Bearbeitung aktiv" : "Gesperrt";
+      projectBasicsStatus.style.borderColor = editing ? "var(--accent)" : "";
+      projectBasicsStatus.style.color = editing ? "var(--accent-strong)" : "";
+    }
+    if (projectBasicsLockedNote) {
+      projectBasicsLockedNote.hidden = editing;
+    }
   };
 
   const activeCustomerCountrySelect = () => {
@@ -497,6 +524,17 @@
   if (budgetRangeSelect) {
     budgetRangeSelect.addEventListener("change", syncBudgetRangeOtherNote);
     syncBudgetRangeOtherNote();
+  }
+
+  if (projectBasicsPanel) {
+    setProjectBasicsEditing(false);
+    if (projectBasicsEdit) {
+      projectBasicsEdit.addEventListener("click", () => {
+        setProjectBasicsEditing(true);
+        const firstField = projectBasicsPanel.querySelector("input, select, textarea");
+        if (firstField instanceof HTMLElement) firstField.focus();
+      });
+    }
   }
 
   if (createForm) {
