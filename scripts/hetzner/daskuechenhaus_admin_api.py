@@ -2393,6 +2393,10 @@ def save_customer(
         part for part in [contact_first_name, contact_last_name] if part
     )
     country = str(data.get("country", "DE")).strip().upper() or "DE"
+    has_custom_vat = normalize_bool(data.get("has_custom_vat"))
+    custom_vat_rate = str(data.get("custom_vat_rate", "")).strip().replace(",", ".")
+    if not has_custom_vat:
+        custom_vat_rate = ""
     payload = {
         "customer_id": str(customer_id or "").strip(),
         "customer_number": ""
@@ -2415,6 +2419,11 @@ def save_customer(
         "country": country,
         "tax_treatment": str(data.get("tax_treatment", "standard_de")).strip() or "standard_de",
         "tax_treatment_note": str(data.get("tax_treatment_note", "")).strip(),
+        "has_custom_vat": has_custom_vat,
+        "custom_vat_rate": custom_vat_rate,
+        "custom_vat_rate_label": str(data.get("custom_vat_rate_label", "")).strip()
+        if has_custom_vat
+        else "",
         "contact_first_name": contact_first_name,
         "contact_last_name": contact_last_name,
         "contact_display_name": contact_display_name,
@@ -2521,6 +2530,9 @@ def save_customer(
             iso_country_code = NULLIF(data->>'country', ''),
             tax_treatment = NULLIF(data->>'tax_treatment', ''),
             tax_treatment_note = NULLIF(data->>'tax_treatment_note', ''),
+            has_custom_vat = (data->>'has_custom_vat')::boolean,
+            custom_vat_rate = NULLIF(data->>'custom_vat_rate', '')::numeric,
+            custom_vat_rate_label = NULLIF(data->>'custom_vat_rate_label', ''),
             notes = NULLIF(data->>'notes', ''),
             owner_user_id = NULLIF(data->>'owner_user_id', '')::bigint,
             updated_at = now()
@@ -2554,6 +2566,9 @@ def save_customer(
             iso_country_code,
             tax_treatment,
             tax_treatment_note,
+            has_custom_vat,
+            custom_vat_rate,
+            custom_vat_rate_label,
             notes,
             owner_user_id,
             created_by_user_id
@@ -2583,6 +2598,9 @@ def save_customer(
             NULLIF(data->>'country', ''),
             NULLIF(data->>'tax_treatment', ''),
             NULLIF(data->>'tax_treatment_note', ''),
+            (data->>'has_custom_vat')::boolean,
+            NULLIF(data->>'custom_vat_rate', '')::numeric,
+            NULLIF(data->>'custom_vat_rate_label', ''),
             NULLIF(data->>'notes', ''),
             NULLIF(data->>'owner_user_id', '')::bigint,
             (data->>'actor_user_id')::bigint

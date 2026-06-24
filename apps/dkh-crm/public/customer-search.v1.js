@@ -125,6 +125,11 @@
   const customerMasterModal = document.querySelector("[data-customer-master-modal]");
   const customerMasterTypeSelect = document.querySelector("[data-customer-master-type-select]");
   const documentUploadModal = document.querySelector("[data-document-upload-modal]");
+  const customerCustomVat = document.querySelector("[data-customer-custom-vat]");
+  const customerCustomVatFlag = document.querySelector("[data-customer-custom-vat-flag]");
+  const customerCustomVatRate = document.querySelector("[data-customer-custom-vat-rate]");
+  const customerCustomVatLabel = document.querySelector("[data-customer-custom-vat-label]");
+  const customerTaxTreatment = document.querySelector('select[name="tax_treatment"]');
   const emailDuplicateModal = document.querySelector("[data-customer-email-duplicate-modal]");
   const emailDuplicateResults = document.querySelector("[data-customer-email-duplicate-results]");
   const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
@@ -150,6 +155,36 @@
     }
   };
 
+  const activeCustomerCountrySelect = () => {
+    const selectedType = customerTypeSelect ? customerTypeSelect.value || "private" : "private";
+    return document.querySelector(
+      `[data-customer-type-section="${selectedType}"] [data-customer-country-select]`,
+    );
+  };
+
+  const syncCustomVat = () => {
+    if (!customerCustomVat || !customerCustomVatFlag || !customerCustomVatRate) return;
+    const countrySelect = activeCustomerCountrySelect();
+    const country = countrySelect ? countrySelect.value : "DE";
+    const treatment = customerTaxTreatment ? customerTaxTreatment.value : "standard_de";
+    const enabled = country === "CH" || treatment === "custom" || treatment === "switzerland_export";
+    customerCustomVat.hidden = !enabled;
+    customerCustomVatFlag.value = enabled ? "true" : "false";
+    customerCustomVatRate.disabled = !enabled;
+    if (customerCustomVatLabel) customerCustomVatLabel.disabled = !enabled;
+    if (!enabled) {
+      customerCustomVatRate.value = "";
+      if (customerCustomVatLabel) customerCustomVatLabel.value = "";
+      return;
+    }
+    if (country === "CH" && !customerCustomVatRate.value) {
+      customerCustomVatRate.value = "8.10";
+      if (customerCustomVatLabel && !customerCustomVatLabel.value) {
+        customerCustomVatLabel.value = "Schweiz Normalsatz";
+      }
+    }
+  };
+
   const syncCustomerTypeSections = () => {
     if (!customerTypeSelect) return;
     const selectedType = customerTypeSelect.value || "private";
@@ -161,6 +196,7 @@
         field.disabled = !enabled;
       }
     }
+    syncCustomVat();
   };
 
   const closeCustomerMasterModal = () => {
@@ -381,6 +417,14 @@
     syncCustomerTypeSections();
   }
 
+  for (const countrySelect of document.querySelectorAll("[data-customer-country-select]")) {
+    countrySelect.addEventListener("change", syncCustomVat);
+  }
+
+  if (customerTaxTreatment) {
+    customerTaxTreatment.addEventListener("change", syncCustomVat);
+  }
+
   if (customerMasterTypeSelect) {
     customerMasterTypeSelect.addEventListener("change", syncCustomerMasterTypeSections);
     syncCustomerMasterTypeSections();
@@ -422,4 +466,5 @@
   setupSearch(document.querySelector("[data-customer-direct-search]"), {
     openCreateModal: false,
   });
+  syncCustomVat();
 })();

@@ -162,6 +162,9 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "data-customer-type-select" in source
     assert "data-customer-type-section=\"private\"" in source
     assert "data-customer-type-section=\"company\"" in source
+    assert "name=\"salutation\"" in source
+    assert "name=\"title\"" in source
+    assert "Prof. Dr." in source
     assert "name=\"object_customer_label\"" in source
     assert "Architekt" in source
     assert "Bauträger" in source
@@ -176,6 +179,12 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "Schweiz" in source
     assert "name=\"tax_treatment\"" in source
     assert "NATO / US-Streitkräfte prüfen" in source
+    assert "data-customer-country-select" in source
+    assert "data-customer-custom-vat" in source
+    assert "name=\"has_custom_vat\"" in source
+    assert "name=\"custom_vat_rate\"" in source
+    assert "name=\"custom_vat_rate_label\"" in source
+    assert "Schweiz Normalsatz" in source
     assert "data-customer-create-case-toggle" in source
     assert "data-customer-case-details" in source
     assert "defaultChecked" not in source
@@ -203,6 +212,10 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
     assert "syncCaseDetails" in search_script
+    assert "syncCustomVat" in search_script
+    assert 'country === "CH"' in search_script
+    assert "customerCustomVatRate.value = \"8.10\"" in search_script
+    assert "customerCustomVatFlag.value = enabled ? \"true\" : \"false\"" in search_script
     assert "setupSearch" in search_script
     assert "openCreateModal: true" in search_script
     assert "openCreateModal: false" in search_script

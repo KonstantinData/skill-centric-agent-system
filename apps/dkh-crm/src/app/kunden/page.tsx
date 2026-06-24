@@ -158,6 +158,27 @@ export default async function CustomersPage() {
             </div>
             <div data-customer-type-section="private" className="grid gap-3">
               <div className="grid gap-3 md:grid-cols-2">
+                <Label label="Anrede">
+                  <Select name="salutation" defaultValue="">
+                    <option value="">Keine Angabe</option>
+                    <option value="Herr">Herr</option>
+                    <option value="Frau">Frau</option>
+                    <option value="Divers">Divers</option>
+                    <option value="Familie">Familie</option>
+                  </Select>
+                </Label>
+                <Label label="Titel">
+                  <Select name="title" defaultValue="">
+                    <option value="">Kein Titel</option>
+                    <option value="Dr.">Dr.</option>
+                    <option value="Prof.">Prof.</option>
+                    <option value="Prof. Dr.">Prof. Dr.</option>
+                    <option value="Dipl.-Ing.">Dipl.-Ing.</option>
+                    <option value="Mag.">Mag.</option>
+                  </Select>
+                </Label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
                 <Label label="Vorname">
                   <Field name="first_name" />
                 </Label>
@@ -189,7 +210,7 @@ export default async function CustomersPage() {
                   <Field name="city" />
                 </Label>
                 <Label label="Land">
-                  <Select name="country" defaultValue="DE">
+                  <Select name="country" defaultValue="DE" data-customer-country-select>
                     <option value="DE">Deutschland</option>
                     <option value="CH">Schweiz</option>
                     <option value="US">USA</option>
@@ -242,7 +263,7 @@ export default async function CustomersPage() {
                   <Field name="city" />
                 </Label>
                 <Label label="Land">
-                  <Select name="country" defaultValue="DE">
+                  <Select name="country" defaultValue="DE" data-customer-country-select>
                     <option value="DE">Deutschland</option>
                     <option value="CH">Schweiz</option>
                     <option value="US">USA</option>
@@ -301,6 +322,40 @@ export default async function CustomersPage() {
                 <option value="custom">Abweichend / manuell prüfen</option>
               </Select>
             </Label>
+            <div
+              data-customer-custom-vat
+              className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-2"
+              hidden
+            >
+              <input type="hidden" name="has_custom_vat" value="false" data-customer-custom-vat-flag />
+              <Label label="Abweichender Mehrwertsteuersatz">
+                <Field
+                  name="custom_vat_rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="z. B. 8,10"
+                  required
+                  disabled
+                  data-customer-custom-vat-rate
+                />
+              </Label>
+              <Label label="Bezeichnung">
+                <Select
+                  name="custom_vat_rate_label"
+                  defaultValue=""
+                  disabled
+                  data-customer-custom-vat-label
+                >
+                  <option value="">Bitte wählen</option>
+                  <option value="Schweiz Normalsatz">Schweiz Normalsatz</option>
+                  <option value="Schweiz reduzierter Satz">Schweiz reduzierter Satz</option>
+                  <option value="Schweiz Sondersatz">Schweiz Sondersatz</option>
+                  <option value="Individuell">Individuell</option>
+                </Select>
+              </Label>
+            </div>
             <Label label="Hinweis zur Steuerbehandlung">
               <Textarea
                 name="tax_treatment_note"
