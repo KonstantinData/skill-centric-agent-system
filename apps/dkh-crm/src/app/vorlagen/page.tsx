@@ -47,8 +47,8 @@ export default function TemplatesPage() {
           aria-modal="true"
           aria-label="Blanco Kaufvertrag"
         >
-          <section className="grid max-h-[92vh] w-full max-w-[1500px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-2xl">
-            <header className="flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+          <section className="flex max-h-[92vh] min-h-0 w-full max-w-[1500px] flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-2xl">
+            <header className="shrink-0 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
               <div>
                 <p className="badge">Vorlage</p>
                 <h2 className="mt-2 text-xl font-bold">Blanco Kaufvertrag</h2>
@@ -62,7 +62,7 @@ export default function TemplatesPage() {
                 Schließen
               </Button>
             </header>
-            <div className="overflow-auto p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
               <PurchaseContractForm
                 customerNumberReadOnly={false}
                 customerVatReadOnly={false}
