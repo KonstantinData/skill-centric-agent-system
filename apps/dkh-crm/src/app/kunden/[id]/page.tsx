@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Script from "next/script";
 import { PageHero } from "@/components/chrome/page-hero";
-import { PurchaseContractForm } from "@/components/purchase-contract/purchase-contract-form";
+import { CustomerPurchaseContractLauncher } from "@/components/purchase-contract/customer-purchase-contract-launcher";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Field, Label, Select, Textarea } from "@/components/ui/form";
 import { Panel } from "@/components/ui/panel";
@@ -2052,7 +2052,7 @@ function CaseDesktop({
           ) : null}
 
           {activeRegister === "angebot_auftrag" ? (
-          <PurchaseContractForm
+          <CustomerPurchaseContractLauncher
             initialDraft={purchaseContractInitialDraft}
             storageKey={`dkh.purchase-contract.case.${selectedCase.id}.draft.v1`}
           />
