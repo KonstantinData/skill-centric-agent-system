@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   CheckSquare,
+  FileText,
   Home,
   Inbox,
   Settings,
@@ -13,5 +14,6 @@ export const NAV_ITEMS = [
   { href: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { href: "/emails", label: "E-Mails", icon: Inbox },
   { href: "/kunden", label: "Kunden", icon: UserRoundSearch },
+  { href: "/vorlagen", label: "Vorlagen", icon: FileText },
   { href: "/admin", label: "Admin", icon: Settings },
 ];

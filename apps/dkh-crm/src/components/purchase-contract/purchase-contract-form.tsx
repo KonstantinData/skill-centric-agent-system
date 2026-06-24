@@ -38,6 +38,8 @@ type PurchaseContractFormProps = {
   initialDraft?: Partial<Omit<ContractDraft, "items">> & {
     items?: Array<Partial<Omit<ContractItem, "id">>>;
   };
+  customerNumberReadOnly?: boolean;
+  customerVatReadOnly?: boolean;
   storageKey?: string;
 };
 
@@ -164,6 +166,8 @@ function nonEmptyLines(...values: string[]) {
 }
 
 export function PurchaseContractForm({
+  customerNumberReadOnly = true,
+  customerVatReadOnly = true,
   initialDraft,
   storageKey = STORAGE_KEY,
 }: PurchaseContractFormProps) {
@@ -341,7 +345,10 @@ export function PurchaseContractForm({
                 <Field
                   name="customer_number"
                   value={draft.customerNumber}
-                  readOnly
+                  onChange={(event) =>
+                    updateDraft("customerNumber", event.target.value)
+                  }
+                  readOnly={customerNumberReadOnly}
                 />
               </Label>
               <Label label="Lieferanschrift" className="md:col-span-2">
@@ -520,7 +527,16 @@ export function PurchaseContractForm({
                   name="customer_vat_rate"
                   inputMode="decimal"
                   value={draft.customerVatRate}
-                  readOnly
+                  onChange={(event) =>
+                    updateDraft("customerVatRate", event.target.value)
+                  }
+                  onBlur={() =>
+                    updateDraft(
+                      "customerVatRate",
+                      formatPercentInput(draft.customerVatRate),
+                    )
+                  }
+                  readOnly={customerVatReadOnly}
                 />
               </Label>
               <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
