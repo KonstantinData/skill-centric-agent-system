@@ -314,7 +314,35 @@ a {
     min-width: 210mm;
     height: 297mm;
     margin: 0 !important;
+    overflow: hidden;
     background: #fff !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell > aside,
+  .app-shell > nav,
+  .app-main > header,
+  .purchase-contract-screen {
+    display: none !important;
+  }
+
+  .app-shell > .min-w-0,
+  .app-main {
+    display: block !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 
   body * {
@@ -326,13 +354,9 @@ a {
     visibility: visible;
   }
 
-  .purchase-contract-screen {
-    display: none !important;
-  }
-
   .purchase-contract-print {
     display: block;
-    position: absolute;
+    position: fixed;
     inset: 0;
     width: 210mm;
     height: 297mm;
@@ -408,7 +432,7 @@ a {
 
   .print-installation {
     left: 171.2mm;
-    top: 57.2mm;
+    top: 58.2mm;
   }
 
   .print-field {
