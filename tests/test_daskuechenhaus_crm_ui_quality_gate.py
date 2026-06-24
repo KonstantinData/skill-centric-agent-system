@@ -348,8 +348,14 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Budget und Herkunft" in source
     assert "Vorhandene Unterlagen" in source
     assert "Einbauküche" in source
+    assert "Vorratsraum" in source
+    assert '["project_object_service", "Dienstleistung"]' not in source
     assert "Garderobe" in source
     assert "Sideboard" in source
+    assert "data-project-object-other" in source
+    assert "data-project-object-other-note" in source
+    assert "project_object_other_note" in source
+    assert "syncProjectObjectOtherNote" in search_js
     assert "Liefer-/Montageort PLZ" in source
     assert "Liefer-/Montageort Ort" in source
     assert 'name="delivery_postal_code"' in source

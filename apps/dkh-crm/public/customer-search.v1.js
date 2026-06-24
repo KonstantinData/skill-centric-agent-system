@@ -138,6 +138,8 @@
   const emailDuplicateModal = document.querySelector("[data-customer-email-duplicate-modal]");
   const emailDuplicateResults = document.querySelector("[data-customer-email-duplicate-results]");
   const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
+  const projectObjectOther = document.querySelector("[data-project-object-other]");
+  const projectObjectOtherNote = document.querySelector("[data-project-object-other-note]");
   let pendingDuplicateFormData = null;
 
   const closeCreateModal = () => {
@@ -158,6 +160,11 @@
       if (!field.name) continue;
       field.disabled = !enabled;
     }
+  };
+
+  const syncProjectObjectOtherNote = () => {
+    if (!projectObjectOther || !projectObjectOtherNote) return;
+    projectObjectOtherNote.hidden = !projectObjectOther.checked;
   };
 
   const activeCustomerCountrySelect = () => {
@@ -473,6 +480,11 @@
 
   if (customerMasterTaxTreatment) {
     customerMasterTaxTreatment.addEventListener("change", syncCustomerMasterCustomVat);
+  }
+
+  if (projectObjectOther) {
+    projectObjectOther.addEventListener("change", syncProjectObjectOtherNote);
+    syncProjectObjectOtherNote();
   }
 
   if (createForm) {

@@ -30,11 +30,11 @@ type PageProps = {
 const PROJECT_OBJECTS = [
   ["project_object_kitchen", "Einbauküche"],
   ["project_object_utility", "Hauswirtschaftsraum"],
-  ["project_object_wardrobe", "Garderobe"],
+  ["project_object_service", "Vorratsraum"],
   ["project_object_bedroom", "Schlafzimmer / Schrank"],
   ["project_object_sideboard", "Sideboard"],
   ["project_object_bath", "Badmöbel"],
-  ["project_object_service", "Dienstleistung"],
+  ["project_object_wardrobe", "Garderobe"],
   ["project_object_other", "Sonstiges"],
 ] as const;
 
@@ -1178,10 +1178,24 @@ function CaseDesktop({
                         type="checkbox"
                         name={key}
                         defaultChecked={sectionChecked(projectObjects, key)}
+                        data-project-object-other={key === "project_object_other" ? "true" : undefined}
                       />
                       {label}
                     </label>
                   ))}
+                </div>
+                <div
+                  className="mt-3"
+                  data-project-object-other-note
+                  hidden={!sectionChecked(projectObjects, "project_object_other")}
+                >
+                  <Label label="Sonstiges genauer beschreiben">
+                    <Textarea
+                      name="project_object_other_note"
+                      defaultValue={sectionValue(projectObjects, "project_object_other_note")}
+                      placeholder="z. B. Dienstleistung, Sondermöbel oder weitere Projektart"
+                    />
+                  </Label>
                 </div>
               </fieldset>
 
