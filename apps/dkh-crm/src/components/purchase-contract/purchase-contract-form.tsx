@@ -440,7 +440,7 @@ export function PurchaseContractForm({
               {draft.items.map((item, index) => (
                 <article
                   key={item.id}
-                  className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 lg:grid-cols-[120px_80px_minmax(0,3fr)_150px_44px]"
+                  className="purchase-contract-position-row grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
                 >
                   <Label label={`Werk ${index + 1}`}>
                     <Field
@@ -454,6 +454,7 @@ export function PurchaseContractForm({
                   <Label label="Stk.">
                     <Field
                       name={`items.${index}.quantity`}
+                      className="purchase-contract-quantity-field"
                       inputMode="decimal"
                       value={item.quantity}
                       onChange={(event) =>
@@ -464,7 +465,7 @@ export function PurchaseContractForm({
                   <Label label="Bezeichnung">
                     <Textarea
                       name={`items.${index}.description`}
-                      className="min-h-10"
+                      className="purchase-contract-description-field min-h-10"
                       value={item.description}
                       onChange={(event) =>
                         updateItem(item.id, { description: event.target.value })
@@ -485,7 +486,7 @@ export function PurchaseContractForm({
                   </Label>
                   <button
                     type="button"
-                    className="btn btn-secondary mt-6 aspect-square p-0"
+                    className="btn btn-secondary purchase-contract-position-delete aspect-square p-0"
                     onClick={() => removeItem(item.id)}
                     aria-label={`Position ${index + 1} entfernen`}
                     title="Position entfernen"

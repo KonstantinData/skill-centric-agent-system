@@ -253,8 +253,39 @@ a {
   overflow-wrap: anywhere;
 }
 
+.purchase-contract-position-row {
+  align-items: start;
+}
+
+.purchase-contract-position-row .label {
+  min-width: 0;
+}
+
+.purchase-contract-quantity-field {
+  padding-left: 2px;
+  padding-right: 2px;
+  text-align: center;
+}
+
+.purchase-contract-description-field {
+  min-height: 76px;
+}
+
+.purchase-contract-position-delete {
+  align-self: end;
+  height: 40px;
+  margin-top: 22px;
+  width: 40px;
+}
+
 .purchase-contract-print {
   display: none;
+}
+
+@media (min-width: 1024px) {
+  .purchase-contract-position-row {
+    grid-template-columns: 2.5cm 0.5cm minmax(9.5cm, 1fr) 2.5cm 40px;
+  }
 }
 
 @media (max-width: 980px) {
