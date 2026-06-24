@@ -328,28 +328,28 @@ a {
 
   .print-customer-address {
     left: 22mm;
-    top: 27mm;
+    top: 25mm;
     width: 92mm;
     height: 18mm;
   }
 
   .print-customer-phone {
-    left: 31mm;
-    top: 48.3mm;
+    left: 41mm;
+    top: 46.3mm;
     width: 80mm;
     height: 5mm;
   }
 
   .print-delivery-address {
     left: 22mm;
-    top: 68mm;
+    top: 63mm;
     width: 92mm;
     height: 18mm;
   }
 
   .print-delivery-phone {
-    left: 31mm;
-    top: 91.6mm;
+    left: 41mm;
+    top: 85.6mm;
     width: 80mm;
     height: 5mm;
   }
@@ -369,8 +369,8 @@ a {
   }
 
   .print-installation {
-    left: 183.2mm;
-    top: 59.2mm;
+    left: 172.2mm;
+    top: 57.2mm;
   }
 
   .print-field {
@@ -381,25 +381,25 @@ a {
 
   .print-delivery-date {
     left: 148mm;
-    top: 68.1mm;
+    top: 64.1mm;
     width: 47mm;
   }
 
   .print-customer-number {
     left: 148mm;
-    top: 87.9mm;
+    top: 80.9mm;
     width: 47mm;
   }
 
   .print-contract-date {
     left: 148mm;
-    top: 93.5mm;
+    top: 86.5mm;
     width: 47mm;
   }
 
   .print-items {
     left: 20mm;
-    top: 113.5mm;
+    top: 107.5mm;
     width: 177mm;
     height: 116mm;
   }
@@ -407,7 +407,7 @@ a {
   .print-item-row {
     position: relative;
     display: grid;
-    grid-template-columns: 30mm 11mm 105mm 31mm;
+    grid-template-columns: 30mm 13mm 97mm 37mm;
     min-height: 8mm;
     break-inside: avoid;
     font-size: 9.2pt;
@@ -441,7 +441,7 @@ a {
   }
 
   .print-signature-note {
-    left: 20mm;
+    left: 25mm;
     width: 82.5mm;
     height: 8mm;
     font-size: 10pt;
@@ -457,7 +457,7 @@ a {
   }
 
   .print-money {
-    left: 165mm;
+    left: 162mm;
     width: 28mm;
     height: 5.5mm;
     padding-right: 1mm;
@@ -468,22 +468,22 @@ a {
   }
 
   .print-invoice-gross {
-    top: 245.7mm;
+    top: 236.7mm;
   }
 
   .print-included-vat {
-    top: 251.2mm;
+    top: 242.2mm;
   }
 
   .print-payment-order {
-    top: 256.8mm;
+    top: 247.8mm;
   }
 
   .print-payment-delivery {
-    top: 262.3mm;
+    top: 253.3mm;
   }
 
   .print-payment-rest {
-    top: 267.8mm;
+    top: 258.8mm;
   }
 }
