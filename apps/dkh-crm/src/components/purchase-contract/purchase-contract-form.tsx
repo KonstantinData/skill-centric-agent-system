@@ -113,6 +113,22 @@ function formatPercentInput(value: string) {
   return Number.isFinite(parsed) ? String(parsed).replace(".", ",") : "0";
 }
 
+function formatDateForPrint(value: string) {
+  if (!value) return "";
+
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleDateString("de-DE");
+}
+
+function nonEmptyLines(...values: string[]) {
+  return values
+    .flatMap((value) => value.split(/\r?\n/))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 export function PurchaseContractForm({
   initialDraft,
   storageKey = STORAGE_KEY,
@@ -213,7 +229,11 @@ export function PurchaseContractForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={(event) => event.preventDefault()}>
+    <>
+      <form
+        className="purchase-contract-screen grid gap-4"
+        onSubmit={(event) => event.preventDefault()}
+      >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
           <Panel>
@@ -525,6 +545,100 @@ export function PurchaseContractForm({
           </Panel>
         </div>
       </div>
-    </form>
+      </form>
+
+      <PurchaseContractPrintOverlay
+        draft={draft}
+        includedVat={includedVat}
+        invoiceGross={invoiceGross}
+        paymentBeforeDelivery={paymentBeforeDelivery}
+        paymentOnOrder={paymentOnOrder}
+        restPayment={restPayment}
+      />
+    </>
+  );
+}
+
+function PurchaseContractPrintOverlay({
+  draft,
+  includedVat,
+  invoiceGross,
+  paymentBeforeDelivery,
+  paymentOnOrder,
+  restPayment,
+}: {
+  draft: ContractDraft;
+  includedVat: number;
+  invoiceGross: number;
+  paymentBeforeDelivery: number;
+  paymentOnOrder: number;
+  restPayment: number;
+}) {
+  const customerLines = nonEmptyLines(draft.customerName, draft.customerAddress);
+  const deliveryLines = nonEmptyLines(draft.deliveryAddress || draft.customerAddress);
+  const firstPrintItems = draft.items.slice(0, 12);
+
+  return (
+    <div className="purchase-contract-print" aria-hidden="true">
+      <section className="contract-print-page">
+        <div className="print-address-block print-customer-address">
+          {customerLines.map((line, index) => (
+            <div key={`${line}-${index}`}>{line}</div>
+          ))}
+        </div>
+        <div className="print-phone print-customer-phone">{draft.customerPhone}</div>
+
+        <div className="print-address-block print-delivery-address">
+          {deliveryLines.map((line, index) => (
+            <div key={`${line}-${index}`}>{line}</div>
+          ))}
+        </div>
+        <div className="print-phone print-delivery-phone">
+          {draft.deliveryPhone || draft.customerPhone}
+        </div>
+
+        <div className="print-check print-pickup">
+          {draft.deliveryMode === "pickup" ? "X" : ""}
+        </div>
+        <div className="print-check print-installation">
+          {draft.deliveryMode === "installation" ? "X" : ""}
+        </div>
+        <div className="print-field print-delivery-date">
+          {formatDateForPrint(draft.deliveryDate)}
+        </div>
+        <div className="print-field print-customer-number">{draft.customerNumber}</div>
+        <div className="print-field print-contract-date">
+          {formatDateForPrint(draft.contractDate)}
+        </div>
+
+        <div className="print-items">
+          {firstPrintItems.map((item) => (
+            <div className="print-item-row" key={item.id}>
+              <div className="print-item-supplier">{item.supplier}</div>
+              <div className="print-item-quantity">{item.quantity}</div>
+              <div className="print-item-description">{item.description}</div>
+              <div className="print-item-price">
+                {item.totalPrice ? formatMoneyInput(item.totalPrice) : ""}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="print-signature-note print-dealer-signature">
+          {draft.dealerSignatureNote}
+        </div>
+        <div className="print-signature-note print-customer-signature">
+          {draft.customerSignatureNote}
+        </div>
+
+        <div className="print-money print-invoice-gross">{formatMoney(invoiceGross)}</div>
+        <div className="print-money print-included-vat">{formatMoney(includedVat)}</div>
+        <div className="print-money print-payment-order">{formatMoney(paymentOnOrder)}</div>
+        <div className="print-money print-payment-delivery">
+          {formatMoney(paymentBeforeDelivery)}
+        </div>
+        <div className="print-money print-payment-rest">{formatMoney(restPayment)}</div>
+      </section>
+    </div>
   );
 }

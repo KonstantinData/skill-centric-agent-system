@@ -246,6 +246,10 @@ a {
   overflow-wrap: anywhere;
 }
 
+.purchase-contract-print {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     display: block;
@@ -257,5 +261,229 @@ a {
 
   .page-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm;
+    min-width: 210mm;
+    height: 297mm;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .purchase-contract-print,
+  .purchase-contract-print * {
+    visibility: visible;
+  }
+
+  .purchase-contract-screen {
+    display: none !important;
+  }
+
+  .purchase-contract-print {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    color: #000;
+    background: transparent;
+  }
+
+  .contract-print-page {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.18;
+    color: #000;
+    print-color-adjust: exact;
+  }
+
+  .contract-print-page > * {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  .print-address-block {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 4.7mm;
+  }
+
+  .print-customer-address {
+    left: 22mm;
+    top: 27mm;
+    width: 92mm;
+    height: 18mm;
+  }
+
+  .print-customer-phone {
+    left: 31mm;
+    top: 48.3mm;
+    width: 80mm;
+    height: 5mm;
+  }
+
+  .print-delivery-address {
+    left: 22mm;
+    top: 68mm;
+    width: 92mm;
+    height: 18mm;
+  }
+
+  .print-delivery-phone {
+    left: 31mm;
+    top: 91.6mm;
+    width: 80mm;
+    height: 5mm;
+  }
+
+  .print-check {
+    width: 5mm;
+    height: 5mm;
+    font-size: 11pt;
+    font-weight: 700;
+    line-height: 5mm;
+    text-align: center;
+  }
+
+  .print-pickup {
+    left: 147mm;
+    top: 59.2mm;
+  }
+
+  .print-installation {
+    left: 183.2mm;
+    top: 59.2mm;
+  }
+
+  .print-field {
+    height: 5mm;
+    font-size: 10pt;
+    line-height: 5mm;
+  }
+
+  .print-delivery-date {
+    left: 148mm;
+    top: 68.1mm;
+    width: 47mm;
+  }
+
+  .print-customer-number {
+    left: 148mm;
+    top: 87.9mm;
+    width: 47mm;
+  }
+
+  .print-contract-date {
+    left: 148mm;
+    top: 93.5mm;
+    width: 47mm;
+  }
+
+  .print-items {
+    left: 20mm;
+    top: 113.5mm;
+    width: 177mm;
+    height: 116mm;
+  }
+
+  .print-item-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 30mm 11mm 105mm 31mm;
+    min-height: 8mm;
+    break-inside: avoid;
+    font-size: 9.2pt;
+    line-height: 1.15;
+  }
+
+  .print-item-row > * {
+    min-width: 0;
+    overflow: hidden;
+    padding-top: 1mm;
+  }
+
+  .print-item-supplier {
+    padding-left: 2mm;
+  }
+
+  .print-item-quantity {
+    text-align: center;
+  }
+
+  .print-item-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-right: 3mm;
+  }
+
+  .print-item-price {
+    padding-right: 3mm;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .print-signature-note {
+    left: 20mm;
+    width: 82.5mm;
+    height: 8mm;
+    font-size: 10pt;
+    line-height: 8mm;
+  }
+
+  .print-dealer-signature {
+    top: 245.5mm;
+  }
+
+  .print-customer-signature {
+    top: 258.8mm;
+  }
+
+  .print-money {
+    left: 165mm;
+    width: 28mm;
+    height: 5.5mm;
+    padding-right: 1mm;
+    font-size: 9.2pt;
+    line-height: 5.5mm;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .print-invoice-gross {
+    top: 245.7mm;
+  }
+
+  .print-included-vat {
+    top: 251.2mm;
+  }
+
+  .print-payment-order {
+    top: 256.8mm;
+  }
+
+  .print-payment-delivery {
+    top: 262.3mm;
+  }
+
+  .print-payment-rest {
+    top: 267.8mm;
   }
 }
