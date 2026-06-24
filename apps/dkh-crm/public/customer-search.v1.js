@@ -140,6 +140,8 @@
   const emailDuplicateConfirm = document.querySelector("[data-customer-email-duplicate-confirm]");
   const projectObjectOther = document.querySelector("[data-project-object-other]");
   const projectObjectOtherNote = document.querySelector("[data-project-object-other-note]");
+  const budgetRangeSelect = document.querySelector("[data-budget-range-select]");
+  const budgetRangeOtherNote = document.querySelector("[data-budget-range-other-note]");
   let pendingDuplicateFormData = null;
 
   const closeCreateModal = () => {
@@ -165,6 +167,11 @@
   const syncProjectObjectOtherNote = () => {
     if (!projectObjectOther || !projectObjectOtherNote) return;
     projectObjectOtherNote.hidden = !projectObjectOther.checked;
+  };
+
+  const syncBudgetRangeOtherNote = () => {
+    if (!budgetRangeSelect || !budgetRangeOtherNote) return;
+    budgetRangeOtherNote.hidden = budgetRangeSelect.value !== "other";
   };
 
   const activeCustomerCountrySelect = () => {
@@ -485,6 +492,11 @@
   if (projectObjectOther) {
     projectObjectOther.addEventListener("change", syncProjectObjectOtherNote);
     syncProjectObjectOtherNote();
+  }
+
+  if (budgetRangeSelect) {
+    budgetRangeSelect.addEventListener("change", syncBudgetRangeOtherNote);
+    syncBudgetRangeOtherNote();
   }
 
   if (createForm) {

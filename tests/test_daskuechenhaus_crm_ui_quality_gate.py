@@ -339,6 +339,17 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "PROJECT_SITUATIONS" in source
     assert "PROJECT_URGENCIES" in source
     assert "BUDGET_RANGES" in source
+    assert "10.000-15.000 EUR" in source
+    assert "15.000-20.000 EUR" in source
+    assert "20.000-25.000 EUR" in source
+    assert "25.000-30.000 EUR" in source
+    assert "30.000-40.000 EUR" in source
+    assert "über 40.000 EUR" in source
+    assert '["open", "Offen"]' not in source
+    assert "data-budget-range-select" in source
+    assert "data-budget-range-other-note" in source
+    assert "budget_range_other_note" in source
+    assert "syncBudgetRangeOtherNote" in search_js
     assert "INQUIRY_SOURCES" in source
     assert "UrgencyInfoTooltip" in source
     assert "hasRegisterAside" in source

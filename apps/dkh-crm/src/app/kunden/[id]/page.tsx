@@ -83,10 +83,13 @@ const PROJECT_URGENCIES = [
 const BUDGET_RANGES = [
   ["", "Bitte wählen"],
   ["up_to_10000", "bis 10.000 EUR"],
-  ["10000_20000", "10.000-20.000 EUR"],
-  ["20000_35000", "20.000-35.000 EUR"],
-  ["over_35000", "über 35.000 EUR"],
-  ["open", "Offen"],
+  ["10000_15000", "10.000-15.000 EUR"],
+  ["15000_20000", "15.000-20.000 EUR"],
+  ["20000_25000", "20.000-25.000 EUR"],
+  ["25000_30000", "25.000-30.000 EUR"],
+  ["30000_40000", "30.000-40.000 EUR"],
+  ["over_40000", "über 40.000 EUR"],
+  ["other", "Sonstiges"],
 ] as const;
 
 const INQUIRY_SOURCES = [
@@ -1290,6 +1293,7 @@ function CaseDesktop({
                     <Select
                       name="budget_range"
                       defaultValue={sectionValue(projectObjects, "budget_range")}
+                      data-budget-range-select
                     >
                       {BUDGET_RANGES.map(([value, label]) => (
                         <option key={value} value={value}>{label}</option>
@@ -1321,6 +1325,19 @@ function CaseDesktop({
                       name="referral_source"
                       defaultValue={sectionValue(projectObjects, "referral_source")}
                       placeholder="z. B. Name, Anzeige, Google"
+                    />
+                  </Label>
+                </div>
+                <div
+                  className="mt-3"
+                  data-budget-range-other-note
+                  hidden={sectionValue(projectObjects, "budget_range") !== "other"}
+                >
+                  <Label label="Sonstiges Budget genauer beschreiben">
+                    <Textarea
+                      name="budget_range_other_note"
+                      defaultValue={sectionValue(projectObjects, "budget_range_other_note")}
+                      placeholder="z. B. aufgeteilt nach Küche, Vorratsraum, Montage oder weiteren Bereichen"
                     />
                   </Label>
                 </div>
