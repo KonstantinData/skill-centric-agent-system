@@ -50,7 +50,7 @@ async function resolveAccessEmail(request: NextRequest): Promise<string> {
   const verified = await accessEmailFromJwt(request).catch(() => "");
   if (verified) return verified;
 
-  if (process.env.NODE_ENV === "production" && accessJwtConfig()) {
+  if (process.env.NODE_ENV === "production") {
     return "";
   }
 

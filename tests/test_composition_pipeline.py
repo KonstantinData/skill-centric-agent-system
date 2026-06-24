@@ -490,6 +490,23 @@ def test_profile_composer_fails_without_applicable_policies() -> None:
         RuntimeProfileComposer().compose(analyzed, context_response)
 
 
+def test_profile_composer_requires_policy_allow_for_graph_tools() -> None:
+    task = load_json(TASK_EXAMPLE_PATH)
+    context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)
+    context_response["graph_validation"]["reachable_modules"].append(
+        {
+            "id": "mod-shell-write",
+            "name": "shell-write",
+            "kind": "tool",
+            "version": "0.1.0",
+        }
+    )
+    analyzed = TaskAnalyzer().analyze(task)
+
+    with pytest.raises(CompositionError, match="Selected tool shell-write"):
+        RuntimeProfileComposer().compose(analyzed, context_response)
+
+
 def test_profile_composer_preserves_recomposition_traceability() -> None:
     task = load_json(TASK_EXAMPLE_PATH)
     context_response = load_json(COMPOSITION_CONTEXT_RESPONSE_PATH)

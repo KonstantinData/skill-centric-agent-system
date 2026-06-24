@@ -67,6 +67,51 @@ def test_flight_recorder_honors_explicit_redaction_flag(tmp_path: Path) -> None:
     assert load_json(unredacted_path)["token"] == "secret-value"
 
 
+def test_artifact_redaction_masks_secret_values_under_neutral_keys(tmp_path: Path) -> None:
+    artifacts = JsonArtifactStore(tmp_path)
+
+    uri = artifacts.write_json(
+        ("tool-outputs", "filesystem-read"),
+        {
+            "content": "debug output\napi_key=plain-secret-value\nAuthorization: Bearer abc.def",
+            "summary": "safe",
+        },
+    )
+
+    stored = load_json(tmp_path / uri.removeprefix("hetzner://runtime/"))
+    assert "plain-secret-value" not in stored["content"]
+    assert "Bearer abc.def" not in stored["content"]
+    assert "api_key=[REDACTED]" in stored["content"]
+    assert "Authorization: Bearer [REDACTED]" in stored["content"]
+
+
+def test_chunked_artifact_redaction_runs_before_chunk_writes(tmp_path: Path) -> None:
+    artifacts = JsonArtifactStore(
+        tmp_path,
+        chunk_string_threshold_bytes=64,
+        chunk_size_bytes=32,
+    )
+
+    uri = artifacts.write_json(
+        ("tool-outputs", "large-filesystem-read"),
+        {
+            "content": "prefix " * 20 + "token=neutral-field-secret-value" + " suffix" * 20,
+        },
+    )
+
+    stored = load_json(tmp_path / uri.removeprefix("hetzner://runtime/"))
+    manifest_uri = stored["content"]["manifest_uri"]
+    manifest = load_json(tmp_path / manifest_uri.removeprefix("hetzner://runtime/"))
+    chunk_text = "".join(
+        (tmp_path / chunk["uri"].removeprefix("hetzner://runtime/")).read_text(
+            encoding="utf-8"
+        )
+        for chunk in manifest["chunks"]
+    )
+    assert "neutral-field-secret-value" not in chunk_text
+    assert "token=[REDACTED]" in chunk_text
+
+
 def test_retention_planner_marks_expired_run_artifacts_without_deleting(
     tmp_path: Path,
 ) -> None:

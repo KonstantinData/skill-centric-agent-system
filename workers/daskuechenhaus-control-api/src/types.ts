@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   TENANT_ID: string;
   API_SECRET: string;
+  CORS_ALLOWED_ORIGINS?: string;
 }
 
 export interface AppVariables {

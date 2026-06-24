@@ -33,7 +33,8 @@ CF_ACCESS_TEAM_DOMAIN=<team>.cloudflareaccess.com
 CF_ACCESS_AUD=<application-audience-tag>
 ```
 
-When these variables are present in production, the middleware verifies the
+In production, the middleware does not fall back to Cloudflare Access email
+headers. Set both variables so the middleware can verify the
 `cf-access-jwt-assertion` audience and issuer before trusting the user email.
 `CF_ACCESS_AUD` may contain multiple audience tags separated by spaces, commas,
 or newlines. Configure all Cloudflare Access applications that can front the

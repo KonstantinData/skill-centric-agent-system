@@ -43,6 +43,7 @@ def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
     assert "x-access-user-email" in middleware
     assert "x-dkh-user-email" in middleware
     assert "jwtVerify" in middleware
+    assert 'if (process.env.NODE_ENV === "production") {\n    return "";' in middleware
 
 
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:

@@ -287,6 +287,15 @@ class RuntimeProfileComposer:
                 raise CompositionError(
                     f"Candidate module {module['name']} is not policy-allowed: {effect}."
                 )
+        for module in _graph_references(context_response):
+            if module.get("kind") != "tool":
+                continue
+            effect = policy_effects.get(str(module["name"]))
+            if effect != "allow":
+                raise CompositionError(
+                    f"Selected tool {module['name']} is not policy-allowed: "
+                    f"{effect or 'missing'}."
+                )
 
 
 def _human_review_profile(

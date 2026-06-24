@@ -2288,17 +2288,24 @@ function policyDecisionForModule(
       reasons: [`Policy ${denied.policyId} denies module ${module.name}.`],
     };
   }
+  const allowedPolicyIds = new Set(
+    directBindings
+      .filter((binding) => binding.effect === "allow")
+      .map((binding) => binding.policyId),
+  );
+  if (module.kind === "tool" && allowedPolicyIds.size === 0) {
+    return {
+      module: moduleIdentity(module),
+      effect: "needs_clarification",
+      reasons: [`Tool ${module.name} requires an explicit policy allow.`],
+    };
+  }
 
   const requiredPolicyIds = dependencies
     .filter((dependency) => dependency.dependencyKind === "policy" && dependency.isRequired)
     .map((dependency) => dependency.dependencyId);
 
   if (module.requiresAllPolicies) {
-    const allowedPolicyIds = new Set(
-      directBindings
-        .filter((binding) => binding.effect === "allow")
-        .map((binding) => binding.policyId),
-    );
     const missingPolicyIds = requiredPolicyIds.filter((policyId) => !allowedPolicyIds.has(policyId));
 
     if (missingPolicyIds.length > 0) {
@@ -2432,7 +2439,7 @@ async function compositionContextResponse(
   const candidateScores = scoredModules.filter((scoredModule) =>
     CANDIDATE_KINDS.has(scoredModule.module.kind),
   );
-  const policyDecisions = candidateScores.map((scoredModule) =>
+  const candidatePolicyDecisions = candidateScores.map((scoredModule) =>
     policyDecisionForModule(
       scoredModule.module,
       dependenciesByVersion.get(scoredModule.module.moduleVersionId) ?? [],
@@ -2440,7 +2447,7 @@ async function compositionContextResponse(
     ),
   );
   const allowedCandidateIds = new Set(
-    policyDecisions
+    candidatePolicyDecisions
       .filter((decision) => decision.effect === "allow")
       .map((decision) => decision.module.id),
   );
@@ -2496,6 +2503,30 @@ async function compositionContextResponse(
     dependenciesByVersion,
     scopeBindings,
   );
+  const graphToolPolicyDecisions = graphValidation.reachable_modules
+    .flatMap((module) => {
+      if (module.kind !== "tool") {
+        return [];
+      }
+      const registryModule = modulesById.get(module.id);
+      if (registryModule === undefined) {
+        return [];
+      }
+      return [
+        policyDecisionForModule(
+          registryModule,
+          dependenciesByVersion.get(registryModule.moduleVersionId) ?? [],
+          policyBindings,
+        ),
+      ];
+    });
+  const selectedToolPolicyAllowed = graphToolPolicyDecisions.every(
+    (decision) => decision.effect === "allow",
+  );
+  const policyDecisions = dedupePolicyDecisions([
+    ...candidatePolicyDecisions,
+    ...graphToolPolicyDecisions,
+  ]);
   let tenantAuthority: TenantAuthority | undefined;
   let tenantAuthorityValid = true;
   try {
@@ -2505,7 +2536,10 @@ async function compositionContextResponse(
     tenantAuthorityValid = false;
   }
   const compositionStatus =
-    candidateScores.length === 0 || allowedCandidates.length === 0 || !tenantAuthorityValid
+    candidateScores.length === 0 ||
+    allowedCandidates.length === 0 ||
+    !selectedToolPolicyAllowed ||
+    !tenantAuthorityValid
       ? "denied"
       : "ready";
 
@@ -2525,6 +2559,19 @@ async function compositionContextResponse(
     graph_validation: graphValidation,
     ...(tenantAuthority === undefined ? {} : { tenant_authority: tenantAuthority }),
   };
+}
+
+function dedupePolicyDecisions(decisions: PolicyDecision[]): PolicyDecision[] {
+  const seen = new Set<string>();
+  const deduped: PolicyDecision[] = [];
+  for (const decision of decisions) {
+    if (seen.has(decision.module.id)) {
+      continue;
+    }
+    seen.add(decision.module.id);
+    deduped.push(decision);
+  }
+  return deduped;
 }
 
 async function handleCompositionContext(request: Request, env: Env): Promise<Response> {
@@ -2755,6 +2802,25 @@ async function handleKnowledgeIngest(request: Request, env: Env): Promise<Respon
   const body = parsed.body;
   const timestamp = nowIso();
   const bucketName = `scas-knowledge-${env.ENVIRONMENT}`;
+  const knowledgeScope = await env.SCAS_CONTROL_DB.prepare(
+    `
+    SELECT id
+    FROM modules
+    WHERE id = ?
+      AND kind = 'knowledge_scope'
+      AND status = 'active'
+    LIMIT 1
+    `,
+  )
+    .bind(body.document.scope_id)
+    .first();
+  if (knowledgeScope === null) {
+    return errorResponse(
+      403,
+      "knowledge_scope_not_allowed",
+      "document.scope_id must reference an active knowledge_scope module.",
+    );
+  }
   const baseKey = `knowledge/${body.source.id}/${body.document.id}/${versionPath(body.document.version)}`;
   const normalized = normalizeKnowledgeContent(body.document.content);
   const chunks = chunkContent(normalized);
