@@ -313,6 +313,12 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "CARAT-Projektdatei" in source
     assert 'name="document_category" value="order_processing"' in source
     assert 'name="document_type" value="carat_project"' in source
+    assert 'name="carat_upload_mode"' in source
+    assert 'value="new_version"' in source
+    assert 'value="replace_latest"' in source
+    assert "Als neue Version hochladen" in source
+    assert "Vorherigen CARAT-Import ersetzen" in source
+    assert "latestCurrentCaratDocument" in source
     assert "CARAT importieren" in source
     assert "Ausgewählte Positionen übernehmen" in source
     assert "Ausgewählte Positionen zurücksetzen" in source

@@ -120,6 +120,15 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "selection_status = 'transferred'" in source
     assert "selection_status IN ('selected', 'transferred')" in source
     assert "RETURNING import_id" in source
+    assert "replace_latest_carat_project" in source
+    assert 'data.get("carat_upload_mode", "")' in source
+    assert "d.document_type = 'carat_project'" in source
+    assert "d.is_current_version = TRUE" in source
+    assert "replaced_carat_import AS" in source
+    assert "canceled_replaced_supplier_orders AS" in source
+    assert "so.source_carat_import_id IN" in source
+    assert "JOIN app.customer_case_documents cd ON cd.id = ci.document_id" in source
+    assert "AND cd.is_current_version = TRUE" in source
     assert "download_customer_case_document" in source
     assert "archive_customer_case_document" in source
     assert "app.customer_file_sections" in source

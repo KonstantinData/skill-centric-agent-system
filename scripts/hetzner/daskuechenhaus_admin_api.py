@@ -1871,7 +1871,10 @@ def customers_state(access_email: str) -> dict[str, Any]:
                     ORDER BY ci.created_at DESC, ci.id DESC
                   )
                   FROM app.customer_case_carat_imports ci
+                  JOIN app.customer_case_documents cd ON cd.id = ci.document_id
                   WHERE ci.customer_case_id = cc.id
+                    AND cd.document_status <> 'archived'
+                    AND cd.is_current_version = TRUE
                 ), '[]'::jsonb),
                 'supplier_orders', COALESCE((
                   SELECT jsonb_agg(
@@ -3563,6 +3566,9 @@ def create_customer_case_document_metadata(
         "note": str(data.get("note", "")).strip(),
         "version_label": str(data.get("version_label", "1")).strip() or "1",
         "replaces_document_id": str(data.get("replaces_document_id", "")).strip(),
+        "replace_latest_carat_project": (
+            is_carat_upload and str(data.get("carat_upload_mode", "")).strip() == "replace_latest"
+        ),
         "actor_user_id": context["primary_user_id"],
         "context": context,
         **file_payload,
@@ -3592,8 +3598,27 @@ def create_customer_case_document_metadata(
         replacement AS (
           SELECT d.id
           FROM app.customer_case_documents d
-          WHERE d.id = NULLIF((SELECT data->>'replaces_document_id' FROM payload), '')::bigint
-            AND d.customer_case_id = (SELECT id FROM visible_case)
+          WHERE d.customer_case_id = (SELECT id FROM visible_case)
+            AND (
+              d.id = NULLIF((SELECT data->>'replaces_document_id' FROM payload), '')::bigint
+              OR (
+                COALESCE(
+                  (SELECT (data->>'replace_latest_carat_project')::boolean FROM payload),
+                  FALSE
+                )
+                AND d.document_type = 'carat_project'
+                AND d.document_status <> 'archived'
+                AND d.is_current_version = TRUE
+              )
+            )
+          ORDER BY
+            CASE
+              WHEN d.id = NULLIF((SELECT data->>'replaces_document_id' FROM payload), '')::bigint
+                THEN 0
+              ELSE 1
+            END,
+            d.created_at DESC,
+            d.id DESC
           LIMIT 1
         ),
         marked_replaced AS (
@@ -3603,6 +3628,21 @@ def create_customer_case_document_metadata(
             is_current_version = FALSE,
             updated_at = now()
           WHERE d.id = (SELECT id FROM replacement)
+          RETURNING id
+        ),
+        replaced_carat_import AS (
+          SELECT ci.id
+          FROM app.customer_case_carat_imports ci
+          WHERE ci.document_id = (SELECT id FROM marked_replaced)
+        ),
+        canceled_replaced_supplier_orders AS (
+          UPDATE app.supplier_orders so
+          SET
+            status = 'canceled',
+            updated_at = now()
+          WHERE so.source_carat_import_id IN (SELECT id FROM replaced_carat_import)
+            AND so.status <> 'canceled'
+          RETURNING id
         ),
         inserted AS (
           INSERT INTO app.customer_case_documents (
@@ -3657,7 +3697,11 @@ def create_customer_case_document_metadata(
           SET updated_at = now()
           WHERE cc.id = (SELECT id FROM visible_case)
         )
-        SELECT jsonb_build_object('ok', TRUE, 'document_id', (SELECT id FROM inserted))::text;
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'document_id', (SELECT id FROM inserted),
+          'canceled_supplier_order_count', (SELECT count(*) FROM canceled_replaced_supplier_orders)
+        )::text;
         """,
         {"payload": json.dumps(payload)},
     )

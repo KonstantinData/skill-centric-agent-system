@@ -906,6 +906,12 @@ function CaseDesktop({
   const documents = selectedCase.sections?.documents;
   const caseDocuments = selectedCase.documents ?? [];
   const caratImports = selectedCase.carat_imports ?? [];
+  const latestCurrentCaratDocument = caseDocuments.find(
+    (document) =>
+      document.document_type === "carat_project" &&
+      document.document_status !== "archived" &&
+      document.is_current_version,
+  );
   const supplierOrders = selectedCase.supplier_orders ?? [];
   const supplierConfirmations = selectedCase.supplier_order_confirmations ?? [];
   const openSupplierConfirmations = supplierConfirmations.filter((confirmation) =>
@@ -1405,6 +1411,41 @@ function CaseDesktop({
                 <input type="hidden" name="document_status" value="received" />
                 <input type="hidden" name="version_label" value="1" />
                 <input type="hidden" name="title" value="CARAT-Projektdatei" />
+                <div className="grid gap-2 text-sm">
+                  <label className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-white px-3 py-2">
+                    <input
+                      className="mt-1"
+                      type="radio"
+                      name="carat_upload_mode"
+                      value="new_version"
+                      defaultChecked
+                    />
+                    <span>
+                      <span className="block font-bold text-[var(--text)]">Als neue Version hochladen</span>
+                      <span className="block text-xs text-[var(--muted)]">
+                        Der bestehende CARAT-Import bleibt sichtbar.
+                      </span>
+                    </span>
+                  </label>
+                  {latestCurrentCaratDocument ? (
+                    <label className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-white px-3 py-2">
+                      <input
+                        className="mt-1"
+                        type="radio"
+                        name="carat_upload_mode"
+                        value="replace_latest"
+                      />
+                      <span>
+                        <span className="block font-bold text-[var(--text)]">
+                          Vorherigen CARAT-Import ersetzen
+                        </span>
+                        <span className="block text-xs text-[var(--muted)]">
+                          Der bisher aktuelle Import wird ersetzt und nicht mehr im Cockpit angezeigt.
+                        </span>
+                      </span>
+                    </label>
+                  ) : null}
+                </div>
                 <Label label="CARAT-Projektdatei">
                   <Field
                     className="bg-white"

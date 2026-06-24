@@ -152,6 +152,10 @@ CARAT PRJZ imports remain the first structured source for supplier orders. When
 users select CARAT import positions, the Hetzner Admin API creates or refreshes
 supplier orders and supplier order positions grouped by supplier. Manual AB
 entry then compares supplier confirmation lines against those order positions.
+When uploading another PRJZ file for the same case, sellers can either keep it
+as a new visible version or replace the current CARAT import. Replacing marks
+the previous CARAT document as replaced, hides its import from the cockpit, and
+cancels supplier orders that were generated from that replaced import.
 
 Manual AB lines use this pipe-separated format:
 
