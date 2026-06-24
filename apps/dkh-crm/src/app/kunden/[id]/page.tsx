@@ -840,6 +840,40 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
         </Panel>
       </div>
       <Script src="/customer-search.v1.js" strategy="afterInteractive" />
+      <Script id="carat-supplier-select-all" strategy="afterInteractive">
+        {`
+          function syncCaratSupplierToggle(group) {
+            const toggle = group.querySelector("[data-carat-supplier-toggle]");
+            const boxes = Array.from(group.querySelectorAll("[data-carat-position-checkbox]"));
+            if (!toggle || boxes.length === 0) return;
+            const checkedCount = boxes.filter((box) => box.checked).length;
+            toggle.checked = checkedCount === boxes.length;
+            toggle.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+          }
+
+          document.addEventListener("change", (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement)) return;
+
+            const supplierToggle = target.closest("[data-carat-supplier-toggle]");
+            if (supplierToggle) {
+              const group = supplierToggle.closest("[data-carat-supplier-group]");
+              if (!group) return;
+              group.querySelectorAll("[data-carat-position-checkbox]").forEach((box) => {
+                box.checked = supplierToggle.checked;
+              });
+              supplierToggle.indeterminate = false;
+              return;
+            }
+
+            const positionCheckbox = target.closest("[data-carat-position-checkbox]");
+            if (positionCheckbox) {
+              const group = positionCheckbox.closest("[data-carat-supplier-group]");
+              if (group) syncCaratSupplierToggle(group);
+            }
+          });
+        `}
+      </Script>
     </div>
   );
 }
@@ -1437,11 +1471,18 @@ function CaseDesktop({
                         return (
                           <div
                             key={`${caratImport.id}-${supplierName}`}
+                            data-carat-supplier-group
                             className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-sm font-bold">{supplierName}</p>
-                              <span className="badge">{positions.length} Positionen</span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <label className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-bold text-[var(--muted)]">
+                                  <input type="checkbox" data-carat-supplier-toggle />
+                                  Alles markieren
+                                </label>
+                                <span className="badge">{positions.length} Positionen</span>
+                              </div>
                             </div>
                             <div className="mt-2 grid gap-2">
                               {positions.map((position) => {
@@ -1455,6 +1496,7 @@ function CaseDesktop({
                                       className="mt-1"
                                       type="checkbox"
                                       name={`position_${position.id}`}
+                                      data-carat-position-checkbox
                                     />
                                     <span className="min-w-0">
                                       <span className="block text-sm font-bold leading-snug text-[var(--text)]">

@@ -318,6 +318,11 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Ausgewählte Positionen zurücksetzen" in source
     assert 'name="carat_action" value="reset"' in source
     assert 'name="carat_action" value="transfer"' in source
+    assert "Alles markieren" in source
+    assert "data-carat-supplier-group" in source
+    assert "data-carat-supplier-toggle" in source
+    assert "data-carat-position-checkbox" in source
+    assert "syncCaratSupplierToggle" in source
     assert "transferredCount" in source
     assert "Übernommen" in source
     assert "Markiert" in source
