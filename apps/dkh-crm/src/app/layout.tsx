@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BottomNav } from "@/components/chrome/bottom-nav";
 import { Sidebar } from "@/components/chrome/sidebar";
+import { ThemeScript } from "@/components/chrome/theme-script";
 import { TopBar } from "@/components/chrome/top-bar";
 import { getUserEmail } from "@/lib/auth";
 import "./globals.css";
@@ -19,6 +20,9 @@ export default async function RootLayout({
 
   return (
     <html lang="de">
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <div className="app-shell">
           <Sidebar />

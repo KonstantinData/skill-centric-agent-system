@@ -198,8 +198,6 @@ Optional backend-backed mode:
 ```powershell
 $env:SCAS_CONTROL_API_URL="https://<control-api-worker>"
 $env:SCAS_TENANT_ADMIN_TOKEN="<tenant-admin-token>"
-$env:SCAS_CUSTOMER_CASES_API_URL="https://daskuechenhaus-control-api.<account>.workers.dev"
-$env:SCAS_CUSTOMER_CASES_API_SECRET="<customer-cases-api-secret>"
 $env:SCAS_UI_AUTH_MODE="required"
 $env:SCAS_UI_TENANT_ID="liquisto"
 $env:SCAS_UI_SESSION_CONTEXT_JSON='{"tenant_id":"liquisto","principal_id":"<principal-id>","membership_id":"<membership-id>","role_ids":["liquisto-researcher"]}'

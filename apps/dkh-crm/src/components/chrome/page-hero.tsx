@@ -1,9 +1,11 @@
 import Image from "next/image";
 
 export function PageHero({
+  eyebrow = "das küchenhaus",
   title,
   subtitle,
 }: {
+  eyebrow?: string | null;
   title: string;
   subtitle: string;
 }) {
@@ -18,9 +20,11 @@ export function PageHero({
         className="absolute inset-0 -z-10 object-cover opacity-38"
       />
       <div className="max-w-3xl">
-        <p className="mb-2 text-sm font-bold uppercase tracking-normal text-[#d8f0c8]">
-          das küchenhaus
-        </p>
+        {eyebrow ? (
+          <p className="mb-2 text-sm font-bold uppercase tracking-normal text-[#d8f0c8]">
+            {eyebrow}
+          </p>
+        ) : null}
         <h1 className="text-3xl font-bold leading-tight md:text-4xl">{title}</h1>
         <p className="mt-2 max-w-2xl text-base text-[#eef7e8]">{subtitle}</p>
       </div>

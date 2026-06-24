@@ -85,18 +85,43 @@ customer-folder/case anchor and adds normalized customer tables:
 - `app.customer_addresses` for billing, delivery, installation, and other
   addresses.
 - `app.customer_contacts` for additional contacts under a customer.
-- `app.customer_case_status_phases` for phases 1-10 inside the customer
-  folder.
+- `app.customer_case_status_phases` for phases 1-11 inside the customer
+  folder, from Anfrage through Abgeschlossen.
 - `app.customer_case_participants` for the customer/contact roles on each case.
 - `app.customer_case_project_profiles` for kitchen-project details such as
   budget, room type, measurement date, and target installation date.
 - `app.customer_case_notes`, `app.customer_case_documents`, and
   `app.customer_case_audit_events` for the documented customer file.
+- `0010_customer_case_document_metadata.sql` extends
+  `app.customer_case_documents` for the guided Vorgangsregister document
+  workflow: register assignment, category, status, title, note, version label,
+  current-version marker, and archival metadata before binary file upload is
+  enabled.
+- `app.customer_file_sections` and `app.customer_case_sections` for flexible
+  customer-file desktop and case-folder sections that will later be promoted to
+  stricter tables where the workflow becomes stable.
 
 Customer names and customer emails are deliberately not unique. The system must
 allow different customers with the same name and must also allow operational
 duplicates where one real person appears in different business roles. Only a
 non-empty `customer_number`, when present, is unique.
+
+## Customer Database Reset
+
+Use `.github/workflows/es-daskuechenhaus-customer-database-reset.yml` only for
+an explicitly confirmed productive reset of Daskuechenhaus customer data. The
+manual workflow requires `apply_reset=true`, `confirm_production=true`, and the
+exact confirmation text `Ja, produktive DKH-Kundendatenbank leeren.`.
+
+The reset deletes customer records, customer cases/files, customer contacts and
+addresses, case sections, case notes/documents/audit rows, case-linked tasks,
+appointments, communication events, email case links, and case assignment
+suggestions. It preserves users, roles, permissions, login/access configuration,
+task statuses, customer case status phases, mail account configuration, app
+code, and deployment configuration.
+
+The workflow writes count-only evidence before and after the reset and verifies
+that `/customers/state` returns empty `customers` and `customer_cases` arrays.
 
 ## UI Branding
 

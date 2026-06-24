@@ -1,0 +1,134 @@
+name: es-daskuechenhaus.de CRM Diagnostics
+
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: Local CRM path to request on the Hetzner origin
+        required: true
+        type: string
+        default: /kunden
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-daskuechenhaus-crm-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  diagnostics:
+    name: Read CRM service logs and origin response
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DIAGNOSTIC_PATH: ${{ inputs.path }}
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER }}
+      HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+
+    steps:
+      - name: Validate inputs and resolve target
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${DIAGNOSTIC_PATH}" =~ ^/[A-Za-z0-9._~!$&\'()*+,;=:@%/-]*$ ]]; then
+            echo "::error::path must be a local HTTP path starting with /."
+            exit 1
+          fi
+
+          target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
+          target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
+          target_key="${SCAS_PROD_HETZNER_SSH_KEY:-${HETZNER_SSH_KEY:-}}"
+          missing=0
+          for pair in \
+            "TARGET_HETZNER_HOST:${target_host}" \
+            "TARGET_HETZNER_USER:${target_user}" \
+            "TARGET_HETZNER_SSH_KEY:${target_key}"
+          do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "${value}" ]; then
+              echo "::error::Missing required secret: ${name}"
+              missing=1
+            fi
+          done
+          if [ "${missing}" -ne 0 ]; then
+            exit 1
+          fi
+
+          {
+            printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
+            printf 'TARGET_HETZNER_USER=%s\n' "${target_user}"
+            echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${target_key}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 0700 -d "${HOME}/.ssh"
+          printf '%s\n' "${TARGET_HETZNER_SSH_KEY}" | tr -d '\r' > "${HOME}/.ssh/hetzner_key"
+          chmod 0600 "${HOME}/.ssh/hetzner_key"
+          ssh-keygen -y -f "${HOME}/.ssh/hetzner_key" >/dev/null
+          ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Collect diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p es-daskuechenhaus-crm-diagnostics
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "DIAGNOSTIC_PATH='${DIAGNOSTIC_PATH}' bash -s" \
+            > es-daskuechenhaus-crm-diagnostics/diagnostics.md <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo -n "$@"
+            fi
+          }
+
+          printf '# es-daskuechenhaus.de CRM Diagnostics\n\n'
+          printf -- '- Collected at: `%s`\n' "$(date -Is)"
+          printf -- '- Path: `%s`\n' "${DIAGNOSTIC_PATH}"
+
+          printf '\n## Service Status\n\n'
+          sudo_if_needed systemctl status daskuechenhaus-crm.service --no-pager -l || true
+
+          printf '\n## Origin Response\n\n'
+          curl -sS -D - \
+            -H 'x-dkh-user-email: k.milonas@schober-daskuechenhaus.de' \
+            "http://127.0.0.1:3001${DIAGNOSTIC_PATH}" \
+            -o /tmp/dkh-crm-diagnostic-body.txt || true
+          printf '\n### Body excerpt\n\n'
+          head -c 2000 /tmp/dkh-crm-diagnostic-body.txt || true
+          printf '\n'
+
+          printf '\n## CRM Journal\n\n'
+          sudo_if_needed journalctl -u daskuechenhaus-crm.service -n 160 --no-pager -o short-iso || true
+
+          printf '\n## Admin API Journal\n\n'
+          sudo_if_needed journalctl -u daskuechenhaus-admin-api.service -n 120 --no-pager -o short-iso || true
+          REMOTE
+
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: es-daskuechenhaus-crm-diagnostics
+          path: es-daskuechenhaus-crm-diagnostics/diagnostics.md
+          if-no-files-found: error

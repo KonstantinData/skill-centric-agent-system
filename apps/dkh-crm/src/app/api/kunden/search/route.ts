@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
 
   const upstream = new URL(`${base.replace(/\/+$/, "")}/customers/search`);
   upstream.searchParams.set("q", query);
+  const status = request.nextUrl.searchParams.get("status")?.trim() ?? "";
+  if (["active", "closed", "all"].includes(status)) {
+    upstream.searchParams.set("status", status);
+  }
 
   const headers = new Headers({ accept: "application/json" });
   const token = process.env.DKH_ADMIN_API_TOKEN;

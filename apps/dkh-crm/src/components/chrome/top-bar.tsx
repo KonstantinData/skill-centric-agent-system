@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ThemeToggle } from "./theme-toggle";
 
 export function TopBar({ userEmail }: { userEmail: string }) {
   return (
@@ -9,9 +10,12 @@ export function TopBar({ userEmail }: { userEmail: string }) {
       <div className="hidden lg:block">
         <p className="text-sm font-bold text-[var(--muted)]">CRM-Portal</p>
       </div>
-      <div className="min-w-0 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-right text-sm">
-        <p className="font-bold">Angemeldet</p>
-        <p className="truncate text-[var(--muted)]">{userEmail || "E-Mail nicht verfügbar"}</p>
+      <div className="flex min-w-0 items-center gap-2">
+        <ThemeToggle />
+        <div className="min-w-0 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-right text-sm">
+          <p className="font-bold">Angemeldet</p>
+          <p className="truncate text-[var(--muted)]">{userEmail || "E-Mail nicht verfügbar"}</p>
+        </div>
       </div>
     </header>
   );

@@ -222,10 +222,22 @@ export type CustomerRecord = {
   first_name: string | null;
   last_name: string | null;
   company_name: string | null;
+  legal_form: string | null;
+  vat_id: string | null;
+  tax_number: string | null;
+  registry_court: string | null;
+  registry_number: string | null;
+  object_customer_label: string | null;
   primary_email: string | null;
   primary_phone: string | null;
   primary_mobile: string | null;
   preferred_contact_channel: string;
+  country: string | null;
+  tax_treatment: string | null;
+  tax_treatment_note: string | null;
+  has_custom_vat?: boolean | null;
+  custom_vat_rate?: string | number | null;
+  custom_vat_rate_label?: string | null;
   notes: string | null;
   owner_user_id: number | null;
   address: CustomerAddress | null;
@@ -234,11 +246,170 @@ export type CustomerRecord = {
   updated_at: string | null;
 };
 
+export type CustomerCaseDocumentRecord = {
+  id: number;
+  customer_case_id: number;
+  register_code: string;
+  document_category: string;
+  document_type: string;
+  document_status: string;
+  title: string;
+  note: string | null;
+  version_label: string;
+  is_current_version: boolean;
+  replaces_document_id: number | null;
+  has_file: boolean;
+  storage_backend: string | null;
+  content_sha256: string | null;
+  original_filename: string | null;
+  content_type: string | null;
+  file_size_bytes: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaratImportPositionRecord = {
+  id: number;
+  source_line: number | null;
+  position_number: string | null;
+  supplier_code: string | null;
+  supplier_name: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  dimensions: Record<string, number | string | null | undefined>;
+  selection_status: string;
+  selected_at: string | null;
+};
+
+export type CaratImportRecord = {
+  id: number;
+  customer_case_id: number;
+  document_id: number;
+  parser_version: string;
+  source_filename: string | null;
+  carat_version: string | null;
+  project_number: string | null;
+  project_name: string | null;
+  customer_name: string | null;
+  currency: string | null;
+  supplier_count: number;
+  position_count: number;
+  status: string;
+  summary: Record<string, unknown>;
+  created_at: string;
+  positions: CaratImportPositionRecord[];
+};
+
+export type SupplierOrderPositionRecord = {
+  id: number;
+  position_number: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit: string;
+  ordered_net_price: number | string | null;
+  ordered_delivery_week: string | null;
+  ordered_delivery_date: string | null;
+};
+
+export type SupplierOrderRecord = {
+  id: number;
+  customer_case_id: number;
+  supplier_id: number;
+  supplier_name: string;
+  source_carat_import_id: number | null;
+  order_number: string | null;
+  title: string;
+  status: string;
+  ordered_position_count: number;
+  created_at: string;
+  positions: SupplierOrderPositionRecord[];
+};
+
+export type SupplierConfirmationPositionRecord = {
+  id: number;
+  matched_order_position_id: number | null;
+  position_number: string | null;
+  article_code: string | null;
+  title: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit: string;
+  confirmed_net_price: number | string | null;
+  confirmed_delivery_week: string | null;
+  confirmed_delivery_date: string | null;
+  match_status: string;
+  severity: "green" | "yellow" | "red";
+};
+
+export type SupplierConfirmationExceptionRecord = {
+  id: number;
+  confirmation_position_id: number | null;
+  order_position_id: number | null;
+  difference_type: string;
+  severity: "yellow" | "red";
+  status: string;
+  ordered_value: string | null;
+  confirmed_value: string | null;
+  difference_value: number | string | null;
+  message: string;
+  resolution_action: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+};
+
+export type SupplierCommunicationRecord = {
+  id: number;
+  exception_id: number | null;
+  communication_type: string;
+  status: string;
+  recipient_email: string | null;
+  subject: string;
+  body: string;
+  created_at: string;
+};
+
+export type SupplierFollowUpRecord = {
+  id: number;
+  communication_id: number | null;
+  title: string;
+  status: string;
+  due_at: string | null;
+};
+
+export type SupplierOrderConfirmationRecord = {
+  id: number;
+  inbox_item_id: number;
+  customer_case_id: number;
+  supplier_order_id: number;
+  supplier_id: number;
+  supplier_name: string;
+  document_id: number | null;
+  confirmation_number: string | null;
+  status: string;
+  ordered_position_count: number;
+  confirmation_position_count: number;
+  matched_position_count: number;
+  unmatched_order_position_count: number;
+  unmatched_confirmation_position_count: number;
+  match_rate: number | string;
+  approved_at: string | null;
+  created_at: string;
+  positions: SupplierConfirmationPositionRecord[];
+  exceptions: SupplierConfirmationExceptionRecord[];
+  communications: SupplierCommunicationRecord[];
+  follow_ups: SupplierFollowUpRecord[];
+};
+
 export type CustomerCaseRecord = {
   id: number;
   customer_id: number | null;
   case_number: string | null;
-  carat_case_number: string | null;
+  carat_order_number: string | null;
   case_title: string | null;
   case_status: string;
   customer_display_name: string;
@@ -255,6 +426,10 @@ export type CustomerCaseRecord = {
     created_at: string;
   }>;
   sections?: Record<string, SectionPayload>;
+  documents?: CustomerCaseDocumentRecord[];
+  carat_imports?: CaratImportRecord[];
+  supplier_orders?: SupplierOrderRecord[];
+  supplier_order_confirmations?: SupplierOrderConfirmationRecord[];
   updated_at: string | null;
 };
 

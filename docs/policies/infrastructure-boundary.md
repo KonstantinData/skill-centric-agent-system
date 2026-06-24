@@ -163,9 +163,9 @@ production store for tenant customer records, customer cases, order workflows,
 email communication tracking, calendar references, or aftersales state.
 
 The Daskuechenhaus customer-case product starts from a new PostgreSQL schema in
-`tenant_daskuechenhaus`. The experimental Cloudflare D1 customer-case database
-is not a migration source and must not be used for production customer-case
-writes.
+`tenant_daskuechenhaus`. The removed experimental Cloudflare D1 customer-case
+database is not a migration source and must not be used for production
+customer-case writes.
 
 Tenant database provisioning is handled by:
 

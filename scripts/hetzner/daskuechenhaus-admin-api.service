@@ -7,12 +7,16 @@ Type=simple
 User=tenant_daskuechenhaus_app
 Group=tenant_daskuechenhaus_app
 WorkingDirectory=/opt/daskuechenhaus/admin-api
+EnvironmentFile=-/etc/daskuechenhaus/object-storage.env
 Environment=DKH_ADMIN_DATABASE=tenant_daskuechenhaus
 Environment=DKH_ADMIN_API_HOST=127.0.0.1
 Environment=DKH_ADMIN_API_PORT=8715
 Environment=DKH_ADMIN_API_TOKEN_FILE=/etc/daskuechenhaus/admin-api-token
 Environment=DKH_ADMIN_ALLOWED_EMAILS=k.milonas@schober-daskuechenhaus.de
 Environment=DKH_ADMIN_UPLOAD_ROOT=/var/lib/daskuechenhaus/uploads
+Environment=DKH_OBJECT_STORAGE_BUCKET=dkh-crm-documents
+Environment=DKH_OBJECT_STORAGE_ENDPOINT=https://fsn1.your-objectstorage.com
+Environment=DKH_OBJECT_STORAGE_REGION=fsn1
 ExecStart=/usr/bin/python3 /opt/daskuechenhaus/admin-api/app.py
 Restart=on-failure
 RestartSec=3

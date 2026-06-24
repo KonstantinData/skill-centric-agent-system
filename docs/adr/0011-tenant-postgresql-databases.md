@@ -22,7 +22,8 @@ backup, restore, retention, access control, and future migration paths that are
 independent from Cloudflare D1 control metadata.
 
 Daskuechenhaus previously had an experimental Cloudflare D1 customer-case
-database path. That path is not the production target.
+database path. That path has been removed from the repository and is not the
+production target.
 
 ## Decision
 
@@ -41,9 +42,9 @@ Cloudflare D1 remains the Control Plane database for metadata and authority.
 It must not be used as the production store for Daskuechenhaus customer cases
 or other tenant customer data.
 
-The experimental Daskuechenhaus Cloudflare D1 customer-case database is
-discarded as a source system. Its data is not migrated to Hetzner. The
-Daskuechenhaus customer-case product starts with a new PostgreSQL schema in
+The removed experimental Daskuechenhaus customer-case database is discarded as a
+source system. Its data is not migrated to Hetzner. The Daskuechenhaus
+customer-case product starts with a new PostgreSQL schema in
 `tenant_daskuechenhaus`.
 
 This decision is only about tenant operational and customer databases. It does

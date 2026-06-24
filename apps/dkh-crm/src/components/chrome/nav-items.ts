@@ -5,7 +5,6 @@ import {
   Inbox,
   Settings,
   UserRoundSearch,
-  UsersRound,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -14,6 +13,5 @@ export const NAV_ITEMS = [
   { href: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { href: "/emails", label: "E-Mails", icon: Inbox },
   { href: "/kunden", label: "Kunden", icon: UserRoundSearch },
-  { href: "/vorgaenge", label: "Vorgänge", icon: UsersRound },
   { href: "/admin", label: "Admin", icon: Settings },
 ];

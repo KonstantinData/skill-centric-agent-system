@@ -24,9 +24,16 @@ const ALLOWED_WRITE_PATHS: Record<ProxyKind, RegExp[]> = {
     /^integrations$/,
   ],
   customers: [
+    /^cases$/,
     /^customers$/,
     /^customers\/\d+$/,
     /^customers\/\d+\/sections\/[a-z0-9_-]+$/i,
+    /^cases\/\d+$/,
+    /^cases\/\d+\/documents$/,
+    /^cases\/\d+\/documents\/\d+\/archive$/,
+    /^cases\/\d+\/carat-imports\/\d+\/positions$/,
+    /^cases\/\d+\/confirmations$/,
+    /^confirmations\/\d+\/exceptions\/\d+\/decide$/,
     /^cases\/\d+\/notes$/,
     /^cases\/\d+\/sections\/[a-z0-9_-]+$/i,
   ],
@@ -62,8 +69,38 @@ function proxyHeaders(request: NextRequest) {
   return headers;
 }
 
-async function bodyFor(request: NextRequest) {
+function isLocalRedirectHost(host: string): boolean {
+  const normalized = host.toLowerCase().split(":")[0];
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized.endsWith(".local")
+  );
+}
+
+function publicRedirectOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? "";
+  const host = forwardedHost || request.headers.get("host") || "";
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "";
+  const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+
+  if (host && !isLocalRedirectHost(host)) {
+    return `${proto}://${host}`;
+  }
+
+  const configured = process.env.DKH_CRM_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  return configured || "https://www.es-daskuechenhaus.de";
+}
+
+async function bodyAndHeadersFor(request: NextRequest, headers: Headers) {
   if (request.method === "GET" || request.method === "HEAD") return undefined;
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    headers.set("content-type", contentType);
+    return await request.arrayBuffer();
+  }
+  headers.set("content-type", "application/x-www-form-urlencoded");
   const formData = await request.formData();
   return new URLSearchParams(
     Array.from(formData.entries()).map(([key, value]) => [
@@ -92,32 +129,46 @@ export async function proxyRoute(
   }
 
   const headers = proxyHeaders(request);
-  if (!["GET", "HEAD"].includes(method)) {
-    headers.set("content-type", "application/x-www-form-urlencoded");
-  }
+  const body = await bodyAndHeadersFor(request, headers);
 
   const response = await fetch(built.upstream, {
     method,
     headers,
-    body: await bodyFor(request),
+    body,
     redirect: "manual",
     cache: "no-store",
   });
 
   if (!["GET", "HEAD"].includes(method)) {
+    const acceptsJson = request.headers.get("accept")?.includes("application/json");
+    if (acceptsJson || !response.ok) {
+      const contentType = response.headers.get("content-type") ?? "application/json";
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: {
+          "content-type": contentType,
+          "cache-control": "no-store",
+        },
+      });
+    }
     const returnTo = safeReturnTo(
       request.nextUrl.searchParams.get("return_to"),
       request.headers.get("referer") ? new URL(request.headers.get("referer")!).pathname : "/",
     );
-    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+    return NextResponse.redirect(new URL(returnTo, publicRedirectOrigin(request)), 303);
   }
 
   const contentType = response.headers.get("content-type") ?? "application/json";
+  const responseHeaders: Record<string, string> = {
+    "content-type": contentType,
+    "cache-control": "no-store",
+  };
+  const contentDisposition = response.headers.get("content-disposition");
+  if (contentDisposition) {
+    responseHeaders["content-disposition"] = contentDisposition;
+  }
   return new NextResponse(response.body, {
     status: response.status,
-    headers: {
-      "content-type": contentType,
-      "cache-control": "no-store",
-    },
+    headers: responseHeaders,
   });
 }

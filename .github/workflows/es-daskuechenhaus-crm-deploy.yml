@@ -50,6 +50,7 @@ jobs:
       DKH_LOCAL_PORT: ${{ inputs.local_port }}
       DKH_ORIGIN_IPV4_INPUT: ${{ inputs.origin_ipv4 }}
       DKH_ADMIN_API_BASE_URL: http://127.0.0.1:8715
+      DKH_CRM_RELEASE_RETENTION: "3"
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -259,6 +260,73 @@ jobs:
           Path("dkh-crm-origin-cert/origin.pem").write_text(certificate, encoding="utf-8")
           PY
 
+      - name: Clean old CRM releases before upload
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "DKH_CRM_RELEASE_RETENTION='${DKH_CRM_RELEASE_RETENTION}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo -n "$@"
+            fi
+          }
+
+          releases_dir="/opt/daskuechenhaus/dkh-crm/releases"
+          current_link="/opt/daskuechenhaus/dkh-crm/current"
+          current_target="$(readlink -f "${current_link}" 2>/dev/null || true)"
+
+          if [ ! -d "${releases_dir}" ]; then
+            exit 0
+          fi
+
+          mapfile -t releases < <(
+            find "${releases_dir}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+              | sort -rn \
+              | awk '{ $1=""; sub(/^ /, ""); print }'
+          )
+
+          declare -A keep=()
+          index=0
+          for release in "${releases[@]}"; do
+            index=$((index + 1))
+            if [ "${index}" -le "${DKH_CRM_RELEASE_RETENTION}" ]; then
+              keep["${release}"]=1
+            fi
+          done
+          if [ -n "${current_target}" ]; then
+            keep["${current_target}"]=1
+          fi
+
+          for release in "${releases[@]}"; do
+            if [ -n "${keep[${release}]:-}" ]; then
+              continue
+            fi
+            case "${release}" in
+              "${releases_dir}"/*)
+                sudo_if_needed rm -rf --one-file-system "${release}"
+                ;;
+              *)
+                echo "Refusing unexpected release path: ${release}" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+          df -hT /
+          du -sh "${releases_dir}" 2>/dev/null || true
+          REMOTE
+
       - name: Upload CRM bundle to Hetzner
         if: inputs.apply_deploy == true
         shell: bash
@@ -295,7 +363,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' REMOTE_ORIGIN_CERT='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' REMOTE_ORIGIN_CERT='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_CRM_RELEASE_RETENTION='${DKH_CRM_RELEASE_RETENTION}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -392,6 +460,38 @@ jobs:
               exit 1
             fi
             sleep 2
+          done
+
+          mapfile -t release_dirs < <(
+            find "${releases_dir}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+              | sort -rn \
+              | awk '{ $1=""; sub(/^ /, ""); print }'
+          )
+          current_target="$(readlink -f "${current_link}" 2>/dev/null || true)"
+          declare -A keep_release=()
+          release_index=0
+          for candidate_release in "${release_dirs[@]}"; do
+            release_index=$((release_index + 1))
+            if [ "${release_index}" -le "${DKH_CRM_RELEASE_RETENTION}" ]; then
+              keep_release["${candidate_release}"]=1
+            fi
+          done
+          if [ -n "${current_target}" ]; then
+            keep_release["${current_target}"]=1
+          fi
+          for candidate_release in "${release_dirs[@]}"; do
+            if [ -n "${keep_release[${candidate_release}]:-}" ]; then
+              continue
+            fi
+            case "${candidate_release}" in
+              "${releases_dir}"/*)
+                sudo_if_needed rm -rf --one-file-system "${candidate_release}"
+                ;;
+              *)
+                echo "Refusing unexpected release path: ${candidate_release}" >&2
+                exit 1
+                ;;
+            esac
           done
 
           cert_file="${cert_dir}/fullchain.pem"

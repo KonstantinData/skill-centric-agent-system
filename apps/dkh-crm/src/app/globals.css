@@ -5,6 +5,8 @@
   --foreground: #111111;
   --surface: #ffffff;
   --surface-soft: #eef4ea;
+  --field-surface: #ffffff;
+  --chrome-surface: rgba(255, 255, 255, 0.9);
   --muted: #4f5b4a;
   --accent: #76b726;
   --accent-strong: #4d8c17;
@@ -12,6 +14,23 @@
   --danger: #b42318;
   --warning: #b26a00;
   --shadow: 0 14px 40px rgba(17, 17, 17, 0.08);
+}
+
+[data-theme="dark"] {
+  --background: #11170f;
+  --foreground: #eef6ea;
+  --surface: #182116;
+  --surface-soft: #22301d;
+  --field-surface: #10170e;
+  --chrome-surface: rgba(24, 33, 22, 0.92);
+  --muted: #b8c8af;
+  --accent: #83c63b;
+  --accent-strong: #a5dc67;
+  --border: #33452c;
+  --danger: #ff8a80;
+  --warning: #ffc46b;
+  --shadow: 0 14px 40px rgba(0, 0, 0, 0.32);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -93,7 +112,7 @@ a {
   padding: 8px 12px;
   font-size: 0.9rem;
   font-weight: 700;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .btn-primary {
@@ -106,7 +125,7 @@ a {
 }
 
 .btn-secondary {
-  background: #fff;
+  background: var(--surface);
   border-color: var(--border);
 }
 
@@ -115,9 +134,15 @@ a {
 }
 
 .btn-danger {
-  background: #fff3f1;
-  border-color: #ffd3ce;
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
   color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
 
 .field,
@@ -127,7 +152,7 @@ a {
   min-height: 40px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--field-surface);
   padding: 9px 10px;
   color: var(--foreground);
 }
@@ -177,11 +202,25 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .suggest-row:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-white\/90 {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="dark"] .text-white {
+  color: var(--foreground) !important;
+}
+
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow-lg {
+  box-shadow: var(--shadow) !important;
 }
 
 .suggest-copy {

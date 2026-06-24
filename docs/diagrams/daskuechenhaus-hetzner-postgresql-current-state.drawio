@@ -61,7 +61,7 @@
         <mxCell id="planned-note" value="Diese Tabellen sind noch nicht auf Hetzner vorhanden. Sie sollten als versionierte Migrationen erstellt und danach gegen tenant_daskuechenhaus ausgefuehrt werden." style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#9CA3AF;fontColor=#374151;align=left;spacing=12;" vertex="1" parent="1">
           <mxGeometry x="905" y="625" width="395" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="legacy-note" value="Uebergang: Die bisherige Streamlit/Kundenfall-Anbindung nutzt noch den alten daskuechenhaus-control-api Pfad. Produktionsdaten sollen in diese Hetzner PostgreSQL Tenant-Datenbank wandern." style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FEF2F2;strokeColor=#DC2626;fontColor=#7F1D1D;align=left;spacing=12;" vertex="1" parent="1">
+        <mxCell id="legacy-note" value="Aktuell: Der alte Daskuechenhaus Cloudflare-D1-Kundenfall-Worker wurde entfernt. Die Kunden- und Vorgangsdaten gehoeren in diese Hetzner PostgreSQL Tenant-Datenbank." style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FEF2F2;strokeColor=#DC2626;fontColor=#7F1D1D;align=left;spacing=12;" vertex="1" parent="1">
           <mxGeometry x="60" y="770" width="1280" height="62" as="geometry" />
         </mxCell>
         <mxCell id="legend-ok" value="Gruen: existiert" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#DCFCE7;strokeColor=#16A34A;fontColor=#14532D;fontStyle=1;" vertex="1" parent="1">

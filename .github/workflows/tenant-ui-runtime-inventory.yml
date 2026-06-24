@@ -17,6 +17,16 @@ on:
         required: true
         type: string
         default: tenant.example.com
+      apply_disk_cleanup:
+        description: Apply approved disk cleanup for Docker, tmp deploy artifacts, and journals
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_disk_cleanup=true on prod
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,6 +44,8 @@ jobs:
     env:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
       TENANT_HOSTNAME: ${{ inputs.hostname }}
+      APPLY_DISK_CLEANUP: ${{ inputs.apply_disk_cleanup }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -58,6 +70,13 @@ jobs:
 
           if [[ ! "${TENANT_HOSTNAME}" =~ ^[A-Za-z0-9.-]+$ ]]; then
             echo "::error::hostname may contain only letters, numbers, dots, and hyphens."
+            exit 1
+          fi
+
+          if [ "${APPLY_DISK_CLEANUP}" = "true" ] \
+            && [ "${TARGET_ENVIRONMENT}" = "prod" ] \
+            && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true for production disk cleanup."
             exit 1
           fi
 
@@ -138,6 +157,122 @@ jobs:
 
           ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
 
+      - name: Run approved disk cleanup
+        if: inputs.apply_disk_cleanup == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p tenant-ui-runtime-inventory
+          ssh \
+            -i "${HOME}/.ssh/hetzner_key" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' bash -s" \
+            > tenant-ui-runtime-inventory/disk-cleanup.md <<'REMOTE'
+          set -euo pipefail
+
+          sudo_if_needed() {
+            if [ "$(id -u)" -eq 0 ]; then
+              "$@"
+            else
+              sudo -n "$@"
+            fi
+          }
+
+          section() {
+            printf '\n## %s\n\n' "$1"
+          }
+
+          printf '# DKH Runtime Disk Cleanup\n\n'
+          printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
+          printf -- '- Started at: `%s`\n' "$(date -Is)"
+
+          section "Before"
+          df -hT /
+          printf '\n'
+          docker system df 2>/dev/null || true
+
+          section "Docker image retention"
+          if command -v docker >/dev/null 2>&1; then
+            mapfile -t running_image_ids < <(
+              docker ps -q \
+                | xargs -r docker inspect --format '{{.Image}}' \
+                | sort -u
+            )
+
+            declare -A keep_images=()
+            for image_id in "${running_image_ids[@]}"; do
+              keep_images["${image_id}"]=1
+            done
+
+            rollback_kept=0
+            mapfile -t streamlit_images < <(
+              docker images scas-streamlit-business-ui \
+                --format '{{.CreatedAt}}\t{{.ID}}\t{{.Repository}}:{{.Tag}}' \
+                | sort -r
+            )
+            for row in "${streamlit_images[@]}"; do
+              image_id="$(printf '%s\n' "${row}" | awk -F '\t' '{print $2}')"
+              image_ref="$(printf '%s\n' "${row}" | awk -F '\t' '{print $3}')"
+              if [ -n "${keep_images[${image_id}]:-}" ]; then
+                printf -- '- Keep running image `%s` `%s`\n' "${image_id}" "${image_ref}"
+                continue
+              fi
+              if [ "${rollback_kept}" -lt 1 ]; then
+                keep_images["${image_id}"]=1
+                rollback_kept=$((rollback_kept + 1))
+                printf -- '- Keep rollback image `%s` `%s`\n' "${image_id}" "${image_ref}"
+                continue
+              fi
+              printf -- '- Remove unused image `%s` `%s`\n' "${image_id}" "${image_ref}"
+              docker image rm "${image_id}" || true
+            done
+
+            printf '\n### Stopped containers\n\n'
+            docker container prune -f || true
+
+            printf '\n### Dangling images\n\n'
+            docker image prune -f || true
+
+            printf '\n### Build cache\n\n'
+            docker builder prune -f --filter until=24h || true
+          else
+            printf 'docker command not available.\n'
+          fi
+
+          section "Temporary deploy artifacts"
+          for pattern in \
+            '/tmp/dkh-crm-*.tar.gz' \
+            '/tmp/dkh-crm-origin-*.pem' \
+            '/tmp/dkh-crm-origin-*.key' \
+            '/tmp/daskuechenhaus-admin-api-*.py' \
+            '/tmp/daskuechenhaus-admin-api-*.service' \
+            '/tmp/scas-runtime-retention-cleanup-*.tar.gz'
+          do
+            find /tmp -maxdepth 1 -type f -name "${pattern##*/}" -mtime +0 -print -delete 2>/dev/null || true
+          done
+          find /tmp -maxdepth 1 -type d \( \
+            -name 'dkh-crm-deploy-*' -o \
+            -name 'scas-runtime-retention-cleanup-*' \
+          \) -mtime +0 -print -exec rm -rf --one-file-system {} + 2>/dev/null || true
+
+          section "System journal"
+          if command -v journalctl >/dev/null 2>&1; then
+            sudo_if_needed journalctl --disk-usage || true
+            sudo_if_needed journalctl --vacuum-size=500M || true
+            sudo_if_needed journalctl --disk-usage || true
+          else
+            printf 'journalctl command not available.\n'
+          fi
+
+          section "After"
+          df -hT /
+          printf '\n'
+          docker system df 2>/dev/null || true
+          REMOTE
+
       - name: Collect read-only runtime inventory
         shell: bash
         run: |
@@ -192,6 +327,33 @@ jobs:
           printf -- '- Remote hostname: `%s`\n' "$(hostname -f 2>/dev/null || hostname)"
           printf -- '- Collected at: `%s`\n' "$(date -Is)"
 
+          section "Disk usage"
+          df -hT 2>&1 | redact || true
+          printf '\n### Inodes\n\n'
+          df -ih 2>&1 | redact || true
+          printf '\n### Block devices\n\n'
+          lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINTS 2>&1 | redact || true
+          printf '\n### Top-level directory sizes\n\n'
+          sudo -n du -xh --max-depth=1 / /opt /var /tmp 2>/dev/null \
+            | sort -h \
+            | redact || true
+          printf '\n### Daskuechenhaus directory sizes\n\n'
+          sudo -n du -xh --max-depth=3 /opt/daskuechenhaus /var/lib/daskuechenhaus 2>/dev/null \
+            | sort -h \
+            | tail -n 80 \
+            | redact || true
+          printf '\n### PostgreSQL directory sizes\n\n'
+          sudo -n du -xh --max-depth=2 /var/lib/postgresql 2>/dev/null \
+            | sort -h \
+            | tail -n 60 \
+            | redact || true
+          printf '\n### Docker disk usage\n\n'
+          if command -v docker >/dev/null 2>&1; then
+            docker system df -v 2>&1 | redact || true
+          else
+            printf 'docker command not available.\n'
+          fi
+
           section "Listening ports"
           if command -v ss >/dev/null 2>&1; then
             ss -tulpn 2>/dev/null | grep -Ei 'streamlit|python|8501|80|443|nginx|caddy|apache' | redact || true
@@ -208,8 +370,29 @@ jobs:
           section "Candidate systemd units"
           if command -v systemctl >/dev/null 2>&1; then
             systemctl list-units --type=service --all --no-pager \
-              | grep -Ei 'streamlit|tenant|scas|condata' \
+              | grep -Ei 'streamlit|tenant|scas|condata|daskuechenhaus' \
               | redact || true
+          else
+            printf 'systemctl command not available.\n'
+          fi
+
+          section "Daskuechenhaus CRM status"
+          if command -v systemctl >/dev/null 2>&1; then
+            sudo -n systemctl status daskuechenhaus-crm.service --no-pager -l 2>&1 | redact || true
+            printf '\n### Admin API health\n\n'
+            curl -sS 'http://127.0.0.1:8715/health' 2>&1 | redact || true
+            printf '\n'
+            printf '\n### Origin `/kunden` response\n\n'
+            curl -sS -D - \
+              -H 'x-dkh-user-email: k.milonas@schober-daskuechenhaus.de' \
+              'http://127.0.0.1:3001/kunden' \
+              -o /tmp/dkh-crm-kunden-body.txt 2>&1 | redact || true
+            printf '\n'
+            head -c 1200 /tmp/dkh-crm-kunden-body.txt 2>/dev/null | redact || true
+            printf '\n\n### CRM journal\n\n'
+            sudo -n journalctl -u daskuechenhaus-crm.service -n 160 --no-pager -o short-iso 2>&1 | redact || true
+            printf '\n### Admin API journal\n\n'
+            sudo -n journalctl -u daskuechenhaus-admin-api.service -n 120 --no-pager -o short-iso 2>&1 | redact || true
           else
             printf 'systemctl command not available.\n'
           fi
@@ -312,5 +495,5 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tenant-ui-runtime-inventory-${{ inputs.target_environment }}
-          path: tenant-ui-runtime-inventory/inventory.md
+          path: tenant-ui-runtime-inventory/
           if-no-files-found: error

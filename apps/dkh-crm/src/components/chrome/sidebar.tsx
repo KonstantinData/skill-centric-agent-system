@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="hidden min-h-screen flex-col border-r border-[var(--border)] bg-white/90 p-5 lg:flex">
+    <aside className="hidden min-h-screen flex-col border-r border-[var(--border)] bg-[var(--chrome-surface)] p-5 lg:flex">
       <Link href="/" className="mb-8 block">
         <Image src="/logo.svg" alt="das küchenhaus" width={180} height={61} priority />
       </Link>

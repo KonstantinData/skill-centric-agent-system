@@ -8,6 +8,10 @@ import {
   type OverviewState,
 } from "./types";
 
+function withFallback<T>(value: T | null | undefined, fallback: T): T {
+  return value ?? fallback;
+}
+
 function adminApiUrl(path: string): string {
   const base = process.env.DKH_ADMIN_API_BASE_URL;
   if (!base) {
@@ -47,7 +51,10 @@ export async function fetchDkhJson<T>(
 
 export async function fetchOverviewState(userEmail: string) {
   try {
-    return await fetchDkhJson<OverviewState>("overview/state", userEmail);
+    return withFallback(
+      await fetchDkhJson<OverviewState | null>("overview/state", userEmail),
+      EMPTY_OVERVIEW_STATE,
+    );
   } catch {
     return EMPTY_OVERVIEW_STATE;
   }
@@ -55,7 +62,10 @@ export async function fetchOverviewState(userEmail: string) {
 
 export async function fetchAdminState(userEmail: string) {
   try {
-    return await fetchDkhJson<AdminState>("admin/state", userEmail);
+    return withFallback(
+      await fetchDkhJson<AdminState | null>("admin/state", userEmail),
+      EMPTY_ADMIN_STATE,
+    );
   } catch {
     return EMPTY_ADMIN_STATE;
   }
@@ -63,7 +73,10 @@ export async function fetchAdminState(userEmail: string) {
 
 export async function fetchCustomersState(userEmail: string) {
   try {
-    return await fetchDkhJson<CustomersState>("customers/state", userEmail);
+    return withFallback(
+      await fetchDkhJson<CustomersState | null>("customers/state", userEmail),
+      EMPTY_CUSTOMERS_STATE,
+    );
   } catch {
     return EMPTY_CUSTOMERS_STATE;
   }
