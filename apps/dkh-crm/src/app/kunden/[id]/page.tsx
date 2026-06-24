@@ -446,6 +446,13 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
     ? `/kunden/${customer.id}?case=${selectedCase.id}${activeRegister ? `&register=${activeRegister}` : ""}`
     : `/kunden/${customer.id}`;
   const returnTo = encodeURIComponent(selectedCaseReturnPath);
+  const formalContactName = [
+    customer.salutation,
+    customer.title,
+    customer.display_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const address = [
     customer.address?.street,
     customer.address?.house_number,
@@ -483,8 +490,18 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
             <dl className="mt-4 grid gap-3 text-sm">
               <div>
                 <dt className="font-bold">Kontakt</dt>
-                <dd>{customer.display_name}</dd>
+                <dd>{formalContactName || customer.display_name}</dd>
                 {customer.company_name ? <dd>{customer.company_name}</dd> : null}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <dt className="font-bold">Anrede</dt>
+                  <dd>{customer.salutation || "Nicht hinterlegt"}</dd>
+                </div>
+                <div>
+                  <dt className="font-bold">Titel</dt>
+                  <dd>{customer.title || "Nicht hinterlegt"}</dd>
+                </div>
               </div>
               <div>
                 <dt className="font-bold">Telefon</dt>
@@ -513,7 +530,11 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
                 <Phone size={16} aria-hidden="true" />
                 Telefon
               </a>
-              <a className="btn btn-secondary" href={`mailto:${customer.primary_email || ""}`}>
+              <a
+                className={`btn btn-secondary ${customer.primary_email ? "" : "pointer-events-none opacity-50"}`}
+                href={customer.primary_email ? `mailto:${customer.primary_email}` : undefined}
+                aria-disabled={!customer.primary_email}
+              >
                 <Mail size={16} aria-hidden="true" />
                 E-Mail
               </a>

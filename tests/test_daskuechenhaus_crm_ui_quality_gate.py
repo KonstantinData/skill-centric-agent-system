@@ -252,6 +252,13 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "Kundenakte nicht gefunden" in source
     assert "Zur Kundensuche" in source
     assert "Stammdaten-Snapshot" in source
+    assert "formalContactName" in source
+    assert "customer.salutation" in source
+    assert "customer.title" in source
+    assert "Anrede" in source
+    assert "Titel" in source
+    assert "mailto:${customer.primary_email}" in source
+    assert "aria-disabled={!customer.primary_email}" in source
     assert "Vorgangsregal" in source
     assert "data-customer-master-open" in source
     assert "data-customer-master-modal" in source
