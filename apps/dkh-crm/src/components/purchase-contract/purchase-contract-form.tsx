@@ -122,6 +122,36 @@ function formatDateForPrint(value: string) {
   return parsed.toLocaleDateString("de-DE");
 }
 
+function isoWeekStart(year: number, week: number) {
+  const fourthOfJanuary = new Date(Date.UTC(year, 0, 4));
+  const day = fourthOfJanuary.getUTCDay() || 7;
+  const firstMonday = new Date(fourthOfJanuary);
+  firstMonday.setUTCDate(fourthOfJanuary.getUTCDate() - day + 1);
+  firstMonday.setUTCDate(firstMonday.getUTCDate() + (week - 1) * 7);
+  return firstMonday.toISOString().slice(0, 10);
+}
+
+function weekValueFromDate(value: string) {
+  if (!value) return "";
+
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function dateValueFromWeek(value: string) {
+  const match = /^(\d{4})-W(\d{2})$/.exec(value);
+  if (!match) return "";
+
+  return isoWeekStart(Number(match[1]), Number(match[2]));
+}
+
 function nonEmptyLines(...values: string[]) {
   return values
     .flatMap((value) => value.split(/\r?\n/))
@@ -135,6 +165,8 @@ export function PurchaseContractForm({
 }: PurchaseContractFormProps) {
   const [draft, setDraft] = useState<ContractDraft>(() => createInitialDraft(initialDraft));
   const [draftStatus, setDraftStatus] = useState("Noch nicht gespeichert");
+  const [useCustomerAddressForDelivery, setUseCustomerAddressForDelivery] = useState(false);
+  const [useCustomerPhoneForDelivery, setUseCustomerPhoneForDelivery] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
@@ -142,11 +174,20 @@ export function PurchaseContractForm({
 
     try {
       const parsed = JSON.parse(saved) as ContractDraft;
-      setDraft({
+      const mergedDraft = {
         ...createInitialDraft(initialDraft),
         ...parsed,
+        customerNumber: initialDraft?.customerNumber ?? parsed.customerNumber ?? "",
+        customerVatRate: initialDraft?.customerVatRate ?? parsed.customerVatRate ?? "19",
         items: parsed.items?.length ? parsed.items : [newItem()],
-      });
+      };
+      setDraft(mergedDraft);
+      setUseCustomerAddressForDelivery(
+        Boolean(mergedDraft.deliveryAddress && mergedDraft.deliveryAddress === mergedDraft.customerAddress),
+      );
+      setUseCustomerPhoneForDelivery(
+        Boolean(mergedDraft.deliveryPhone && mergedDraft.deliveryPhone === mergedDraft.customerPhone),
+      );
       setDraftStatus("Gespeicherter Entwurf geladen");
     } catch {
       setDraftStatus("Gespeicherter Entwurf konnte nicht geladen werden");
@@ -168,6 +209,7 @@ export function PurchaseContractForm({
   const restPayment = roundMoney(invoiceGross - paymentOnOrder - paymentBeforeDelivery);
   const paymentTotal = paymentOnOrder + paymentBeforeDelivery + restPayment;
   const openAmount = invoiceGross - paymentTotal;
+  const deliveryWeek = weekValueFromDate(draft.deliveryDate);
 
   function updateDraft<K extends keyof ContractDraft>(
     key: K,
@@ -199,13 +241,6 @@ export function PurchaseContractForm({
     }));
   }
 
-  function formatDraftMoneyField(key: "invoiceGross") {
-    setDraft((current) => ({
-      ...current,
-      [key]: formatMoneyInput(current[key]),
-    }));
-  }
-
   function formatItemMoneyField(id: string) {
     setDraft((current) => ({
       ...current,
@@ -225,7 +260,35 @@ export function PurchaseContractForm({
   function resetDraft() {
     window.localStorage.removeItem(storageKey);
     setDraft(createInitialDraft(initialDraft));
+    setUseCustomerAddressForDelivery(false);
+    setUseCustomerPhoneForDelivery(false);
     setDraftStatus("Entwurf zurückgesetzt");
+  }
+
+  function updateCustomerAddress(value: string) {
+    setDraft((current) => ({
+      ...current,
+      customerAddress: value,
+      deliveryAddress: useCustomerAddressForDelivery ? value : current.deliveryAddress,
+    }));
+  }
+
+  function updateCustomerPhone(value: string) {
+    setDraft((current) => ({
+      ...current,
+      customerPhone: value,
+      deliveryPhone: useCustomerPhoneForDelivery ? value : current.deliveryPhone,
+    }));
+  }
+
+  function toggleUseCustomerAddressForDelivery(checked: boolean) {
+    setUseCustomerAddressForDelivery(checked);
+    if (checked) updateDraft("deliveryAddress", draft.customerAddress);
+  }
+
+  function toggleUseCustomerPhoneForDelivery(checked: boolean) {
+    setUseCustomerPhoneForDelivery(checked);
+    if (checked) updateDraft("deliveryPhone", draft.customerPhone);
   }
 
   return (
@@ -259,9 +322,7 @@ export function PurchaseContractForm({
                 <Textarea
                   name="customer_address"
                   value={draft.customerAddress}
-                  onChange={(event) =>
-                    updateDraft("customerAddress", event.target.value)
-                  }
+                  onChange={(event) => updateCustomerAddress(event.target.value)}
                   placeholder="Straße, PLZ, Ort"
                 />
               </Label>
@@ -269,33 +330,53 @@ export function PurchaseContractForm({
                 <Field
                   name="customer_phone"
                   value={draft.customerPhone}
-                  onChange={(event) => updateDraft("customerPhone", event.target.value)}
+                  onChange={(event) => updateCustomerPhone(event.target.value)}
                 />
               </Label>
-              <Label label="Kunden-Nr.">
+              <Label label="CARAT-Vorgangsnummer">
                 <Field
                   name="customer_number"
                   value={draft.customerNumber}
-                  onChange={(event) =>
-                    updateDraft("customerNumber", event.target.value)
-                  }
+                  readOnly
                 />
               </Label>
               <Label label="Lieferanschrift" className="md:col-span-2">
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+                  <input
+                    type="checkbox"
+                    checked={useCustomerAddressForDelivery}
+                    onChange={(event) =>
+                      toggleUseCustomerAddressForDelivery(event.target.checked)
+                    }
+                  />
+                  Kundenanschrift übernehmen
+                </span>
                 <Textarea
                   name="delivery_address"
                   value={draft.deliveryAddress}
                   onChange={(event) =>
                     updateDraft("deliveryAddress", event.target.value)
                   }
+                  readOnly={useCustomerAddressForDelivery}
                   placeholder="Leer lassen, wenn identisch mit Rechnungsanschrift"
                 />
               </Label>
               <Label label="Telefon Lieferanschrift">
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+                  <input
+                    type="checkbox"
+                    checked={useCustomerPhoneForDelivery}
+                    onChange={(event) =>
+                      toggleUseCustomerPhoneForDelivery(event.target.checked)
+                    }
+                  />
+                  Kundentelefon übernehmen
+                </span>
                 <Field
                   name="delivery_phone"
                   value={draft.deliveryPhone}
                   onChange={(event) => updateDraft("deliveryPhone", event.target.value)}
+                  readOnly={useCustomerPhoneForDelivery}
                 />
               </Label>
               <Label label="Liefertermin">
@@ -304,6 +385,16 @@ export function PurchaseContractForm({
                   type="date"
                   value={draft.deliveryDate}
                   onChange={(event) => updateDraft("deliveryDate", event.target.value)}
+                />
+              </Label>
+              <Label label="Liefer-KW">
+                <Field
+                  name="delivery_week"
+                  type="week"
+                  value={deliveryWeek}
+                  onChange={(event) =>
+                    updateDraft("deliveryDate", dateValueFromWeek(event.target.value))
+                  }
                 />
               </Label>
               <Label label="Datum">
@@ -349,7 +440,7 @@ export function PurchaseContractForm({
               {draft.items.map((item, index) => (
                 <article
                   key={item.id}
-                  className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 lg:grid-cols-[140px_90px_1fr_150px_44px]"
+                  className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 lg:grid-cols-[120px_80px_minmax(0,3fr)_150px_44px]"
                 >
                   <Label label={`Werk ${index + 1}`}>
                     <Field
@@ -415,10 +506,8 @@ export function PurchaseContractForm({
                 <Field
                   name="invoice_gross"
                   inputMode="decimal"
-                  value={draft.invoiceGross}
-                  onChange={(event) => updateDraft("invoiceGross", event.target.value)}
-                  onBlur={() => formatDraftMoneyField("invoiceGross")}
-                  placeholder={formatMoney(itemTotal)}
+                  value={formatMoney(invoiceGross)}
+                  readOnly
                 />
               </Label>
               <Label label="MwSt. laut Kundenstammdaten">
@@ -426,23 +515,10 @@ export function PurchaseContractForm({
                   name="customer_vat_rate"
                   inputMode="decimal"
                   value={draft.customerVatRate}
-                  onChange={(event) =>
-                    updateDraft("customerVatRate", event.target.value)
-                  }
-                  onBlur={() =>
-                    updateDraft(
-                      "customerVatRate",
-                      formatPercentInput(draft.customerVatRate),
-                    )
-                  }
-                  placeholder="19"
+                  readOnly
                 />
               </Label>
               <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
-                <div className="flex justify-between gap-3">
-                  <span>Positionssumme</span>
-                  <strong>{formatMoney(itemTotal)}</strong>
-                </div>
                 <div className="flex justify-between gap-3">
                   <span>Rechnungsbetrag</span>
                   <strong>{formatMoney(invoiceGross)}</strong>

@@ -1084,7 +1084,7 @@ function CaseDesktop({
     customerName: customer.company_name || customer.display_name,
     customerPhone: customer.primary_phone || customer.primary_mobile || "",
     customerAddress: customerAddressLines(customer),
-    customerNumber: customer.customer_number || "",
+    customerNumber: selectedCase.carat_order_number || "",
     customerVatRate: customerVatRate(customer),
   };
 

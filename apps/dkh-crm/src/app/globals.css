@@ -181,6 +181,13 @@ a {
   border-color: var(--accent);
 }
 
+.field:read-only,
+.textarea:read-only {
+  background: color-mix(in srgb, var(--surface-soft) 82%, var(--field-surface));
+  color: var(--muted);
+  cursor: default;
+}
+
 .label {
   display: grid;
   gap: 6px;
@@ -369,8 +376,8 @@ a {
   }
 
   .print-installation {
-    left: 172.2mm;
-    top: 57.2mm;
+    left: 169.2mm;
+    top: 59.2mm;
   }
 
   .print-field {
@@ -387,27 +394,27 @@ a {
 
   .print-customer-number {
     left: 148mm;
-    top: 80.9mm;
+    top: 79.9mm;
     width: 47mm;
   }
 
   .print-contract-date {
     left: 148mm;
-    top: 86.5mm;
+    top: 85.5mm;
     width: 47mm;
   }
 
   .print-items {
     left: 20mm;
     top: 107.5mm;
-    width: 177mm;
+    width: 171mm;
     height: 116mm;
   }
 
   .print-item-row {
     position: relative;
     display: grid;
-    grid-template-columns: 30mm 13mm 97mm 37mm;
+    grid-template-columns: 30mm 13mm 91mm 37mm;
     min-height: 8mm;
     break-inside: avoid;
     font-size: 9.2pt;
@@ -431,6 +438,7 @@ a {
   .print-item-description {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    line-height: 5.7mm;
     padding-right: 3mm;
   }
 
@@ -449,7 +457,7 @@ a {
   }
 
   .print-dealer-signature {
-    top: 245.5mm;
+    top: 244.5mm;
   }
 
   .print-customer-signature {
@@ -457,7 +465,7 @@ a {
   }
 
   .print-money {
-    left: 162mm;
+    left: 160mm;
     width: 28mm;
     height: 5.5mm;
     padding-right: 1mm;
