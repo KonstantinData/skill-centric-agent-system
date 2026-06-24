@@ -156,6 +156,9 @@ When uploading another PRJZ file for the same case, sellers can either keep it
 as a new visible version or replace the current CARAT import. Replacing marks
 the previous CARAT document as replaced, hides its import from the cockpit, and
 cancels supplier orders that were generated from that replaced import.
+CARAT pseudo positions from the `Bilddaten` supplier group, such as `Decke` and
+`Wand` entries with article code `46000000000`, are treated as planning/image
+metadata and are never exported into supplier orders.
 
 Manual AB lines use this pipe-separated format:
 

@@ -396,6 +396,16 @@ def normalize_supplier_name(value: Any) -> str:
     return re.sub(r"\s+", " ", normalized)
 
 
+def is_carat_bilddaten_position(supplier_name: Any, article_code: Any, title: Any) -> bool:
+    normalized_supplier = normalize_supplier_name(supplier_name)
+    normalized_title = normalize_supplier_name(title)
+    normalized_article = str(article_code or "").strip()
+    return normalized_supplier == "bilddaten" or (
+        normalized_article == "46000000000"
+        and (normalized_title == "decke" or normalized_title.startswith("wand "))
+    )
+
+
 def parse_decimal_or_none(value: Any) -> str | None:
     raw = str(value or "").strip().replace(",", ".")
     if not raw:
@@ -1161,6 +1171,7 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
             summary["project_number"] = first[3] or None
 
     supplier_by_suffix: dict[str, dict[str, Any]] = {}
+    ignored_supplier_suffixes: set[str] = set()
     for parts in parsed_lines:
         if len(parts) < 2:
             continue
@@ -1175,6 +1186,10 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
             name = parts[2].strip()
             if not name:
                 continue
+            suffix = code[4:].lstrip("0") or code[4:] or code
+            if normalize_supplier_name(name) == "bilddaten":
+                ignored_supplier_suffixes.add(suffix)
+                continue
             supplier = {
                 "code": code,
                 "name": name,
@@ -1183,7 +1198,6 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
                 "kind": parts[6] if len(parts) > 6 else "",
             }
             summary["suppliers"].append(supplier)
-            suffix = code[4:].lstrip("0") or code[4:] or code
             supplier_by_suffix[suffix] = supplier
 
     article_markers = [
@@ -1207,6 +1221,7 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
         supplier_name = ""
         quantity: float | None = None
         dimensions: dict[str, Any] = {}
+        ignored_position = False
 
         for parts in block[:80]:
             if len(parts) < 2:
@@ -1231,6 +1246,11 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
                 if len(parts) > 3 and parts[3]:
                     title = parts[3]
                 suffix = code[4:].lstrip("0") or code[4:] or code
+                if any(
+                    suffix.endswith(ignored_suffix) or ignored_suffix.endswith(suffix)
+                    for ignored_suffix in ignored_supplier_suffixes
+                ):
+                    ignored_position = True
                 for known_suffix, supplier in supplier_by_suffix.items():
                     if suffix.endswith(known_suffix) or known_suffix.endswith(suffix):
                         supplier_code = supplier["code"]
@@ -1242,6 +1262,8 @@ def parse_prjz_content(content: bytes, filename: str) -> dict[str, Any]:
         if not title and description_parts:
             title = description_parts[0][:120]
         if not title:
+            continue
+        if ignored_position or is_carat_bilddaten_position(supplier_name, article_code, title):
             continue
         summary["positions"].append(
             {
@@ -4041,6 +4063,17 @@ def sync_supplier_orders_from_carat_selection(
           JOIN app.customer_case_carat_import_positions cip ON cip.import_id = ci.id
           WHERE ci.id = (SELECT (data->>'import_id')::bigint FROM payload)
             AND cip.selection_status IN ('selected', 'transferred')
+            AND btrim(lower(regexp_replace(
+              COALESCE(NULLIF(cip.supplier_name, ''), 'Ohne Lieferant'),
+              '[^[:alnum:]]+',
+              ' ',
+              'g'
+            ))) <> 'bilddaten'
+            AND NOT (
+              COALESCE(cip.article_code, '') = '46000000000'
+              AND btrim(lower(regexp_replace(COALESCE(cip.title, ''), '[^[:alnum:]]+', ' ', 'g')))
+                ~ '^(decke|wand [0-9]+)$'
+            )
         ),
         upserted_suppliers AS (
           INSERT INTO app.suppliers (name, normalized_name)

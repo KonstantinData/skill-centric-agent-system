@@ -329,6 +329,13 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "data-carat-supplier-toggle" in source
     assert "data-carat-position-checkbox" in source
     assert "syncCaratSupplierToggle" in source
+    assert "isExportableCaratPosition" in source
+    assert "exportablePositions" in source
+    assert "Bilddaten nicht exportiert" in source
+    assert (
+        "Bilddaten wie Wand- oder Deckenpositionen werden nicht in Bestellungen übernommen."
+        in source
+    )
     assert "transferredCount" in source
     assert "Übernommen" in source
     assert "Markiert" in source

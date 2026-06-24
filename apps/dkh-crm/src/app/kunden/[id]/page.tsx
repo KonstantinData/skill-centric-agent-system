@@ -19,7 +19,7 @@ import { Field, Label, Select, Textarea } from "@/components/ui/form";
 import { Panel } from "@/components/ui/panel";
 import { getUserEmail } from "@/lib/auth";
 import { fetchCustomersState, fetchOverviewState } from "@/lib/dkh-api";
-import type { CustomerCaseRecord, SectionPayload } from "@/lib/types";
+import type { CaratImportPositionRecord, CustomerCaseRecord, SectionPayload } from "@/lib/types";
 import { displayName, formatDateTime } from "@/lib/utils";
 
 type PageProps = {
@@ -290,6 +290,26 @@ function displayDimensions(dimensions: Record<string, number | string | null | u
     .filter((value) => value !== null && value !== undefined && value !== "")
     .map((value) => String(value));
   return values.length > 0 ? values.join(" x ") : "";
+}
+
+function normalizeCaratText(value: string | null | undefined): string {
+  return (value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function isExportableCaratPosition(position: CaratImportPositionRecord): boolean {
+  const supplierName = normalizeCaratText(position.supplier_name);
+  const title = normalizeCaratText(position.title);
+  return !(
+    supplierName === "bilddaten" ||
+    (position.article_code === "46000000000" &&
+      (title === "decke" || /^wand [0-9]+$/.test(title)))
+  );
 }
 
 function severityLabel(value: string): string {
@@ -1465,15 +1485,17 @@ function CaseDesktop({
             </div>
             <div className="mt-4 grid gap-3">
               {caratImports.map((caratImport) => {
-                const selectedCount = caratImport.positions.filter(
+                const exportablePositions = caratImport.positions.filter(isExportableCaratPosition);
+                const skippedPositionCount = caratImport.positions.length - exportablePositions.length;
+                const selectedCount = exportablePositions.filter(
                   (position) => position.selection_status === "selected",
                 ).length;
-                const transferredCount = caratImport.positions.filter(
+                const transferredCount = exportablePositions.filter(
                   (position) => position.selection_status === "transferred",
                 ).length;
                 const supplierNames = Array.from(
                   new Set(
-                    caratImport.positions.map(
+                    exportablePositions.map(
                       (position) => position.supplier_name || "Ohne Lieferant",
                     ),
                   ),
@@ -1499,14 +1521,22 @@ function CaseDesktop({
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <span className="badge">{caratImport.supplier_count} Lieferanten</span>
-                        <span className="badge">{caratImport.position_count} Positionen</span>
+                        <span className="badge">{exportablePositions.length} exportierbare Positionen</span>
                         <span className="badge">{transferredCount} übernommen</span>
                         {selectedCount > 0 ? <span className="badge">{selectedCount} markiert</span> : null}
+                        {skippedPositionCount > 0 ? (
+                          <span className="badge">{skippedPositionCount} Bilddaten nicht exportiert</span>
+                        ) : null}
                       </div>
                     </div>
+                    {skippedPositionCount > 0 ? (
+                      <p className="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
+                        Bilddaten wie Wand- oder Deckenpositionen werden nicht in Bestellungen übernommen.
+                      </p>
+                    ) : null}
                     <div className="mt-3 grid gap-3">
                       {supplierNames.map((supplierName) => {
-                        const positions = caratImport.positions.filter(
+                        const positions = exportablePositions.filter(
                           (position) => (position.supplier_name || "Ohne Lieferant") === supplierName,
                         );
                         return (

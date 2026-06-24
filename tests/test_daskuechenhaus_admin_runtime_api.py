@@ -163,6 +163,12 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "supplier_communications" in source
     assert "supplier_follow_ups" in source
     assert "sync_supplier_orders_from_carat_selection" in source
+    assert "is_carat_bilddaten_position" in source
+    assert 'normalize_supplier_name(name) == "bilddaten"' in source
+    assert "ignored_supplier_suffixes" in source
+    assert "normalized_supplier_name" in source
+    assert "<> 'bilddaten'" in source
+    assert "COALESCE(cip.article_code, '') = '46000000000'" in source
     assert "create_supplier_order_confirmation" in source
     assert "recompute_supplier_confirmation_matching" in source
     assert "decide_supplier_confirmation_exception" in source
@@ -231,8 +237,24 @@ def test_daskuechenhaus_admin_api_parses_carat_prjz_uploads() -> None:
             "001| 0020|Ben Ali                       |*",
             "001| 2150|EUR|*",
             (
+                "002| 20000000000|Bilddaten                |"
+                "Nicht zugeordnete Artikel|06/26          |18.06.26       |Z"
+            ),
+            (
                 "002| 20006024011|NOBILIA K                |"
                 "                         |17/26          |20.04.26       |K"
+            ),
+            "003| 9999.Artikel",
+            (
+                "003| 45000000000000|0000000002|00528482436|1|1|1|"
+                "                    |0000000000|       0|00000000000|00000000000|"
+                "00000000000|00000000000|00000000000|00000000000|00000000000|"
+                "0000000000|0"
+            ),
+            "003| 4512         0|       300|      2500|*",
+            (
+                "003| 46000000000|00|Wand 1|                         |"
+                "               |               |               |  |               |*"
             ),
             "003| 9999.Artikel",
             (
@@ -259,7 +281,8 @@ def test_daskuechenhaus_admin_api_parses_carat_prjz_uploads() -> None:
     assert result["project_number"] == "2512"
     assert result["customer_name"] == "Ben Ali"
     assert result["currency"] == "EUR"
-    assert result["suppliers"][0]["name"] == "NOBILIA K"
+    assert [supplier["name"] for supplier in result["suppliers"]] == ["NOBILIA K"]
+    assert len(result["positions"]) == 1
     assert result["positions"][0]["title"] == "Unterschrank"
     assert result["positions"][0]["quantity"] == 2.0
     assert result["positions"][0]["dimensions"]["width"] == 300.0
