@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,25 @@ SENSITIVE_KEY_PARTS = (
     "token",
 )
 REDACTED = "[REDACTED]"
+SECRET_ASSIGNMENT_PATTERN = re.compile(
+    r"\b("
+    r"api[-_ ]?key|apikey|password|private[-_ ]?key|secret|"
+    r"ssh[-_ ]?key|token"
+    r")\b(\s*[:=]\s*)([^\s'\",;]+)",
+    re.IGNORECASE,
+)
+AUTHORIZATION_BEARER_PATTERN = re.compile(
+    r"\bAuthorization(\s*:\s*)Bearer\s+[A-Za-z0-9._~+/=-]+",
+    re.IGNORECASE,
+)
+BEARER_TOKEN_PATTERN = re.compile(
+    r"\bBearer\s+[A-Za-z0-9._~+/=-]+",
+    re.IGNORECASE,
+)
+PRIVATE_KEY_PATTERN = re.compile(
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+    re.DOTALL,
+)
 
 
 def redact_sensitive_data(value: Any) -> Any:
@@ -35,6 +55,8 @@ def redact_sensitive_data(value: Any) -> Any:
         return redacted
     if isinstance(value, list | tuple):
         return [redact_sensitive_data(item) for item in value]
+    if isinstance(value, str):
+        return _redact_sensitive_string(value)
     return value
 
 
@@ -191,3 +213,16 @@ def _field_path(parts: tuple[str, ...]) -> Path:
 def _is_sensitive_key(key: str) -> bool:
     normalized = key.casefold().replace(" ", "-")
     return any(part in normalized for part in SENSITIVE_KEY_PARTS)
+
+
+def _redact_sensitive_string(value: str) -> str:
+    redacted = PRIVATE_KEY_PATTERN.sub(REDACTED, value)
+    redacted = AUTHORIZATION_BEARER_PATTERN.sub(
+        lambda match: f"Authorization{match.group(1)}Bearer {REDACTED}",
+        redacted,
+    )
+    redacted = BEARER_TOKEN_PATTERN.sub(f"Bearer {REDACTED}", redacted)
+    return SECRET_ASSIGNMENT_PATTERN.sub(
+        lambda match: f"{match.group(1)}{match.group(2)}{REDACTED}",
+        redacted,
+    )

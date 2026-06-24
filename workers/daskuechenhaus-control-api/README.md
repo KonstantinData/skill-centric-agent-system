@@ -94,3 +94,10 @@ before the corresponding columns existed.
 ```powershell
 npx wrangler secret put API_SECRET
 ```
+
+## Browser CORS
+
+Browser CORS is fail-closed by default. If a browser-hosted UI calls this Worker
+directly, set `CORS_ALLOWED_ORIGINS` to a comma-separated list of exact HTTPS
+origins in `wrangler.toml` or the target environment. Do not use `*` with the
+bearer-authenticated case endpoints.

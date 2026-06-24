@@ -12,7 +12,7 @@ const app = new Hono<AppEnv>();
 
 app.use('*', logger());
 app.use('*', cors({
-  origin: '*',
+  origin: (origin, c) => resolveCorsOrigin(origin, c.env?.CORS_ALLOWED_ORIGINS),
   allowHeaders: ['Authorization', 'Content-Type', 'X-Actor'],
 }));
 
@@ -32,3 +32,17 @@ app.onError((err, c) => {
 });
 
 export default app;
+
+function resolveCorsOrigin(origin: string, allowedOriginsBinding?: string): string | undefined {
+  const allowedOrigins = new Set(
+    (allowedOriginsBinding ?? '')
+      .split(',')
+      .map((allowedOrigin) => allowedOrigin.trim())
+      .filter(Boolean)
+  );
+
+  if (allowedOrigins.size === 0) {
+    return undefined;
+  }
+  return allowedOrigins.has(origin) ? origin : undefined;
+}

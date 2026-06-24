@@ -97,6 +97,7 @@ function makeEnv(extraTables: Record<string, Row[]> = {}) {
     }),
     TENANT_ID: 'daskuechenhaus',
     [authBindingName]: 'unit-test-token',
+    CORS_ALLOWED_ORIGINS: 'https://crm.example.test',
   };
 }
 
@@ -159,6 +160,38 @@ describe('Auth middleware', () => {
   it('accepts correct token', async () => {
     const res = await makeRequest('/tenant-cases');
     expect(res.status).not.toBe(401);
+  });
+});
+
+describe('CORS policy', () => {
+  it('allows only configured browser origins', async () => {
+    const res = await app.fetch(
+      new Request('http://localhost/tenant-cases', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'https://crm.example.test',
+          'Access-Control-Request-Method': 'GET',
+        },
+      }),
+      makeEnv(),
+      {} as ExecutionContext
+    );
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://crm.example.test');
+  });
+
+  it('does not emit wildcard CORS for untrusted origins', async () => {
+    const res = await app.fetch(
+      new Request('http://localhost/tenant-cases', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'https://evil.example.test',
+          'Access-Control-Request-Method': 'GET',
+        },
+      }),
+      makeEnv(),
+      {} as ExecutionContext
+    );
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 });
 
