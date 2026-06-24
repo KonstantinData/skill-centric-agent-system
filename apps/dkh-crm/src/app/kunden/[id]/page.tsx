@@ -14,12 +14,13 @@ import {
 } from "lucide-react";
 import Script from "next/script";
 import { PageHero } from "@/components/chrome/page-hero";
+import { PurchaseContractForm } from "@/components/purchase-contract/purchase-contract-form";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Field, Label, Select, Textarea } from "@/components/ui/form";
 import { Panel } from "@/components/ui/panel";
 import { getUserEmail } from "@/lib/auth";
 import { fetchCustomersState, fetchOverviewState } from "@/lib/dkh-api";
-import type { CaratImportPositionRecord, CustomerCaseRecord, SectionPayload } from "@/lib/types";
+import type { CaratImportPositionRecord, CustomerCaseRecord, CustomerRecord, SectionPayload } from "@/lib/types";
 import { displayName, formatDateTime } from "@/lib/utils";
 
 type PageProps = {
@@ -272,6 +273,34 @@ function sectionValue(
 function sectionChecked(section: SectionPayload | undefined, key: string): boolean {
   const value = section?.[key];
   return value === true || value === "true" || value === "on" || value === "1";
+}
+
+function customerAddressLines(customer: CustomerRecord): string {
+  const streetLine = [customer.address?.street, customer.address?.house_number]
+    .filter(Boolean)
+    .join(" ");
+  const cityLine = [customer.address?.postal_code, customer.address?.city]
+    .filter(Boolean)
+    .join(" ");
+  return [
+    streetLine,
+    customer.address?.address_extra,
+    cityLine,
+    customer.address?.country || customer.country,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function customerVatRate(customer: CustomerRecord): string {
+  if (
+    customer.has_custom_vat &&
+    customer.custom_vat_rate !== null &&
+    customer.custom_vat_rate !== undefined
+  ) {
+    return String(customer.custom_vat_rate).replace(".", ",");
+  }
+  return "19";
 }
 
 function optionLabel(
@@ -651,6 +680,7 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
             <CaseDesktop
               customerId={customer.id}
               currentUserId={state.current_user.primary_user_id}
+              customer={customer}
               selectedCase={selectedCase}
               selectedCaseTasks={selectedCaseTasks}
               selectedCaseEvents={selectedCaseEvents}
@@ -998,6 +1028,7 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
 function CaseDesktop({
   customerId,
   currentUserId,
+  customer,
   selectedCase,
   selectedCaseTasks,
   selectedCaseEvents,
@@ -1008,6 +1039,7 @@ function CaseDesktop({
 }: {
   customerId: number;
   currentUserId: number | null;
+  customer: CustomerRecord;
   selectedCase: CustomerCaseRecord;
   selectedCaseTasks: Awaited<ReturnType<typeof fetchOverviewState>>["tasks"];
   selectedCaseEvents: NonNullable<
@@ -1048,6 +1080,13 @@ function CaseDesktop({
       ? DOCUMENTS_REGISTER
       : CASE_REGISTERS.find((register) => register.key === activeRegister) ?? CASE_REGISTERS[0];
   const hasRegisterAside = ["abwicklung", "kommunikation", "rechnung_abschluss"].includes(activeRegister);
+  const purchaseContractInitialDraft = {
+    customerName: customer.company_name || customer.display_name,
+    customerPhone: customer.primary_phone || customer.primary_mobile || "",
+    customerAddress: customerAddressLines(customer),
+    customerNumber: customer.customer_number || "",
+    customerVatRate: customerVatRate(customer),
+  };
 
   return (
     <div className="grid gap-4">
@@ -2010,6 +2049,13 @@ function CaseDesktop({
             </div>
           </Panel>
           </>
+          ) : null}
+
+          {activeRegister === "angebot_auftrag" ? (
+          <PurchaseContractForm
+            initialDraft={purchaseContractInitialDraft}
+            storageKey={`dkh.purchase-contract.case.${selectedCase.id}.draft.v1`}
+          />
           ) : null}
 
           {["angebot_auftrag", "rechnung_abschluss"].includes(activeRegister) ? (

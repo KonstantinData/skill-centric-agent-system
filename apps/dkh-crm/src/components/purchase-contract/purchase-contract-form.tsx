@@ -1,0 +1,530 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Printer, RotateCcw, Save, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Field, Label, Select, Textarea } from "@/components/ui/form";
+import { Panel } from "@/components/ui/panel";
+
+type ContractItem = {
+  id: string;
+  supplier: string;
+  quantity: string;
+  description: string;
+  totalPrice: string;
+};
+
+type ContractDraft = {
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  deliveryAddress: string;
+  deliveryPhone: string;
+  deliveryMode: "pickup" | "installation";
+  deliveryDate: string;
+  customerNumber: string;
+  contractDate: string;
+  notes: string;
+  invoiceGross: string;
+  customerVatRate: string;
+  dealerSignatureNote: string;
+  customerSignatureNote: string;
+  items: ContractItem[];
+};
+
+const STORAGE_KEY = "dkh.purchase-contract.draft.v1";
+
+type PurchaseContractFormProps = {
+  initialDraft?: Partial<Omit<ContractDraft, "items">> & {
+    items?: Array<Partial<Omit<ContractItem, "id">>>;
+  };
+  storageKey?: string;
+};
+
+function newItem(initialItem?: Partial<Omit<ContractItem, "id">>): ContractItem {
+  return {
+    id: crypto.randomUUID(),
+    supplier: initialItem?.supplier ?? "",
+    quantity: initialItem?.quantity ?? "",
+    description: initialItem?.description ?? "",
+    totalPrice: initialItem?.totalPrice ?? "",
+  };
+}
+
+function todayValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createInitialDraft(initialDraft?: PurchaseContractFormProps["initialDraft"]): ContractDraft {
+  return {
+    customerName: "",
+    customerPhone: "",
+    customerAddress: "",
+    deliveryAddress: "",
+    deliveryPhone: "",
+    deliveryMode: "installation",
+    deliveryDate: "",
+    customerNumber: "",
+    contractDate: todayValue(),
+    notes: "",
+    invoiceGross: "",
+    customerVatRate: "19",
+    dealerSignatureNote: "",
+    customerSignatureNote: "",
+    ...initialDraft,
+    items: initialDraft?.items?.length
+      ? initialDraft.items.map((item) => newItem(item))
+      : [newItem(), newItem(), newItem()],
+  };
+}
+
+function parseMoney(value: string) {
+  const normalized = value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parsePercent(value: string) {
+  const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  })
+    .format(value)
+    .replace(/\u00a0/g, " ");
+}
+
+function formatMoneyInput(value: string) {
+  const parsed = parseMoney(value);
+  return parsed ? formatMoney(parsed) : "";
+}
+
+function formatPercentInput(value: string) {
+  const parsed = parsePercent(value);
+  return Number.isFinite(parsed) ? String(parsed).replace(".", ",") : "0";
+}
+
+export function PurchaseContractForm({
+  initialDraft,
+  storageKey = STORAGE_KEY,
+}: PurchaseContractFormProps) {
+  const [draft, setDraft] = useState<ContractDraft>(() => createInitialDraft(initialDraft));
+  const [draftStatus, setDraftStatus] = useState("Noch nicht gespeichert");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(storageKey);
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved) as ContractDraft;
+      setDraft({
+        ...createInitialDraft(initialDraft),
+        ...parsed,
+        items: parsed.items?.length ? parsed.items : [newItem()],
+      });
+      setDraftStatus("Gespeicherter Entwurf geladen");
+    } catch {
+      setDraftStatus("Gespeicherter Entwurf konnte nicht geladen werden");
+    }
+  }, [initialDraft, storageKey]);
+
+  const itemTotal = useMemo(
+    () => draft.items.reduce((sum, item) => sum + parseMoney(item.totalPrice), 0),
+    [draft.items],
+  );
+  const invoiceGross = parseMoney(draft.invoiceGross) || itemTotal;
+  const customerVatRate = parsePercent(draft.customerVatRate);
+  const includedVat =
+    customerVatRate > 0
+      ? roundMoney(invoiceGross - invoiceGross / (1 + customerVatRate / 100))
+      : 0;
+  const paymentOnOrder = roundMoney(invoiceGross * 0.3);
+  const paymentBeforeDelivery = roundMoney(invoiceGross * 0.6);
+  const restPayment = roundMoney(invoiceGross - paymentOnOrder - paymentBeforeDelivery);
+  const paymentTotal = paymentOnOrder + paymentBeforeDelivery + restPayment;
+  const openAmount = invoiceGross - paymentTotal;
+
+  function updateDraft<K extends keyof ContractDraft>(
+    key: K,
+    value: ContractDraft[K],
+  ) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateItem(id: string, patch: Partial<ContractItem>) {
+    setDraft((current) => ({
+      ...current,
+      items: current.items.map((item) =>
+        item.id === id ? { ...item, ...patch } : item,
+      ),
+    }));
+  }
+
+  function addItem() {
+    setDraft((current) => ({ ...current, items: [...current.items, newItem()] }));
+  }
+
+  function removeItem(id: string) {
+    setDraft((current) => ({
+      ...current,
+      items:
+        current.items.length > 1
+          ? current.items.filter((item) => item.id !== id)
+          : current.items,
+    }));
+  }
+
+  function formatDraftMoneyField(key: "invoiceGross") {
+    setDraft((current) => ({
+      ...current,
+      [key]: formatMoneyInput(current[key]),
+    }));
+  }
+
+  function formatItemMoneyField(id: string) {
+    setDraft((current) => ({
+      ...current,
+      items: current.items.map((item) =>
+        item.id === id
+          ? { ...item, totalPrice: formatMoneyInput(item.totalPrice) }
+          : item,
+      ),
+    }));
+  }
+
+  function saveDraft() {
+    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    setDraftStatus(`Entwurf gespeichert: ${new Date().toLocaleTimeString("de-DE")}`);
+  }
+
+  function resetDraft() {
+    window.localStorage.removeItem(storageKey);
+    setDraft(createInitialDraft(initialDraft));
+    setDraftStatus("Entwurf zurückgesetzt");
+  }
+
+  return (
+    <form className="grid gap-4" onSubmit={(event) => event.preventDefault()}>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-4">
+          <Panel>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="section-title">Kunde und Lieferung</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Entspricht den Adressfeldern links oben im Papierformular.
+                </p>
+              </div>
+              <span className="badge">{draftStatus}</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Herr/Frau/Firma">
+                <Textarea
+                  name="customer_name"
+                  value={draft.customerName}
+                  onChange={(event) => updateDraft("customerName", event.target.value)}
+                  placeholder="Name, Firma und Rechnungsanschrift"
+                />
+              </Label>
+              <Label label="Kundenanschrift">
+                <Textarea
+                  name="customer_address"
+                  value={draft.customerAddress}
+                  onChange={(event) =>
+                    updateDraft("customerAddress", event.target.value)
+                  }
+                  placeholder="Straße, PLZ, Ort"
+                />
+              </Label>
+              <Label label="Telefon Kunde">
+                <Field
+                  name="customer_phone"
+                  value={draft.customerPhone}
+                  onChange={(event) => updateDraft("customerPhone", event.target.value)}
+                />
+              </Label>
+              <Label label="Kunden-Nr.">
+                <Field
+                  name="customer_number"
+                  value={draft.customerNumber}
+                  onChange={(event) =>
+                    updateDraft("customerNumber", event.target.value)
+                  }
+                />
+              </Label>
+              <Label label="Lieferanschrift" className="md:col-span-2">
+                <Textarea
+                  name="delivery_address"
+                  value={draft.deliveryAddress}
+                  onChange={(event) =>
+                    updateDraft("deliveryAddress", event.target.value)
+                  }
+                  placeholder="Leer lassen, wenn identisch mit Rechnungsanschrift"
+                />
+              </Label>
+              <Label label="Telefon Lieferanschrift">
+                <Field
+                  name="delivery_phone"
+                  value={draft.deliveryPhone}
+                  onChange={(event) => updateDraft("deliveryPhone", event.target.value)}
+                />
+              </Label>
+              <Label label="Liefertermin">
+                <Field
+                  name="delivery_date"
+                  type="date"
+                  value={draft.deliveryDate}
+                  onChange={(event) => updateDraft("deliveryDate", event.target.value)}
+                />
+              </Label>
+              <Label label="Datum">
+                <Field
+                  name="contract_date"
+                  type="date"
+                  value={draft.contractDate}
+                  onChange={(event) => updateDraft("contractDate", event.target.value)}
+                />
+              </Label>
+              <Label label="Lieferart">
+                <Select
+                  name="delivery_mode"
+                  value={draft.deliveryMode}
+                  onChange={(event) =>
+                    updateDraft(
+                      "deliveryMode",
+                      event.target.value as ContractDraft["deliveryMode"],
+                    )
+                  }
+                >
+                  <option value="installation">Montage</option>
+                  <option value="pickup">Selbstabholung</option>
+                </Select>
+              </Label>
+            </div>
+          </Panel>
+
+          <Panel>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="section-title">Positionen</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Spalten aus dem Formular: Werk, Stk., Bezeichnung und Gesamtpreis.
+                </p>
+              </div>
+              <Button type="button" variant="secondary" onClick={addItem}>
+                <Plus size={16} aria-hidden />
+                Position
+              </Button>
+            </div>
+            <div className="grid gap-3">
+              {draft.items.map((item, index) => (
+                <article
+                  key={item.id}
+                  className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 lg:grid-cols-[140px_90px_1fr_150px_44px]"
+                >
+                  <Label label={`Werk ${index + 1}`}>
+                    <Field
+                      name={`items.${index}.supplier`}
+                      value={item.supplier}
+                      onChange={(event) =>
+                        updateItem(item.id, { supplier: event.target.value })
+                      }
+                    />
+                  </Label>
+                  <Label label="Stk.">
+                    <Field
+                      name={`items.${index}.quantity`}
+                      inputMode="decimal"
+                      value={item.quantity}
+                      onChange={(event) =>
+                        updateItem(item.id, { quantity: event.target.value })
+                      }
+                    />
+                  </Label>
+                  <Label label="Bezeichnung">
+                    <Textarea
+                      name={`items.${index}.description`}
+                      className="min-h-10"
+                      value={item.description}
+                      onChange={(event) =>
+                        updateItem(item.id, { description: event.target.value })
+                      }
+                    />
+                  </Label>
+                  <Label label="Gesamtpreis">
+                    <Field
+                      name={`items.${index}.total_price`}
+                      inputMode="decimal"
+                      value={item.totalPrice}
+                      onChange={(event) =>
+                        updateItem(item.id, { totalPrice: event.target.value })
+                      }
+                      onBlur={() => formatItemMoneyField(item.id)}
+                      placeholder="15.555,55 €"
+                    />
+                  </Label>
+                  <button
+                    type="button"
+                    className="btn btn-secondary mt-6 aspect-square p-0"
+                    onClick={() => removeItem(item.id)}
+                    aria-label={`Position ${index + 1} entfernen`}
+                    title="Position entfernen"
+                  >
+                    <Trash2 size={16} aria-hidden />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="grid content-start gap-4">
+          <Panel>
+            <h2 className="section-title">Beträge</h2>
+            <div className="mt-4 grid gap-3">
+              <Label label="Rechnungsendbetrag inkl. gesetzl. MwSt.">
+                <Field
+                  name="invoice_gross"
+                  inputMode="decimal"
+                  value={draft.invoiceGross}
+                  onChange={(event) => updateDraft("invoiceGross", event.target.value)}
+                  onBlur={() => formatDraftMoneyField("invoiceGross")}
+                  placeholder={formatMoney(itemTotal)}
+                />
+              </Label>
+              <Label label="MwSt. laut Kundenstammdaten">
+                <Field
+                  name="customer_vat_rate"
+                  inputMode="decimal"
+                  value={draft.customerVatRate}
+                  onChange={(event) =>
+                    updateDraft("customerVatRate", event.target.value)
+                  }
+                  onBlur={() =>
+                    updateDraft(
+                      "customerVatRate",
+                      formatPercentInput(draft.customerVatRate),
+                    )
+                  }
+                  placeholder="19"
+                />
+              </Label>
+              <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span>Positionssumme</span>
+                  <strong>{formatMoney(itemTotal)}</strong>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Rechnungsbetrag</span>
+                  <strong>{formatMoney(invoiceGross)}</strong>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Enthaltene MwSt. {formatPercentInput(draft.customerVatRate)} %</span>
+                  <strong>{formatMoney(includedVat)}</strong>
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel>
+            <h2 className="section-title">Zahlung</h2>
+            <div className="mt-4 grid gap-3">
+              <Label label="Anzahlung 30 %">
+                <Field
+                  name="payment_on_order"
+                  value={formatMoney(paymentOnOrder)}
+                  readOnly
+                />
+              </Label>
+              <Label label="Zahlung vor Lieferung 60 %">
+                <Field
+                  name="payment_before_delivery"
+                  value={formatMoney(paymentBeforeDelivery)}
+                  readOnly
+                />
+              </Label>
+              <Label label="Restzahlung 10 %">
+                <Field
+                  name="rest_payment"
+                  value={formatMoney(restPayment)}
+                  readOnly
+                />
+              </Label>
+              <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span>Zahlungen</span>
+                  <strong>{formatMoney(paymentTotal)}</strong>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Offener Betrag</span>
+                  <strong className={openAmount < 0 ? "text-[var(--danger)]" : ""}>
+                    {formatMoney(openAmount)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel>
+            <h2 className="section-title">Abschluss</h2>
+            <div className="mt-4 grid gap-3">
+              <Label label="Unterschrift Händler">
+                <Field
+                  name="dealer_signature_note"
+                  value={draft.dealerSignatureNote}
+                  onChange={(event) =>
+                    updateDraft("dealerSignatureNote", event.target.value)
+                  }
+                  placeholder="Name oder Kürzel"
+                />
+              </Label>
+              <Label label="Unterschrift Kunde">
+                <Field
+                  name="customer_signature_note"
+                  value={draft.customerSignatureNote}
+                  onChange={(event) =>
+                    updateDraft("customerSignatureNote", event.target.value)
+                  }
+                  placeholder="Name oder Hinweis"
+                />
+              </Label>
+              <Label label="Interne Notiz">
+                <Textarea
+                  name="notes"
+                  value={draft.notes}
+                  onChange={(event) => updateDraft("notes", event.target.value)}
+                />
+              </Label>
+            </div>
+          </Panel>
+
+          <Panel>
+            <div className="grid gap-3">
+              <Button type="button" onClick={saveDraft}>
+                <Save size={16} aria-hidden />
+                Entwurf speichern
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => window.print()}>
+                <Printer size={16} aria-hidden />
+                Drucken
+              </Button>
+              <Button type="button" variant="danger" onClick={resetDraft}>
+                <RotateCcw size={16} aria-hidden />
+                Zurücksetzen
+              </Button>
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </form>
+  );
+}
