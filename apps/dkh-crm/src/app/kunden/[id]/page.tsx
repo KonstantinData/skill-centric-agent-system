@@ -1023,6 +1023,7 @@ function CaseDesktop({
     activeRegister === DOCUMENTS_REGISTER.key
       ? DOCUMENTS_REGISTER
       : CASE_REGISTERS.find((register) => register.key === activeRegister) ?? CASE_REGISTERS[0];
+  const hasRegisterAside = ["abwicklung", "kommunikation", "rechnung_abschluss"].includes(activeRegister);
 
   return (
     <div className="grid gap-4">
@@ -1148,145 +1149,172 @@ function CaseDesktop({
         </div>
       </Panel>
 
-      <div className="grid gap-4 2xl:grid-cols-[1fr_360px]">
+      <div className={`grid gap-4 ${hasRegisterAside ? "2xl:grid-cols-[1fr_360px]" : ""}`}>
         <div className="grid gap-4">
           {activeRegister === "anfrage" ? (
           <Panel>
-            <div className="flex items-center gap-2">
-              <ClipboardList size={18} aria-hidden="true" />
-              <h3 className="section-title">Projektgrundlagen</h3>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ClipboardList size={18} aria-hidden="true" />
+                  <h3 className="section-title">Projektgrundlagen</h3>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Erste Einordnung der Anfrage, Terminlage und vorhandenen Unterlagen.
+                </p>
+              </div>
             </div>
             <form
-              className="mt-4 grid gap-4"
+              className="mt-5 grid gap-6"
               action={`/api/kunden/cases/${selectedCase.id}/sections/project_objects?return_to=${returnTo}`}
               method="post"
             >
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {PROJECT_OBJECTS.map(([key, label]) => (
-                  <label key={key} className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-white px-3 text-sm font-bold">
-                    <input
-                      type="checkbox"
-                      name={key}
-                      defaultChecked={sectionChecked(projectObjects, key)}
+              <fieldset className="grid gap-3">
+                <legend className="text-sm font-bold">Projektart</legend>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {PROJECT_OBJECTS.map(([key, label]) => (
+                    <label key={key} className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-white px-3 text-sm font-bold">
+                      <input
+                        type="checkbox"
+                        name={key}
+                        defaultChecked={sectionChecked(projectObjects, key)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+                <legend className="text-sm font-bold">Objekt und Montageort</legend>
+                <div className="grid gap-3 lg:grid-cols-4">
+                  <Label label="Objekt / Immobilie" className="lg:col-span-2">
+                    <Field
+                      name="property_label"
+                      defaultValue={sectionValue(projectObjects, "property_label")}
+                      placeholder="z. B. Wohnung Stuttgart"
                     />
-                    {label}
-                  </label>
-                ))}
-              </div>
-              <div className="grid gap-3 lg:grid-cols-3">
-                <Label label="Objekt / Immobilie">
-                  <Field
-                    name="property_label"
-                    defaultValue={sectionValue(projectObjects, "property_label")}
-                    placeholder="z. B. Wohnung Stuttgart"
-                  />
-                </Label>
-                <Label label="Situation">
-                  <Select
-                    name="project_situation"
-                    defaultValue={sectionValue(projectObjects, "project_situation")}
-                  >
-                    {PROJECT_SITUATIONS.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
-                </Label>
-                <Label label="Liefer-/Montageort PLZ">
-                  <Field
-                    name="delivery_postal_code"
-                    defaultValue={sectionValue(projectObjects, "delivery_postal_code")}
-                    inputMode="numeric"
-                    placeholder="z. B. 70173"
-                  />
-                </Label>
-                <Label label="Liefer-/Montageort Ort">
-                  <Field
-                    name="delivery_city"
-                    defaultValue={sectionValue(projectObjects, "delivery_city")}
-                    placeholder="z. B. Stuttgart"
-                  />
-                </Label>
-                <Label label="Gewünschter Zeitraum">
-                  <Field
-                    name="desired_timeline"
-                    defaultValue={sectionValue(projectObjects, "desired_timeline")}
-                    placeholder="z. B. Herbst, KW 42, noch offen"
-                  />
-                </Label>
-                <Label label="Dringlichkeit">
-                  <span className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1">
-                  <Select
-                    name="urgency"
-                    defaultValue={sectionValue(projectObjects, "urgency")}
-                  >
-                    {PROJECT_URGENCIES.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
+                  </Label>
+                  <Label label="Situation">
+                    <Select
+                      name="project_situation"
+                      defaultValue={sectionValue(projectObjects, "project_situation")}
+                    >
+                      {PROJECT_SITUATIONS.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Select>
+                  </Label>
+                  <Label label="Liefer-/Montageort PLZ">
+                    <Field
+                      name="delivery_postal_code"
+                      defaultValue={sectionValue(projectObjects, "delivery_postal_code")}
+                      inputMode="numeric"
+                      placeholder="z. B. 70173"
+                    />
+                  </Label>
+                  <Label label="Liefer-/Montageort Ort" className="lg:col-span-2">
+                    <Field
+                      name="delivery_city"
+                      defaultValue={sectionValue(projectObjects, "delivery_city")}
+                      placeholder="z. B. Stuttgart"
+                    />
+                  </Label>
+                </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+                <legend className="text-sm font-bold">Zeit und Dringlichkeit</legend>
+                <div className="grid gap-3 lg:grid-cols-4">
+                  <Label label="Gewünschter Zeitraum" className="lg:col-span-2">
+                    <Field
+                      name="desired_timeline"
+                      defaultValue={sectionValue(projectObjects, "desired_timeline")}
+                      placeholder="z. B. Herbst, KW 42, noch offen"
+                    />
+                  </Label>
+                  <Label label="Dringlichkeit">
+                    <span className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1">
+                        <Select
+                          name="urgency"
+                          defaultValue={sectionValue(projectObjects, "urgency")}
+                        >
+                          {PROJECT_URGENCIES.map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </Select>
+                      </span>
+                      <UrgencyInfoTooltip />
                     </span>
-                    <UrgencyInfoTooltip />
-                  </span>
-                </Label>
-                <Label label="Grund für Terminwunsch">
-                  <Field
-                    name="timeline_reason"
-                    defaultValue={sectionValue(projectObjects, "timeline_reason")}
-                    placeholder="z. B. Umzug, Übergabe, Wasserschaden"
-                  />
-                </Label>
-                <Label label="Budgetrahmen">
-                  <Select
-                    name="budget_range"
-                    defaultValue={sectionValue(projectObjects, "budget_range")}
-                  >
-                    {BUDGET_RANGES.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
-                </Label>
-                <Label label="Budget besprochen">
-                  <Select
-                    name="budget_discussed"
-                    defaultValue={sectionValue(projectObjects, "budget_discussed")}
-                  >
-                    <option value="">Bitte wählen</option>
-                    <option value="yes">Ja</option>
-                    <option value="no">Nein</option>
-                  </Select>
-                </Label>
-                <Label label="Kontaktweg">
-                  <Select
-                    name="inquiry_source"
-                    defaultValue={sectionValue(projectObjects, "inquiry_source")}
-                  >
-                    {INQUIRY_SOURCES.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </Select>
-                </Label>
-                <Label label="Empfehlung / Quelle">
-                  <Field
-                    name="referral_source"
-                    defaultValue={sectionValue(projectObjects, "referral_source")}
-                    placeholder="z. B. Name, Anzeige, Google"
-                  />
-                </Label>
-                <Label label="Erster Termin gewünscht">
-                  <Select
-                    name="first_appointment_wanted"
-                    defaultValue={sectionValue(projectObjects, "first_appointment_wanted")}
-                  >
-                    <option value="">Bitte wählen</option>
-                    <option value="yes">Ja</option>
-                    <option value="no">Nein</option>
-                    <option value="open">Noch offen</option>
-                  </Select>
-                </Label>
-              </div>
-              <div>
-                <p className="text-sm font-bold">Vorhandene Unterlagen</p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  </Label>
+                  <Label label="Erster Termin gewünscht">
+                    <Select
+                      name="first_appointment_wanted"
+                      defaultValue={sectionValue(projectObjects, "first_appointment_wanted")}
+                    >
+                      <option value="">Bitte wählen</option>
+                      <option value="yes">Ja</option>
+                      <option value="no">Nein</option>
+                      <option value="open">Noch offen</option>
+                    </Select>
+                  </Label>
+                  <Label label="Grund für Terminwunsch" className="lg:col-span-4">
+                    <Field
+                      name="timeline_reason"
+                      defaultValue={sectionValue(projectObjects, "timeline_reason")}
+                      placeholder="z. B. Umzug, Übergabe, Wasserschaden"
+                    />
+                  </Label>
+                </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+                <legend className="text-sm font-bold">Budget und Herkunft</legend>
+                <div className="grid gap-3 lg:grid-cols-4">
+                  <Label label="Budgetrahmen">
+                    <Select
+                      name="budget_range"
+                      defaultValue={sectionValue(projectObjects, "budget_range")}
+                    >
+                      {BUDGET_RANGES.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Select>
+                  </Label>
+                  <Label label="Budget besprochen">
+                    <Select
+                      name="budget_discussed"
+                      defaultValue={sectionValue(projectObjects, "budget_discussed")}
+                    >
+                      <option value="">Bitte wählen</option>
+                      <option value="yes">Ja</option>
+                      <option value="no">Nein</option>
+                    </Select>
+                  </Label>
+                  <Label label="Kontaktweg">
+                    <Select
+                      name="inquiry_source"
+                      defaultValue={sectionValue(projectObjects, "inquiry_source")}
+                    >
+                      {INQUIRY_SOURCES.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Select>
+                  </Label>
+                  <Label label="Empfehlung / Quelle">
+                    <Field
+                      name="referral_source"
+                      defaultValue={sectionValue(projectObjects, "referral_source")}
+                      placeholder="z. B. Name, Anzeige, Google"
+                    />
+                  </Label>
+                </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4">
+                <legend className="text-sm font-bold">Vorhandene Unterlagen</legend>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {[
                     ["has_floor_plan", "Grundriss"],
                     ["has_measurements", "Maße"],
@@ -1303,21 +1331,27 @@ function CaseDesktop({
                     </label>
                   ))}
                 </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 border-t border-[var(--border)] pt-4 lg:grid-cols-2">
+                <legend className="text-sm font-bold">Notizen</legend>
+                <Label label="Wunsch / Anlass">
+                  <Textarea
+                    name="planning_notes"
+                    defaultValue={sectionValue(projectObjects, "planning_notes")}
+                    placeholder="Kurze Zusammenfassung aus dem ersten Kontakt"
+                  />
+                </Label>
+                <Label label="Interne Notiz für den ersten Termin">
+                  <Textarea
+                    name="intake_notes"
+                    defaultValue={sectionValue(projectObjects, "intake_notes")}
+                  />
+                </Label>
+              </fieldset>
+              <div className="flex justify-end">
+                <Button type="submit">Projektgrundlagen speichern</Button>
               </div>
-              <Label label="Wunsch / Anlass">
-                <Textarea
-                  name="planning_notes"
-                  defaultValue={sectionValue(projectObjects, "planning_notes")}
-                  placeholder="Kurze Zusammenfassung aus dem ersten Kontakt"
-                />
-              </Label>
-              <Label label="Interne Notiz für den ersten Termin">
-                <Textarea
-                  name="intake_notes"
-                  defaultValue={sectionValue(projectObjects, "intake_notes")}
-                />
-              </Label>
-              <Button type="submit">Projektgrundlagen speichern</Button>
             </form>
           </Panel>
           ) : null}

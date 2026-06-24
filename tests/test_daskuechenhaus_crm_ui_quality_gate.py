@@ -341,6 +341,12 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "BUDGET_RANGES" in source
     assert "INQUIRY_SOURCES" in source
     assert "UrgencyInfoTooltip" in source
+    assert "hasRegisterAside" in source
+    assert "Projektart" in source
+    assert "Objekt und Montageort" in source
+    assert "Zeit und Dringlichkeit" in source
+    assert "Budget und Herkunft" in source
+    assert "Vorhandene Unterlagen" in source
     assert "Einbauküche" in source
     assert "Garderobe" in source
     assert "Sideboard" in source
