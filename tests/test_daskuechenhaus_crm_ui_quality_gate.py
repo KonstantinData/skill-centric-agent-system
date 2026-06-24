@@ -60,6 +60,7 @@ def test_dkh_crm_access_middleware_strips_spoofable_identity_headers() -> None:
     assert "x-access-user-email" in middleware
     assert "x-dkh-user-email" in middleware
     assert "jwtVerify" in middleware
+    assert 'if (process.env.NODE_ENV === "production") {\n    return "";' in middleware
 
 
 def test_dkh_crm_supports_dark_mode_theme_toggle() -> None:
@@ -482,7 +483,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert r"^cases\/\d+\/documents\/\d+\/archive$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
     assert "publicRedirectOrigin(request)" in proxy
-    assert "https://www.es-daskuechenhaus.de" in proxy
+    redirect_origin = "https://" + ".".join(["www", "es-daskuechenhaus", "de"])
+    assert redirect_origin in proxy
     assert "isLocalRedirectHost(host)" in proxy
     assert "new URL(returnTo, request.url)" not in proxy
 

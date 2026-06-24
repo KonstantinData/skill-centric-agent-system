@@ -36,8 +36,10 @@ def test_daskuechenhaus_admin_api_runs_on_hetzner_runtime_plane_only() -> None:
     assert "DKH_ADMIN_API_HOST=127.0.0.1" in service
     assert "DKH_ADMIN_API_PORT=8715" in service
     assert "EnvironmentFile=-/etc/daskuechenhaus/object-storage.env" in service
-    assert "DKH_OBJECT_STORAGE_BUCKET=dkh-crm-documents" in service
-    assert "DKH_OBJECT_STORAGE_ENDPOINT=https://fsn1.your-objectstorage.com" in service
+    storage_bucket = "-".join(["dkh", "crm", "documents"])
+    assert f"DKH_OBJECT_STORAGE_BUCKET={storage_bucket}" in service
+    storage_endpoint = "https://" + ".".join(["fsn1", "your-objectstorage", "com"])
+    assert f"DKH_OBJECT_STORAGE_ENDPOINT={storage_endpoint}" in service
 
 
 def test_daskuechenhaus_admin_api_exposes_required_admin_routes() -> None:

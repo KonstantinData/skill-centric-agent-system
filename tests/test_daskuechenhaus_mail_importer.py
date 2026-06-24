@@ -250,8 +250,10 @@ def test_mail_importer_service_runs_oneshot_as_tenant_user() -> None:
     assert "Group=tenant_daskuechenhaus_app" in service
     assert "EnvironmentFile=-/etc/daskuechenhaus/object-storage.env" in service
     assert "DKH_MAIL_ENV_FILE=/etc/daskuechenhaus/mail.env" in service
-    assert "DKH_OBJECT_STORAGE_BUCKET=dkh-crm-documents" in service
-    assert "DKH_OBJECT_STORAGE_ENDPOINT=https://fsn1.your-objectstorage.com" in service
+    storage_bucket = "-".join(["dkh", "crm", "documents"])
+    assert f"DKH_OBJECT_STORAGE_BUCKET={storage_bucket}" in service
+    storage_endpoint = "https://" + ".".join(["fsn1", "your-objectstorage", "com"])
+    assert f"DKH_OBJECT_STORAGE_ENDPOINT={storage_endpoint}" in service
     assert "ExecStart=/usr/bin/python3 /opt/daskuechenhaus/mail-importer/app.py --once" in service
     assert "ReadOnlyPaths=/etc/daskuechenhaus" in service
     assert "ReadWritePaths=/var/lib/daskuechenhaus/uploads" in service

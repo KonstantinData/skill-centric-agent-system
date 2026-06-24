@@ -75,6 +75,54 @@
       "reasons": [
         "Required policies are allowed for the module."
       ]
+    },
+    {
+      "module": {
+        "id": "mod-filesystem-list",
+        "name": "filesystem-list",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Tool access is explicitly allowed by policy."
+      ]
+    },
+    {
+      "module": {
+        "id": "mod-filesystem-read",
+        "name": "filesystem-read",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Tool access is explicitly allowed by policy."
+      ]
+    },
+    {
+      "module": {
+        "id": "mod-git-read",
+        "name": "git-read",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Tool access is explicitly allowed by policy."
+      ]
+    },
+    {
+      "module": {
+        "id": "mod-test-runner",
+        "name": "test-runner",
+        "kind": "tool",
+        "version": "0.1.0"
+      },
+      "effect": "allow",
+      "reasons": [
+        "Tool access is explicitly allowed by policy."
+      ]
     }
   ],
   "graph_validation": {

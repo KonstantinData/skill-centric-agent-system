@@ -1068,6 +1068,20 @@ def safe_upload_filename(filename: str) -> str:
     return safe or f"upload-{uuid4().hex}"
 
 
+def safe_response_content_type(content_type: str) -> str:
+    value = content_type.strip()
+    allowed_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$&^_.+-")
+    parts = value.split("/")
+    if len(parts) == 2 and all(parts) and all(set(part) <= allowed_chars for part in parts):
+        return value
+    return "application/octet-stream"
+
+
+def safe_response_filename(filename: str) -> str:
+    safe_name = safe_upload_filename(filename)
+    return quote(safe_name.replace("\r", "").replace("\n", ""), safe="")
+
+
 def normalize_attachment_type(upload: FileUpload) -> str:
     extension = Path(upload.filename).suffix.lower()
     expected_type = ALLOWED_TASK_ATTACHMENT_EXTENSIONS.get(extension)
@@ -6703,10 +6717,12 @@ class Handler(BaseHTTPRequestHandler):
         filename: str,
         status: HTTPStatus = HTTPStatus.OK,
     ) -> None:
+        safe_content_type = safe_response_content_type(content_type)
+        safe_filename = safe_response_filename(filename)
         self.send_response(status)
-        self.send_header("content-type", content_type)
+        self.send_header("content-type", safe_content_type)
         self.send_header("cache-control", "no-store")
-        self.send_header("content-disposition", f'attachment; filename="{filename}"')
+        self.send_header("content-disposition", f"attachment; filename*=UTF-8''{safe_filename}")
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
