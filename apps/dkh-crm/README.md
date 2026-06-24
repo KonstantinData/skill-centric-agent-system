@@ -61,10 +61,22 @@ The `/kunden` page separates new-customer creation from existing-customer quick
 access.
 
 The `Neukundenanlage` card follows a search-first duplicate-prevention flow.
-The customer creation form is hidden on initial page load, remains hidden while
-the search has matches or is unavailable, and opens as a centered modal only
-after the customer search returns no matches for a query with at least three
-characters.
+The customer creation form is hidden on initial page load and remains hidden
+while the search has matches or is unavailable. After the search returns no
+matches for a query with at least three characters, the card expands first and
+asks whether the user wants to create a `Lead` or a `Kunde`. `Kundenanlage`
+opens the existing centered customer modal. `Leadanlage` opens a slim lead modal
+that captures only the early contact data, source, channel, first request, and
+owner.
+
+Leads get their own `/kunden/leads/[id]` lead file. The lead file is the
+pre-customer workspace for first information and communication notes such as
+phone calls, emails, WhatsApp notes, social-media context, and internal notes.
+A lead does not create a customer case. The first customer case is created only
+after the lead is converted into a customer in a later conversion flow.
+
+Customer search also returns active leads and marks them as `Lead` in the
+result list. Customer hits open the customer file; lead hits open the lead file.
 
 The create form switches fields by customer type. `Privatkunde` captures person,
 address, country, tax treatment, ownership, notes, and optional direct case data.

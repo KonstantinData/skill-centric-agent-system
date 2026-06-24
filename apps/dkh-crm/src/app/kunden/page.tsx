@@ -56,6 +56,24 @@ export default async function CustomersPage() {
             Geben Sie mindestens drei Zeichen ein.
           </p>
           <div data-customer-search-results hidden />
+          <div
+            data-customer-create-choice
+            hidden
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4"
+          >
+            <p className="text-sm font-bold text-[var(--ink)]">Kein Treffer gefunden</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Legen Sie zuerst fest, ob eine schlanke Leadakte oder direkt eine Kundenakte entstehen soll.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button type="button" className="btn btn-primary" data-lead-create-open>
+                Leadanlage
+              </button>
+              <button type="button" className="btn btn-secondary" data-customer-create-open>
+                Kundenanlage
+              </button>
+            </div>
+          </div>
         </div>
       </Panel>
 
@@ -423,6 +441,132 @@ export default async function CustomersPage() {
               </Label>
             </div>
             <Button type="submit">Kunde speichern</Button>
+          </form>
+        </Panel>
+      </div>
+      <div
+        data-lead-create-modal
+        hidden
+        className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lead-create-title"
+      >
+        <Panel className="max-h-[92vh] w-full max-w-2xl overflow-y-auto">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="lead-create-title" className="section-title">Lead anlegen</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Erfassen Sie nur die ersten Kontaktdaten. Ein Vorgang entsteht erst bei der Umwandlung zum Kunden.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-lead-create-close
+              aria-label="Leadanlage schließen"
+            >
+              Schließen
+            </button>
+          </div>
+          <form
+            data-lead-create-form
+            className="mt-4 grid gap-3"
+            action="/api/kunden/leads?return_to=/kunden"
+            method="post"
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Source">
+                <Select name="source" defaultValue="website" required>
+                  <option value="website">Website</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="email">E-Mail</option>
+                  <option value="phone">Telefon</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="showroom">Ausstellung</option>
+                  <option value="referral">Empfehlung</option>
+                  <option value="partner">Partner</option>
+                  <option value="other">Sonstiges</option>
+                </Select>
+              </Label>
+              <Label label="Eingangskanal">
+                <Select name="source_channel" defaultValue="website">
+                  <option value="website">Website / Formular</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="email">E-Mail</option>
+                  <option value="phone">Telefon</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="showroom">Ausstellung</option>
+                  <option value="referral">Empfehlung</option>
+                  <option value="partner">Partner</option>
+                  <option value="other">Sonstiges</option>
+                  <option value="unknown">Unklar</option>
+                </Select>
+              </Label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Vorname">
+                <Field name="first_name" />
+              </Label>
+              <Label label="Nachname">
+                <Field name="last_name" />
+              </Label>
+            </div>
+            <Label label="Firma / Objektbezug">
+              <Field name="company_name" placeholder="Optional, falls Objektkunde oder Firma erkennbar ist" />
+            </Label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="E-Mail">
+                <Field name="primary_email" type="email" />
+              </Label>
+              <Label label="Telefon">
+                <Field name="primary_phone" />
+              </Label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Label label="Mobil / WhatsApp">
+                <Field name="primary_mobile" />
+              </Label>
+              <Label label="Bevorzugter Kontaktweg">
+                <Select name="preferred_contact_channel" defaultValue="phone">
+                  <option value="phone">Telefon</option>
+                  <option value="email">E-Mail</option>
+                  <option value="mobile">Mobil</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="none">Noch unklar</option>
+                </Select>
+              </Label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Label label="PLZ">
+                <Field name="postal_code" />
+              </Label>
+              <Label label="Ort" className="md:col-span-2">
+                <Field name="city" />
+              </Label>
+            </div>
+            <Label label="Kurzbeschreibung">
+              <Field name="project_summary" placeholder="z. B. neue Küche, Renovierung, Neubau, grober Zeitraum" />
+            </Label>
+            <Label label="Erste Nachricht / Gesprächsnotiz">
+              <Textarea
+                name="initial_message"
+                placeholder="Was hat der Lead angefragt oder gesagt?"
+                required
+              />
+            </Label>
+            <Label label="Zuständig">
+              <Select name="owner_user_id" defaultValue={currentUserId ? String(currentUserId) : undefined}>
+                {assignableUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {displayName(user.first_name, user.last_name) || user.email}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Button type="submit">Lead speichern</Button>
           </form>
         </Panel>
       </div>

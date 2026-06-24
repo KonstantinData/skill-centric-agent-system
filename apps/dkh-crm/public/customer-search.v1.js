@@ -67,46 +67,67 @@
     const results = root.querySelector("[data-customer-search-results]");
     const hint = root.querySelector("[data-customer-search-hint]");
     const createModal = document.querySelector("[data-customer-create-modal]");
+    const createChoice = root.querySelector("[data-customer-create-choice]");
     results.innerHTML = "";
     if (!items.length) {
       results.hidden = true;
+      if (createChoice) createChoice.hidden = !options.openCreateModal;
       hint.textContent = options.openCreateModal
-        ? "Kein Treffer. Jetzt kann ein neuer Kunde angelegt werden."
+        ? "Kein Treffer. Wählen Sie Leadanlage oder Kundenanlage."
         : "Kein Treffer.";
-      if (options.openCreateModal && createModal) createModal.hidden = false;
+      if (options.openCreateModal && createModal) createModal.hidden = true;
       return;
     }
+    if (createChoice) createChoice.hidden = true;
     const list = document.createElement("div");
     list.className = "suggest-list";
-    for (const customer of items) {
+    for (const item of items) {
+      const isLead = item.record_type === "lead";
       const row = document.createElement("article");
       row.className = "suggest-row";
       row.tabIndex = 0;
-      row.title = "Doppelklick öffnet die Kundenakte";
-      const href = "/kunden/" + encodeURIComponent(customer.customer_id);
-      row.addEventListener("dblclick", () => openCustomerFile(href, customer.customer_id));
+      row.title = isLead ? "Doppelklick öffnet die Leadakte" : "Doppelklick öffnet die Kundenakte";
+      const href = isLead
+        ? "/kunden/leads/" + encodeURIComponent(item.lead_id)
+        : "/kunden/" + encodeURIComponent(item.customer_id);
+      row.addEventListener("dblclick", () => {
+        if (isLead) window.location.href = href;
+        else openCustomerFile(href, item.customer_id);
+      });
       row.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") openCustomerFile(href, customer.customer_id);
+        if (event.key !== "Enter") return;
+        if (isLead) window.location.href = href;
+        else openCustomerFile(href, item.customer_id);
       });
 
       const copy = document.createElement("div");
       copy.className = "suggest-copy";
       const title = document.createElement("strong");
-      title.textContent = customer.display_name || "Unbenannter Kunde";
+      title.textContent = item.display_name || (isLead ? "Unbenannter Lead" : "Unbenannter Kunde");
       const meta = document.createElement("span");
-      const type = customer.customer_type === "company" ? "Firma" : "Privat";
-      const location = [customer.postal_code, customer.city].filter(Boolean).join(" ");
-      meta.textContent = [type, location, customer.primary_email].filter(Boolean).join(" · ");
-      copy.append(title, meta);
+      const type = isLead ? "Lead" : item.customer_type === "company" ? "Firma" : "Privat";
+      const location = [item.postal_code, item.city].filter(Boolean).join(" ");
+      meta.textContent = [
+        type,
+        isLead ? item.source : null,
+        location,
+        item.primary_email || item.primary_phone,
+      ].filter(Boolean).join(" · ");
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = isLead ? "Lead" : "Kunde";
+      copy.append(title, meta, badge);
 
       const action = document.createElement("a");
       action.className = "btn btn-secondary";
       action.href = href;
-      action.target = "_blank";
-      action.rel = "noopener";
-      action.setAttribute("data-customer-file-link", "");
-      action.setAttribute("data-customer-id", String(customer.customer_id));
-      action.textContent = "Kundenakte öffnen";
+      if (!isLead) {
+        action.target = "_blank";
+        action.rel = "noopener";
+        action.setAttribute("data-customer-file-link", "");
+        action.setAttribute("data-customer-id", String(item.customer_id));
+      }
+      action.textContent = isLead ? "Leadakte öffnen" : "Kundenakte öffnen";
 
       row.append(copy, action);
       list.append(row);
@@ -118,6 +139,8 @@
   };
 
   const createModal = document.querySelector("[data-customer-create-modal]");
+  const leadCreateModal = document.querySelector("[data-lead-create-modal]");
+  const leadCreateForm = document.querySelector("[data-lead-create-form]");
   const createCaseToggle = document.querySelector("[data-customer-create-case-toggle]");
   const caseDetails = document.querySelector("[data-customer-case-details]");
   const createForm = document.querySelector("[data-customer-create-form]");
@@ -157,6 +180,11 @@
     syncCustomerTypeSections();
     syncCaseDetails();
     if (createModal) createModal.hidden = true;
+  };
+
+  const closeLeadCreateModal = () => {
+    if (leadCreateForm) leadCreateForm.reset();
+    if (leadCreateModal) leadCreateModal.hidden = true;
   };
 
   const syncCaseDetails = () => {
@@ -310,6 +338,8 @@
     const hint = root.querySelector("[data-customer-search-hint]");
     results.hidden = true;
     results.innerHTML = "";
+    const createChoice = root.querySelector("[data-customer-create-choice]");
+    if (createChoice) createChoice.hidden = true;
     if (options.openCreateModal) closeCreateModal();
     hint.textContent = "Geben Sie mindestens drei Zeichen ein.";
   };
@@ -344,7 +374,11 @@
       if (!response.ok) throw new Error("search_failed");
       const payload = await response.json();
       if (input.value.trim() + "::" + filterValue !== latestQueries.get(root)) return;
-      const items = Array.isArray(payload.customers) ? payload.customers : [];
+      const customerItems = Array.isArray(payload.customers)
+        ? payload.customers.map((customer) => ({ ...customer, record_type: "customer" }))
+        : [];
+      const leadItems = Array.isArray(payload.leads) ? payload.leads : [];
+      const items = [...customerItems, ...leadItems];
       setResults(root, items, options);
     } catch (error) {
       if (error.name === "AbortError") return;
@@ -445,6 +479,39 @@
     });
   }
 
+  if (leadCreateModal) {
+    leadCreateModal.addEventListener("click", (event) => {
+      if (event.target === leadCreateModal) closeLeadCreateModal();
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-lead-create-close]")
+        : null;
+      if (closeButton) closeLeadCreateModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeLeadCreateModal();
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    const leadOpen = event.target instanceof Element
+      ? event.target.closest("[data-lead-create-open]")
+      : null;
+    if (leadOpen && leadCreateModal) {
+      leadCreateModal.hidden = false;
+      const firstField = leadCreateModal.querySelector("input, select, textarea, button");
+      if (firstField instanceof HTMLElement) firstField.focus();
+      return;
+    }
+    const customerOpen = event.target instanceof Element
+      ? event.target.closest("[data-customer-create-open]")
+      : null;
+    if (customerOpen && createModal) {
+      createModal.hidden = false;
+      const firstField = createModal.querySelector("input, select, textarea, button");
+      if (firstField instanceof HTMLElement) firstField.focus();
+    }
+  });
+
   if (customerMasterModal) {
     document.addEventListener("click", (event) => {
       const openButton = event.target instanceof Element
@@ -541,6 +608,25 @@
     createForm.addEventListener("submit", (event) => {
       event.preventDefault();
       submitCreateForm(new FormData(createForm));
+    });
+  }
+
+  if (leadCreateForm) {
+    leadCreateForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const response = await fetch(leadCreateForm.action, {
+        method: "POST",
+        headers: { accept: "application/json" },
+        body: new FormData(leadCreateForm),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) {
+        alert("Lead konnte nicht gespeichert werden.");
+        return;
+      }
+      window.location.href = payload.lead_id
+        ? "/kunden/leads/" + encodeURIComponent(payload.lead_id)
+        : "/kunden";
     });
   }
 

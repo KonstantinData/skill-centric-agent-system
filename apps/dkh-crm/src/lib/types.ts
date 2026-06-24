@@ -246,6 +246,42 @@ export type CustomerRecord = {
   updated_at: string | null;
 };
 
+export type LeadRecord = {
+  id: number;
+  lead_number: string | null;
+  status: string;
+  source: string;
+  source_channel: string;
+  salutation: string | null;
+  title: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  display_name: string;
+  primary_email: string | null;
+  primary_phone: string | null;
+  primary_mobile: string | null;
+  preferred_contact_channel: string;
+  country: string | null;
+  postal_code: string | null;
+  city: string | null;
+  project_summary: string | null;
+  initial_message: string | null;
+  notes: string | null;
+  owner_user_id: number | null;
+  converted_customer_id: number | null;
+  converted_at: string | null;
+  updated_at: string | null;
+  notes_history: Array<{
+    id: number;
+    note_type: string;
+    body: string;
+    source: string;
+    created_by: string | null;
+    created_at: string;
+  }>;
+};
+
 export type CustomerCaseDocumentRecord = {
   id: number;
   customer_case_id: number;
@@ -437,6 +473,7 @@ export type CustomersState = {
   current_user: OverviewState["current_user"];
   users: OverviewState["users"];
   customers: CustomerRecord[];
+  leads: LeadRecord[];
   customer_cases: CustomerCaseRecord[];
   status_phases: Array<{
     phase: number;
@@ -489,6 +526,7 @@ export const EMPTY_CUSTOMERS_STATE: CustomersState = {
   current_user: EMPTY_OVERVIEW_STATE.current_user,
   users: [],
   customers: [],
+  leads: [],
   customer_cases: [],
   status_phases: [],
 };
