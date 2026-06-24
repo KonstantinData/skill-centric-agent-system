@@ -112,7 +112,7 @@ a {
   padding: 8px 12px;
   font-size: 0.9rem;
   font-weight: 700;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .btn-primary {
@@ -137,6 +137,12 @@ a {
   background: color-mix(in srgb, var(--danger) 14%, var(--surface));
   border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
   color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
 
 .field,
