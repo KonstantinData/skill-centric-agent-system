@@ -19,7 +19,7 @@ export default async function RootLayout({
   const userEmail = await getUserEmail();
 
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>

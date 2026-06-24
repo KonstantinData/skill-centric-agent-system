@@ -80,7 +80,9 @@ workflow applies `0011_customer_document_object_storage.sql`, which adds the
 document storage backend, bucket, object key, and SHA-256 metadata fields. It
 also applies `0012_carat_prjz_imports.sql`, which stores CARAT PRJZ analysis
 runs and individually selectable import positions linked to the original
-document.
+document. Lead intake uses the same Admin API deployment path; the workflow also
+applies `0014_lead_intake.sql` before deploying API code that reads or writes
+`app.leads` and `app.lead_notes`.
 
 The CRM proxy must forward `multipart/form-data` uploads unchanged. The Admin
 API validates supported document file types, writes files to object storage,

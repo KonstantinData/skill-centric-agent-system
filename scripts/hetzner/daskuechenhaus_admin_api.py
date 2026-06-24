@@ -393,6 +393,10 @@ def generate_case_number() -> str:
     return generate_unique_number("V-", 8, "customer_cases", "case_number")
 
 
+def generate_lead_number() -> str:
+    return generate_unique_number("L-", 8, "leads", "lead_number")
+
+
 def normalize_carat_order_number(value: Any) -> str:
     normalized = str(value or "").strip().upper()
     if normalized and not CARAT_ORDER_NUMBER_PATTERN.fullmatch(normalized):
@@ -1681,6 +1685,16 @@ def customers_state(access_email: str) -> dict[str, Any]:
               OR cc.responsible_user_id IN (SELECT id FROM scope_users)
             )
         ),
+        visible_leads AS (
+          SELECT DISTINCT l.*
+          FROM app.leads l
+          WHERE l.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR l.owner_user_id IN (SELECT id FROM scope_users)
+              OR l.created_by_user_id IN (SELECT id FROM scope_users)
+            )
+        ),
         assignable_users AS (
           SELECT u.*
           FROM app.users u
@@ -1781,6 +1795,63 @@ def customers_state(access_email: str) -> dict[str, Any]:
               ORDER BY c.updated_at DESC, c.id DESC
             )
             FROM visible_customers c
+          ), '[]'::jsonb),
+          'leads', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'id', l.id,
+                'lead_number', l.lead_number,
+                'status', l.status,
+                'source', l.source,
+                'source_channel', l.source_channel,
+                'salutation', l.salutation,
+                'title', l.title,
+                'first_name', l.first_name,
+                'last_name', l.last_name,
+                'company_name', l.company_name,
+                'display_name', l.display_name,
+                'primary_email', l.primary_email,
+                'primary_phone', l.primary_phone,
+                'primary_mobile', l.primary_mobile,
+                'preferred_contact_channel', l.preferred_contact_channel,
+                'country', l.country,
+                'postal_code', l.postal_code,
+                'city', l.city,
+                'project_summary', l.project_summary,
+                'initial_message', l.initial_message,
+                'notes', l.notes,
+                'owner_user_id', l.owner_user_id,
+                'converted_customer_id', l.converted_customer_id,
+                'converted_at', l.converted_at,
+                'updated_at',
+                  to_char(
+                    l.updated_at AT TIME ZONE 'Europe/Berlin',
+                    'YYYY-MM-DD HH24:MI'
+                  ),
+                'notes_history', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'id', ln.id,
+                      'note_type', ln.note_type,
+                      'body', ln.body,
+                      'source', ln.source,
+                      'created_by', COALESCE(u.first_name || ' ' || u.last_name, u.email),
+                      'created_at',
+                        to_char(
+                          ln.created_at AT TIME ZONE 'Europe/Berlin',
+                          'YYYY-MM-DD HH24:MI'
+                        )
+                    )
+                    ORDER BY ln.created_at DESC, ln.id DESC
+                  )
+                  FROM app.lead_notes ln
+                  LEFT JOIN app.users u ON u.id = ln.created_by_user_id
+                  WHERE ln.lead_id = l.id
+                ), '[]'::jsonb)
+              )
+              ORDER BY l.updated_at DESC, l.id DESC
+            )
+            FROM visible_leads l
           ), '[]'::jsonb),
           'customer_cases', COALESCE((
             SELECT jsonb_agg(
@@ -2165,6 +2236,17 @@ def search_customers(
               OR cc.responsible_user_id IN (SELECT id FROM scope_users)
             )
         ),
+        visible_leads AS (
+          SELECT DISTINCT l.*
+          FROM app.leads l
+          WHERE l.is_active = TRUE
+            AND l.status <> 'converted'
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR l.owner_user_id IN (SELECT id FROM scope_users)
+              OR l.created_by_user_id IN (SELECT id FROM scope_users)
+            )
+        ),
         matches AS (
           SELECT
             c.id,
@@ -2266,6 +2348,68 @@ def search_customers(
               ORDER BY rank, display_name, id
               LIMIT 20
             ) limited_matches
+          ), '[]'::jsonb),
+          'leads', COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'record_type', 'lead',
+                'lead_id', id,
+                'lead_number', lead_number,
+                'display_name', display_name,
+                'status', status,
+                'source', source,
+                'source_channel', source_channel,
+                'city', city,
+                'postal_code', postal_code,
+                'primary_email', primary_email,
+                'primary_phone', primary_phone
+              )
+              ORDER BY rank, display_name, id
+            )
+            FROM (
+              SELECT
+                l.id,
+                l.lead_number,
+                l.display_name,
+                l.status,
+                l.source,
+                l.source_channel,
+                l.postal_code,
+                l.city,
+                l.primary_email,
+                l.primary_phone,
+                CASE
+                  WHEN lower(COALESCE(l.primary_email, '')) = lower(:'search_value') THEN 0
+                  WHEN :'phone_value' <> ''
+                    AND COALESCE(l.primary_phone_normalized, '') = :'phone_value' THEN 1
+                  WHEN :'phone_value' <> ''
+                    AND COALESCE(l.primary_mobile_normalized, '') = :'phone_value' THEN 1
+                  WHEN lower(COALESCE(l.lead_number, '')) = lower(:'search_value') THEN 2
+                  WHEN lower(l.display_name) = lower(:'search_value') THEN 3
+                  ELSE 9
+                END AS rank
+              FROM visible_leads l
+              WHERE
+                :'customer_filter' <> 'closed'
+                AND (
+                  l.display_name ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(l.company_name, '') ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(l.lead_number, '') ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(l.primary_email, '') ILIKE '%' || :'search_value' || '%'
+                  OR (
+                    :'phone_value' <> ''
+                    AND COALESCE(l.primary_phone_normalized, '') = :'phone_value'
+                  )
+                  OR (
+                    :'phone_value' <> ''
+                    AND COALESCE(l.primary_mobile_normalized, '') = :'phone_value'
+                  )
+                  OR COALESCE(l.primary_phone, '') ILIKE '%' || :'search_value' || '%'
+                  OR COALESCE(l.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+                )
+              ORDER BY rank, l.display_name, l.id
+              LIMIT 20
+            ) limited_lead_matches
           ), '[]'::jsonb)
         )::text;
         """,
@@ -2397,6 +2541,218 @@ def customer_duplicate_matches(
     )
     matches = result.get("matches") if result else []
     return matches if isinstance(matches, list) else []
+
+
+def lead_display_name(data: dict[str, Any]) -> str:
+    company_name = str(data.get("company_name", "")).strip()
+    first_name = str(data.get("first_name", "")).strip()
+    last_name = str(data.get("last_name", "")).strip()
+    display_name = str(data.get("display_name", "")).strip()
+    if company_name:
+        return company_name
+    name = " ".join(part for part in [first_name, last_name] if part).strip()
+    return name or display_name
+
+
+def save_lead(data: dict[str, Any], access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    actor_user_id = int(context["primary_user_id"])
+    display_name = lead_display_name(data)
+    if not display_name:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "lead_name_required")
+    source = str(data.get("source", "")).strip()
+    if not source:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "lead_source_required")
+    initial_message = str(data.get("initial_message", "")).strip()
+    notes = str(data.get("notes", "")).strip()
+    payload = {
+        "lead_number": generate_lead_number(),
+        "status": str(data.get("status", "new")).strip() or "new",
+        "source": source,
+        "source_channel": str(data.get("source_channel", "unknown")).strip() or "unknown",
+        "salutation": str(data.get("salutation", "")).strip(),
+        "title": str(data.get("title", "")).strip(),
+        "first_name": str(data.get("first_name", "")).strip(),
+        "last_name": str(data.get("last_name", "")).strip(),
+        "company_name": str(data.get("company_name", "")).strip(),
+        "display_name": display_name,
+        "primary_email": str(data.get("primary_email", "")).strip().lower(),
+        "primary_phone": str(data.get("primary_phone", "")).strip(),
+        "primary_phone_normalized": normalize_phone_number(data.get("primary_phone", "")),
+        "primary_mobile": str(data.get("primary_mobile", "")).strip(),
+        "primary_mobile_normalized": normalize_phone_number(data.get("primary_mobile", "")),
+        "preferred_contact_channel": str(
+            data.get("preferred_contact_channel", "phone")
+        ).strip()
+        or "phone",
+        "country": str(data.get("country", "DE")).strip().upper() or "DE",
+        "postal_code": str(data.get("postal_code", "")).strip(),
+        "city": str(data.get("city", "")).strip(),
+        "project_summary": str(data.get("project_summary", "")).strip(),
+        "initial_message": initial_message,
+        "notes": notes,
+        "owner_user_id": str(data.get("owner_user_id") or actor_user_id),
+        "actor_user_id": actor_user_id,
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        inserted_lead AS (
+          INSERT INTO app.leads (
+            lead_number,
+            status,
+            source,
+            source_channel,
+            salutation,
+            title,
+            first_name,
+            last_name,
+            company_name,
+            display_name,
+            primary_email,
+            primary_phone,
+            primary_phone_normalized,
+            primary_mobile,
+            primary_mobile_normalized,
+            preferred_contact_channel,
+            country,
+            postal_code,
+            city,
+            project_summary,
+            initial_message,
+            notes,
+            owner_user_id,
+            created_by_user_id
+          )
+          SELECT
+            data->>'lead_number',
+            data->>'status',
+            data->>'source',
+            data->>'source_channel',
+            NULLIF(data->>'salutation', ''),
+            NULLIF(data->>'title', ''),
+            NULLIF(data->>'first_name', ''),
+            NULLIF(data->>'last_name', ''),
+            NULLIF(data->>'company_name', ''),
+            data->>'display_name',
+            NULLIF(data->>'primary_email', ''),
+            NULLIF(data->>'primary_phone', ''),
+            NULLIF(data->>'primary_phone_normalized', ''),
+            NULLIF(data->>'primary_mobile', ''),
+            NULLIF(data->>'primary_mobile_normalized', ''),
+            data->>'preferred_contact_channel',
+            data->>'country',
+            NULLIF(data->>'postal_code', ''),
+            NULLIF(data->>'city', ''),
+            NULLIF(data->>'project_summary', ''),
+            NULLIF(data->>'initial_message', ''),
+            NULLIF(data->>'notes', ''),
+            NULLIF(data->>'owner_user_id', '')::bigint,
+            (data->>'actor_user_id')::bigint
+          FROM payload
+          RETURNING id
+        ),
+        initial_note AS (
+          INSERT INTO app.lead_notes (
+            lead_id,
+            note_type,
+            body,
+            source,
+            created_by_user_id
+          )
+          SELECT
+            (SELECT id FROM inserted_lead),
+            'customer_request',
+            concat_ws(
+              E'\n\n',
+              NULLIF(data->>'initial_message', ''),
+              NULLIF(data->>'notes', '')
+            ),
+            'manual',
+            (data->>'actor_user_id')::bigint
+          FROM payload
+          WHERE NULLIF(
+            concat_ws(
+              '',
+              NULLIF(data->>'initial_message', ''),
+              NULLIF(data->>'notes', '')
+            ),
+            ''
+          ) IS NOT NULL
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'lead_id', (SELECT id FROM inserted_lead)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("lead_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "lead_not_found")
+    return result
+
+
+def save_lead_note(lead_id: str, data: dict[str, Any], access_email: str) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    body = str(data.get("body", "")).strip()
+    if not body:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "lead_note_body_required")
+    payload = {
+        "lead_id": str(lead_id).strip(),
+        "note_type": str(data.get("note_type", "general")).strip() or "general",
+        "body": body,
+        "actor_user_id": int(context["primary_user_id"]),
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_lead AS (
+          SELECT l.id
+          FROM app.leads l
+          WHERE l.id = (SELECT (data->>'lead_id')::bigint FROM payload)
+            AND l.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR l.owner_user_id IN (SELECT id FROM scope_users)
+              OR l.created_by_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        inserted_note AS (
+          INSERT INTO app.lead_notes (
+            lead_id,
+            note_type,
+            body,
+            source,
+            created_by_user_id
+          )
+          SELECT
+            visible_lead.id,
+            data->>'note_type',
+            data->>'body',
+            'manual',
+            (data->>'actor_user_id')::bigint
+          FROM payload, visible_lead
+          RETURNING id
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'lead_note_id', (SELECT id FROM inserted_note),
+          'lead_id', (SELECT id FROM visible_lead)
+        )::text;
+        """,
+        {"payload": json.dumps(payload)},
+    )
+    if not result.get("lead_note_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "lead_not_found")
+    return result
 
 
 def save_customer(
@@ -6557,6 +6913,12 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if parts == ["customers", "customers"]:
                     self.write_json(save_customer(data, access_email))
+                    return
+                if parts == ["customers", "leads"]:
+                    self.write_json(save_lead(data, access_email))
+                    return
+                if len(parts) == 4 and parts[:2] == ["customers", "leads"] and parts[3] == "notes":
+                    self.write_json(save_lead_note(parts[2], data, access_email))
                     return
                 if len(parts) == 3 and parts[:2] == ["customers", "customers"]:
                     self.write_json(save_customer(data, access_email, parts[2]))

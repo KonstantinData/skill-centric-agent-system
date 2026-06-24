@@ -35,6 +35,10 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "/kunden/" in search_script
     assert "maxOpenFiles = 3" in search_script
     assert "[data-customer-create-modal]" in search_script
+    assert "[data-lead-create-modal]" in search_script
+    assert "[data-customer-create-choice]" in search_script
+    assert 'record_type === "lead"' in search_script
+    assert "Leadakte öffnen" in search_script
     assert "[data-customer-email-duplicate-modal]" in search_script
     assert "customer_email_duplicate_found" in search_script
     assert 'confirmedData.set("allow_duplicate_email", "true")' in search_script
@@ -96,6 +100,8 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert "Disallowed API path" in proxy
     assert r"^cases\/\d+\/carat-imports\/\d+\/positions$" in proxy
     assert r"^cases\/\d+\/confirmations$" in proxy
+    assert r"^leads$" in proxy
+    assert r"^leads\/\d+\/notes$" in proxy
     assert r"^confirmations\/\d+\/exceptions\/\d+\/decide$" in proxy
     assert "safeDecodeSegment" in proxy
     assert "/customers/search" in kunden_search
@@ -143,6 +149,19 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "Suche, Dubletten-sensible Neuanlage" not in source
     assert "eyebrow = \"das küchenhaus\"" in hero
     assert "data-customer-create-modal" in source
+    assert "data-customer-create-choice" in source
+    assert "data-lead-create-open" in source
+    assert "data-customer-create-open" in source
+    assert "Leadanlage" in source
+    assert "Kundenanlage" in source
+    assert "data-lead-create-modal" in source
+    assert "data-lead-create-form" in source
+    assert "Lead anlegen" in source
+    assert 'action="/api/kunden/leads?return_to=/kunden"' in source
+    assert 'name="source"' in source
+    assert 'name="source_channel"' in source
+    assert 'name="initial_message"' in source
+    assert "Lead speichern" in source
     assert "data-customer-create-form" in source
     assert "role=\"dialog\"" in source
     assert "data-customer-create-close" in source
@@ -210,6 +229,15 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
         "defaultValue={currentUserId ? String(currentUserId) : undefined}"
     ) in source
     assert "assignableUsers.map((user)" in source
+
+    lead_source = load_text(APP_ROOT / "src" / "app" / "kunden" / "leads" / "[id]" / "page.tsx")
+    assert "Leadakte" in lead_source
+    assert "Leadstammdaten" in lead_source
+    assert "Kommunikation dokumentieren" in lead_source
+    assert "Kommunikationsverlauf" in lead_source
+    assert "/api/kunden/leads/${lead.id}/notes?return_to=/kunden/leads/${lead.id}" in lead_source
+    assert "In Kunde umwandeln" in lead_source
+    assert "disabled" in lead_source
 
     search_script = load_text(APP_ROOT / "public" / "customer-search.v1.js")
     assert "syncCaseDetails" in search_script
@@ -478,6 +506,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "/sections/process_control" in source
     assert "Vorgang schließen" in source
     assert r"^cases$" in proxy
+    assert r"^leads$" in proxy
+    assert r"^leads\/\d+\/notes$" in proxy
     assert r"^cases\/\d+$" in proxy
     assert r"^cases\/\d+\/documents$" in proxy
     assert r"^cases\/\d+\/documents\/\d+\/archive$" in proxy
