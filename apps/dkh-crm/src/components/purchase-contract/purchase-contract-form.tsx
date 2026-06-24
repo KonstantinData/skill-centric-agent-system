@@ -119,7 +119,11 @@ function formatDateForPrint(value: string) {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return parsed.toLocaleDateString("de-DE");
+  return [
+    String(parsed.getDate()).padStart(2, "0"),
+    String(parsed.getMonth() + 1).padStart(2, "0"),
+    parsed.getFullYear(),
+  ].join(".");
 }
 
 function isoWeekStart(year: number, week: number) {
@@ -689,8 +693,8 @@ function PurchaseContractPrintOverlay({
         </div>
 
         <div className="print-items">
-          {firstPrintItems.map((item) => (
-            <div className="print-item-row" key={item.id}>
+          {firstPrintItems.map((item, index) => (
+            <div className={`print-item-row print-item-row-${index + 1}`} key={item.id}>
               <div className="print-item-supplier">{item.supplier}</div>
               <div className="print-item-quantity">{item.quantity}</div>
               <div className="print-item-description">{item.description}</div>

@@ -373,7 +373,7 @@ a {
 
   .print-customer-phone {
     left: 41mm;
-    top: 46.3mm;
+    top: 47.3mm;
     width: 80mm;
     height: 5mm;
   }
@@ -407,8 +407,8 @@ a {
   }
 
   .print-installation {
-    left: 169.2mm;
-    top: 59.2mm;
+    left: 171.2mm;
+    top: 57.2mm;
   }
 
   .print-field {
@@ -471,6 +471,15 @@ a {
     overflow-wrap: anywhere;
     line-height: 5.7mm;
     padding-right: 3mm;
+  }
+
+  .print-item-row-1 .print-item-description,
+  .print-item-row-3 .print-item-description {
+    transform: translateY(-1mm);
+  }
+
+  .print-item-row-2 .print-item-description {
+    transform: translateY(-2mm);
   }
 
   .print-item-price {
