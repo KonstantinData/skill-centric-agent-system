@@ -1,43 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f5f1;
-  --foreground: #101417;
-  --surface: #ffffff;
-  --surface-soft: #edf2ec;
-  --surface-strong: #dde7de;
-  --field-surface: #ffffff;
-  --chrome-surface: rgba(255, 255, 255, 0.92);
-  --muted: #59645c;
-  --accent: #3b8f6d;
-  --accent-strong: #176a50;
-  --accent-warm: #d89435;
-  --accent-cool: #3f6f9f;
-  --success: #168056;
-  --border: #d7ddd5;
-  --danger: #b42318;
-  --warning: #a15c07;
-  --shadow: 0 16px 42px rgba(16, 20, 23, 0.08);
+  --petrol: #007d8e;
+  --white: #ffffff;
+  --black: #000;
+  --body-grey: #333;
+  --dark-grey-2: #999;
+  --dark-grey: #b3b3b3;
+  --bg-grey: #fafafa;
+  --medium-sea-green: #5ab963;
+  --sea-green: #48944f;
+  --background: var(--bg-grey);
+  --foreground: var(--body-grey);
+  --surface: var(--white);
+  --surface-soft: var(--bg-grey);
+  --surface-strong: var(--dark-grey);
+  --field-surface: var(--white);
+  --chrome-surface: var(--white);
+  --muted: var(--dark-grey-2);
+  --accent: var(--petrol);
+  --accent-strong: var(--black);
+  --accent-warm: var(--sea-green);
+  --accent-cool: var(--petrol);
+  --success: var(--medium-sea-green);
+  --border: var(--dark-grey);
+  --danger: var(--black);
+  --warning: var(--sea-green);
+  --shadow: 0 16px 42px color-mix(in srgb, var(--black) 8%, transparent);
 }
 
 [data-theme="dark"] {
-  --background: #101417;
-  --foreground: #edf4ef;
-  --surface: #171d20;
-  --surface-soft: #202a2a;
-  --surface-strong: #273534;
-  --field-surface: #121719;
-  --chrome-surface: rgba(18, 23, 25, 0.93);
-  --muted: #b6c4bb;
-  --accent: #62c49a;
-  --accent-strong: #83d7b2;
-  --accent-warm: #f0b35b;
-  --accent-cool: #83aee4;
-  --success: #6cd0a2;
-  --border: #31403d;
-  --danger: #ff8a80;
-  --warning: #ffc46b;
-  --shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+  --background: var(--black);
+  --foreground: var(--white);
+  --surface: var(--body-grey);
+  --surface-soft: var(--black);
+  --surface-strong: var(--body-grey);
+  --field-surface: var(--black);
+  --chrome-surface: var(--black);
+  --muted: var(--dark-grey);
+  --accent: var(--petrol);
+  --accent-strong: var(--white);
+  --accent-warm: var(--medium-sea-green);
+  --accent-cool: var(--petrol);
+  --success: var(--medium-sea-green);
+  --border: var(--dark-grey-2);
+  --danger: var(--white);
+  --warning: var(--medium-sea-green);
+  --shadow: 0 16px 42px color-mix(in srgb, var(--black) 34%, transparent);
   color-scheme: dark;
 }
 
@@ -151,11 +160,11 @@ button {
 
 .btn-primary {
   background: var(--accent);
-  color: #071a13;
+  color: var(--white);
 }
 
 .btn-primary:hover {
-  background: color-mix(in srgb, var(--accent) 82%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 82%, var(--white));
 }
 
 .btn-secondary {

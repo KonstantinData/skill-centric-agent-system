@@ -94,6 +94,29 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
     assert ".progress-track" in globals_css
 
 
+def test_liquisto_workbench_css_uses_liquisto_palette() -> None:
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    for color in (
+        "#007d8e",
+        "#ffffff",
+        "#000",
+        "#333",
+        "#999",
+        "#b3b3b3",
+        "#fafafa",
+        "#5ab963",
+        "#48944f",
+    ):
+        assert color in globals_css
+
+    assert "--petrol" in globals_css
+    assert "--white" in globals_css
+    assert "--black" in globals_css
+    assert "--medium-sea-green" in globals_css
+    assert "--sea-green" in globals_css
+
+
 def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
     auth = load_text(APP_ROOT / "src" / "lib" / "auth.ts")
     top_bar = load_text(APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx")
