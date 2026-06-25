@@ -154,18 +154,44 @@ function formatDateForPrint(value: string) {
   ].join(".");
 }
 
-function formatDeliveryWeekWindowForPrint(from: string, to: string, year: string) {
-  const fromWeek = from.trim();
-  const toWeek = to.trim();
-  const deliveryYear = year.trim();
-  if (!fromWeek && !toWeek) return "";
-
-  const yearSuffix = deliveryYear ? ` ${deliveryYear}` : "";
-  if (fromWeek && toWeek && fromWeek !== toWeek) {
-    return `ca. KW${fromWeek} bis KW${toWeek}${yearSuffix}`;
+function parseDeliveryWeekValue(value: string, fallbackYear = "") {
+  const trimmedValue = value.trim();
+  const weekValueMatch = /^(\d{4})-W(\d{2})$/.exec(trimmedValue);
+  if (weekValueMatch) {
+    return {
+      year: weekValueMatch[1],
+      week: String(Number(weekValueMatch[2])),
+    };
   }
 
-  return `ca. KW${fromWeek || toWeek}${yearSuffix}`;
+  const weekOnlyMatch = /^(\d{1,2})$/.exec(trimmedValue);
+  const fallbackYearValue = fallbackYear.trim();
+  if (!weekOnlyMatch || !fallbackYearValue) return null;
+
+  return {
+    year: fallbackYearValue,
+    week: String(Number(weekOnlyMatch[1])),
+  };
+}
+
+function formatDeliveryWeekWindowForPrint(from: string, to: string, fallbackYear = "") {
+  const fromWeek = parseDeliveryWeekValue(from, fallbackYear);
+  const toWeek = parseDeliveryWeekValue(to, fallbackYear);
+  if (!fromWeek && !toWeek) return "";
+
+  const firstWeek = fromWeek ?? toWeek;
+  const secondWeek = toWeek && fromWeek?.week !== toWeek.week ? toWeek : null;
+  if (!firstWeek) return "";
+
+  if (secondWeek) {
+    const yearSuffix =
+      firstWeek.year === secondWeek.year
+        ? secondWeek.year
+        : `${firstWeek.year} / ${secondWeek.year}`;
+    return `geplant KW${firstWeek.week} / KW${secondWeek.week} ${yearSuffix}`;
+  }
+
+  return `geplant KW${firstWeek.week} ${firstWeek.year}`;
 }
 
 function formatDeliveryTimeForPrint(draft: ContractDraft) {
@@ -534,14 +560,11 @@ export function PurchaseContractForm({
                   </Label>
                 </>
               ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Label label="Von KW">
                     <Field
                       name="delivery_window_week_from"
-                      type="number"
-                      min="1"
-                      max="53"
-                      inputMode="numeric"
+                      type="week"
                       value={draft.deliveryWindowWeekFrom}
                       onChange={(event) =>
                         updateDraft("deliveryWindowWeekFrom", event.target.value)
@@ -551,26 +574,10 @@ export function PurchaseContractForm({
                   <Label label="Bis KW">
                     <Field
                       name="delivery_window_week_to"
-                      type="number"
-                      min="1"
-                      max="53"
-                      inputMode="numeric"
+                      type="week"
                       value={draft.deliveryWindowWeekTo}
                       onChange={(event) =>
                         updateDraft("deliveryWindowWeekTo", event.target.value)
-                      }
-                    />
-                  </Label>
-                  <Label label="Jahr">
-                    <Field
-                      name="delivery_window_year"
-                      type="number"
-                      min="2020"
-                      max="2100"
-                      inputMode="numeric"
-                      value={draft.deliveryWindowYear}
-                      onChange={(event) =>
-                        updateDraft("deliveryWindowYear", event.target.value)
                       }
                     />
                   </Label>
