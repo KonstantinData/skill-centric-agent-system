@@ -410,6 +410,7 @@ def test_tenant_ui_deploy_workflow_is_manual_only_and_builds_first() -> None:
     assert "docker build" in workflow
     assert "docker save" in workflow
     assert "tenant-ui-deploy-plan" in workflow
+    assert "sync_cloudflare_dns:" in workflow
 
 
 def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None:
@@ -453,8 +454,13 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "SCAS_UI_HEALTH_PATH" in workflow
     assert "Create Cloudflare Origin certificate" in workflow
     assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
     assert "/client/v4/certificates" in workflow
     assert "tenant-ui-origin-cert/origin.pem" in workflow
+    assert "Cloudflare DNS sync is only wired for the liquisto tenant" in workflow
+    assert "Cloudflare DNS sync is only allowed for liquisto.cloud" in workflow
+    assert "Sync Cloudflare DNS to deployment host" in workflow
+    assert "synced-to-deployment-host" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
@@ -473,6 +479,10 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "systemctl reload nginx" in workflow
     assert "Reverse proxy:" in workflow
     assert "Origin certificate:" in workflow
+    assert "expected_content_marker=\"Command Center\"" in workflow
+    assert "Post-deploy content check failed" in workflow
+    assert "Verify public tenant UI content" in workflow
+    assert "Public tenant UI content check failed." in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:

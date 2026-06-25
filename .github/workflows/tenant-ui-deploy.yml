@@ -111,6 +111,11 @@ on:
         required: true
         type: string
         default: liquisto.cloud
+      sync_cloudflare_dns:
+        description: Update the tenant Cloudflare apex and www records to the deployment host
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -145,6 +150,7 @@ jobs:
       MANAGE_REVERSE_PROXY: ${{ inputs.manage_reverse_proxy }}
       REVERSE_PROXY_CONFIG_PATH: ${{ inputs.reverse_proxy_config_path }}
       REVERSE_PROXY_CERT_HOSTNAME: ${{ inputs.reverse_proxy_cert_hostname }}
+      SYNC_CLOUDFLARE_DNS: ${{ inputs.sync_cloudflare_dns }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -169,6 +175,7 @@ jobs:
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
       LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
+      LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
 
     steps:
       - name: Check out repository
@@ -264,6 +271,16 @@ jobs:
 
           if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
             echo "::error::confirm_production must be true for production deploys."
+            exit 1
+          fi
+
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_ID}" != "liquisto" ]; then
+            echo "::error::Cloudflare DNS sync is only wired for the liquisto tenant."
+            exit 1
+          fi
+
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_HOSTNAME}" != "liquisto.cloud" ]; then
+            echo "::error::Cloudflare DNS sync is only allowed for liquisto.cloud."
             exit 1
           fi
 
@@ -713,6 +730,10 @@ jobs:
             up -d "${SERVICE_NAME}"
 
           health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}${SCAS_UI_HEALTH_PATH}"
+          expected_content_marker=""
+          if [ "${UI_APP}" = "liquisto-workbench" ]; then
+            expected_content_marker="Command Center"
+          fi
           health_passed=0
           for attempt in $(seq 1 30); do
             if curl -fsS --max-time 10 "${health_url}" >/dev/null; then
@@ -734,6 +755,21 @@ jobs:
               echo "Rolled back to previous image ${previous_image}." >&2
             fi
             exit 1
+          fi
+
+          if [ -n "${expected_content_marker}" ]; then
+            if ! curl -fsS --max-time 10 "${health_url}" | grep -Fq "${expected_content_marker}"; then
+              echo "Post-deploy content check failed: expected marker was not served by the tenant UI container." >&2
+              if [ -n "${previous_image}" ]; then
+                sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
+                docker compose \
+                  -p "${COMPOSE_PROJECT}" \
+                  -f "${REMOTE_OVERRIDE_PATH}" \
+                  up -d "${SERVICE_NAME}"
+                echo "Rolled back to previous image ${previous_image}." >&2
+              fi
+              exit 1
+            fi
           fi
 
           reverse_proxy_status="not managed"
@@ -817,6 +853,13 @@ jobs:
               --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
               --max-time 10 \
               "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" >/dev/null
+            if [ -n "${expected_content_marker}" ]; then
+              curl -kfsS \
+                --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
+                --max-time 10 \
+                "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" \
+                | grep -Fq "${expected_content_marker}"
+            fi
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
           fi
 
@@ -836,6 +879,7 @@ jobs:
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
             printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
             printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
+            printf -- '- Expected content marker: `%s`\n' "${expected_content_marker:-not-required}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
@@ -843,6 +887,143 @@ jobs:
 
           rm -f "${image_archive}" "${REMOTE_ORIGIN_CERT:-}" "${REMOTE_ORIGIN_KEY:-}"
           REMOTE
+
+      - name: Sync Cloudflare DNS to deployment host
+        if: env.APPLY_DEPLOY == 'true' && env.SYNC_CLOUDFLARE_DNS == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "${LIQUISTO_CLOUDFLARE_ZONE_ID}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_ZONE_ID."
+            exit 1
+          fi
+
+          deploy_origin_ipv4="$(
+            TARGET_HETZNER_HOST="${TARGET_HETZNER_HOST}" python3 - <<'PY'
+          import ipaddress
+          import os
+          import socket
+
+          host = os.environ["TARGET_HETZNER_HOST"]
+          candidates = socket.getaddrinfo(host, 443, socket.AF_INET, socket.SOCK_STREAM)
+          if not candidates:
+              raise SystemExit("Deployment host did not resolve to an IPv4 address.")
+          print(str(ipaddress.ip_address(candidates[0][4][0])))
+          PY
+          )"
+          echo "::add-mask::${deploy_origin_ipv4}"
+
+          CLOUDFLARE_API_TOKEN="${LIQUISTO_CLOUDFLARE_API_TOKEN}" \
+          CLOUDFLARE_ZONE_ID="${LIQUISTO_CLOUDFLARE_ZONE_ID}" \
+          DEPLOY_ORIGIN_IPV4="${deploy_origin_ipv4}" \
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          hostname = os.environ["TENANT_HOSTNAME"]
+          origin_ipv4 = os.environ["DEPLOY_ORIGIN_IPV4"]
+          base_url = "https://api.cloudflare.com/client/v4"
+
+          def cloudflare(path: str, method: str = "GET", payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base_url}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+              if not body.get("success"):
+                  raise RuntimeError(f"Cloudflare API request failed for {method} {path}.")
+              return body
+
+          def list_records(record_type: str, name: str) -> list[dict]:
+              encoded_name = urllib.parse.quote(name, safe="")
+              payload = cloudflare(
+                  f"/zones/{zone_id}/dns_records?type={record_type}&name={encoded_name}&per_page=100"
+              )
+              return list(payload.get("result", []))
+
+          def upsert(record_type: str, name: str, content: str) -> None:
+              desired = {
+                  "type": record_type,
+                  "name": name,
+                  "content": content,
+                  "ttl": 1,
+                  "proxied": True,
+              }
+              records = list_records(record_type, name)
+              if not records:
+                  cloudflare(f"/zones/{zone_id}/dns_records", method="POST", payload=desired)
+                  return
+              cloudflare(
+                  f"/zones/{zone_id}/dns_records/{records[0]['id']}",
+                  method="PUT",
+                  payload=desired,
+              )
+              for extra in records[1:]:
+                  cloudflare(f"/zones/{zone_id}/dns_records/{extra['id']}", method="DELETE")
+
+          upsert("A", hostname, origin_ipv4)
+          upsert("CNAME", f"www.{hostname}", hostname)
+          print(
+              json.dumps(
+                  {
+                      "hostname": hostname,
+                      "apex_a_record": "synced-to-deployment-host",
+                      "www_cname_record": "synced-to-apex",
+                      "origin_content_printed": False,
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Verify public tenant UI content
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_content_marker=""
+          if [ "${UI_APP}" = "liquisto-workbench" ]; then
+            expected_content_marker="Command Center"
+          fi
+
+          public_url="https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}"
+          public_check_passed=0
+          for attempt in $(seq 1 30); do
+            public_body="$(mktemp)"
+            if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
+              if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
+                public_check_passed=1
+                rm -f "${public_body}"
+                break
+              fi
+            fi
+            rm -f "${public_body}"
+            echo "Waiting for public tenant UI content check (${attempt}/30)." >&2
+            sleep 5
+          done
+
+          if [ "${public_check_passed}" -ne 1 ]; then
+            echo "::error::Public tenant UI content check failed."
+            exit 1
+          fi
 
       - name: Download deployment evidence
         if: env.APPLY_DEPLOY == 'true'
