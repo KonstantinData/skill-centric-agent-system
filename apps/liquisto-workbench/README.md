@@ -14,9 +14,22 @@ operating model as a user-facing product surface:
 - Cloudflare Control Plane / Hetzner Runtime Plane boundaries as visible product
   constraints
 
-The current implementation is a UI shell with static contract data. Runtime
-mutation paths must be wired only after the Liquisto Control API and Hetzner
-runtime endpoints are explicitly scoped and validated.
+## Design Surface
+
+The first Cockpit screen is a dense operations workspace, not a marketing page.
+It includes:
+
+- Command Center for search and task-oriented entry
+- execution phase rail for Intake, Analyze, Compose, Execute, and Validate
+- system health tiles for Control API, Runtime Plane, Approvals, and Knowledge
+- work queue with owner, due signal, confidence, status, and risk
+- Agent Run cards with profile, validator, evidence state, and progress
+- Evidence Timeline for audit-friendly review
+- Data Source Health table for scope and sync posture
+
+The current implementation uses static contract data. Runtime mutation paths
+must be wired only after the Liquisto Control API and Hetzner runtime endpoints
+are explicitly scoped and validated.
 
 ## Local Validation
 

@@ -60,6 +60,32 @@ def test_liquisto_workbench_surfaces_agent_governance_not_marketing_site() -> No
     assert "Denials" in section_page
     assert ".hero-band" in globals_css
     assert ".metric-grid" in globals_css
+    assert ".command-surface" in globals_css
+    assert ".system-grid" in globals_css
+    assert ".timeline" in globals_css
+    assert ".source-table" in globals_css
+
+
+def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
+    data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
+    home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    assert "commandSuggestions" in data
+    assert "systemSignals" in data
+    assert "evidenceTimeline" in data
+    assert "dataSourceHealth" in data
+    assert "executionPhases" in data
+    assert "Command Center" in home
+    assert "Evidence Timeline" in home
+    assert "Data Source Health" in home
+    assert "progress-track" in home
+    assert "--accent-cool" in globals_css
+    assert "--accent-warm" in globals_css
+    assert "--success" in globals_css
+    assert ".work-table" in globals_css
+    assert ".phase-rail" in globals_css
+    assert ".progress-track" in globals_css
 
 
 def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
