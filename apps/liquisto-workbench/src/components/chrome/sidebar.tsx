@@ -23,7 +23,7 @@ export function Sidebar() {
         <div className="min-w-0">
           <p className="truncate text-sm font-black">Liquisto</p>
           <p className="truncate text-xs font-bold text-[var(--muted)]">
-            SCAS Workbench
+            Business Platform
           </p>
         </div>
       </Link>

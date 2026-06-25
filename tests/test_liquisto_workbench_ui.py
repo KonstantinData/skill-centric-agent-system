@@ -16,28 +16,31 @@ def test_liquisto_workbench_exists_as_scas_tenant_app() -> None:
     readme = load_text(APP_ROOT / "README.md")
 
     assert '"name": "liquisto-workbench"' in package_json
-    assert "SCAS architecture" in readme
+    assert "Liquisto business processes" in readme
     assert "not a Streamlit replacement" in readme
+    assert "not a SCAS-first" in readme
     assert "Cloudflare Control Plane / Hetzner Runtime Plane" in readme
 
 
-def test_liquisto_workbench_navigation_matches_scas_operating_model() -> None:
+def test_liquisto_workbench_navigation_prioritizes_business_processes() -> None:
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
 
     for label in (
         "Cockpit",
-        "Tasks",
-        "Research",
-        "Cases",
-        "Knowledge",
-        "Agent Runs",
-        "Approvals",
-        "Data Sources",
-        "Audit",
-        "Admin",
+        "Inventory Intake",
+        "Excess Analysis",
+        "Initiatives",
+        "Monetization",
+        "Repurposing",
+        "Partner Network",
+        "SCAS Workbench",
     ):
         assert label in data
 
+    assert "Tasks" in data
+    assert "Agent Runs" in data
+    assert "Approvals" in data
+    assert "SCAS Workbench as one register" in load_text(APP_ROOT / "README.md")
     assert "Technical authority: liquisto.cloud" in data
     assert "Control Plane: Cloudflare" in data
     assert "Runtime Plane: Hetzner" in data
@@ -45,16 +48,16 @@ def test_liquisto_workbench_navigation_matches_scas_operating_model() -> None:
     assert "Cross-tenant access: fail closed" in data
 
 
-def test_liquisto_workbench_surfaces_agent_governance_not_marketing_site() -> None:
+def test_liquisto_workbench_surfaces_business_processes_not_marketing_site() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "Operations Workbench" in home
-    assert "ein Runtime-Agent" in home
-    assert "tenant-spezifische Profile" in home
-    assert "kontrollierte Skills" in home
-    assert "überprüfbare" in home
+    assert "Geschaeftsprozess-Plattform" in home
+    assert "Excess Inventory" in home
+    assert "Monetarisierung" in home
+    assert "Repurposing" in home
+    assert "SCAS Workbench ist ein Register" in home
     assert "Task Analyzer und Agent Composer" in section_page
     assert "unveränderlichen Runtime Profile" in section_page
     assert "Denials" in section_page
@@ -73,10 +76,13 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
 
     assert "commandSuggestions" in data
     assert "systemSignals" in data
+    assert "businessProcesses" in data
+    assert "scasWorkbenchAreas" in data
     assert "evidenceTimeline" in data
     assert "dataSourceHealth" in data
     assert "executionPhases" in data
     assert "Command Center" in home
+    assert "SCAS Workbench Register" in home
     assert "Evidence Timeline" in home
     assert "Data Source Health" in home
     assert "progress-track" in home

@@ -1,29 +1,34 @@
-# Liquisto Workbench
+# Liquisto Business Platform
 
-Tenant-specific Next.js workbench for running Liquisto on the existing SCAS
-architecture. In product terms, this is the Liquisto SCAS architecture surfaced
-as an operations application.
+Tenant-specific Next.js platform for running Liquisto business processes on
+`liquisto.cloud`.
 
-The app is intentionally not a Streamlit replacement. It exposes the SCAS
-operating model as a user-facing product surface:
+The app is intentionally not a Streamlit replacement and not a SCAS-first
+console. Its primary product surface is Liquisto's operational business flow:
 
-- Cockpit for operational posture and queue pressure
-- Tasks, Research, Cases, and Knowledge as business workspaces
-- Agent Runs, Approvals, Data Sources, Audit, and Admin as governance surfaces
+- Inventory Intake for ERP exports, material lists, and customer context
+- Excess & Shortage Analysis for risk, liquidity, and prioritization
+- Initiative Management for decisions, owners, and progress
+- Monetization for resale candidates, pricing, and commercial readiness
+- Repurposing for unused materials and circular-economy initiatives
+- Partner Network for customer, buyer, and repurposing collaboration
+- SCAS Workbench as one register for Tasks, Research, Cases, Knowledge, Agent
+  Runs, Approvals, Data Sources, Audit, and Admin
 - Cloudflare Access identity headers for user context
 - Cloudflare Control Plane / Hetzner Runtime Plane boundaries as visible product
   constraints
 
 ## Design Surface
 
-The first Cockpit screen is a dense operations workspace, not a marketing page.
+The first Cockpit screen is a dense business-process workspace, not a marketing page.
 It includes:
 
-- Command Center for search and task-oriented entry
-- execution phase rail for Intake, Analyze, Compose, Execute, and Validate
+- Command Center for inventory, initiative, partner, and SCAS evidence search
+- execution phase rail for Import, Analyze, Prioritize, Monetize, and Verify
+- process tiles for Liquisto's core operating model
 - system health tiles for Control API, Runtime Plane, Approvals, and Knowledge
 - work queue with owner, due signal, confidence, status, and risk
-- Agent Run cards with profile, validator, evidence state, and progress
+- SCAS Workbench register summary with Agent Run cards
 - Evidence Timeline for audit-friendly review
 - Data Source Health table for scope and sync posture
 

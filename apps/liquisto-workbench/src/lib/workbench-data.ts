@@ -2,101 +2,103 @@ import {
   Activity,
   AlertTriangle,
   Archive,
+  BarChart3,
   Bot,
+  Boxes,
   CheckSquare,
   CircleDot,
   Clock3,
   DatabaseZap,
   FileSearch,
   Gauge,
+  Handshake,
   KeyRound,
   Library,
   ListChecks,
+  PackageSearch,
+  Recycle,
   ServerCog,
   Search,
-  Settings,
   ShieldCheck,
-  Workflow,
+  ShoppingCart,
 } from "lucide-react";
 
 export const navItems = [
   { href: "/", label: "Cockpit", icon: Gauge },
-  { href: "/tasks", label: "Tasks", icon: CheckSquare },
-  { href: "/research", label: "Research", icon: Search },
-  { href: "/cases", label: "Cases", icon: Archive },
-  { href: "/knowledge", label: "Knowledge", icon: Library },
-  { href: "/agent-runs", label: "Agent Runs", icon: Bot },
-  { href: "/approvals", label: "Approvals", icon: ListChecks },
-  { href: "/data-sources", label: "Data Sources", icon: DatabaseZap },
-  { href: "/audit", label: "Audit", icon: ShieldCheck },
-  { href: "/admin", label: "Admin", icon: Settings },
+  { href: "/inventory-intake", label: "Inventory Intake", icon: PackageSearch },
+  { href: "/excess-analysis", label: "Excess Analysis", icon: BarChart3 },
+  { href: "/initiative-management", label: "Initiatives", icon: ListChecks },
+  { href: "/monetization", label: "Monetization", icon: ShoppingCart },
+  { href: "/repurposing", label: "Repurposing", icon: Recycle },
+  { href: "/partner-network", label: "Partner Network", icon: Handshake },
+  { href: "/scas-workbench", label: "SCAS Workbench", icon: Bot },
 ];
 
 export const cockpitMetrics = [
   {
-    label: "Aktive Runs",
-    value: "18",
-    detail: "6 warten auf Evidence",
+    label: "Inventory Listen",
+    value: "42",
+    detail: "12 in Analyse, 8 bereit zur Entscheidung",
     tone: "info",
-    icon: Activity,
+    icon: Boxes,
   },
   {
-    label: "Freigaben",
-    value: "7",
-    detail: "2 kritisch vor Ausführung",
+    label: "Excess Risiko",
+    value: "18%",
+    detail: "marktfaehige Positionen priorisiert",
     tone: "warning",
-    icon: ListChecks,
+    icon: AlertTriangle,
   },
   {
-    label: "Skill Coverage",
-    value: "94%",
-    detail: "validierte Module im Liquisto Scope",
+    label: "Liquiditaetspotenzial",
+    value: "€1.8M",
+    detail: "bewertete Wiedervermarktungschancen",
     tone: "success",
-    icon: Workflow,
+    icon: ShoppingCart,
   },
   {
-    label: "Policy Denials",
+    label: "SCAS Gates",
     value: "3",
-    detail: "letzte 24 Stunden",
-    tone: "danger",
+    detail: "Freigaben vor riskanten Aktionen",
+    tone: "info",
     icon: ShieldCheck,
   },
 ];
 
 export const workQueue = [
   {
-    title: "Lieferantenanalyse für neue Beschaffungskategorie",
-    scope: "Research + Knowledge",
-    status: "Human review",
+    title: "Excess Inventory Liste normalisieren und klassifizieren",
+    scope: "Inventory Intake",
+    status: "Review",
     risk: "Medium",
-    owner: "Procurement",
+    owner: "Operations",
     due: "Heute 16:00",
-    confidence: "82%",
+    confidence: "88%",
   },
   {
-    title: "Importierte Marktquelle klassifizieren",
-    scope: "Data Source Intake",
-    status: "Policy gated",
+    title: "Shortage-Risiko fuer kritische Ersatzteile bewerten",
+    scope: "Excess + Shortage Analysis",
+    status: "Decision needed",
     risk: "High",
-    owner: "Governance",
+    owner: "Analytics",
     due: "Heute 17:30",
-    confidence: "61%",
+    confidence: "74%",
   },
   {
-    title: "Case-Briefing aus freigegebenem Kontext erzeugen",
-    scope: "Case Execution",
+    title: "Marktfaehige Positionen fuer Wiederverkauf paketieren",
+    scope: "Monetization",
     status: "Ready",
     risk: "Low",
-    owner: "Operations",
+    owner: "Commercial",
     due: "Morgen 09:00",
     confidence: "91%",
   },
   {
-    title: "Memory Candidate aus Run-Evidence bewerten",
-    scope: "Knowledge Governance",
+    title: "Repurposing-Kandidaten fuer unused material vorbereiten",
+    scope: "Circular Economy",
     status: "Validation",
     risk: "Medium",
-    owner: "Knowledge",
+    owner: "Product",
     due: "Morgen 11:00",
     confidence: "76%",
   },
@@ -145,10 +147,10 @@ export const governanceRails = [
 ];
 
 export const commandSuggestions = [
-  "Neuen Liquisto Task aufnehmen",
-  "Run-ID oder Case suchen",
-  "Knowledge Candidate prüfen",
-  "Data Source Health öffnen",
+  "Inventory Liste importieren",
+  "Excess- und Shortage-Risiko prüfen",
+  "Monetarisierungsinitiative öffnen",
+  "SCAS Evidence anzeigen",
 ];
 
 export const systemSignals = [
@@ -231,14 +233,129 @@ export const dataSourceHealth = [
 ];
 
 export const executionPhases = [
-  { label: "Intake", value: "complete", icon: CheckSquare },
+  { label: "Import", value: "complete", icon: PackageSearch },
   { label: "Analyze", value: "complete", icon: Search },
-  { label: "Compose", value: "complete", icon: Workflow },
-  { label: "Execute", value: "active", icon: Bot },
-  { label: "Validate", value: "waiting", icon: Clock3 },
+  { label: "Prioritize", value: "complete", icon: ListChecks },
+  { label: "Monetize", value: "active", icon: ShoppingCart },
+  { label: "Verify", value: "waiting", icon: Clock3 },
+];
+
+export const businessProcesses = [
+  {
+    title: "Inventory Intake",
+    detail: "ERP- und Lagerlisten aufnehmen, normalisieren und mit sauberem Kontext versehen.",
+    icon: PackageSearch,
+  },
+  {
+    title: "Excess & Shortage Analysis",
+    detail: "Ueberbestand, Mangelrisiko, Alterung und Working-Capital-Effekt sichtbar machen.",
+    icon: BarChart3,
+  },
+  {
+    title: "Initiative Management",
+    detail: "Entscheidungen, Verantwortliche und Fortschritt je Bestandspaket koordinieren.",
+    icon: ListChecks,
+  },
+  {
+    title: "Monetization",
+    detail: "Marktfaehige Positionen bewerten, bepreisen und fuer Wiederverkauf vorbereiten.",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Repurposing",
+    detail: "Unused Materials fuer neue Nutzungsideen, Partner und Circular-Economy-Initiativen qualifizieren.",
+    icon: Recycle,
+  },
+  {
+    title: "Idle Data Analytics",
+    detail: "Daten aus Wertschöpfung und Bestandsbewegung in verwertbare Effizienzsignale uebersetzen.",
+    icon: DatabaseZap,
+  },
+];
+
+export const scasWorkbenchAreas = [
+  "Tasks",
+  "Research",
+  "Cases",
+  "Knowledge",
+  "Agent Runs",
+  "Approvals",
+  "Data Sources",
+  "Audit",
+  "Admin",
 ];
 
 export const sections = {
+  "inventory-intake": {
+    title: "Inventory Intake",
+    subtitle: "Bestandslisten, ERP-Exporte und Kundenkontext in eine belastbare Liquisto-Arbeitsgrundlage ueberfuehren.",
+    icon: PackageSearch,
+    items: [
+      "Upload- und Importstrecken fuer Excess- und Shortage-relevante Materialdaten",
+      "Normalisierung von Artikelnummern, Mengen, Alterung, Standort und Bewertungsfeldern",
+      "Datenqualitaet, fehlende Felder und Scope-Freigaben vor weiterer Analyse sichtbar machen",
+    ],
+  },
+  "excess-analysis": {
+    title: "Excess & Shortage Analysis",
+    subtitle: "Ueberbestand, Mangelrisiko und Working-Capital-Potenzial priorisieren.",
+    icon: BarChart3,
+    items: [
+      "Diagnose des Status quo gegen Bestand, Verbrauch, Alterung und Wiederbeschaffungsrisiko",
+      "Priorisierung marktfaehiger Positionen mit minimalem Risiko fuer laufende Operationen",
+      "Benchmark- und Vorhersagesignale fuer bessere Bestandsentscheidungen",
+    ],
+  },
+  "initiative-management": {
+    title: "Initiative Management",
+    subtitle: "Teams, Entscheidungen und Massnahmen rund um Bestandspakete koordinieren.",
+    icon: ListChecks,
+    items: [
+      "Initiativen nach Kunde, Standort, Materialgruppe, Potenzial und Fälligkeit steuern",
+      "Entscheidungslogik fuer Hold, Reuse, Resell, Recycle oder weitere Analyse dokumentieren",
+      "Aufgaben, Verantwortliche und Fortschritt ohne Medienbruch sichtbar halten",
+    ],
+  },
+  monetization: {
+    title: "Monetization",
+    subtitle: "Marktfaehige Excess-Positionen bewerten, bepreisen und fuer Wiederverkauf vorbereiten.",
+    icon: ShoppingCart,
+    items: [
+      "Verkaufspakete mit Preisindikation, Marge, Marktinteresse und Risiko vorbereiten",
+      "Freigaben fuer externe Vermarktung und E-Commerce-Weitergabe steuern",
+      "Liquiditaetspotenzial und vermiedenen Scrap transparent machen",
+    ],
+  },
+  repurposing: {
+    title: "Repurposing",
+    subtitle: "Unused Materials fuer neue Nutzung, Partnerideen und Circular-Economy-Initiativen qualifizieren.",
+    icon: Recycle,
+    items: [
+      "Materialprofile fuer Repurposing-Ideen und Partner-Screening strukturieren",
+      "Use Cases, Machbarkeit und Nachhaltigkeitswirkung nachvollziehbar bewerten",
+      "Community- und Partnerentscheidungen als Initiativen weiterfuehren",
+    ],
+  },
+  "partner-network": {
+    title: "Partner Network",
+    subtitle: "Kunden, Kaeufer, Repurposing-Partner und interne Stakeholder in kontrollierten Workflows verbinden.",
+    icon: Handshake,
+    items: [
+      "Kontakte, Rollen und Interessen entlang einer Initiative sichtbar machen",
+      "Anfragen, Kaufinteresse und Partnerfeedback mit Bestandspositionen verbinden",
+      "Kommunikations- und Freigabestatus fuer Commercial und Operations buendeln",
+    ],
+  },
+  "scas-workbench": {
+    title: "SCAS Workbench",
+    subtitle: "Technischer Registerbereich fuer kontrollierte Agent-Arbeit, Governance und Evidence innerhalb der Liquisto-Plattform.",
+    icon: CheckSquare,
+    items: [
+      "Tasks, Research, Cases, Knowledge, Agent Runs, Approvals, Data Sources, Audit und Admin in einem Register",
+      "Ein Runtime-Agent arbeitet nur mit validiertem Profil, explizitem Scope und nachvollziehbarer Evidence",
+      "SCAS bleibt Betriebsschicht fuer Governance; die Produktoberflaeche bleibt an Liquisto-Geschaeftsprozessen orientiert",
+    ],
+  },
   tasks: {
     title: "Tasks",
     subtitle: "Operative Arbeit mit kontrollierter Agent-Ausführung, Priorität und Review-Zustand.",
