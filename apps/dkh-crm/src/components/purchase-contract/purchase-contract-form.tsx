@@ -232,7 +232,9 @@ export function PurchaseContractForm({
       : 0;
   const paymentOnOrderPercent = clampPercent(parsePercent(draft.paymentOnOrderPercent));
   const paymentBeforeDeliveryPercent = clampPercent(parsePercent(draft.paymentBeforeDeliveryPercent));
-  const restPaymentPercent = clampPercent(parsePercent(draft.restPaymentPercent));
+  const restPaymentPercent = clampPercent(
+    roundPercent(100 - paymentOnOrderPercent - paymentBeforeDeliveryPercent),
+  );
   const paymentOnOrder = roundMoney(invoiceGross * (paymentOnOrderPercent / 100));
   const paymentBeforeDelivery = roundMoney(invoiceGross * (paymentBeforeDeliveryPercent / 100));
   const restPayment = roundMoney(invoiceGross * (restPaymentPercent / 100));
@@ -256,34 +258,32 @@ export function PurchaseContractForm({
     }));
   }
 
-  function updatePaymentPercent(
-    key: "paymentOnOrderPercent" | "paymentBeforeDeliveryPercent" | "restPaymentPercent",
+  function updateEditablePaymentPercent(
+    key: "paymentOnOrderPercent" | "paymentBeforeDeliveryPercent",
     value: string,
   ) {
     const nextValue = clampPercent(parsePercent(value));
-    const keys = [
-      "paymentOnOrderPercent",
-      "paymentBeforeDeliveryPercent",
-      "restPaymentPercent",
-    ] as const;
-    const otherKeys = keys.filter((item) => item !== key);
 
     setDraft((current) => {
-      const remaining = roundPercent(100 - nextValue);
-      const firstOtherValue = clampPercent(parsePercent(current[otherKeys[0]]));
-      const secondOtherValue = clampPercent(parsePercent(current[otherKeys[1]]));
-      const otherTotal = firstOtherValue + secondOtherValue;
-      const balancedFirst =
-        otherTotal > 0
-          ? roundPercent((firstOtherValue / otherTotal) * remaining)
-          : roundPercent(remaining / 2);
-      const balancedSecond = roundPercent(100 - nextValue - balancedFirst);
+      const currentOnOrder = clampPercent(parsePercent(current.paymentOnOrderPercent));
+      const currentBeforeDelivery = clampPercent(
+        parsePercent(current.paymentBeforeDeliveryPercent),
+      );
+      const nextOnOrder =
+        key === "paymentOnOrderPercent"
+          ? Math.min(nextValue, roundPercent(100 - currentBeforeDelivery))
+          : currentOnOrder;
+      const nextBeforeDelivery =
+        key === "paymentBeforeDeliveryPercent"
+          ? Math.min(nextValue, roundPercent(100 - nextOnOrder))
+          : currentBeforeDelivery;
+      const restValue = roundPercent(100 - nextOnOrder - nextBeforeDelivery);
 
       return {
         ...current,
-        [key]: formatPercentValue(nextValue),
-        [otherKeys[0]]: formatPercentValue(balancedFirst),
-        [otherKeys[1]]: formatPercentValue(balancedSecond),
+        paymentOnOrderPercent: formatPercentValue(nextOnOrder),
+        paymentBeforeDeliveryPercent: formatPercentValue(nextBeforeDelivery),
+        restPaymentPercent: formatPercentValue(restValue),
       };
     });
   }
@@ -314,7 +314,11 @@ export function PurchaseContractForm({
   }
 
   function saveDraft() {
-    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    const normalizedDraft = {
+      ...draft,
+      restPaymentPercent: formatPercentValue(restPaymentPercent),
+    };
+    window.localStorage.setItem(storageKey, JSON.stringify(normalizedDraft));
     setDraftStatus(`Entwurf gespeichert: ${new Date().toLocaleTimeString("de-DE")}`);
   }
 
@@ -615,7 +619,7 @@ export function PurchaseContractForm({
                     inputMode="decimal"
                     value={draft.paymentOnOrderPercent}
                     onChange={(event) =>
-                      updatePaymentPercent("paymentOnOrderPercent", event.target.value)
+                      updateEditablePaymentPercent("paymentOnOrderPercent", event.target.value)
                     }
                     aria-label="Anzahlung bei Auftrag Prozent"
                   />
@@ -634,7 +638,7 @@ export function PurchaseContractForm({
                     inputMode="decimal"
                     value={draft.paymentBeforeDeliveryPercent}
                     onChange={(event) =>
-                      updatePaymentPercent("paymentBeforeDeliveryPercent", event.target.value)
+                      updateEditablePaymentPercent("paymentBeforeDeliveryPercent", event.target.value)
                     }
                     aria-label="Zahlung vor Lieferung Prozent"
                   />
@@ -651,10 +655,8 @@ export function PurchaseContractForm({
                   <Field
                     name="rest_payment_percent"
                     inputMode="decimal"
-                    value={draft.restPaymentPercent}
-                    onChange={(event) =>
-                      updatePaymentPercent("restPaymentPercent", event.target.value)
-                    }
+                    value={formatPercentValue(restPaymentPercent)}
+                    readOnly
                     aria-label="Restzahlung Prozent"
                   />
                   <span className="text-sm font-bold text-[var(--muted)]">%</span>

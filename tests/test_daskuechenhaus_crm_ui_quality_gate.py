@@ -119,12 +119,17 @@ def test_dkh_crm_purchase_contract_input_flow_supports_editable_payment_split() 
     assert 'paymentOnOrderPercent: "30"' in source
     assert 'paymentBeforeDeliveryPercent: "60"' in source
     assert 'restPaymentPercent: "10"' in source
-    assert "function updatePaymentPercent(" in source
-    assert "const remaining = roundPercent(100 - nextValue)" in source
-    assert "const balancedSecond = roundPercent(100 - nextValue - balancedFirst)" in source
+    assert "function updateEditablePaymentPercent(" in source
+    assert "const restValue = roundPercent(100 - nextOnOrder - nextBeforeDelivery)" in source
+    assert "const balancedSecond" not in source
+    assert 'updateEditablePaymentPercent("paymentOnOrderPercent"' in source
+    assert 'updateEditablePaymentPercent("paymentBeforeDeliveryPercent"' in source
+    assert 'updatePaymentPercent("restPaymentPercent"' not in source
     assert 'name="payment_on_order_percent"' in source
     assert 'name="payment_before_delivery_percent"' in source
     assert 'name="rest_payment_percent"' in source
+    assert "value={formatPercentValue(restPaymentPercent)}" in source
+    assert "restPaymentPercent: formatPercentValue(restPaymentPercent)" in source
 
 
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
