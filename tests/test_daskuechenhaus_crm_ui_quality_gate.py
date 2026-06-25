@@ -354,6 +354,7 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "mailto:${customer.primary_email}" in source
     assert "aria-disabled={!customer.primary_email}" in source
     assert "Vorgangsregal" in source
+    assert "customerNumber: selectedCase.carat_order_number || selectedCase.case_number || \"\"" in source
     assert "data-customer-master-open" in source
     assert "data-customer-master-modal" in source
     assert "Kundenstammdaten bearbeiten" in source
