@@ -27,6 +27,9 @@ type ContractDraft = {
   notes: string;
   invoiceGross: string;
   customerVatRate: string;
+  paymentOnOrderPercent: string;
+  paymentBeforeDeliveryPercent: string;
+  restPaymentPercent: string;
   dealerSignatureNote: string;
   customerSignatureNote: string;
   items: ContractItem[];
@@ -71,6 +74,9 @@ function createInitialDraft(initialDraft?: PurchaseContractFormProps["initialDra
     notes: "",
     invoiceGross: "",
     customerVatRate: "19",
+    paymentOnOrderPercent: "30",
+    paymentBeforeDeliveryPercent: "60",
+    restPaymentPercent: "10",
     dealerSignatureNote: "",
     customerSignatureNote: "",
     ...initialDraft,
@@ -113,6 +119,18 @@ function formatMoneyInput(value: string) {
 function formatPercentInput(value: string) {
   const parsed = parsePercent(value);
   return Number.isFinite(parsed) ? String(parsed).replace(".", ",") : "0";
+}
+
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function roundPercent(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function formatPercentValue(value: number) {
+  return String(roundPercent(value)).replace(".", ",");
 }
 
 function formatDateForPrint(value: string) {
@@ -212,9 +230,12 @@ export function PurchaseContractForm({
     customerVatRate > 0
       ? roundMoney(invoiceGross - invoiceGross / (1 + customerVatRate / 100))
       : 0;
-  const paymentOnOrder = roundMoney(invoiceGross * 0.3);
-  const paymentBeforeDelivery = roundMoney(invoiceGross * 0.6);
-  const restPayment = roundMoney(invoiceGross - paymentOnOrder - paymentBeforeDelivery);
+  const paymentOnOrderPercent = clampPercent(parsePercent(draft.paymentOnOrderPercent));
+  const paymentBeforeDeliveryPercent = clampPercent(parsePercent(draft.paymentBeforeDeliveryPercent));
+  const restPaymentPercent = clampPercent(parsePercent(draft.restPaymentPercent));
+  const paymentOnOrder = roundMoney(invoiceGross * (paymentOnOrderPercent / 100));
+  const paymentBeforeDelivery = roundMoney(invoiceGross * (paymentBeforeDeliveryPercent / 100));
+  const restPayment = roundMoney(invoiceGross * (restPaymentPercent / 100));
   const paymentTotal = paymentOnOrder + paymentBeforeDelivery + restPayment;
   const openAmount = invoiceGross - paymentTotal;
   const deliveryWeek = weekValueFromDate(draft.deliveryDate);
@@ -233,6 +254,38 @@ export function PurchaseContractForm({
         item.id === id ? { ...item, ...patch } : item,
       ),
     }));
+  }
+
+  function updatePaymentPercent(
+    key: "paymentOnOrderPercent" | "paymentBeforeDeliveryPercent" | "restPaymentPercent",
+    value: string,
+  ) {
+    const nextValue = clampPercent(parsePercent(value));
+    const keys = [
+      "paymentOnOrderPercent",
+      "paymentBeforeDeliveryPercent",
+      "restPaymentPercent",
+    ] as const;
+    const otherKeys = keys.filter((item) => item !== key);
+
+    setDraft((current) => {
+      const remaining = roundPercent(100 - nextValue);
+      const firstOtherValue = clampPercent(parsePercent(current[otherKeys[0]]));
+      const secondOtherValue = clampPercent(parsePercent(current[otherKeys[1]]));
+      const otherTotal = firstOtherValue + secondOtherValue;
+      const balancedFirst =
+        otherTotal > 0
+          ? roundPercent((firstOtherValue / otherTotal) * remaining)
+          : roundPercent(remaining / 2);
+      const balancedSecond = roundPercent(100 - nextValue - balancedFirst);
+
+      return {
+        ...current,
+        [key]: formatPercentValue(nextValue),
+        [otherKeys[0]]: formatPercentValue(balancedFirst),
+        [otherKeys[1]]: formatPercentValue(balancedSecond),
+      };
+    });
   }
 
   function addItem() {
@@ -390,14 +443,6 @@ export function PurchaseContractForm({
                   readOnly={useCustomerPhoneForDelivery}
                 />
               </Label>
-              <Label label="Liefertermin">
-                <Field
-                  name="delivery_date"
-                  type="date"
-                  value={draft.deliveryDate}
-                  onChange={(event) => updateDraft("deliveryDate", event.target.value)}
-                />
-              </Label>
               <Label label="Liefer-KW">
                 <Field
                   name="delivery_week"
@@ -408,7 +453,15 @@ export function PurchaseContractForm({
                   }
                 />
               </Label>
-              <Label label="Datum">
+              <Label label="Liefertermin">
+                <Field
+                  name="delivery_date"
+                  type="date"
+                  value={draft.deliveryDate}
+                  onChange={(event) => updateDraft("deliveryDate", event.target.value)}
+                />
+              </Label>
+              <Label label="Kaufvertrags-Datum">
                 <Field
                   name="contract_date"
                   type="date"
@@ -555,26 +608,62 @@ export function PurchaseContractForm({
           <Panel>
             <h2 className="section-title">Zahlung</h2>
             <div className="mt-4 grid gap-3">
-              <Label label="Anzahlung 30 %">
-                <Field
-                  name="payment_on_order"
-                  value={formatMoney(paymentOnOrder)}
-                  readOnly
-                />
+              <Label label="Anzahlung bei Auftrag">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="payment_on_order_percent"
+                    inputMode="decimal"
+                    value={draft.paymentOnOrderPercent}
+                    onChange={(event) =>
+                      updatePaymentPercent("paymentOnOrderPercent", event.target.value)
+                    }
+                    aria-label="Anzahlung bei Auftrag Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="payment_on_order"
+                    value={formatMoney(paymentOnOrder)}
+                    readOnly
+                  />
+                </div>
               </Label>
-              <Label label="Zahlung vor Lieferung 60 %">
-                <Field
-                  name="payment_before_delivery"
-                  value={formatMoney(paymentBeforeDelivery)}
-                  readOnly
-                />
+              <Label label="Zahlung vor Lieferung">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="payment_before_delivery_percent"
+                    inputMode="decimal"
+                    value={draft.paymentBeforeDeliveryPercent}
+                    onChange={(event) =>
+                      updatePaymentPercent("paymentBeforeDeliveryPercent", event.target.value)
+                    }
+                    aria-label="Zahlung vor Lieferung Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="payment_before_delivery"
+                    value={formatMoney(paymentBeforeDelivery)}
+                    readOnly
+                  />
+                </div>
               </Label>
-              <Label label="Restzahlung 10 %">
-                <Field
-                  name="rest_payment"
-                  value={formatMoney(restPayment)}
-                  readOnly
-                />
+              <Label label="Restzahlung">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="rest_payment_percent"
+                    inputMode="decimal"
+                    value={draft.restPaymentPercent}
+                    onChange={(event) =>
+                      updatePaymentPercent("restPaymentPercent", event.target.value)
+                    }
+                    aria-label="Restzahlung Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="rest_payment"
+                    value={formatMoney(restPayment)}
+                    readOnly
+                  />
+                </div>
               </Label>
               <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
                 <div className="flex justify-between gap-3">

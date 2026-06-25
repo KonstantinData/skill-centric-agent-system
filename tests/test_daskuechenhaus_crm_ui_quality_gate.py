@@ -103,6 +103,30 @@ def test_dkh_crm_purchase_contract_print_layout_matches_blank_form_offsets() -> 
     assert ".print-item-row-1 .print-item-description" not in globals_css
 
 
+def test_dkh_crm_purchase_contract_input_flow_supports_editable_payment_split() -> None:
+    source = load_text(
+        APP_ROOT
+        / "src"
+        / "components"
+        / "purchase-contract"
+        / "purchase-contract-form.tsx"
+    )
+
+    assert source.index('Label label="Liefer-KW"') < source.index('Label label="Liefertermin"')
+    assert 'Label label="Kaufvertrags-Datum"' in source
+    assert 'Label label="Datum"' not in source
+    assert "paymentOnOrderPercent: string" in source
+    assert 'paymentOnOrderPercent: "30"' in source
+    assert 'paymentBeforeDeliveryPercent: "60"' in source
+    assert 'restPaymentPercent: "10"' in source
+    assert "function updatePaymentPercent(" in source
+    assert "const remaining = roundPercent(100 - nextValue)" in source
+    assert "const balancedSecond = roundPercent(100 - nextValue - balancedFirst)" in source
+    assert 'name="payment_on_order_percent"' in source
+    assert 'name="payment_before_delivery_percent"' in source
+    assert 'name="rest_payment_percent"' in source
+
+
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
     kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
