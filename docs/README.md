@@ -88,6 +88,10 @@ This repository uses `docs/` as an operational documentation surface, not only a
   manual deployment path in `.github/workflows/tenant-ui-deploy.yml`.
 - `apps/dkh-crm/`: DKH CRM Next.js app served behind Cloudflare Access at
   `es-daskuechenhaus.de` / `www.es-daskuechenhaus.de`.
+- `apps/liquisto-workbench/`: Liquisto SCAS Workbench Next.js app for the
+  `liquisto.cloud` tenant surface. It exposes Cockpit, Tasks, Knowledge, Agent
+  Runs, Approvals, Data Sources, Audit, and Admin views over the existing SCAS
+  operating model.
 
 ## Roadmap
 

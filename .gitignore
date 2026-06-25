@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!apps/liquisto-workbench/src/lib/
+!apps/liquisto-workbench/src/lib/**
 parts/
 sdist/
 var/
@@ -57,6 +59,7 @@ security-evidence/
 .gitleaks.report.json
 coverage/
 node_modules/
+apps/liquisto-workbench/.next/
 template/*
 !template/skills/
 !template/skills/**
