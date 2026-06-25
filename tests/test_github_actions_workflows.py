@@ -437,8 +437,9 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "UI_SESSION_CONTEXT_JSON_B64=" in workflow
     assert "UI_LOGIN_USERS_JSON_B64=" in workflow
-    assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
-    assert "::add-mask::${UI_LOGIN_USERS_JSON_B64}" in workflow
+    assert "for secret_value in" in workflow
+    assert 'if [ -n "${secret_value}" ]; then' in workflow
+    assert "echo \"::add-mask::${secret_value}\"" in workflow
     assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
     assert "label=com.docker.compose.service=${SERVICE_NAME}" in workflow
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
@@ -450,6 +451,10 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
     assert "SCAS_UI_CONTAINER_PORT" in workflow
     assert "SCAS_UI_HEALTH_PATH" in workflow
+    assert "Create Cloudflare Origin certificate" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "/client/v4/certificates" in workflow
+    assert "tenant-ui-origin-cert/origin.pem" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
@@ -467,6 +472,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
     assert "systemctl reload nginx" in workflow
     assert "Reverse proxy:" in workflow
+    assert "Origin certificate:" in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:

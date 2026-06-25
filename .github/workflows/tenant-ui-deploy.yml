@@ -168,6 +168,7 @@ jobs:
       SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
 
     steps:
       - name: Check out repository
@@ -474,12 +475,18 @@ jobs:
           UI_LOGIN_USERS_JSON_B64="$(printf '%s' "${UI_LOGIN_USERS_JSON}" | base64 -w0)"
           TENANT_ADMIN_TOKEN_B64="$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
           CUSTOMER_CASES_API_SECRET_B64="$(printf '%s' "${CUSTOMER_CASES_API_SECRET}" | base64 -w0)"
-          echo "::add-mask::${UI_SESSION_CONTEXT_JSON}"
-          echo "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}"
-          echo "::add-mask::${UI_LOGIN_USERS_JSON}"
-          echo "::add-mask::${UI_LOGIN_USERS_JSON_B64}"
-          echo "::add-mask::${TENANT_ADMIN_TOKEN_B64}"
-          echo "::add-mask::${CUSTOMER_CASES_API_SECRET_B64}"
+          for secret_value in \
+            "${UI_SESSION_CONTEXT_JSON}" \
+            "${UI_SESSION_CONTEXT_JSON_B64}" \
+            "${UI_LOGIN_USERS_JSON}" \
+            "${UI_LOGIN_USERS_JSON_B64}" \
+            "${TENANT_ADMIN_TOKEN_B64}" \
+            "${CUSTOMER_CASES_API_SECRET_B64}"
+          do
+            if [ -n "${secret_value}" ]; then
+              echo "::add-mask::${secret_value}"
+            fi
+          done
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
@@ -511,6 +518,77 @@ jobs:
 
           ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
 
+      - name: Create Cloudflare Origin certificate
+        if: env.APPLY_DEPLOY == 'true' && env.MANAGE_REVERSE_PROXY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${TENANT_ID}" in
+            liquisto)
+              cf_api_token="${LIQUISTO_CLOUDFLARE_API_TOKEN:-}"
+              ;;
+            *)
+              cf_api_token=""
+              ;;
+          esac
+
+          if [ -z "${cf_api_token}" ]; then
+            echo "::error::Missing Cloudflare API token for tenant ${TENANT_ID}; cannot create origin certificate."
+            exit 1
+          fi
+
+          mkdir -p tenant-ui-origin-cert
+          openssl req \
+            -new \
+            -newkey rsa:2048 \
+            -nodes \
+            -keyout tenant-ui-origin-cert/origin.key \
+            -out tenant-ui-origin-cert/origin.csr \
+            -subj "/CN=${REVERSE_PROXY_CERT_HOSTNAME}" \
+            -addext "subjectAltName=DNS:${REVERSE_PROXY_CERT_HOSTNAME}" >/dev/null 2>&1
+
+          CLOUDFLARE_API_TOKEN="${cf_api_token}" python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          hostname = os.environ["REVERSE_PROXY_CERT_HOSTNAME"]
+          csr = Path("tenant-ui-origin-cert/origin.csr").read_text(encoding="utf-8")
+          payload = {
+              "csr": csr,
+              "hostnames": [hostname],
+              "request_type": "origin-rsa",
+              "requested_validity": 5475,
+          }
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4/certificates",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise SystemExit(
+                  f"Cloudflare Origin CA certificate creation failed: {detail}"
+              ) from exc
+          if not body.get("success", False):
+              raise SystemExit(f"Cloudflare Origin CA certificate creation failed: {body}")
+          Path("tenant-ui-origin-cert/origin.pem").write_text(
+              body["result"]["certificate"],
+              encoding="utf-8",
+          )
+          PY
+
       - name: Upload image to target host
         if: env.APPLY_DEPLOY == 'true'
         shell: bash
@@ -523,6 +601,20 @@ jobs:
             -o ConnectTimeout=10 \
             "${SCAS_UI_IMAGE_ARCHIVE}" \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
+          if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
+            scp \
+              -i "${HOME}/.ssh/hetzner_key" \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              tenant-ui-origin-cert/origin.pem \
+              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem"
+            scp \
+              -i "${HOME}/.ssh/hetzner_key" \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              tenant-ui-origin-cert/origin.key \
+              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key"
+          fi
 
       - name: Deploy image with rollback guard
         if: env.APPLY_DEPLOY == 'true'
@@ -535,7 +627,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' UI_APP='${UI_APP}' SCAS_UI_CONTAINER_PORT='${SCAS_UI_CONTAINER_PORT}' SCAS_UI_HEALTH_PATH='${SCAS_UI_HEALTH_PATH}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' UI_APP='${UI_APP}' SCAS_UI_CONTAINER_PORT='${SCAS_UI_CONTAINER_PORT}' SCAS_UI_HEALTH_PATH='${SCAS_UI_HEALTH_PATH}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' REMOTE_ORIGIN_CERT='/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -649,12 +741,25 @@ jobs:
             nginx_site="${REVERSE_PROXY_CONFIG_PATH}"
             nginx_enabled="/etc/nginx/sites-enabled/$(basename "${nginx_site}")"
             cert_dir="/etc/letsencrypt/live/${REVERSE_PROXY_CERT_HOSTNAME}"
+            origin_cert_dir="/etc/ssl/cloudflare"
+            origin_cert_file="${origin_cert_dir}/${TENANT_ID}-origin.pem"
+            origin_key_file="${origin_cert_dir}/${TENANT_ID}-origin.key"
             nginx_candidate="${evidence_dir}/nginx-site.conf"
             nginx_backup="${evidence_dir}/nginx-site.previous"
 
             if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
-              echo "Origin certificate files are missing for ${REVERSE_PROXY_CERT_HOSTNAME}." >&2
-              exit 1
+              if [ ! -f "${REMOTE_ORIGIN_CERT}" ] || [ ! -f "${REMOTE_ORIGIN_KEY}" ]; then
+                echo "Origin certificate files are missing for ${REVERSE_PROXY_CERT_HOSTNAME}." >&2
+                exit 1
+              fi
+              sudo_if_needed install -d -o root -g root -m 0755 "${origin_cert_dir}"
+              sudo_if_needed install -o root -g root -m 0644 "${REMOTE_ORIGIN_CERT}" "${origin_cert_file}"
+              sudo_if_needed install -o root -g root -m 0600 "${REMOTE_ORIGIN_KEY}" "${origin_key_file}"
+              cert_file="${origin_cert_file}"
+              key_file="${origin_key_file}"
+            else
+              cert_file="${cert_dir}/fullchain.pem"
+              key_file="${cert_dir}/privkey.pem"
             fi
 
             cat > "${nginx_candidate}" <<EOF
@@ -669,8 +774,8 @@ jobs:
               listen 443 ssl http2;
               server_name ${TENANT_HOSTNAME};
 
-              ssl_certificate ${cert_dir}/fullchain.pem;
-              ssl_certificate_key ${cert_dir}/privkey.pem;
+              ssl_certificate ${cert_file};
+              ssl_certificate_key ${key_file};
 
               location / {
                   proxy_pass http://127.0.0.1:${LOCAL_HEALTH_PORT};
@@ -730,12 +835,13 @@ jobs:
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
             printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
+            printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
           } > "${evidence_dir}/deployment.md"
 
-          rm -f "${image_archive}"
+          rm -f "${image_archive}" "${REMOTE_ORIGIN_CERT:-}" "${REMOTE_ORIGIN_KEY:-}"
           REMOTE
 
       - name: Download deployment evidence
