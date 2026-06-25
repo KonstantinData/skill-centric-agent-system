@@ -97,6 +97,9 @@ def test_dkh_crm_purchase_contract_print_layout_matches_blank_form_offsets() -> 
     assert ".print-customer-phone {\n    left: 33mm;" in globals_css
     assert ".print-delivery-phone {\n    left: 33mm;" in globals_css
     assert ".print-pickup {\n    left: 142mm;\n    top: 57.2mm;" in globals_css
+    assert ".print-delivery-date {\n    left: 143mm;" in globals_css
+    assert ".print-customer-number {\n    left: 143mm;" in globals_css
+    assert ".print-contract-date {\n    left: 143mm;" in globals_css
     assert ".print-items {\n    left: 20mm;\n    top: 107.5mm;" in globals_css
     assert "row-gap: 3.5mm;" in globals_css
     assert "transform: translateY(-2mm);" in globals_css
