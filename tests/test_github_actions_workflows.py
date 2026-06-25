@@ -401,7 +401,12 @@ def test_tenant_ui_deploy_workflow_is_manual_only_and_builds_first() -> None:
     assert "target_environment:" in workflow
     assert "apply_deploy:" in workflow
     assert "default: false" in workflow
+    assert "ui_app:" in workflow
+    assert "- streamlit-business-ui" in workflow
+    assert "- liquisto-workbench" in workflow
     assert "deploy/streamlit-business-ui/Dockerfile" in workflow
+    assert "deploy/liquisto-workbench/Dockerfile" in workflow
+    assert "scas-liquisto-workbench:${GITHUB_SHA}" in workflow
     assert "docker build" in workflow
     assert "docker save" in workflow
     assert "tenant-ui-deploy-plan" in workflow
@@ -439,10 +444,12 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "legacy compose files and .env are not read" in workflow
-    assert "Waiting for Streamlit health check (${attempt}/30)" in workflow
+    assert "Waiting for tenant UI health check (${attempt}/30)" in workflow
     assert "SCAS_UI_AUTH_MODE=%s" in workflow
     assert "SCAS_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
+    assert "SCAS_UI_CONTAINER_PORT" in workflow
+    assert "SCAS_UI_HEALTH_PATH" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
@@ -452,6 +459,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Post-deploy health check failed." in workflow
     assert "Rolled back to previous image" in workflow
     assert "_stcore/health" in workflow
+    assert "health_path=\"/\"" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
     assert "manage_reverse_proxy:" in workflow
     assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow

@@ -74,15 +74,23 @@ on:
         type: string
         default: /opt/liquisto/scas-streamlit-business-ui.override.yml
       service_name:
-        description: Docker Compose service serving Streamlit
+        description: Docker Compose service serving the tenant UI
         required: true
         type: string
         default: app
+      ui_app:
+        description: Tenant UI application to build and deploy
+        required: true
+        type: choice
+        options:
+          - streamlit-business-ui
+          - liquisto-workbench
+        default: liquisto-workbench
       local_health_port:
-        description: Remote localhost port used by Streamlit health checks
+        description: Remote localhost port used by tenant UI health checks
         required: true
         type: string
-        default: "8501"
+        default: "3027"
       owner_principal_id:
         description: Non-secret owner principal id used to build tenant-local session context
         required: false
@@ -131,6 +139,7 @@ jobs:
       COMPOSE_PROJECT: ${{ inputs.compose_project }}
       REMOTE_OVERRIDE_PATH: ${{ inputs.remote_override_path }}
       SERVICE_NAME: ${{ inputs.service_name }}
+      UI_APP: ${{ inputs.ui_app }}
       LOCAL_HEALTH_PORT: ${{ inputs.local_health_port }}
       OWNER_PRINCIPAL_ID_INPUT: ${{ inputs.owner_principal_id }}
       MANAGE_REVERSE_PROXY: ${{ inputs.manage_reverse_proxy }}
@@ -177,6 +186,11 @@ jobs:
           case "${SCAS_UI_AUTH_MODE_TARGET}" in
             required|local-login) ;;
             *) echo "::error::Unsupported auth_mode: ${SCAS_UI_AUTH_MODE_TARGET}" ; exit 1 ;;
+          esac
+
+          case "${UI_APP}" in
+            streamlit-business-ui|liquisto-workbench) ;;
+            *) echo "::error::Unsupported ui_app: ${UI_APP}" ; exit 1 ;;
           esac
 
           for value_name in TENANT_ID TENANT_HOSTNAME COMPOSE_PROJECT SERVICE_NAME
@@ -252,27 +266,48 @@ jobs:
             exit 1
           fi
 
-      - name: Build Streamlit Business UI image
+      - name: Build tenant UI image
         shell: bash
         run: |
           set -euo pipefail
 
-          image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
+          case "${UI_APP}" in
+            streamlit-business-ui)
+              image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
+              dockerfile="deploy/streamlit-business-ui/Dockerfile"
+              image_title="SCAS Streamlit Business UI"
+              image_archive="scas-streamlit-business-ui-image.tar.gz"
+              container_port="8501"
+              health_path="/_stcore/health"
+              ;;
+            liquisto-workbench)
+              image_ref="scas-liquisto-workbench:${GITHUB_SHA}"
+              dockerfile="deploy/liquisto-workbench/Dockerfile"
+              image_title="SCAS Liquisto Workbench"
+              image_archive="scas-liquisto-workbench-image.tar.gz"
+              container_port="3000"
+              health_path="/"
+              ;;
+          esac
+
           docker build \
-            --file deploy/streamlit-business-ui/Dockerfile \
+            --file "${dockerfile}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            --label "org.opencontainers.image.title=SCAS Streamlit Business UI" \
+            --label "org.opencontainers.image.title=${image_title}" \
             --tag "${image_ref}" \
             .
-          docker save "${image_ref}" | gzip > scas-streamlit-business-ui-image.tar.gz
+          docker save "${image_ref}" | gzip > "${image_archive}"
           printf 'SCAS_UI_IMAGE=%s\n' "${image_ref}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_IMAGE_ARCHIVE=%s\n' "${image_archive}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_CONTAINER_PORT=%s\n' "${container_port}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_HEALTH_PATH=%s\n' "${health_path}" >> "${GITHUB_ENV}"
 
       - name: Upload image artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: scas-streamlit-business-ui-image-${{ github.sha }}
-          path: scas-streamlit-business-ui-image.tar.gz
+          name: scas-tenant-ui-image-${{ github.sha }}
+          path: ${{ env.SCAS_UI_IMAGE_ARCHIVE }}
           if-no-files-found: error
 
       - name: Stop before remote mutation when apply_deploy is false
@@ -287,6 +322,7 @@ jobs:
             printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
             printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- UI app: `%s`\n' "${UI_APP}"
             printf -- '- Apply deploy: `false`\n'
             printf -- '- Result: image built and uploaded as an artifact; no remote host was changed.\n'
           } > tenant-ui-deploy-evidence/deploy-plan.md
@@ -485,8 +521,8 @@ jobs:
             -i "${HOME}/.ssh/hetzner_key" \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
-            scas-streamlit-business-ui-image.tar.gz \
-            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
+            "${SCAS_UI_IMAGE_ARCHIVE}" \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
 
       - name: Deploy image with rollback guard
         if: env.APPLY_DEPLOY == 'true'
@@ -499,7 +535,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' UI_APP='${UI_APP}' SCAS_UI_CONTAINER_PORT='${SCAS_UI_CONTAINER_PORT}' SCAS_UI_HEALTH_PATH='${SCAS_UI_HEALTH_PATH}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -512,8 +548,8 @@ jobs:
 
           remote_dir="$(dirname "${REMOTE_OVERRIDE_PATH}")"
           evidence_dir="/tmp/scas-tenant-ui-deploy-${GITHUB_RUN_ID}"
-          image_archive="/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
-          env_file="${remote_dir}/scas-streamlit-business-ui.env"
+          image_archive="/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
+          env_file="${remote_dir}/scas-tenant-ui.env"
           previous_image=""
 
           install -d -m 700 "${evidence_dir}"
@@ -552,19 +588,30 @@ jobs:
           } > "${env_file}"
           chmod 600 "${env_file}"
 
+          if [ "${UI_APP}" = "streamlit-business-ui" ]; then
+            ui_command='command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]'
+            ui_environment='
+                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+                STREAMLIT_SERVER_HEADLESS: "true"
+                STREAMLIT_SERVER_PORT: "8501"'
+          else
+            ui_command=""
+            ui_environment='
+                HOSTNAME: "0.0.0.0"
+                PORT: "3000"'
+          fi
+
           cat > "${REMOTE_OVERRIDE_PATH}" <<EOF
           services:
             ${SERVICE_NAME}:
               image: ${SCAS_UI_IMAGE}
-              command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]
+          $(if [ -n "${ui_command}" ]; then printf '    %s\n' "${ui_command}"; fi)
               env_file:
                 - ${env_file}
               environment:
-                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
-                STREAMLIT_SERVER_HEADLESS: "true"
-                STREAMLIT_SERVER_PORT: "8501"
+          ${ui_environment}
               ports:
-                - "127.0.0.1:${LOCAL_HEALTH_PORT}:8501"
+                - "127.0.0.1:${LOCAL_HEALTH_PORT}:${SCAS_UI_CONTAINER_PORT}"
               restart: unless-stopped
           EOF
 
@@ -573,14 +620,14 @@ jobs:
             -f "${REMOTE_OVERRIDE_PATH}" \
             up -d "${SERVICE_NAME}"
 
-          health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}/_stcore/health"
+          health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}${SCAS_UI_HEALTH_PATH}"
           health_passed=0
           for attempt in $(seq 1 30); do
             if curl -fsS --max-time 10 "${health_url}" >/dev/null; then
               health_passed=1
               break
             fi
-            echo "Waiting for Streamlit health check (${attempt}/30)." >&2
+            echo "Waiting for tenant UI health check (${attempt}/30)." >&2
             sleep 3
           done
 
@@ -664,7 +711,7 @@ jobs:
             curl -kfsS \
               --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
               --max-time 10 \
-              "https://${TENANT_HOSTNAME}/_stcore/health" >/dev/null
+              "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" >/dev/null
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
           fi
 
@@ -674,6 +721,7 @@ jobs:
             printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
             printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- UI app: `%s`\n' "${UI_APP}"
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
             printf -- '- Auth mode: `%s`\n' "${SCAS_UI_AUTH_MODE_TARGET}"
@@ -681,6 +729,7 @@ jobs:
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
+            printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
