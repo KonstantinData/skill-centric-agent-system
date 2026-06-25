@@ -20,7 +20,7 @@ on:
         description: Tenant hostname served by the reverse proxy
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
       control_api_url:
         description: Control API base URL for the target environment
         required: true
@@ -102,7 +102,7 @@ on:
         description: Existing origin certificate hostname used by the Nginx server block
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
 
 permissions:
   contents: read
