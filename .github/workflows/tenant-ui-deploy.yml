@@ -731,8 +731,10 @@ jobs:
 
           health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}${SCAS_UI_HEALTH_PATH}"
           expected_content_marker=""
+          forbidden_content_marker=""
           if [ "${UI_APP}" = "liquisto-workbench" ]; then
             expected_content_marker="Command Center"
+            forbidden_content_marker="daskuechenhaus"
           fi
           health_passed=0
           for attempt in $(seq 1 30); do
@@ -758,7 +760,10 @@ jobs:
           fi
 
           if [ -n "${expected_content_marker}" ]; then
-            if ! curl -fsS --max-time 10 "${health_url}" | grep -Fq "${expected_content_marker}"; then
+            container_body="$(mktemp)"
+            curl -fsS --max-time 10 "${health_url}" -o "${container_body}"
+            if ! grep -Fq "${expected_content_marker}" "${container_body}"; then
+              rm -f "${container_body}"
               echo "Post-deploy content check failed: expected marker was not served by the tenant UI container." >&2
               if [ -n "${previous_image}" ]; then
                 sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
@@ -770,6 +775,20 @@ jobs:
               fi
               exit 1
             fi
+            if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${container_body}"; then
+              rm -f "${container_body}"
+              echo "Post-deploy content check failed: forbidden cross-tenant marker was served by the tenant UI container." >&2
+              if [ -n "${previous_image}" ]; then
+                sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
+                docker compose \
+                  -p "${COMPOSE_PROJECT}" \
+                  -f "${REMOTE_OVERRIDE_PATH}" \
+                  up -d "${SERVICE_NAME}"
+                echo "Rolled back to previous image ${previous_image}." >&2
+              fi
+              exit 1
+            fi
+            rm -f "${container_body}"
           fi
 
           reverse_proxy_status="not managed"
@@ -854,11 +873,19 @@ jobs:
               --max-time 10 \
               "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" >/dev/null
             if [ -n "${expected_content_marker}" ]; then
+              origin_body="$(mktemp)"
               curl -kfsS \
                 --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
                 --max-time 10 \
                 "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" \
-                | grep -Fq "${expected_content_marker}"
+                -o "${origin_body}"
+              grep -Fq "${expected_content_marker}" "${origin_body}"
+              if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                rm -f "${origin_body}"
+                echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
+                exit 1
+              fi
+              rm -f "${origin_body}"
             fi
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
           fi
@@ -880,6 +907,7 @@ jobs:
             printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
             printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
             printf -- '- Expected content marker: `%s`\n' "${expected_content_marker:-not-required}"
+            printf -- '- Forbidden content marker: `%s`\n' "${forbidden_content_marker:-not-required}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
@@ -1000,8 +1028,10 @@ jobs:
           set -euo pipefail
 
           expected_content_marker=""
+          forbidden_content_marker=""
           if [ "${UI_APP}" = "liquisto-workbench" ]; then
             expected_content_marker="Command Center"
+            forbidden_content_marker="daskuechenhaus"
           fi
 
           public_url="https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}"
@@ -1010,9 +1040,13 @@ jobs:
             public_body="$(mktemp)"
             if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
               if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
-                public_check_passed=1
-                rm -f "${public_body}"
-                break
+                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${public_body}"; then
+                  echo "Public tenant UI content check found a forbidden cross-tenant marker." >&2
+                else
+                  public_check_passed=1
+                  rm -f "${public_body}"
+                  break
+                fi
               fi
             fi
             rm -f "${public_body}"
