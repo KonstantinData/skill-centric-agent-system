@@ -107,9 +107,13 @@
       const meta = document.createElement("span");
       const type = isLead ? "Lead" : item.customer_type === "company" ? "Firma" : "Privat";
       const location = [item.postal_code, item.city].filter(Boolean).join(" ");
+      const caseLabel = item.case_number ? "Vorgang " + item.case_number : null;
+      const caratLabel = item.carat_order_number ? "CARAT " + item.carat_order_number : null;
       meta.textContent = [
         type,
         isLead ? item.source : null,
+        caseLabel,
+        caratLabel,
         location,
         item.primary_email || item.primary_phone,
       ].filter(Boolean).join(" · ");

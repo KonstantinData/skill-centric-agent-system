@@ -21,12 +21,19 @@ type ContractDraft = {
   deliveryAddress: string;
   deliveryPhone: string;
   deliveryMode: "pickup" | "installation";
+  deliveryTimeMode: "fixed_date" | "week_window";
   deliveryDate: string;
+  deliveryWindowWeekFrom: string;
+  deliveryWindowWeekTo: string;
+  deliveryWindowYear: string;
   customerNumber: string;
   contractDate: string;
   notes: string;
   invoiceGross: string;
   customerVatRate: string;
+  paymentOnOrderPercent: string;
+  paymentBeforeDeliveryPercent: string;
+  restPaymentPercent: string;
   dealerSignatureNote: string;
   customerSignatureNote: string;
   items: ContractItem[];
@@ -65,12 +72,19 @@ function createInitialDraft(initialDraft?: PurchaseContractFormProps["initialDra
     deliveryAddress: "",
     deliveryPhone: "",
     deliveryMode: "installation",
+    deliveryTimeMode: "fixed_date",
     deliveryDate: "",
+    deliveryWindowWeekFrom: "",
+    deliveryWindowWeekTo: "",
+    deliveryWindowYear: String(new Date().getFullYear()),
     customerNumber: "",
     contractDate: todayValue(),
     notes: "",
     invoiceGross: "",
     customerVatRate: "19",
+    paymentOnOrderPercent: "30",
+    paymentBeforeDeliveryPercent: "60",
+    restPaymentPercent: "10",
     dealerSignatureNote: "",
     customerSignatureNote: "",
     ...initialDraft,
@@ -115,6 +129,18 @@ function formatPercentInput(value: string) {
   return Number.isFinite(parsed) ? String(parsed).replace(".", ",") : "0";
 }
 
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function roundPercent(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function formatPercentValue(value: number) {
+  return String(roundPercent(value)).replace(".", ",");
+}
+
 function formatDateForPrint(value: string) {
   if (!value) return "";
 
@@ -126,6 +152,58 @@ function formatDateForPrint(value: string) {
     String(parsed.getMonth() + 1).padStart(2, "0"),
     parsed.getFullYear(),
   ].join(".");
+}
+
+function parseDeliveryWeekValue(value: string, fallbackYear = "") {
+  const trimmedValue = value.trim();
+  const weekValueMatch = /^(\d{4})-W(\d{2})$/.exec(trimmedValue);
+  if (weekValueMatch) {
+    return {
+      year: weekValueMatch[1],
+      week: String(Number(weekValueMatch[2])),
+    };
+  }
+
+  const weekOnlyMatch = /^(\d{1,2})$/.exec(trimmedValue);
+  const fallbackYearValue = fallbackYear.trim();
+  if (!weekOnlyMatch || !fallbackYearValue) return null;
+
+  return {
+    year: fallbackYearValue,
+    week: String(Number(weekOnlyMatch[1])),
+  };
+}
+
+function formatDeliveryWeekWindowForPrint(from: string, to: string, fallbackYear = "") {
+  const fromWeek = parseDeliveryWeekValue(from, fallbackYear);
+  const toWeek = parseDeliveryWeekValue(to, fallbackYear);
+  if (!fromWeek && !toWeek) return "";
+
+  const firstWeek = fromWeek ?? toWeek;
+  const secondWeek = toWeek && fromWeek?.week !== toWeek.week ? toWeek : null;
+  if (!firstWeek) return "";
+
+  if (secondWeek) {
+    const yearSuffix =
+      firstWeek.year === secondWeek.year
+        ? secondWeek.year
+        : `${firstWeek.year} / ${secondWeek.year}`;
+    return `geplant KW${firstWeek.week} / KW${secondWeek.week} ${yearSuffix}`;
+  }
+
+  return `geplant KW${firstWeek.week} ${firstWeek.year}`;
+}
+
+function formatDeliveryTimeForPrint(draft: ContractDraft) {
+  if (draft.deliveryTimeMode === "week_window") {
+    return formatDeliveryWeekWindowForPrint(
+      draft.deliveryWindowWeekFrom,
+      draft.deliveryWindowWeekTo,
+      draft.deliveryWindowYear,
+    );
+  }
+
+  return formatDateForPrint(draft.deliveryDate);
 }
 
 function isoWeekStart(year: number, week: number) {
@@ -212,9 +290,14 @@ export function PurchaseContractForm({
     customerVatRate > 0
       ? roundMoney(invoiceGross - invoiceGross / (1 + customerVatRate / 100))
       : 0;
-  const paymentOnOrder = roundMoney(invoiceGross * 0.3);
-  const paymentBeforeDelivery = roundMoney(invoiceGross * 0.6);
-  const restPayment = roundMoney(invoiceGross - paymentOnOrder - paymentBeforeDelivery);
+  const paymentOnOrderPercent = clampPercent(parsePercent(draft.paymentOnOrderPercent));
+  const paymentBeforeDeliveryPercent = clampPercent(parsePercent(draft.paymentBeforeDeliveryPercent));
+  const restPaymentPercent = clampPercent(
+    roundPercent(100 - paymentOnOrderPercent - paymentBeforeDeliveryPercent),
+  );
+  const paymentOnOrder = roundMoney(invoiceGross * (paymentOnOrderPercent / 100));
+  const paymentBeforeDelivery = roundMoney(invoiceGross * (paymentBeforeDeliveryPercent / 100));
+  const restPayment = roundMoney(invoiceGross * (restPaymentPercent / 100));
   const paymentTotal = paymentOnOrder + paymentBeforeDelivery + restPayment;
   const openAmount = invoiceGross - paymentTotal;
   const deliveryWeek = weekValueFromDate(draft.deliveryDate);
@@ -226,6 +309,23 @@ export function PurchaseContractForm({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateDeliveryTimeMode(value: ContractDraft["deliveryTimeMode"]) {
+    setDraft((current) => {
+      const fixedDateYear = current.deliveryDate
+        ? new Date(`${current.deliveryDate}T00:00:00`).getFullYear()
+        : NaN;
+      const deliveryWindowYear =
+        current.deliveryWindowYear ||
+        (Number.isFinite(fixedDateYear) ? String(fixedDateYear) : String(new Date().getFullYear()));
+
+      return {
+        ...current,
+        deliveryTimeMode: value,
+        deliveryWindowYear,
+      };
+    });
+  }
+
   function updateItem(id: string, patch: Partial<ContractItem>) {
     setDraft((current) => ({
       ...current,
@@ -233,6 +333,36 @@ export function PurchaseContractForm({
         item.id === id ? { ...item, ...patch } : item,
       ),
     }));
+  }
+
+  function updateEditablePaymentPercent(
+    key: "paymentOnOrderPercent" | "paymentBeforeDeliveryPercent",
+    value: string,
+  ) {
+    const nextValue = clampPercent(parsePercent(value));
+
+    setDraft((current) => {
+      const currentOnOrder = clampPercent(parsePercent(current.paymentOnOrderPercent));
+      const currentBeforeDelivery = clampPercent(
+        parsePercent(current.paymentBeforeDeliveryPercent),
+      );
+      const nextOnOrder =
+        key === "paymentOnOrderPercent"
+          ? Math.min(nextValue, roundPercent(100 - currentBeforeDelivery))
+          : currentOnOrder;
+      const nextBeforeDelivery =
+        key === "paymentBeforeDeliveryPercent"
+          ? Math.min(nextValue, roundPercent(100 - nextOnOrder))
+          : currentBeforeDelivery;
+      const restValue = roundPercent(100 - nextOnOrder - nextBeforeDelivery);
+
+      return {
+        ...current,
+        paymentOnOrderPercent: formatPercentValue(nextOnOrder),
+        paymentBeforeDeliveryPercent: formatPercentValue(nextBeforeDelivery),
+        restPaymentPercent: formatPercentValue(restValue),
+      };
+    });
   }
 
   function addItem() {
@@ -261,7 +391,11 @@ export function PurchaseContractForm({
   }
 
   function saveDraft() {
-    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    const normalizedDraft = {
+      ...draft,
+      restPaymentPercent: formatPercentValue(restPaymentPercent),
+    };
+    window.localStorage.setItem(storageKey, JSON.stringify(normalizedDraft));
     setDraftStatus(`Entwurf gespeichert: ${new Date().toLocaleTimeString("de-DE")}`);
   }
 
@@ -390,25 +524,66 @@ export function PurchaseContractForm({
                   readOnly={useCustomerPhoneForDelivery}
                 />
               </Label>
-              <Label label="Liefertermin">
-                <Field
-                  name="delivery_date"
-                  type="date"
-                  value={draft.deliveryDate}
-                  onChange={(event) => updateDraft("deliveryDate", event.target.value)}
-                />
-              </Label>
-              <Label label="Liefer-KW">
-                <Field
-                  name="delivery_week"
-                  type="week"
-                  value={deliveryWeek}
+              <Label label="Lieferzeit-Art">
+                <Select
+                  name="delivery_time_mode"
+                  value={draft.deliveryTimeMode}
                   onChange={(event) =>
-                    updateDraft("deliveryDate", dateValueFromWeek(event.target.value))
+                    updateDeliveryTimeMode(
+                      event.target.value as ContractDraft["deliveryTimeMode"],
+                    )
                   }
-                />
+                >
+                  <option value="fixed_date">Fester Termin</option>
+                  <option value="week_window">Lieferzeitfenster</option>
+                </Select>
               </Label>
-              <Label label="Datum">
+              {draft.deliveryTimeMode === "fixed_date" ? (
+                <>
+                  <Label label="Liefer-KW">
+                    <Field
+                      name="delivery_week"
+                      type="week"
+                      value={deliveryWeek}
+                      onChange={(event) =>
+                        updateDraft("deliveryDate", dateValueFromWeek(event.target.value))
+                      }
+                    />
+                  </Label>
+                  <Label label="Liefertermin">
+                    <Field
+                      name="delivery_date"
+                      type="date"
+                      value={draft.deliveryDate}
+                      onChange={(event) => updateDraft("deliveryDate", event.target.value)}
+                    />
+                  </Label>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Label label="Von KW">
+                    <Field
+                      name="delivery_window_week_from"
+                      type="week"
+                      value={draft.deliveryWindowWeekFrom}
+                      onChange={(event) =>
+                        updateDraft("deliveryWindowWeekFrom", event.target.value)
+                      }
+                    />
+                  </Label>
+                  <Label label="Bis KW">
+                    <Field
+                      name="delivery_window_week_to"
+                      type="week"
+                      value={draft.deliveryWindowWeekTo}
+                      onChange={(event) =>
+                        updateDraft("deliveryWindowWeekTo", event.target.value)
+                      }
+                    />
+                  </Label>
+                </div>
+              )}
+              <Label label="Kaufvertrags-Datum">
                 <Field
                   name="contract_date"
                   type="date"
@@ -555,26 +730,60 @@ export function PurchaseContractForm({
           <Panel>
             <h2 className="section-title">Zahlung</h2>
             <div className="mt-4 grid gap-3">
-              <Label label="Anzahlung 30 %">
-                <Field
-                  name="payment_on_order"
-                  value={formatMoney(paymentOnOrder)}
-                  readOnly
-                />
+              <Label label="Anzahlung bei Auftrag">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="payment_on_order_percent"
+                    inputMode="decimal"
+                    value={draft.paymentOnOrderPercent}
+                    onChange={(event) =>
+                      updateEditablePaymentPercent("paymentOnOrderPercent", event.target.value)
+                    }
+                    aria-label="Anzahlung bei Auftrag Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="payment_on_order"
+                    value={formatMoney(paymentOnOrder)}
+                    readOnly
+                  />
+                </div>
               </Label>
-              <Label label="Zahlung vor Lieferung 60 %">
-                <Field
-                  name="payment_before_delivery"
-                  value={formatMoney(paymentBeforeDelivery)}
-                  readOnly
-                />
+              <Label label="Zahlung vor Lieferung">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="payment_before_delivery_percent"
+                    inputMode="decimal"
+                    value={draft.paymentBeforeDeliveryPercent}
+                    onChange={(event) =>
+                      updateEditablePaymentPercent("paymentBeforeDeliveryPercent", event.target.value)
+                    }
+                    aria-label="Zahlung vor Lieferung Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="payment_before_delivery"
+                    value={formatMoney(paymentBeforeDelivery)}
+                    readOnly
+                  />
+                </div>
               </Label>
-              <Label label="Restzahlung 10 %">
-                <Field
-                  name="rest_payment"
-                  value={formatMoney(restPayment)}
-                  readOnly
-                />
+              <Label label="Restzahlung">
+                <div className="grid grid-cols-[72px_16px_minmax(0,1fr)] items-center gap-2">
+                  <Field
+                    name="rest_payment_percent"
+                    inputMode="decimal"
+                    value={formatPercentValue(restPaymentPercent)}
+                    readOnly
+                    aria-label="Restzahlung Prozent"
+                  />
+                  <span className="text-sm font-bold text-[var(--muted)]">%</span>
+                  <Field
+                    name="rest_payment"
+                    value={formatMoney(restPayment)}
+                    readOnly
+                  />
+                </div>
               </Label>
               <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
                 <div className="flex justify-between gap-3">
@@ -701,7 +910,7 @@ function PurchaseContractPrintOverlay({
           {draft.deliveryMode === "installation" ? "X" : ""}
         </div>
         <div className="print-field print-delivery-date">
-          {formatDateForPrint(draft.deliveryDate)}
+          {formatDeliveryTimeForPrint(draft)}
         </div>
         <div className="print-field print-customer-number">{draft.customerNumber}</div>
         <div className="print-field print-contract-date">

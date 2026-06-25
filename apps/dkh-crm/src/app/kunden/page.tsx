@@ -88,7 +88,7 @@ export default async function CustomersPage() {
                 name="direct_q"
                 type="search"
                 autoComplete="off"
-                placeholder="Name, E-Mail, Kundennummer oder Telefon"
+                placeholder="Name, E-Mail, Kunden-/Vorgangsnummer, CARAT oder Telefon"
               />
               <Select data-customer-status-filter name="customer_status" defaultValue="active">
                 <option value="active">Aktive Kunden</option>

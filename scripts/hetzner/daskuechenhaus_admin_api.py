@@ -2253,6 +2253,8 @@ def search_customers(
             c.display_name,
             c.customer_type,
             c.customer_number,
+            cm.case_number,
+            cm.carat_order_number,
             c.primary_email,
             ca.postal_code,
             ca.city,
@@ -2262,8 +2264,10 @@ def search_customers(
                 AND COALESCE(c.primary_phone_normalized, '') = :'phone_value' THEN 1
               WHEN :'phone_value' <> ''
                 AND COALESCE(c.primary_mobile_normalized, '') = :'phone_value' THEN 1
-              WHEN lower(COALESCE(c.customer_number, '')) = lower(:'search_value') THEN 2
-              WHEN lower(c.display_name) = lower(:'search_value') THEN 3
+              WHEN lower(COALESCE(cm.case_number, '')) = lower(:'search_value') THEN 2
+              WHEN lower(COALESCE(cm.carat_order_number, '')) = lower(:'search_value') THEN 2
+              WHEN lower(COALESCE(c.customer_number, '')) = lower(:'search_value') THEN 3
+              WHEN lower(c.display_name) = lower(:'search_value') THEN 4
               ELSE 9
             END AS rank
           FROM visible_customers c
@@ -2274,6 +2278,23 @@ def search_customers(
             ORDER BY ca.is_primary DESC, ca.id
             LIMIT 1
           ) ca ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT cc.case_number, cc.carat_order_number
+            FROM app.customer_cases cc
+            WHERE cc.customer_id = c.id
+              AND cc.is_active = TRUE
+            ORDER BY
+              CASE
+                WHEN lower(COALESCE(cc.case_number, '')) = lower(:'search_value') THEN 0
+                WHEN lower(COALESCE(cc.carat_order_number, '')) = lower(:'search_value') THEN 0
+                WHEN COALESCE(cc.case_number, '') ILIKE '%' || :'search_value' || '%' THEN 1
+                WHEN COALESCE(cc.carat_order_number, '') ILIKE '%' || :'search_value' || '%' THEN 1
+                ELSE 9
+              END,
+              cc.updated_at DESC,
+              cc.id DESC
+            LIMIT 1
+          ) cm ON TRUE
           WHERE
             (
               c.display_name ILIKE '%' || :'search_value' || '%'
@@ -2290,6 +2311,16 @@ def search_customers(
               )
               OR COALESCE(c.primary_phone, '') ILIKE '%' || :'search_value' || '%'
               OR COALESCE(c.primary_mobile, '') ILIKE '%' || :'search_value' || '%'
+              OR EXISTS (
+                SELECT 1
+                FROM app.customer_cases cc
+                WHERE cc.customer_id = c.id
+                  AND cc.is_active = TRUE
+                  AND (
+                    COALESCE(cc.case_number, '') ILIKE '%' || :'search_value' || '%'
+                    OR COALESCE(cc.carat_order_number, '') ILIKE '%' || :'search_value' || '%'
+                  )
+              )
             )
             AND (
               :'customer_filter' = 'all'
@@ -2336,6 +2367,8 @@ def search_customers(
                 'display_name', display_name,
                 'customer_type', customer_type,
                 'customer_number', customer_number,
+                'case_number', case_number,
+                'carat_order_number', carat_order_number,
                 'city', city,
                 'postal_code', postal_code,
                 'primary_email', primary_email

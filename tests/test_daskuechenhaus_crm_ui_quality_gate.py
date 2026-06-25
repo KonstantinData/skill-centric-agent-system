@@ -33,6 +33,8 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "URLSearchParams" in search_script
     assert 'params.set("status", filterValue)' in search_script
     assert "/kunden/" in search_script
+    assert "Vorgang \" + item.case_number" in search_script
+    assert "CARAT \" + item.carat_order_number" in search_script
     assert "maxOpenFiles = 3" in search_script
     assert "[data-customer-create-modal]" in search_script
     assert "[data-lead-create-modal]" in search_script
@@ -89,6 +91,75 @@ def test_dkh_crm_supports_dark_mode_theme_toggle() -> None:
     assert "localStorage.setItem" in theme_toggle
     assert "Systemmodus aktiv" in theme_toggle
     assert "dangerouslySetInnerHTML" in theme_script
+
+
+def test_dkh_crm_purchase_contract_print_layout_matches_blank_form_offsets() -> None:
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    assert ".print-customer-phone {\n    left: 33mm;" in globals_css
+    assert ".print-delivery-phone {\n    left: 33mm;" in globals_css
+    assert ".print-pickup {\n    left: 142mm;\n    top: 57.2mm;" in globals_css
+    assert ".print-delivery-date {\n    left: 143mm;" in globals_css
+    assert ".print-customer-number {\n    left: 143mm;" in globals_css
+    assert ".print-contract-date {\n    left: 143mm;" in globals_css
+    assert ".print-items {\n    left: 20mm;\n    top: 107.5mm;" in globals_css
+    assert "row-gap: 3.5mm;" in globals_css
+    assert "transform: translateY(-2mm);" in globals_css
+    assert (
+        ".print-item-row-1 .print-item-supplier,\n"
+        "  .print-item-row-1 .print-item-quantity,\n"
+        "  .print-item-row-1 .print-item-price {\n"
+        "    transform: translateY(-1mm);"
+    ) in globals_css
+    assert ".print-item-row-1 .print-item-description" not in globals_css
+
+
+def test_dkh_crm_purchase_contract_input_flow_supports_editable_payment_split() -> None:
+    source = load_text(
+        APP_ROOT
+        / "src"
+        / "components"
+        / "purchase-contract"
+        / "purchase-contract-form.tsx"
+    )
+
+    assert "deliveryTimeMode: \"fixed_date\" | \"week_window\"" in source
+    assert 'deliveryTimeMode: "fixed_date"' in source
+    assert "deliveryWindowWeekFrom: string" in source
+    assert "deliveryWindowWeekTo: string" in source
+    assert "deliveryWindowYear: string" in source
+    assert "function parseDeliveryWeekValue(" in source
+    assert "function formatDeliveryWeekWindowForPrint(" in source
+    assert 'return `geplant KW${firstWeek.week} / KW${secondWeek.week} ${yearSuffix}`' in source
+    assert 'return `geplant KW${firstWeek.week} ${firstWeek.year}`' in source
+    assert "function formatDeliveryTimeForPrint(draft: ContractDraft)" in source
+    assert 'Label label="Lieferzeit-Art"' in source
+    assert '<option value="fixed_date">Fester Termin</option>' in source
+    assert '<option value="week_window">Lieferzeitfenster</option>' in source
+    assert source.index('Label label="Liefer-KW"') < source.index('Label label="Liefertermin"')
+    assert 'Label label="Von KW"' in source
+    assert 'Label label="Bis KW"' in source
+    assert 'name="delivery_window_week_from"\n                      type="week"' in source
+    assert 'name="delivery_window_week_to"\n                      type="week"' in source
+    assert 'name="delivery_window_year"' not in source
+    assert "{formatDeliveryTimeForPrint(draft)}" in source
+    assert 'Label label="Kaufvertrags-Datum"' in source
+    assert 'Label label="Datum"' not in source
+    assert "paymentOnOrderPercent: string" in source
+    assert 'paymentOnOrderPercent: "30"' in source
+    assert 'paymentBeforeDeliveryPercent: "60"' in source
+    assert 'restPaymentPercent: "10"' in source
+    assert "function updateEditablePaymentPercent(" in source
+    assert "const restValue = roundPercent(100 - nextOnOrder - nextBeforeDelivery)" in source
+    assert "const balancedSecond" not in source
+    assert 'updateEditablePaymentPercent("paymentOnOrderPercent"' in source
+    assert 'updateEditablePaymentPercent("paymentBeforeDeliveryPercent"' in source
+    assert 'updatePaymentPercent("restPaymentPercent"' not in source
+    assert 'name="payment_on_order_percent"' in source
+    assert 'name="payment_before_delivery_percent"' in source
+    assert 'name="rest_payment_percent"' in source
+    assert "value={formatPercentValue(restPaymentPercent)}" in source
+    assert "restPaymentPercent: formatPercentValue(restPaymentPercent)" in source
 
 
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
@@ -175,6 +246,7 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "Kunde suchen" not in source
     assert "data-customer-direct-search" in source
     assert "Kunden direkt Suche" in source
+    assert "Kunden-/Vorgangsnummer, CARAT" in source
     assert "data-customer-status-filter" in source
     assert "Aktive Kunden" in source
     assert "Abgeschlossene Kunden" in source
@@ -292,6 +364,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "mailto:${customer.primary_email}" in source
     assert "aria-disabled={!customer.primary_email}" in source
     assert "Vorgangsregal" in source
+    assert (
+        "customerNumber: selectedCase.carat_order_number || selectedCase.case_number || \"\""
+        in source
+    )
     assert "data-customer-master-open" in source
     assert "data-customer-master-modal" in source
     assert "Kundenstammdaten bearbeiten" in source
