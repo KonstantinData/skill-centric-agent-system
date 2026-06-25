@@ -42,14 +42,14 @@ def test_tenant_hostname_resolver_returns_single_configured_authority() -> None:
 def test_tenant_hostname_resolver_returns_liquisto_authority() -> None:
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 
-    authority = resolver.resolve("liquisto.condata.io")
+    authority = resolver.resolve("liquisto.cloud")
 
     assert authority.tenant_id == "liquisto"
     assert authority.area_id == "liquisto"
-    assert authority.hostname == "liquisto.condata.io"
+    assert authority.hostname == "liquisto.cloud"
     assert authority.purpose == "primary-ui"
     assert authority.status == "setup"
-    assert authority.expected_origin == "178.105.62.169"
+    assert authority.expected_origin == "145.239.222.45"
     assert authority.cloudflare_proxy_expected is True
 
 

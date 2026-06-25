@@ -86,7 +86,7 @@ def test_build_task_envelope_can_scope_task_to_tenant_role() -> None:
 
     assert envelope["context"]["auth"]["tenant_id"] == "liquisto"
     assert envelope["context"]["auth"]["area_id"] == "liquisto"
-    assert envelope["context"]["auth"]["tenant_hostname"] == "liquisto.condata.io"
+    assert envelope["context"]["auth"]["tenant_hostname"] == "liquisto.cloud"
     assert envelope["context"]["auth"]["membership_id"] == "tm-liquisto-repository-maintainer"
     assert envelope["context"]["auth"]["roles"] == ["liquisto-owner"]
     assert envelope["context"]["auth"]["role_capabilities"] == ["research", "tenant-admin"]

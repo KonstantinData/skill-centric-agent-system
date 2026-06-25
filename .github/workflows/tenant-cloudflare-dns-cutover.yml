@@ -1,0 +1,184 @@
+name: Tenant Cloudflare DNS Cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      hostname:
+        description: Tenant apex hostname to configure
+        required: true
+        type: string
+        default: liquisto.cloud
+      origin_ipv4:
+        description: Origin IPv4 for the proxied apex A record
+        required: true
+        type: string
+      apply_changes:
+        description: Apply DNS changes
+        required: true
+        type: boolean
+        default: false
+      confirm_hostname:
+        description: Must exactly match the hostname when apply_changes=true
+        required: true
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-cloudflare-dns-cutover-${{ github.ref }}-${{ inputs.hostname }}
+  cancel-in-progress: false
+
+jobs:
+  tenant-cloudflare-dns-cutover:
+    name: Configure Liquisto Cloudflare DNS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      TENANT_HOSTNAME: ${{ inputs.hostname }}
+      ORIGIN_IPV4: ${{ inputs.origin_ipv4 }}
+      APPLY_CHANGES: ${{ inputs.apply_changes }}
+      CONFIRM_HOSTNAME: ${{ inputs.confirm_hostname }}
+      LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
+      LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
+
+    steps:
+      - name: Configure DNS records without exposing origin in evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${TENANT_HOSTNAME}" != "liquisto.cloud" ]; then
+            echo "::error::hostname must be liquisto.cloud."
+            exit 1
+          fi
+          if [[ ! "${ORIGIN_IPV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            echo "::error::origin_ipv4 must be an IPv4 address."
+            exit 1
+          fi
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${CONFIRM_HOSTNAME}" != "${TENANT_HOSTNAME}" ]; then
+            echo "::error::confirm_hostname must match hostname when apply_changes=true."
+            exit 1
+          fi
+          if [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "${LIQUISTO_CLOUDFLARE_ZONE_ID}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_ZONE_ID."
+            exit 1
+          fi
+
+          export CLOUDFLARE_API_TOKEN="${LIQUISTO_CLOUDFLARE_API_TOKEN}"
+          export CLOUDFLARE_ZONE_ID="${LIQUISTO_CLOUDFLARE_ZONE_ID}"
+
+          install -d tenant-cloudflare-dns-cutover
+
+          python3 - <<'PY'
+          import ipaddress
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          hostname = os.environ["TENANT_HOSTNAME"]
+          origin_ipv4 = str(ipaddress.ip_address(os.environ["ORIGIN_IPV4"]))
+          apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
+          base_url = "https://api.cloudflare.com/client/v4"
+
+          def cloudflare(path: str, method: str = "GET", payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload).encode()
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base_url}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  body = json.loads(response.read().decode())
+              if not body.get("success"):
+                  raise RuntimeError(f"Cloudflare API request failed for {method} {path}.")
+              return body
+
+          def list_records(record_type: str, name: str) -> list[dict]:
+              encoded_name = urllib.parse.quote(name, safe="")
+              payload = cloudflare(
+                  f"/zones/{zone_id}/dns_records?type={record_type}&name={encoded_name}&per_page=100"
+              )
+              return list(payload.get("result", []))
+
+          def desired_record(record_type: str, name: str, content: str) -> dict:
+              return {
+                  "type": record_type,
+                  "name": name,
+                  "content": content,
+                  "ttl": 1,
+                  "proxied": True,
+              }
+
+          def upsert(record_type: str, name: str, content: str) -> str:
+              records = list_records(record_type, name)
+              desired = desired_record(record_type, name, content)
+              if not apply_changes:
+                  return "planned-create" if not records else "planned-update"
+              if not records:
+                  cloudflare(f"/zones/{zone_id}/dns_records", method="POST", payload=desired)
+                  return "created"
+              record_id = records[0]["id"]
+              cloudflare(f"/zones/{zone_id}/dns_records/{record_id}", method="PUT", payload=desired)
+              for extra in records[1:]:
+                  cloudflare(f"/zones/{zone_id}/dns_records/{extra['id']}", method="DELETE")
+              return "updated" if len(records) == 1 else "updated-and-deduplicated"
+
+          apex_status = upsert("A", hostname, origin_ipv4)
+          www_status = upsert("CNAME", f"www.{hostname}", hostname)
+
+          collected_at = datetime.now(UTC).isoformat()
+          evidence = "\n".join(
+              [
+                  "# Tenant Cloudflare DNS Cutover Evidence",
+                  "",
+                  f"- Hostname: `{hostname}`",
+                  f"- Apply changes: `{str(apply_changes).lower()}`",
+                  f"- Apex A record: `{apex_status}`",
+                  f"- WWW CNAME record: `{www_status}`",
+                  "- Apex origin content: not printed",
+                  "- WWW target: tenant apex hostname",
+                  f"- Collected at: `{collected_at}`",
+                  "",
+              ]
+          )
+          Path("tenant-cloudflare-dns-cutover/evidence.md").write_text(
+              evidence,
+              encoding="utf-8",
+          )
+          print(
+              json.dumps(
+                  {
+                      "hostname": hostname,
+                      "apply_changes": apply_changes,
+                      "apex_a_record": apex_status,
+                      "www_cname_record": www_status,
+                      "origin_content_printed": False,
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Upload DNS cutover evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-cloudflare-dns-cutover
+          path: tenant-cloudflare-dns-cutover/evidence.md
+          if-no-files-found: error

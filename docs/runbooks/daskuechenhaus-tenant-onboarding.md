@@ -210,7 +210,7 @@ The routing fix was deployed after PR #139. Runtime inventory run `27766020716`
 observed `daskuechenhaus-app-1` bound separately on `127.0.0.1:8502` and an
 Nginx server block for `daskuechenhaus.condata.io` proxying to that port. A
 live UI check on 2026-06-18 showed Daskuechenhaus-specific tenant content at
-`https://daskuechenhaus.condata.io/` while `https://liquisto.condata.io/`
+`https://daskuechenhaus.condata.io/` while `https://liquisto.cloud/`
 continued to serve Liquisto content.
 
 ## Isolation Evidence

@@ -1,13 +1,13 @@
 # Liquisto Tenant Release Gate
 
-Last updated: 2026-06-17 23:10 Europe/Berlin
+Last updated: 2026-06-25 21:12 Europe/Berlin
 
 This gate records what is required before the Liquisto tenant can be marked
 ready beyond local fixture-backed development.
 
 ## Current Status
 
-Status: `production-ready`
+Status: `migration-validation-required`
 
 The repository now contains a setup-state Liquisto tenant fixture, hostname
 authority evidence, tenant admin context API coverage, a tenant-aware operations
@@ -17,9 +17,10 @@ traceability, role-based task intake, tenant data-source connector coverage,
 tenant isolation tests, and a repository-owned Streamlit Business UI container
 and manual deployment workflow.
 
-Production readiness is certified for release scope `liquisto-tenant-launch` by
-Production Readiness Evidence run `27719854597` on `main` at
-`655beba1faba6763120198857d1c8aef075d4921`.
+Previous production readiness evidence does not certify the `liquisto.cloud`
+authority after cutover. The Liquisto launch gate must be revalidated against
+the `liquisto.cloud` Cloudflare zone, DNS/TLS route, and runtime hostname before
+the status can return to `production-ready`.
 
 ## Local Dry Run
 
@@ -37,7 +38,7 @@ npm run worker:check
 
 The local dry run proves:
 
-- `liquisto.condata.io` resolves to exactly one setup-state tenant authority,
+- `liquisto.cloud` resolves to exactly one setup-state tenant authority,
 - disabled tenant hostnames fail closed,
 - Liquisto and demo tenant scope modules remain disjoint,
 - memberships and data-source grants do not cross tenant boundaries,
@@ -80,13 +81,13 @@ Control Plane seeded from the `main` repository snapshot.
 
 ## Live UI Runtime Inventory
 
-If `https://liquisto.condata.io/` appears to load an old Streamlit UI, collect a
+If `https://liquisto.cloud/` appears to load an old Streamlit UI, collect a
 read-only production inventory before changing the service:
 
 ```bash
 gh workflow run tenant-ui-runtime-inventory.yml \
   -f target_environment=prod \
-  -f hostname=liquisto.condata.io
+  -f hostname=liquisto.cloud
 ```
 
 The workflow records candidate Streamlit processes, systemd units, container
@@ -96,49 +97,42 @@ mutate the runtime host. Use the inventory artifact to identify the actual
 service, image, code path, and deployed Git revision before any deployment or
 restart action.
 
-Latest recorded production inventory evidence:
+Latest recorded production inventory evidence for the current
+`liquisto.cloud` authority:
 
 | Date | GitHub run | Ref | Result | Evidence |
 | --- | --- | --- | --- | --- |
-| 2026-06-17 23:00 Europe/Berlin | `27719494125` | `codex/liquisto-launch-finalize` / `9222cc64b9a9aa33fad89630552fc3a31f17d79c` | passed | Sanitized inventory confirmed container `liquisto-app-1` is healthy, uses image `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921`, exposes `127.0.0.1:8501`, and redacts SCAS-managed config values while preserving key presence. |
-| 2026-06-17 15:22 Europe/Berlin | `27692078758` | `main` | passed | `liquisto.condata.io` routes through Nginx to `127.0.0.1:8501`; Docker container `liquisto-app-1` is healthy and runs `streamlit run apps/streamlit_business_ui/app.py`; image `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`; deployed source revision `916b7d87295d685c7ab4c2c8ffc3049297ed9d56`. |
+| pending | pending | pending | pending | Re-run `tenant-ui-runtime-inventory.yml` with `hostname=liquisto.cloud` after DNS/TLS cutover. |
 
-The first 2026-06-17 inventory proved the repository-owned Streamlit Business UI
-foundation behind the tenant hostname. Two intermediate inventory artifacts
-from runs `27719268407` and `27719390153` were deleted because they exposed
-over-specific server-side session context. The replacement workflow records only
-SCAS-managed config keys with redacted values.
+The inventory workflow records only SCAS-managed config keys with redacted
+values. Use a fresh inventory artifact for the `liquisto.cloud` authority before
+making a production release decision.
 
 ## Cloudflare DNS And TLS Evidence
 
-The `Tenant Cloudflare Evidence` workflow has passed for staging and production
-with `require_worker_route=false`:
+The `Tenant Cloudflare Evidence` workflow must pass for `liquisto.cloud` with
+`require_worker_route=false` unless the UI is intentionally moved behind a
+Cloudflare Worker route:
 
 | Date | Environment | GitHub run | Result | Evidence |
 | --- | --- | --- | --- | --- |
-| 2026-06-17 22:07 Europe/Berlin | staging | `27716489830` | passed | `liquisto.condata.io` has one proxied A record, TLS mode `full`, Worker route count `0`, Worker route required `false`. |
-| 2026-06-17 22:07 Europe/Berlin | prod | `27716489895` | passed | `liquisto.condata.io` has one proxied A record, TLS mode `full`, Worker route count `0`, Worker route required `false`. |
+| 2026-06-25 21:55 Europe/Berlin | liquisto | `28196655630` | passed | DNS cutover applied; `liquisto.cloud` has one proxied A record, TLS mode `full`, Worker route count `0`, Worker route required `false`; origin content was not printed. |
 
-The same workflow failed with `require_worker_route=true` for staging
-(`27716338428`) and production (`27716338387`) because no Cloudflare Worker
-route exists for the tenant hostname. This is expected for the current public UI
-route: Cloudflare proxies DNS/TLS to the Hetzner/Nginx/Streamlit runtime path.
-Do not treat a Worker route as required for `liquisto.condata.io` unless the
+Do not treat a Worker route as required for `liquisto.cloud` unless the
 deployment architecture is explicitly changed. Cloudflare Workers remain the
 Control API path, not the Streamlit UI hostname path.
 
-## Streamlit Business UI Deployment
+## Liquisto Workbench Deployment
 
 The repository-owned deployment path is documented in
-`docs/runbooks/streamlit-business-ui-deployment.md` and implemented by
+`docs/runbooks/liquisto-workbench-deployment.md` and implemented by
 `.github/workflows/tenant-ui-deploy.yml`.
 
-Latest production plan evidence:
+Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
-| 2026-06-17 22:56 Europe/Berlin | `27719099324` | passed | Applied `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921` to production compose project `liquisto` via `/opt/liquisto/scas-streamlit-business-ui.override.yml`; previous image was `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`; post-deploy Streamlit health check passed. |
-| 2026-06-17 22:44 Europe/Berlin | `27718521611` | passed | Built `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921` for prod with `apply_deploy=false`; no remote host was changed. |
+| 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx route managed at `127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified. |
 
 Build-only plan mode:
 
@@ -146,8 +140,9 @@ Build-only plan mode:
 gh workflow run tenant-ui-deploy.yml \
   -f target_environment=staging \
   -f tenant_id=liquisto \
-  -f hostname=liquisto.condata.io \
+  -f hostname=liquisto.cloud \
   -f control_api_url=https://<staging-control-api-url> \
+  -f ui_app=liquisto-workbench \
   -f apply_deploy=false \
   -f confirm_production=false
 ```
@@ -158,10 +153,11 @@ Apply mode is manual-only and requires target-environment Hetzner secrets,
 `confirm_production=true`. The workflow writes a complete SCAS-managed Compose
 file, sets `SCAS_UI_TENANT_ID=liquisto`, and intentionally does not read legacy
 host Compose files or host `.env` files. The fixed tenant binding means
-`liquisto.condata.io` cannot expose a tenant selector or switch to another
+`liquisto.cloud` cannot expose a tenant selector or switch to another
 tenant through UI state. The workflow writes sanitized deployment evidence and
-rolls back to the previous Compose service image if the post-deploy Streamlit
-health check fails.
+rolls back to the previous Compose service image if the post-deploy health or
+Workbench content check fails. For `liquisto-workbench`, the workflow also
+verifies the public Cloudflare route before the deploy can pass.
 
 ## Tenant Admin Bootstrap
 
@@ -187,49 +183,33 @@ compose file needed for manual rollback.
 
 ## Production Runtime And Readiness Evidence
 
-Latest production runtime and repository readiness evidence:
+Latest production runtime and repository readiness evidence for the current
+`liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
-| 2026-06-17 23:09 Europe/Berlin | `27719854597` | passed | Production Readiness Evidence certified `liquisto-tenant-launch` for prod with `status=production-ready`, `final_decision=certified`, `certification_mode=certify`, and `evidence_source_mode=recheck`. |
-| 2026-06-17 23:07 Europe/Berlin | `27719791096` | passed | Prod live runtime gate passed against `https://scas-control-api-prod.still-butterfly-bbff.workers.dev` with `task_suite=generic`, `case_count=4`, and `handler_binding_status=passed`; this run provides the handler-binding artifact required by certification. |
-| 2026-06-17 23:03 Europe/Berlin | `27719532652` | passed | AI Gateway live smoke passed for prod on commit `655beba1faba6763120198857d1c8aef075d4921`. |
-| 2026-06-17 22:42 Europe/Berlin | `27718417632` | passed | Prod live runtime gate passed against `https://scas-control-api-prod.still-butterfly-bbff.workers.dev` with `task_suite=tenant`, `case_count=6`, and `handler_binding_status=passed`. |
-| 2026-06-17 22:46 Europe/Berlin | `27718626573` | passed | Production Readiness Evidence recheck passed repository, security, Python, invariant, rollback, JSON, and Worker gates for commit `655beba1faba6763120198857d1c8aef075d4921`; mode was `evidence-only`, final decision `not-certified`. |
-
-The first certify attempt `27719704744` failed because it consumed the
-tenant-suite runtime artifact as handler-binding evidence. The corrected
-certification run `27719854597` consumed generic runtime handler-binding
-evidence from `27719791096` and the Liquisto tenant-suite runtime evidence is
-retained separately as tenant isolation evidence.
-
-The earlier `consume-existing` readiness run `27718535233` failed because the
-workflow expected an artifact named `security-evidence` while current Security
-Governance runs upload `security-governance-evidence`. The follow-up recheck
-run `27718626573` bypassed that artifact-name drift by rerunning the gates.
+| pending | pending | pending | Re-run production readiness after Cloudflare evidence and runtime inventory for `liquisto.cloud` pass. |
 
 ## Resolved Production Blockers
 
-The Liquisto tenant launch blockers below were resolved for release scope
-`liquisto-tenant-launch` on 2026-06-17:
+The Liquisto tenant launch blockers below must be resolved for the
+`liquisto.cloud` authority:
 
 - Cloudflare authorized evidence confirms a proxied A record for
-  `liquisto.condata.io` without exposing the hidden origin value in public
+  `liquisto.cloud` without exposing the hidden origin value in public
   evidence.
 - TLS mode is confirmed through the authorized Cloudflare evidence workflow.
 - Worker route requirement is explicit for the selected architecture. For the
   current Cloudflare-proxied Hetzner/Nginx/Streamlit UI route, Worker route
   count `0` is accepted and documented; a future Worker-routed UI path must pass
   the evidence workflow with `require_worker_route=true`.
-- Initial owner identity is bootstrapped and no longer `null`. Latest evidence:
-  production bootstrap run `27718320221` passed.
+- Initial owner identity is bootstrapped and no longer `null`.
 - Production legal, register, contact, and owner data is verified in the
   approved operational source. Public fixtures may contain only non-secret
   sentinel values that clearly state the real data is not stored there.
 - Production runtime configuration points to the production Control API, or any
   temporary staging Control API dependency is explicitly approved with an owner,
-  expiry, and rollback path. The sanitized inventory run `27719494125`
-  confirms the SCAS-managed production config keys are present and redacted.
+  expiry, and rollback path.
 - The production service runs `SCAS_UI_AUTH_MODE=required` with a server-owned
   tenant session context from the approved upstream authentication layer.
   Fixture mode must not be used on the public hostname.
@@ -237,8 +217,8 @@ The Liquisto tenant launch blockers below were resolved for release scope
 - Production gate passes against production Cloudflare and Hetzner resources.
 - Rollback/deprovisioning dry-run evidence is linked before the production
   release decision.
-- Production Readiness Evidence ran in `certify` mode and ended with
-  `final_decision=certified`.
+- Production Readiness Evidence must run in `certify` mode and end with
+  `final_decision=certified` after the `liquisto.cloud` evidence is current.
 
 ## Release Decision Rule
 

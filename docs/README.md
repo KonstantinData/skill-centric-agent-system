@@ -54,6 +54,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/runbooks/staging-provisioning-checklist.md`
 - `docs/runbooks/scas-cloudflare-token-structure.md`
 - `docs/runbooks/liquisto-tenant-dns-evidence.md`
+- `docs/runbooks/liquisto-workbench-deployment.md`
 - `docs/runbooks/daskuechenhaus-tenant-onboarding.md`
 - `docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md`
 - `docs/runbooks/es-daskuechenhaus-protected-site.md`
@@ -88,6 +89,10 @@ This repository uses `docs/` as an operational documentation surface, not only a
   manual deployment path in `.github/workflows/tenant-ui-deploy.yml`.
 - `apps/dkh-crm/`: DKH CRM Next.js app served behind Cloudflare Access at
   `es-daskuechenhaus.de` / `www.es-daskuechenhaus.de`.
+- `apps/liquisto-workbench/`: Liquisto SCAS Workbench Next.js app for the
+  `liquisto.cloud` tenant surface. It exposes Cockpit, Tasks, Knowledge, Agent
+  Runs, Approvals, Data Sources, Audit, and Admin views over the existing SCAS
+  operating model.
 
 ## Roadmap
 

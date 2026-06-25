@@ -1,6 +1,6 @@
 # Liquisto Tenant Admin Bootstrap
 
-Last updated: 2026-06-17 22:42 Europe/Berlin
+Last updated: 2026-06-25 21:12 Europe/Berlin
 
 This runbook defines the non-secret repository contract for bootstrapping the
 initial Liquisto tenant owner and tenant-admin access. The actual owner identity
@@ -12,7 +12,7 @@ fixtures, examples, workflow logs, or release evidence.
 ```text
 tenant_id: liquisto
 area_id: liquisto
-hostname: liquisto.condata.io
+hostname: liquisto.cloud
 admin routes: /admin/users, /admin/roles, /admin/settings
 ```
 
@@ -81,20 +81,14 @@ Evidence may include:
 Evidence must not include secrets, raw session context, personal contact data,
 or confidential customer data.
 
-Latest production evidence:
+Latest production evidence for the current `liquisto.cloud` authority:
 
 | Date | Environment | GitHub run | Result | Evidence |
 | --- | --- | --- | --- | --- |
-| 2026-06-17 22:37 Europe/Berlin | prod | `27718167513` | passed | Production Control API Worker deployed from `main` at `655beba1faba6763120198857d1c8aef075d4921`. |
-| 2026-06-17 22:40 Europe/Berlin | prod | `27718320221` | passed | Owner membership `tm-liquisto-initial-owner` verified active with role `liquisto-owner`; owner principal stayed in the environment-scoped GitHub secret and was not printed. |
+| pending | prod | pending | pending | Re-run `tenant-admin-bootstrap.yml` or an approved read-only tenant-admin verification after the `liquisto.cloud` seed is deployed. |
 
-Before run `27718320221`, production D1 was missing the tenant-control-plane
-tables. The versioned D1 migration `0003_tenant_control_plane.sql` was applied
-to `scas-control-prod`, and the non-secret Control Plane seed generated from
-repository fixtures was executed against the remote production D1 database. The
-post-seed check confirmed tenant `liquisto`, hostname
-`liquisto.condata.io`, and assignable roles `liquisto-owner` and
-`liquisto-researcher`.
+The post-seed check must confirm tenant `liquisto`, hostname `liquisto.cloud`,
+and assignable roles `liquisto-owner` and `liquisto-researcher`.
 
 ## Rollback
 

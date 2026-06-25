@@ -1,6 +1,6 @@
 # Streamlit Business UI Deployment
 
-Last updated: 2026-06-18 18:35 Europe/Berlin
+Last updated: 2026-06-25 21:12 Europe/Berlin
 
 This runbook defines the repository-owned deployment path for the SCAS
 Streamlit Business UI. It is intentionally manual and fail-closed. Building an
@@ -14,7 +14,7 @@ Primary current tenant:
 
 ```text
 tenant_id: liquisto
-hostname: liquisto.condata.io
+hostname: liquisto.cloud
 service path: apps/streamlit_business_ui/app.py
 container definition: deploy/streamlit-business-ui/Dockerfile
 workflow: .github/workflows/tenant-ui-deploy.yml
@@ -35,27 +35,21 @@ selector.
 
 ## Latest Production Inventory
 
-Read-only runtime inventory run
-`https://github.com/KonstantinData/skill-centric-agent-system/actions/runs/27719494125`
-passed on 2026-06-17 after production apply. It observed:
+The `liquisto.cloud` authority requires a fresh read-only runtime inventory
+after Cloudflare DNS/TLS cutover. The inventory must observe:
 
-- `liquisto.condata.io` is served by Nginx and proxied to `127.0.0.1:8501`.
+- `liquisto.cloud` is served by Nginx and proxied to `127.0.0.1:8501`.
 - Container `liquisto-app-1` is healthy and runs
   `streamlit run apps/streamlit_business_ui/app.py`.
-- The running image is
-  `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921`.
-- The deployed source revision is
-  `655beba1faba6763120198857d1c8aef075d4921`.
+- The running image matches the approved release image.
+- The deployed source revision matches the approved release revision.
 - SCAS-managed runtime config keys are present, but values are redacted from
   the evidence artifact.
 
 This verifies the repository-owned Streamlit Business UI is deployed behind the
-tenant hostname with the production launch image. Production launch readiness is
-certified separately by Production Readiness Evidence run `27719854597`.
-
-Intermediate inventory artifacts from runs `27719268407` and `27719390153` were
-deleted because they exposed over-specific server-side session context. Use
-`27719494125` or later inventory evidence for production release records.
+tenant hostname with the approved production image. Production launch readiness
+is certified separately by Production Readiness Evidence after current
+`liquisto.cloud` evidence is available.
 
 ## Required Secrets
 
@@ -127,7 +121,7 @@ Run the workflow in plan mode first:
 gh workflow run tenant-ui-deploy.yml \
   -f target_environment=staging \
   -f tenant_id=liquisto \
-  -f hostname=liquisto.condata.io \
+  -f hostname=liquisto.cloud \
   -f control_api_url=https://<staging-control-api-url> \
   -f auth_mode=required \
   -f apply_deploy=false \
@@ -150,7 +144,7 @@ available and the upstream authentication evidence exists:
 gh workflow run tenant-ui-deploy.yml \
   -f target_environment=staging \
   -f tenant_id=liquisto \
-  -f hostname=liquisto.condata.io \
+  -f hostname=liquisto.cloud \
   -f control_api_url=https://<staging-control-api-url> \
   -f upstream_auth_evidence_url=https://github.com/<owner>/<repo>/actions/runs/<run-id> \
   -f auth_mode=required \
@@ -192,7 +186,7 @@ Production deploys require all staging and launch gates to pass first. Then run:
 gh workflow run tenant-ui-deploy.yml \
   -f target_environment=prod \
   -f tenant_id=liquisto \
-  -f hostname=liquisto.condata.io \
+  -f hostname=liquisto.cloud \
   -f control_api_url=https://<prod-control-api-url> \
   -f upstream_auth_evidence_url=https://github.com/<owner>/<repo>/actions/runs/<run-id> \
   -f auth_mode=required \
@@ -202,19 +196,20 @@ gh workflow run tenant-ui-deploy.yml \
 
 Do not use production apply when any of these are missing:
 
-- Cloudflare DNS/TLS/proxy evidence for `liquisto.condata.io`; Worker route
-  evidence is required only if the UI hostname is intentionally moved behind a
-  Cloudflare Worker route.
+- Cloudflare DNS/TLS/proxy evidence for `liquisto.cloud`; latest evidence run
+  `28196655630` passed with Worker route count `0`. Worker route evidence is
+  required only if the UI hostname is intentionally moved behind a Cloudflare
+  Worker route.
 - Approved upstream authentication/session evidence.
 - Staging tenant launch gate evidence.
 - Rollback/deprovisioning dry-run evidence.
 - Owner-approved production release decision.
 
-Latest production apply evidence:
+Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
-| 2026-06-17 22:56 Europe/Berlin | `27719099324` | passed | Applied `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921` to compose project `liquisto` using `/opt/liquisto/scas-streamlit-business-ui.override.yml`; previous image was `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`; post-deploy health check passed. |
+| pending | pending | pending | Run `tenant-ui-deploy.yml` with `hostname=liquisto.cloud` and attach the sanitized deployment artifact before certifying production readiness. |
 
 ## Rollback Behavior
 

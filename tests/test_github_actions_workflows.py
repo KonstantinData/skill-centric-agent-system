@@ -29,6 +29,9 @@ TENANT_ADMIN_BOOTSTRAP_WORKFLOW_PATH = (
 TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-evidence.yml"
 )
+TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-dns-cutover.yml"
+)
 ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
 )
@@ -95,6 +98,10 @@ def load_tenant_admin_bootstrap_workflow() -> str:
 
 def load_tenant_cloudflare_evidence_workflow() -> str:
     return TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_tenant_cloudflare_dns_cutover_workflow() -> str:
+    return TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def load_es_daskuechenhaus_site_deploy_workflow() -> str:
@@ -401,10 +408,16 @@ def test_tenant_ui_deploy_workflow_is_manual_only_and_builds_first() -> None:
     assert "target_environment:" in workflow
     assert "apply_deploy:" in workflow
     assert "default: false" in workflow
+    assert "ui_app:" in workflow
+    assert "- streamlit-business-ui" in workflow
+    assert "- liquisto-workbench" in workflow
     assert "deploy/streamlit-business-ui/Dockerfile" in workflow
+    assert "deploy/liquisto-workbench/Dockerfile" in workflow
+    assert "scas-liquisto-workbench:${GITHUB_SHA}" in workflow
     assert "docker build" in workflow
     assert "docker save" in workflow
     assert "tenant-ui-deploy-plan" in workflow
+    assert "sync_cloudflare_dns:" in workflow
 
 
 def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None:
@@ -432,17 +445,29 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert '"membership_id": f"tm-{tenant_id}-initial-owner"' in workflow
     assert "UI_SESSION_CONTEXT_JSON_B64=" in workflow
     assert "UI_LOGIN_USERS_JSON_B64=" in workflow
-    assert "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}" in workflow
-    assert "::add-mask::${UI_LOGIN_USERS_JSON_B64}" in workflow
+    assert "for secret_value in" in workflow
+    assert 'if [ -n "${secret_value}" ]; then' in workflow
+    assert "echo \"::add-mask::${secret_value}\"" in workflow
     assert "label=com.docker.compose.project=${COMPOSE_PROJECT}" in workflow
     assert "label=com.docker.compose.service=${SERVICE_NAME}" in workflow
     assert "-f \"${EXISTING_COMPOSE_PATH}\"" not in workflow
     assert "-f \"${REMOTE_OVERRIDE_PATH}\"" in workflow
     assert "legacy compose files and .env are not read" in workflow
-    assert "Waiting for Streamlit health check (${attempt}/30)" in workflow
+    assert "Waiting for tenant UI health check (${attempt}/30)" in workflow
     assert "SCAS_UI_AUTH_MODE=%s" in workflow
     assert "SCAS_UI_LOGIN_USERS_JSON" in workflow
     assert "SCAS_UI_UPSTREAM_AUTH_TRUSTED=true" in workflow
+    assert "SCAS_UI_CONTAINER_PORT" in workflow
+    assert "SCAS_UI_HEALTH_PATH" in workflow
+    assert "Create Cloudflare Origin certificate" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
+    assert "/client/v4/certificates" in workflow
+    assert "tenant-ui-origin-cert/origin.pem" in workflow
+    assert "Cloudflare DNS sync is only wired for the liquisto tenant" in workflow
+    assert "Cloudflare DNS sync is only allowed for liquisto.cloud" in workflow
+    assert "Sync Cloudflare DNS to deployment host" in workflow
+    assert "synced-to-deployment-host" in workflow
 
 
 def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
@@ -452,6 +477,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Post-deploy health check failed." in workflow
     assert "Rolled back to previous image" in workflow
     assert "_stcore/health" in workflow
+    assert "health_path=\"/\"" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
     assert "manage_reverse_proxy:" in workflow
     assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow
@@ -459,6 +485,13 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
     assert "systemctl reload nginx" in workflow
     assert "Reverse proxy:" in workflow
+    assert "Origin certificate:" in workflow
+    assert "expected_content_marker=\"Command Center\"" in workflow
+    assert 'forbidden_content_marker="daskuechenhaus"' in workflow
+    assert "Post-deploy content check failed" in workflow
+    assert "forbidden cross-tenant marker" in workflow
+    assert "Verify public tenant UI content" in workflow
+    assert "Public tenant UI content check failed." in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
@@ -503,19 +536,57 @@ def test_tenant_cloudflare_evidence_workflow_is_manual_and_hides_origin() -> Non
 
     assert "workflow_dispatch:" in workflow
     assert "require_worker_route:" in workflow
-    assert "CLOUDFLARE_ZONE_ID" in workflow
-    assert "SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN" in workflow
-    assert "SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN" in workflow
+    assert "apply_dns_cutover:" in workflow
+    assert "origin_ipv4:" in workflow
+    assert "confirm_hostname:" in workflow
+    assert "default: liquisto.cloud" in workflow
+    assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
+    assert "SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
     assert "SCAS_STAGING_CLOUDFLARE_API_TOKEN" not in workflow
     assert "SCAS_PROD_CLOUDFLARE_API_TOKEN" not in workflow
-    assert "Cloudflare evidence token" in workflow
+    assert "Missing LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "Missing LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
+    assert "DNS cutover is only allowed for liquisto.cloud" in workflow
+    assert "confirm_hostname must match hostname when apply_dns_cutover=true" in workflow
     assert "export CLOUDFLARE_API_TOKEN" in workflow
-    assert "/dns_records?type=A&name=" in workflow
+    assert "export CLOUDFLARE_ZONE_ID" in workflow
+    assert "upsert(\"A\", hostname, origin_ipv4)" in workflow
+    assert "upsert(\"CNAME\", f\"www.{hostname}\", hostname)" in workflow
+    assert "Apex A record cutover" in workflow
+    assert "WWW CNAME cutover" in workflow
+    assert "/dns_records?type={record_type}&name=" in workflow
     assert "/settings/ssl" in workflow
     assert "/workers/routes?per_page=100" in workflow
     assert "Origin record content: not printed" in workflow
     assert "tenant-cloudflare-evidence/evidence.md" in workflow
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
+
+
+def test_tenant_cloudflare_dns_cutover_workflow_is_guarded_and_hides_origin() -> None:
+    assert TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH.exists()
+    workflow = load_tenant_cloudflare_dns_cutover_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "default: liquisto.cloud" in workflow
+    assert "origin_ipv4:" in workflow
+    assert "apply_changes:" in workflow
+    assert "default: false" in workflow
+    assert "confirm_hostname:" in workflow
+    assert "hostname must be liquisto.cloud" in workflow
+    assert "confirm_hostname must match hostname when apply_changes=true" in workflow
+    assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "/dns_records" in workflow
+    assert '"type": record_type' in workflow
+    assert '"proxied": True' in workflow
+    assert '"ttl": 1' in workflow
+    assert "Apex origin content: not printed" in workflow
+    assert "origin_content_printed" in workflow
+    assert "tenant-cloudflare-dns-cutover/evidence.md" in workflow
+    assert "SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
+    assert "SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
 
 
 def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:
