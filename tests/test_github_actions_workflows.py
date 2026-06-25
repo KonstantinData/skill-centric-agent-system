@@ -41,6 +41,9 @@ ES_DASKUECHENHAUS_MAIL_RUNTIME_SYNC_WORKFLOW_PATH = (
 ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-admin-api-deploy.yml"
 )
+ES_DASKUECHENHAUS_ACCESS_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-access.yml"
+)
 ES_DASKUECHENHAUS_CUSTOMER_DATABASE_RESET_WORKFLOW_PATH = (
     REPO_ROOT
     / ".github"
@@ -108,6 +111,10 @@ def load_es_daskuechenhaus_mail_runtime_sync_workflow() -> str:
 
 def load_es_daskuechenhaus_admin_api_deploy_workflow() -> str:
     return ES_DASKUECHENHAUS_ADMIN_API_DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_es_daskuechenhaus_access_workflow() -> str:
+    return ES_DASKUECHENHAUS_ACCESS_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def load_es_daskuechenhaus_customer_database_reset_workflow() -> str:
@@ -642,6 +649,24 @@ def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
     assert "Admin API did not become reachable on 127.0.0.1:8715" in workflow
     assert "http://127.0.0.1:8715/customers/search?q=abc" in workflow
     assert "Secret values in artifact: `none`" in workflow
+
+
+def test_es_daskuechenhaus_access_workflow_does_not_write_policy_mfa_config() -> None:
+    workflow = load_es_daskuechenhaus_access_workflow()
+
+    policy_payload = workflow.split("          def policy_payload", 1)[1].split(
+        "          def policy_emails",
+        1,
+    )[0]
+    disabled_policy_payload = workflow.split(
+        "          def with_disabled_mfa_policy",
+        1,
+    )[1].split("          def app_name_for_hostname", 1)[0]
+
+    assert "mfa_config" not in policy_payload
+    assert '                  "mfa_config",' not in disabled_policy_payload
+    assert 'payload.pop("mfa_config", None)' in disabled_policy_payload
+    assert "if not mfa_config:" in workflow
 
 
 def test_es_daskuechenhaus_customer_database_reset_is_production_guarded() -> None:

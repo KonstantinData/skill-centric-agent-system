@@ -191,9 +191,6 @@ jobs:
                   ],
                   "exclude": [],
                   "require": [],
-                  "mfa_config": {
-                      "mfa_disabled": True,
-                  },
               }
 
           def policy_emails(policy: dict) -> set[str]:
@@ -251,6 +248,8 @@ jobs:
 
           def policy_mfa_disabled(policy: dict) -> bool:
               mfa_config = policy.get("mfa_config") or {}
+              if not mfa_config:
+                  return True
               return mfa_config.get("mfa_disabled") is True
 
           def user_email_values(user: dict) -> set[str]:
@@ -421,16 +420,13 @@ jobs:
                   "purpose_justification_required",
                   "require",
                   "session_duration",
-                  "mfa_config",
               }
               payload = {
                   key: value
                   for key, value in payload.items()
                   if key in allowed_keys and value is not None
               }
-              payload["mfa_config"] = {
-                  "mfa_disabled": True,
-              }
+              payload.pop("mfa_config", None)
               return payload
 
           def app_name_for_hostname(hostname: str) -> str:
