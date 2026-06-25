@@ -13,6 +13,7 @@ gh workflow run tenant-ui-deploy.yml `
   -f tenant_id=liquisto `
   -f hostname=liquisto.cloud `
   -f control_api_url=https://scas-control-api-prod.still-butterfly-bbff.workers.dev `
+  -f upstream_auth_evidence_url=https://github.com/KonstantinData/skill-centric-agent-system/tree/codex/liquisto-cloud-cutover/apps/liquisto-workbench `
   -f ui_app=liquisto-workbench `
   -f auth_mode=required `
   -f apply_deploy=true `
@@ -23,12 +24,25 @@ gh workflow run tenant-ui-deploy.yml `
   -f local_health_port=3027 `
   -f manage_reverse_proxy=true `
   -f reverse_proxy_config_path=/etc/nginx/sites-available/liquisto `
-  -f reverse_proxy_cert_hostname=liquisto.cloud
+  -f reverse_proxy_cert_hostname=liquisto.cloud `
+  -f sync_cloudflare_dns=true
 ```
 
 The workflow builds `deploy/liquisto-workbench/Dockerfile`, starts the
 standalone Next.js server on container port `3000`, binds it to
 `127.0.0.1:3027` on the target host, and optionally manages the Nginx server
 block for `liquisto.cloud`.
+
+When `sync_cloudflare_dns=true`, the workflow updates the `liquisto.cloud`
+Cloudflare apex and `www` records to the resolved deployment host without
+printing the hidden origin IP in logs or evidence. The deploy is considered
+successful only after the container, the Nginx origin route, and the public
+Cloudflare route serve the Workbench content marker `Command Center`.
+
+Latest production apply evidence:
+
+| Date | GitHub run | Result | Evidence |
+| --- | --- | --- | --- |
+| 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified. |
 
 Do not use the legacy Streamlit deployment mode for Liquisto Workbench.

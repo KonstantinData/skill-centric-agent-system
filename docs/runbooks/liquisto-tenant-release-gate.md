@@ -122,17 +122,17 @@ Do not treat a Worker route as required for `liquisto.cloud` unless the
 deployment architecture is explicitly changed. Cloudflare Workers remain the
 Control API path, not the Streamlit UI hostname path.
 
-## Streamlit Business UI Deployment
+## Liquisto Workbench Deployment
 
 The repository-owned deployment path is documented in
-`docs/runbooks/streamlit-business-ui-deployment.md` and implemented by
+`docs/runbooks/liquisto-workbench-deployment.md` and implemented by
 `.github/workflows/tenant-ui-deploy.yml`.
 
-Latest production plan evidence for the current `liquisto.cloud` authority:
+Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
-| pending | pending | pending | Re-run plan/apply evidence with `hostname=liquisto.cloud` after Cloudflare cutover inputs are confirmed. |
+| 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx route managed at `127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified. |
 
 Build-only plan mode:
 
@@ -142,6 +142,7 @@ gh workflow run tenant-ui-deploy.yml \
   -f tenant_id=liquisto \
   -f hostname=liquisto.cloud \
   -f control_api_url=https://<staging-control-api-url> \
+  -f ui_app=liquisto-workbench \
   -f apply_deploy=false \
   -f confirm_production=false
 ```
@@ -154,8 +155,9 @@ file, sets `SCAS_UI_TENANT_ID=liquisto`, and intentionally does not read legacy
 host Compose files or host `.env` files. The fixed tenant binding means
 `liquisto.cloud` cannot expose a tenant selector or switch to another
 tenant through UI state. The workflow writes sanitized deployment evidence and
-rolls back to the previous Compose service image if the post-deploy Streamlit
-health check fails.
+rolls back to the previous Compose service image if the post-deploy health or
+Workbench content check fails. For `liquisto-workbench`, the workflow also
+verifies the public Cloudflare route before the deploy can pass.
 
 ## Tenant Admin Bootstrap
 
