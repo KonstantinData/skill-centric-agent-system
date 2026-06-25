@@ -118,7 +118,22 @@ def test_dkh_crm_purchase_contract_input_flow_supports_editable_payment_split() 
         / "purchase-contract-form.tsx"
     )
 
+    assert "deliveryTimeMode: \"fixed_date\" | \"week_window\"" in source
+    assert 'deliveryTimeMode: "fixed_date"' in source
+    assert "deliveryWindowWeekFrom: string" in source
+    assert "deliveryWindowWeekTo: string" in source
+    assert "deliveryWindowYear: string" in source
+    assert "function formatDeliveryWeekWindowForPrint(" in source
+    assert 'return `ca. KW${fromWeek} bis KW${toWeek}${yearSuffix}`' in source
+    assert "function formatDeliveryTimeForPrint(draft: ContractDraft)" in source
+    assert 'Label label="Lieferzeit-Art"' in source
+    assert '<option value="fixed_date">Fester Termin</option>' in source
+    assert '<option value="week_window">Lieferzeitfenster</option>' in source
     assert source.index('Label label="Liefer-KW"') < source.index('Label label="Liefertermin"')
+    assert 'Label label="Von KW"' in source
+    assert 'Label label="Bis KW"' in source
+    assert 'name="delivery_window_year"' in source
+    assert "{formatDeliveryTimeForPrint(draft)}" in source
     assert 'Label label="Kaufvertrags-Datum"' in source
     assert 'Label label="Datum"' not in source
     assert "paymentOnOrderPercent: string" in source

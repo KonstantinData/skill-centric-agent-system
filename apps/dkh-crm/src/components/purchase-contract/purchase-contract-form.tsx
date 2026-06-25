@@ -21,7 +21,11 @@ type ContractDraft = {
   deliveryAddress: string;
   deliveryPhone: string;
   deliveryMode: "pickup" | "installation";
+  deliveryTimeMode: "fixed_date" | "week_window";
   deliveryDate: string;
+  deliveryWindowWeekFrom: string;
+  deliveryWindowWeekTo: string;
+  deliveryWindowYear: string;
   customerNumber: string;
   contractDate: string;
   notes: string;
@@ -68,7 +72,11 @@ function createInitialDraft(initialDraft?: PurchaseContractFormProps["initialDra
     deliveryAddress: "",
     deliveryPhone: "",
     deliveryMode: "installation",
+    deliveryTimeMode: "fixed_date",
     deliveryDate: "",
+    deliveryWindowWeekFrom: "",
+    deliveryWindowWeekTo: "",
+    deliveryWindowYear: String(new Date().getFullYear()),
     customerNumber: "",
     contractDate: todayValue(),
     notes: "",
@@ -144,6 +152,32 @@ function formatDateForPrint(value: string) {
     String(parsed.getMonth() + 1).padStart(2, "0"),
     parsed.getFullYear(),
   ].join(".");
+}
+
+function formatDeliveryWeekWindowForPrint(from: string, to: string, year: string) {
+  const fromWeek = from.trim();
+  const toWeek = to.trim();
+  const deliveryYear = year.trim();
+  if (!fromWeek && !toWeek) return "";
+
+  const yearSuffix = deliveryYear ? ` ${deliveryYear}` : "";
+  if (fromWeek && toWeek && fromWeek !== toWeek) {
+    return `ca. KW${fromWeek} bis KW${toWeek}${yearSuffix}`;
+  }
+
+  return `ca. KW${fromWeek || toWeek}${yearSuffix}`;
+}
+
+function formatDeliveryTimeForPrint(draft: ContractDraft) {
+  if (draft.deliveryTimeMode === "week_window") {
+    return formatDeliveryWeekWindowForPrint(
+      draft.deliveryWindowWeekFrom,
+      draft.deliveryWindowWeekTo,
+      draft.deliveryWindowYear,
+    );
+  }
+
+  return formatDateForPrint(draft.deliveryDate);
 }
 
 function isoWeekStart(year: number, week: number) {
@@ -247,6 +281,23 @@ export function PurchaseContractForm({
     value: ContractDraft[K],
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateDeliveryTimeMode(value: ContractDraft["deliveryTimeMode"]) {
+    setDraft((current) => {
+      const fixedDateYear = current.deliveryDate
+        ? new Date(`${current.deliveryDate}T00:00:00`).getFullYear()
+        : NaN;
+      const deliveryWindowYear =
+        current.deliveryWindowYear ||
+        (Number.isFinite(fixedDateYear) ? String(fixedDateYear) : String(new Date().getFullYear()));
+
+      return {
+        ...current,
+        deliveryTimeMode: value,
+        deliveryWindowYear,
+      };
+    });
   }
 
   function updateItem(id: string, patch: Partial<ContractItem>) {
@@ -447,24 +498,84 @@ export function PurchaseContractForm({
                   readOnly={useCustomerPhoneForDelivery}
                 />
               </Label>
-              <Label label="Liefer-KW">
-                <Field
-                  name="delivery_week"
-                  type="week"
-                  value={deliveryWeek}
+              <Label label="Lieferzeit-Art">
+                <Select
+                  name="delivery_time_mode"
+                  value={draft.deliveryTimeMode}
                   onChange={(event) =>
-                    updateDraft("deliveryDate", dateValueFromWeek(event.target.value))
+                    updateDeliveryTimeMode(
+                      event.target.value as ContractDraft["deliveryTimeMode"],
+                    )
                   }
-                />
+                >
+                  <option value="fixed_date">Fester Termin</option>
+                  <option value="week_window">Lieferzeitfenster</option>
+                </Select>
               </Label>
-              <Label label="Liefertermin">
-                <Field
-                  name="delivery_date"
-                  type="date"
-                  value={draft.deliveryDate}
-                  onChange={(event) => updateDraft("deliveryDate", event.target.value)}
-                />
-              </Label>
+              {draft.deliveryTimeMode === "fixed_date" ? (
+                <>
+                  <Label label="Liefer-KW">
+                    <Field
+                      name="delivery_week"
+                      type="week"
+                      value={deliveryWeek}
+                      onChange={(event) =>
+                        updateDraft("deliveryDate", dateValueFromWeek(event.target.value))
+                      }
+                    />
+                  </Label>
+                  <Label label="Liefertermin">
+                    <Field
+                      name="delivery_date"
+                      type="date"
+                      value={draft.deliveryDate}
+                      onChange={(event) => updateDraft("deliveryDate", event.target.value)}
+                    />
+                  </Label>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Label label="Von KW">
+                    <Field
+                      name="delivery_window_week_from"
+                      type="number"
+                      min="1"
+                      max="53"
+                      inputMode="numeric"
+                      value={draft.deliveryWindowWeekFrom}
+                      onChange={(event) =>
+                        updateDraft("deliveryWindowWeekFrom", event.target.value)
+                      }
+                    />
+                  </Label>
+                  <Label label="Bis KW">
+                    <Field
+                      name="delivery_window_week_to"
+                      type="number"
+                      min="1"
+                      max="53"
+                      inputMode="numeric"
+                      value={draft.deliveryWindowWeekTo}
+                      onChange={(event) =>
+                        updateDraft("deliveryWindowWeekTo", event.target.value)
+                      }
+                    />
+                  </Label>
+                  <Label label="Jahr">
+                    <Field
+                      name="delivery_window_year"
+                      type="number"
+                      min="2020"
+                      max="2100"
+                      inputMode="numeric"
+                      value={draft.deliveryWindowYear}
+                      onChange={(event) =>
+                        updateDraft("deliveryWindowYear", event.target.value)
+                      }
+                    />
+                  </Label>
+                </div>
+              )}
               <Label label="Kaufvertrags-Datum">
                 <Field
                   name="contract_date"
@@ -792,7 +903,7 @@ function PurchaseContractPrintOverlay({
           {draft.deliveryMode === "installation" ? "X" : ""}
         </div>
         <div className="print-field print-delivery-date">
-          {formatDateForPrint(draft.deliveryDate)}
+          {formatDeliveryTimeForPrint(draft)}
         </div>
         <div className="print-field print-customer-number">{draft.customerNumber}</div>
         <div className="print-field print-contract-date">
