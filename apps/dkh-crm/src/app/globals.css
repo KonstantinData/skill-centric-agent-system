@@ -396,7 +396,7 @@ a {
   }
 
   .print-customer-phone {
-    left: 41mm;
+    left: 33mm;
     top: 47.3mm;
     width: 80mm;
     height: 5mm;
@@ -410,7 +410,7 @@ a {
   }
 
   .print-delivery-phone {
-    left: 41mm;
+    left: 33mm;
     top: 85.6mm;
     width: 80mm;
     height: 5mm;
@@ -426,8 +426,8 @@ a {
   }
 
   .print-pickup {
-    left: 147mm;
-    top: 59.2mm;
+    left: 142mm;
+    top: 57.2mm;
   }
 
   .print-installation {
@@ -464,6 +464,9 @@ a {
     top: 107.5mm;
     width: 171mm;
     height: 116mm;
+    display: grid;
+    row-gap: 3.5mm;
+    align-content: start;
   }
 
   .print-item-row {
@@ -480,6 +483,7 @@ a {
     min-width: 0;
     overflow: hidden;
     padding-top: 1mm;
+    transform: translateY(-2mm);
   }
 
   .print-item-supplier {
@@ -495,15 +499,6 @@ a {
     overflow-wrap: anywhere;
     line-height: 5.7mm;
     padding-right: 3mm;
-  }
-
-  .print-item-row-1 .print-item-description,
-  .print-item-row-3 .print-item-description {
-    transform: translateY(-1mm);
-  }
-
-  .print-item-row-2 .print-item-description {
-    transform: translateY(-2mm);
   }
 
   .print-item-price {

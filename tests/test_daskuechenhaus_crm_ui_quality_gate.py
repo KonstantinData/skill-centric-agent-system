@@ -91,6 +91,18 @@ def test_dkh_crm_supports_dark_mode_theme_toggle() -> None:
     assert "dangerouslySetInnerHTML" in theme_script
 
 
+def test_dkh_crm_purchase_contract_print_layout_matches_blank_form_offsets() -> None:
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    assert ".print-customer-phone {\n    left: 33mm;" in globals_css
+    assert ".print-delivery-phone {\n    left: 33mm;" in globals_css
+    assert ".print-pickup {\n    left: 142mm;\n    top: 57.2mm;" in globals_css
+    assert ".print-items {\n    left: 20mm;\n    top: 107.5mm;" in globals_css
+    assert "row-gap: 3.5mm;" in globals_css
+    assert "transform: translateY(-2mm);" in globals_css
+    assert ".print-item-row-1 .print-item-description" not in globals_css
+
+
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
     kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
