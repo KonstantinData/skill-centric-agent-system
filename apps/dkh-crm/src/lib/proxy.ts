@@ -71,6 +71,20 @@ function proxyHeaders(request: NextRequest) {
   return headers;
 }
 
+function isCustomerDocumentDownload(kind: ProxyKind, path: string): boolean {
+  return kind === "customers" && /^cases\/\d+\/documents\/\d+\/download$/.test(path);
+}
+
+function inlineContentDisposition(contentDisposition: string): string {
+  if (/^attachment\b/i.test(contentDisposition)) {
+    return contentDisposition.replace(/^attachment\b/i, "inline");
+  }
+  if (/^inline\b/i.test(contentDisposition)) {
+    return contentDisposition;
+  }
+  return `inline; ${contentDisposition}`;
+}
+
 function isLocalRedirectHost(host: string): boolean {
   const normalized = host.toLowerCase().split(":")[0];
   return (
@@ -161,13 +175,20 @@ export async function proxyRoute(
   }
 
   const contentType = response.headers.get("content-type") ?? "application/json";
+  const shouldPreview =
+    request.nextUrl.searchParams.get("preview") === "1" &&
+    isCustomerDocumentDownload(kind, built.path);
   const responseHeaders: Record<string, string> = {
     "content-type": contentType,
     "cache-control": "no-store",
   };
   const contentDisposition = response.headers.get("content-disposition");
   if (contentDisposition) {
-    responseHeaders["content-disposition"] = contentDisposition;
+    responseHeaders["content-disposition"] = shouldPreview
+      ? inlineContentDisposition(contentDisposition)
+      : contentDisposition;
+  } else if (shouldPreview) {
+    responseHeaders["content-disposition"] = "inline";
   }
   return new NextResponse(response.body, {
     status: response.status,

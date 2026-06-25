@@ -104,6 +104,9 @@ def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     assert r"^leads\/\d+\/notes$" in proxy
     assert r"^confirmations\/\d+\/exceptions\/\d+\/decide$" in proxy
     assert "safeDecodeSegment" in proxy
+    assert "isCustomerDocumentDownload" in proxy
+    assert "inlineContentDisposition" in proxy
+    assert 'request.nextUrl.searchParams.get("preview") === "1"' in proxy
     assert "/customers/search" in kunden_search
     assert 'upstream.searchParams.set("status", status)' in kunden_search
     assert '["active", "closed", "all"].includes(status)' in kunden_search
@@ -359,6 +362,9 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "lg:grid-cols-[minmax(0,1.35fr)_minmax(170px,0.65fr)]" in source
     assert "Legt automatisch fest, in welchem Register" in source
     assert "/download" in source
+    assert "download?preview=1" in source
+    assert "Vorschau" in source
+    assert 'target="_blank"' in source
     assert "Herunterladen" in source
     assert 'name="document_category"' in source
     assert 'name="register_code"' not in source
@@ -503,6 +509,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "/documents?return_to=" in source
     assert "/documents/${document.id}/archive?return_to=" in source
     assert "/documents/${document.id}/download" in source
+    assert "/documents/${document.id}/download?preview=1" in source
+    assert "aria-label={`Vorschau ${document.title}`}" in source
     assert "/sections/process_control" in source
     assert "Vorgang schließen" in source
     assert r"^cases$" in proxy

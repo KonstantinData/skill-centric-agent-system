@@ -3,6 +3,7 @@ import {
   CheckSquare,
   ClipboardList,
   Download,
+  Eye,
   FileText,
   FolderOpen,
   Mail,
@@ -2182,13 +2183,25 @@ function CaseDesktop({
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {document.has_file ? (
-                          <LinkButton
-                            href={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/download`}
-                            variant="secondary"
-                          >
-                            <Download size={16} aria-hidden="true" />
-                            Herunterladen
-                          </LinkButton>
+                          <>
+                            <LinkButton
+                              href={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/download?preview=1`}
+                              target="_blank"
+                              rel="noreferrer"
+                              variant="secondary"
+                              aria-label={`Vorschau ${document.title}`}
+                            >
+                              <Eye size={16} aria-hidden="true" />
+                              Vorschau
+                            </LinkButton>
+                            <LinkButton
+                              href={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/download`}
+                              variant="secondary"
+                            >
+                              <Download size={16} aria-hidden="true" />
+                              Herunterladen
+                            </LinkButton>
+                          </>
                         ) : null}
                         <form
                           action={`/api/kunden/cases/${selectedCase.id}/documents/${document.id}/archive?return_to=${returnTo}`}
