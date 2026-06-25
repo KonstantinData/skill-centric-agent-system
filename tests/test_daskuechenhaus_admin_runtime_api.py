@@ -119,6 +119,10 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "WHEN :'phone_value' <> ''" in source
     assert "AND COALESCE(c.primary_phone_normalized, '') = :'phone_value'" in source
     assert "AND COALESCE(c.primary_mobile_normalized, '') = :'phone_value'" in source
+    assert "COALESCE(cc.case_number, '') ILIKE '%' || :'search_value' || '%'" in source
+    assert "COALESCE(cc.carat_order_number, '') ILIKE '%' || :'search_value' || '%'" in source
+    assert "'case_number', case_number" in source
+    assert "'carat_order_number', carat_order_number" in source
     assert "app.customer_case_status_phases csp" in source
     assert "COALESCE(csp.is_terminal, FALSE) = TRUE" in source
     assert "LIMIT 20" in source

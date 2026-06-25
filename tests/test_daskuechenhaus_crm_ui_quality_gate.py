@@ -33,6 +33,8 @@ def test_dkh_crm_uses_tenant_owned_assets_and_search() -> None:
     assert "URLSearchParams" in search_script
     assert 'params.set("status", filterValue)' in search_script
     assert "/kunden/" in search_script
+    assert "Vorgang \" + item.case_number" in search_script
+    assert "CARAT \" + item.carat_order_number" in search_script
     assert "maxOpenFiles = 3" in search_script
     assert "[data-customer-create-modal]" in search_script
     assert "[data-lead-create-modal]" in search_script
@@ -244,6 +246,7 @@ def test_dkh_crm_customers_page_is_search_first_and_recent_only() -> None:
     assert "Kunde suchen" not in source
     assert "data-customer-direct-search" in source
     assert "Kunden direkt Suche" in source
+    assert "Kunden-/Vorgangsnummer, CARAT" in source
     assert "data-customer-status-filter" in source
     assert "Aktive Kunden" in source
     assert "Abgeschlossene Kunden" in source
@@ -361,7 +364,10 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "mailto:${customer.primary_email}" in source
     assert "aria-disabled={!customer.primary_email}" in source
     assert "Vorgangsregal" in source
-    assert "customerNumber: selectedCase.carat_order_number || selectedCase.case_number || \"\"" in source
+    assert (
+        "customerNumber: selectedCase.carat_order_number || selectedCase.case_number || \"\""
+        in source
+    )
     assert "data-customer-master-open" in source
     assert "data-customer-master-modal" in source
     assert "Kundenstammdaten bearbeiten" in source
