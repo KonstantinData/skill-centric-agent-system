@@ -242,7 +242,7 @@ def test_business_ui_loads_liquisto_tenant_shell() -> None:
     assert shell.tenant_id == "liquisto"
     assert shell.area_id == "liquisto"
     assert shell.legal_name == "Liquisto Technologies GmbH"
-    assert shell.hostname == "liquisto.condata.io"
+    assert shell.hostname == "liquisto.cloud"
     assert shell.logo_path == "assets/images/liquisto/liquisto_logo.png"
     assert shell.admin_routes == ("/admin/users", "/admin/roles", "/admin/settings")
     assert shell.role_names == ("Tenant Owner", "Researcher")
@@ -282,7 +282,7 @@ def test_business_ui_branding_is_loaded_from_selected_tenant_metadata() -> None:
     )
 
     assert liquisto_branding.display_name == "Liquisto"
-    assert liquisto_branding.hostname == "liquisto.condata.io"
+    assert liquisto_branding.hostname == "liquisto.cloud"
     assert liquisto_branding.logo_path == "assets/images/liquisto/liquisto_logo.png"
     assert liquisto_branding.landing_type == "internal-operations-dashboard"
     assert liquisto_branding.area_presentation == "tiles"
@@ -510,7 +510,7 @@ def test_business_ui_launch_smoke_contract_covers_accessibility_labels() -> None
         ("liquisto-owner",),
     )
 
-    assert shell.hostname == "liquisto.condata.io"
+    assert shell.hostname == "liquisto.cloud"
     assert all(area.display_name and area.description for area in owner_areas)
     assert all(area.route.startswith("/") for area in owner_areas)
     assert all(workflow["route"].startswith("/admin/") for workflow in admin.workflows)
@@ -1261,7 +1261,7 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
             return (
                 b'{"tenant":{"tenant_id":"liquisto","area_id":"liquisto",'
                 b'"display_name":"Liquisto","status":"setup",'
-                b'"hostname":{"hostname":"liquisto.condata.io"}},'
+                b'"hostname":{"hostname":"liquisto.cloud"}},'
                 b'"admin":{"admin_routes":["/admin/users","/admin/roles"]},'
                 b'"users":[{"membership_id":"liquisto-membership-owner",'
                 b'"principal_id":"liquisto-owner","status":"active",'
@@ -1291,7 +1291,7 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
     context = streamlit_business_ui_app.load_tenant_admin_context_from_api(
         config,
         "liquisto",
-        "liquisto.condata.io",
+        "liquisto.cloud",
     )
     shell = streamlit_business_ui_app.build_tenant_shell_from_admin_context(context)
     admin = streamlit_business_ui_app.build_tenant_admin_section_from_context(context)
@@ -1299,7 +1299,7 @@ def test_business_ui_loads_tenant_admin_context_from_control_api(monkeypatch) ->
     assert captured == {
         "url": "https://control-api.example.invalid/tenant-admin/tenants/liquisto",
         "authorization": "Bearer tenant-admin-token",
-        "hostname": "liquisto.condata.io",
+        "hostname": "liquisto.cloud",
         "user_agent": "scas-streamlit-business-ui/1.0",
         "timeout": 3.0,
     }

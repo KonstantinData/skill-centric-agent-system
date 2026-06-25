@@ -1,6 +1,6 @@
 # Liquisto Tenant Rollback And Deprovisioning
 
-Last updated: 2026-06-17 23:10 Europe/Berlin
+Last updated: 2026-06-25 21:12 Europe/Berlin
 
 This runbook defines the safe rollback and deprovisioning dry-run path for the
 Liquisto tenant. It is tenant-local: no other tenant data, memory, knowledge,
@@ -10,7 +10,7 @@ DNS, users, roles, or logs may be changed.
 
 ```text
 tenant_id: liquisto
-hostname: liquisto.condata.io
+hostname: liquisto.cloud
 default mode: suspend dry-run
 production mutation: requires explicit owner approval
 ```
@@ -28,7 +28,7 @@ deployment must be rolled back.
 3. Confirm no other tenant references are present in the planned action set.
 4. Verify tenant login, task intake, runtime profile creation, retrieval, and
    tool execution can be disabled independently for `liquisto`.
-5. Verify Cloudflare/DNS changes are planned only for `liquisto.condata.io`.
+5. Verify Cloudflare/DNS changes are planned only for `liquisto.cloud`.
 6. Verify retained evidence paths do not contain secrets, raw traces, or
    confidential customer data.
 7. Verify rollback to the previous Streamlit image is available through
@@ -38,21 +38,19 @@ deployment must be rolled back.
 
 ## Latest UI Rollback Evidence
 
-Production UI apply run `27719099324` recorded the rollback-relevant state for
-the current production deployment:
+Rollback evidence for the current `liquisto.cloud` authority must be collected
+after the production deployment is applied:
 
 - target environment: `prod`,
 - compose project: `liquisto`,
 - compose file: `/opt/liquisto/scas-streamlit-business-ui.override.yml`,
-- current image after apply:
-  `scas-streamlit-business-ui:655beba1faba6763120198857d1c8aef075d4921`,
-- previous image available for rollback:
-  `scas-streamlit-business-ui:916b7d87295d685c7ab4c2c8ffc3049297ed9d56`,
-- post-deploy Streamlit health check: passed.
+- current image after apply: pending,
+- previous image available for rollback: pending,
+- post-deploy Streamlit health check: pending.
 
-Sanitized inventory run `27719494125` confirmed the current container is
-healthy and running the applied image. The inventory evidence records only
-SCAS-managed configuration keys with redacted values.
+The sanitized inventory evidence must confirm the current container is healthy
+and running the applied image. The inventory evidence records only SCAS-managed
+configuration keys with redacted values.
 
 ## Local Verification
 
@@ -69,7 +67,7 @@ live deprovisioning mutation.
 For a dry run, prepare but do not apply the following state transitions:
 
 - tenant status: `setup` or `active` to `disabled`,
-- hostnames: `liquisto.condata.io` denied by server-side tenant resolution,
+- hostnames: `liquisto.cloud` denied by server-side tenant resolution,
 - memberships: disabled or blocked from new sessions,
 - runtime profiles: no new profiles can be composed,
 - data sources: connector access disabled for the tenant,

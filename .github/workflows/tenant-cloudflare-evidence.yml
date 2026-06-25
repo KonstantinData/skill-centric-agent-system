@@ -8,19 +8,33 @@ on:
         required: true
         type: choice
         options:
-          - staging
-          - prod
-        default: prod
+          - liquisto
+        default: liquisto
       hostname:
         description: Tenant hostname to verify
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
       require_worker_route:
         description: Require a Cloudflare Worker route for the hostname
         required: true
         type: boolean
         default: true
+      apply_dns_cutover:
+        description: Create or update liquisto.cloud DNS records before verification
+        required: true
+        type: boolean
+        default: false
+      origin_ipv4:
+        description: Origin IPv4 for the proxied apex A record
+        required: false
+        type: string
+        default: ""
+      confirm_hostname:
+        description: Must exactly match the hostname when apply_dns_cutover=true
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -39,9 +53,11 @@ jobs:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
       TENANT_HOSTNAME: ${{ inputs.hostname }}
       REQUIRE_WORKER_ROUTE: ${{ inputs.require_worker_route }}
-      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-      SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN: ${{ secrets.SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN }}
-      SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN }}
+      APPLY_DNS_CUTOVER: ${{ inputs.apply_dns_cutover }}
+      ORIGIN_IPV4: ${{ inputs.origin_ipv4 }}
+      CONFIRM_HOSTNAME: ${{ inputs.confirm_hostname }}
+      LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
+      LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
 
     steps:
       - name: Verify Cloudflare routing without exposing origin
@@ -50,38 +66,49 @@ jobs:
           set -euo pipefail
 
           case "${TARGET_ENVIRONMENT}" in
-            staging)
-              CLOUDFLARE_API_TOKEN="${SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN:-}"
-              ;;
-            prod)
-              CLOUDFLARE_API_TOKEN="${SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN:-}"
-              ;;
-            *)
-              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
-              exit 1
-              ;;
+            liquisto) ;;
+            *) echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}" ; exit 1 ;;
           esac
 
+          CLOUDFLARE_API_TOKEN="${LIQUISTO_CLOUDFLARE_API_TOKEN:-}"
+          CLOUDFLARE_ZONE_ID="${LIQUISTO_CLOUDFLARE_ZONE_ID:-}"
+
           if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::error::Missing ${TARGET_ENVIRONMENT} Cloudflare evidence token."
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_API_TOKEN."
             exit 1
           fi
           if [ -z "${CLOUDFLARE_ZONE_ID}" ]; then
-            echo "::error::Missing CLOUDFLARE_ZONE_ID."
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_ZONE_ID."
             exit 1
           fi
           if [[ ! "${TENANT_HOSTNAME}" =~ ^[A-Za-z0-9.-]+$ ]]; then
             echo "::error::hostname contains unsupported characters."
             exit 1
           fi
+          if [ "${APPLY_DNS_CUTOVER}" = "true" ]; then
+            if [ "${TENANT_HOSTNAME}" != "liquisto.cloud" ]; then
+              echo "::error::DNS cutover is only allowed for liquisto.cloud."
+              exit 1
+            fi
+            if [ "${CONFIRM_HOSTNAME}" != "${TENANT_HOSTNAME}" ]; then
+              echo "::error::confirm_hostname must match hostname when apply_dns_cutover=true."
+              exit 1
+            fi
+            if [[ ! "${ORIGIN_IPV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+              echo "::error::origin_ipv4 must be an IPv4 address when apply_dns_cutover=true."
+              exit 1
+            fi
+          fi
 
           export CLOUDFLARE_API_TOKEN
+          export CLOUDFLARE_ZONE_ID
 
           install -d tenant-cloudflare-evidence
 
           python3 - <<'PY'
           import json
           import os
+          import ipaddress
           import urllib.parse
           import urllib.request
           from datetime import UTC, datetime
@@ -92,12 +119,21 @@ jobs:
           hostname = os.environ["TENANT_HOSTNAME"]
           target_environment = os.environ["TARGET_ENVIRONMENT"]
           require_worker_route = os.environ["REQUIRE_WORKER_ROUTE"].lower() == "true"
+          apply_dns_cutover = os.environ["APPLY_DNS_CUTOVER"].lower() == "true"
+          origin_ipv4 = os.environ["ORIGIN_IPV4"].strip()
           base_url = "https://api.cloudflare.com/client/v4"
 
-          def cloudflare(path: str) -> dict:
+          def cloudflare(path: str, method: str = "GET", payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload).encode()
+                  headers["Content-Type"] = "application/json"
               request = urllib.request.Request(
                   f"{base_url}{path}",
-                  headers={"Authorization": f"Bearer {token}"},
+                  data=data,
+                  headers=headers,
+                  method=method,
               )
               with urllib.request.urlopen(request, timeout=15) as response:
                   payload = json.loads(response.read().decode())
@@ -105,10 +141,42 @@ jobs:
                   raise RuntimeError(f"Cloudflare API request failed for {path}.")
               return payload
 
-          encoded_hostname = urllib.parse.quote(hostname, safe="")
-          dns_payload = cloudflare(
-              f"/zones/{zone_id}/dns_records?type=A&name={encoded_hostname}&per_page=100"
-          )
+          def list_records(record_type: str, name: str) -> list[dict]:
+              encoded_name = urllib.parse.quote(name, safe="")
+              payload = cloudflare(
+                  f"/zones/{zone_id}/dns_records?type={record_type}&name={encoded_name}&per_page=100"
+              )
+              return list(payload.get("result", []))
+
+          def desired_record(record_type: str, name: str, content: str) -> dict:
+              return {
+                  "type": record_type,
+                  "name": name,
+                  "content": content,
+                  "ttl": 1,
+                  "proxied": True,
+              }
+
+          def upsert(record_type: str, name: str, content: str) -> str:
+              records = list_records(record_type, name)
+              desired = desired_record(record_type, name, content)
+              if not records:
+                  cloudflare(f"/zones/{zone_id}/dns_records", method="POST", payload=desired)
+                  return "created"
+              record_id = records[0]["id"]
+              cloudflare(f"/zones/{zone_id}/dns_records/{record_id}", method="PUT", payload=desired)
+              for extra in records[1:]:
+                  cloudflare(f"/zones/{zone_id}/dns_records/{extra['id']}", method="DELETE")
+              return "updated" if len(records) == 1 else "updated-and-deduplicated"
+
+          dns_cutover_status = "not-applied"
+          www_cutover_status = "not-applied"
+          if apply_dns_cutover:
+              origin_ipv4 = str(ipaddress.ip_address(origin_ipv4))
+              dns_cutover_status = upsert("A", hostname, origin_ipv4)
+              www_cutover_status = upsert("CNAME", f"www.{hostname}", hostname)
+
+          dns_payload = {"result": list_records("A", hostname)}
           dns_records = dns_payload.get("result", [])
           proxied_matches = [record for record in dns_records if record.get("proxied") is True]
           if not proxied_matches:
@@ -141,6 +209,9 @@ jobs:
                   f"- TLS mode: `{tls_mode}`",
                   f"- Worker route count: `{len(route_matches)}`",
                   f"- Worker route required: `{str(require_worker_route).lower()}`",
+                  f"- DNS cutover applied: `{str(apply_dns_cutover).lower()}`",
+                  f"- Apex A record cutover: `{dns_cutover_status}`",
+                  f"- WWW CNAME cutover: `{www_cutover_status}`",
                   "- Origin record content: not printed",
                   "- Verification: `passed`",
                   f"- Collected at: `{collected_at}`",

@@ -20,7 +20,7 @@ on:
         description: Tenant hostname used for server-side authority resolution
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
       apply_bootstrap:
         description: Apply owner membership bootstrap
         required: true

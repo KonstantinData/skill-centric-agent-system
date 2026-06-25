@@ -31,7 +31,7 @@ VALUES ('th-inactive-demo-tenant-inactive-demo-tenant-example-invalid', 'inactiv
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
 
 INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
-VALUES ('th-liquisto-liquisto-condata-io', 'liquisto', 'liquisto.condata.io', 'primary-ui', '178.105.62.169', 1)
+VALUES ('th-liquisto-liquisto-cloud', 'liquisto', 'liquisto.cloud', 'primary-ui', '145.239.222.45', 1)
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
 
 INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)

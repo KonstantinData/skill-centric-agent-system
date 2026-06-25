@@ -35,9 +35,9 @@
   },
   "hostnames": [
     {
-      "hostname": "liquisto.condata.io",
+      "hostname": "liquisto.cloud",
       "purpose": "primary-ui",
-      "expected_origin": "178.105.62.169",
+      "expected_origin": "145.239.222.45",
       "cloudflare_proxy_expected": true
     }
   ],

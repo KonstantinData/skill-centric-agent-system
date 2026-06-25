@@ -12,7 +12,10 @@
     "worker:deploy:dev": "wrangler deploy --config workers/control-api/wrangler.toml",
     "dkh-crm:lint": "npm --prefix apps/dkh-crm run lint",
     "dkh-crm:build": "npm --prefix apps/dkh-crm run build",
-    "dkh-crm:check": "npm run dkh-crm:lint && npm run dkh-crm:build"
+    "dkh-crm:check": "npm run dkh-crm:lint && npm run dkh-crm:build",
+    "liquisto-workbench:lint": "npm --prefix apps/liquisto-workbench run lint",
+    "liquisto-workbench:build": "npm --prefix apps/liquisto-workbench run build",
+    "liquisto-workbench:check": "npm run liquisto-workbench:lint && npm run liquisto-workbench:build"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.18",

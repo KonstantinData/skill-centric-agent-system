@@ -20,7 +20,7 @@ on:
         description: Tenant hostname served by the reverse proxy
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
       control_api_url:
         description: Control API base URL for the target environment
         required: true
@@ -74,15 +74,23 @@ on:
         type: string
         default: /opt/liquisto/scas-streamlit-business-ui.override.yml
       service_name:
-        description: Docker Compose service serving Streamlit
+        description: Docker Compose service serving the tenant UI
         required: true
         type: string
         default: app
+      ui_app:
+        description: Tenant UI application to build and deploy
+        required: true
+        type: choice
+        options:
+          - streamlit-business-ui
+          - liquisto-workbench
+        default: liquisto-workbench
       local_health_port:
-        description: Remote localhost port used by Streamlit health checks
+        description: Remote localhost port used by tenant UI health checks
         required: true
         type: string
-        default: "8501"
+        default: "3027"
       owner_principal_id:
         description: Non-secret owner principal id used to build tenant-local session context
         required: false
@@ -102,7 +110,12 @@ on:
         description: Existing origin certificate hostname used by the Nginx server block
         required: true
         type: string
-        default: liquisto.condata.io
+        default: liquisto.cloud
+      sync_cloudflare_dns:
+        description: Update the tenant Cloudflare apex and www records to the deployment host
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -131,11 +144,13 @@ jobs:
       COMPOSE_PROJECT: ${{ inputs.compose_project }}
       REMOTE_OVERRIDE_PATH: ${{ inputs.remote_override_path }}
       SERVICE_NAME: ${{ inputs.service_name }}
+      UI_APP: ${{ inputs.ui_app }}
       LOCAL_HEALTH_PORT: ${{ inputs.local_health_port }}
       OWNER_PRINCIPAL_ID_INPUT: ${{ inputs.owner_principal_id }}
       MANAGE_REVERSE_PROXY: ${{ inputs.manage_reverse_proxy }}
       REVERSE_PROXY_CONFIG_PATH: ${{ inputs.reverse_proxy_config_path }}
       REVERSE_PROXY_CERT_HOSTNAME: ${{ inputs.reverse_proxy_cert_hostname }}
+      SYNC_CLOUDFLARE_DNS: ${{ inputs.sync_cloudflare_dns }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -159,6 +174,8 @@ jobs:
       SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
+      LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
 
     steps:
       - name: Check out repository
@@ -177,6 +194,11 @@ jobs:
           case "${SCAS_UI_AUTH_MODE_TARGET}" in
             required|local-login) ;;
             *) echo "::error::Unsupported auth_mode: ${SCAS_UI_AUTH_MODE_TARGET}" ; exit 1 ;;
+          esac
+
+          case "${UI_APP}" in
+            streamlit-business-ui|liquisto-workbench) ;;
+            *) echo "::error::Unsupported ui_app: ${UI_APP}" ; exit 1 ;;
           esac
 
           for value_name in TENANT_ID TENANT_HOSTNAME COMPOSE_PROJECT SERVICE_NAME
@@ -252,27 +274,58 @@ jobs:
             exit 1
           fi
 
-      - name: Build Streamlit Business UI image
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_ID}" != "liquisto" ]; then
+            echo "::error::Cloudflare DNS sync is only wired for the liquisto tenant."
+            exit 1
+          fi
+
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_HOSTNAME}" != "liquisto.cloud" ]; then
+            echo "::error::Cloudflare DNS sync is only allowed for liquisto.cloud."
+            exit 1
+          fi
+
+      - name: Build tenant UI image
         shell: bash
         run: |
           set -euo pipefail
 
-          image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
+          case "${UI_APP}" in
+            streamlit-business-ui)
+              image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
+              dockerfile="deploy/streamlit-business-ui/Dockerfile"
+              image_title="SCAS Streamlit Business UI"
+              image_archive="scas-streamlit-business-ui-image.tar.gz"
+              container_port="8501"
+              health_path="/_stcore/health"
+              ;;
+            liquisto-workbench)
+              image_ref="scas-liquisto-workbench:${GITHUB_SHA}"
+              dockerfile="deploy/liquisto-workbench/Dockerfile"
+              image_title="SCAS Liquisto Workbench"
+              image_archive="scas-liquisto-workbench-image.tar.gz"
+              container_port="3000"
+              health_path="/"
+              ;;
+          esac
+
           docker build \
-            --file deploy/streamlit-business-ui/Dockerfile \
+            --file "${dockerfile}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            --label "org.opencontainers.image.title=SCAS Streamlit Business UI" \
+            --label "org.opencontainers.image.title=${image_title}" \
             --tag "${image_ref}" \
             .
-          docker save "${image_ref}" | gzip > scas-streamlit-business-ui-image.tar.gz
+          docker save "${image_ref}" | gzip > "${image_archive}"
           printf 'SCAS_UI_IMAGE=%s\n' "${image_ref}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_IMAGE_ARCHIVE=%s\n' "${image_archive}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_CONTAINER_PORT=%s\n' "${container_port}" >> "${GITHUB_ENV}"
+          printf 'SCAS_UI_HEALTH_PATH=%s\n' "${health_path}" >> "${GITHUB_ENV}"
 
       - name: Upload image artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: scas-streamlit-business-ui-image-${{ github.sha }}
-          path: scas-streamlit-business-ui-image.tar.gz
+          name: scas-tenant-ui-image-${{ github.sha }}
+          path: ${{ env.SCAS_UI_IMAGE_ARCHIVE }}
           if-no-files-found: error
 
       - name: Stop before remote mutation when apply_deploy is false
@@ -287,6 +340,7 @@ jobs:
             printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
             printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- UI app: `%s`\n' "${UI_APP}"
             printf -- '- Apply deploy: `false`\n'
             printf -- '- Result: image built and uploaded as an artifact; no remote host was changed.\n'
           } > tenant-ui-deploy-evidence/deploy-plan.md
@@ -438,12 +492,18 @@ jobs:
           UI_LOGIN_USERS_JSON_B64="$(printf '%s' "${UI_LOGIN_USERS_JSON}" | base64 -w0)"
           TENANT_ADMIN_TOKEN_B64="$(printf '%s' "${TENANT_ADMIN_TOKEN}" | base64 -w0)"
           CUSTOMER_CASES_API_SECRET_B64="$(printf '%s' "${CUSTOMER_CASES_API_SECRET}" | base64 -w0)"
-          echo "::add-mask::${UI_SESSION_CONTEXT_JSON}"
-          echo "::add-mask::${UI_SESSION_CONTEXT_JSON_B64}"
-          echo "::add-mask::${UI_LOGIN_USERS_JSON}"
-          echo "::add-mask::${UI_LOGIN_USERS_JSON_B64}"
-          echo "::add-mask::${TENANT_ADMIN_TOKEN_B64}"
-          echo "::add-mask::${CUSTOMER_CASES_API_SECRET_B64}"
+          for secret_value in \
+            "${UI_SESSION_CONTEXT_JSON}" \
+            "${UI_SESSION_CONTEXT_JSON_B64}" \
+            "${UI_LOGIN_USERS_JSON}" \
+            "${UI_LOGIN_USERS_JSON_B64}" \
+            "${TENANT_ADMIN_TOKEN_B64}" \
+            "${CUSTOMER_CASES_API_SECRET_B64}"
+          do
+            if [ -n "${secret_value}" ]; then
+              echo "::add-mask::${secret_value}"
+            fi
+          done
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${TARGET_HETZNER_HOST}"
@@ -475,6 +535,77 @@ jobs:
 
           ssh-keyscan -H "${TARGET_HETZNER_HOST}" >> "${HOME}/.ssh/known_hosts"
 
+      - name: Create Cloudflare Origin certificate
+        if: env.APPLY_DEPLOY == 'true' && env.MANAGE_REVERSE_PROXY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${TENANT_ID}" in
+            liquisto)
+              cf_api_token="${LIQUISTO_CLOUDFLARE_API_TOKEN:-}"
+              ;;
+            *)
+              cf_api_token=""
+              ;;
+          esac
+
+          if [ -z "${cf_api_token}" ]; then
+            echo "::error::Missing Cloudflare API token for tenant ${TENANT_ID}; cannot create origin certificate."
+            exit 1
+          fi
+
+          mkdir -p tenant-ui-origin-cert
+          openssl req \
+            -new \
+            -newkey rsa:2048 \
+            -nodes \
+            -keyout tenant-ui-origin-cert/origin.key \
+            -out tenant-ui-origin-cert/origin.csr \
+            -subj "/CN=${REVERSE_PROXY_CERT_HOSTNAME}" \
+            -addext "subjectAltName=DNS:${REVERSE_PROXY_CERT_HOSTNAME}" >/dev/null 2>&1
+
+          CLOUDFLARE_API_TOKEN="${cf_api_token}" python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          hostname = os.environ["REVERSE_PROXY_CERT_HOSTNAME"]
+          csr = Path("tenant-ui-origin-cert/origin.csr").read_text(encoding="utf-8")
+          payload = {
+              "csr": csr,
+              "hostnames": [hostname],
+              "request_type": "origin-rsa",
+              "requested_validity": 5475,
+          }
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4/certificates",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              raise SystemExit(
+                  f"Cloudflare Origin CA certificate creation failed: {detail}"
+              ) from exc
+          if not body.get("success", False):
+              raise SystemExit(f"Cloudflare Origin CA certificate creation failed: {body}")
+          Path("tenant-ui-origin-cert/origin.pem").write_text(
+              body["result"]["certificate"],
+              encoding="utf-8",
+          )
+          PY
+
       - name: Upload image to target host
         if: env.APPLY_DEPLOY == 'true'
         shell: bash
@@ -485,8 +616,22 @@ jobs:
             -i "${HOME}/.ssh/hetzner_key" \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
-            scas-streamlit-business-ui-image.tar.gz \
-            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
+            "${SCAS_UI_IMAGE_ARCHIVE}" \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
+          if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
+            scp \
+              -i "${HOME}/.ssh/hetzner_key" \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              tenant-ui-origin-cert/origin.pem \
+              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem"
+            scp \
+              -i "${HOME}/.ssh/hetzner_key" \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              tenant-ui-origin-cert/origin.key \
+              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key"
+          fi
 
       - name: Deploy image with rollback guard
         if: env.APPLY_DEPLOY == 'true'
@@ -499,7 +644,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' TENANT_ID='${TENANT_ID}' TENANT_HOSTNAME='${TENANT_HOSTNAME}' CONTROL_API_URL='${CONTROL_API_URL}' CUSTOMER_CASES_API_URL='${CUSTOMER_CASES_API_URL}' SCAS_UI_IMAGE='${SCAS_UI_IMAGE}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_OVERRIDE_PATH='${REMOTE_OVERRIDE_PATH}' SERVICE_NAME='${SERVICE_NAME}' UI_APP='${UI_APP}' SCAS_UI_CONTAINER_PORT='${SCAS_UI_CONTAINER_PORT}' SCAS_UI_HEALTH_PATH='${SCAS_UI_HEALTH_PATH}' LOCAL_HEALTH_PORT='${LOCAL_HEALTH_PORT}' SCAS_UI_AUTH_MODE_TARGET='${SCAS_UI_AUTH_MODE_TARGET}' UI_SESSION_CONTEXT_JSON_B64='${UI_SESSION_CONTEXT_JSON_B64}' UI_LOGIN_USERS_JSON_B64='${UI_LOGIN_USERS_JSON_B64}' TENANT_ADMIN_TOKEN_B64='${TENANT_ADMIN_TOKEN_B64}' CUSTOMER_CASES_API_SECRET_B64='${CUSTOMER_CASES_API_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' UPSTREAM_AUTH_EVIDENCE_URL='${UPSTREAM_AUTH_EVIDENCE_URL}' SCAS_UI_LOGIN_URL='${SCAS_UI_LOGIN_URL}' MANAGE_REVERSE_PROXY='${MANAGE_REVERSE_PROXY}' REVERSE_PROXY_CONFIG_PATH='${REVERSE_PROXY_CONFIG_PATH}' REVERSE_PROXY_CERT_HOSTNAME='${REVERSE_PROXY_CERT_HOSTNAME}' REMOTE_ORIGIN_CERT='/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -512,8 +657,8 @@ jobs:
 
           remote_dir="$(dirname "${REMOTE_OVERRIDE_PATH}")"
           evidence_dir="/tmp/scas-tenant-ui-deploy-${GITHUB_RUN_ID}"
-          image_archive="/tmp/scas-streamlit-business-ui-${GITHUB_RUN_ID}.tar.gz"
-          env_file="${remote_dir}/scas-streamlit-business-ui.env"
+          image_archive="/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
+          env_file="${remote_dir}/scas-tenant-ui.env"
           previous_image=""
 
           install -d -m 700 "${evidence_dir}"
@@ -552,19 +697,30 @@ jobs:
           } > "${env_file}"
           chmod 600 "${env_file}"
 
+          if [ "${UI_APP}" = "streamlit-business-ui" ]; then
+            ui_command='command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]'
+            ui_environment='
+                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+                STREAMLIT_SERVER_HEADLESS: "true"
+                STREAMLIT_SERVER_PORT: "8501"'
+          else
+            ui_command=""
+            ui_environment='
+                HOSTNAME: "0.0.0.0"
+                PORT: "3000"'
+          fi
+
           cat > "${REMOTE_OVERRIDE_PATH}" <<EOF
           services:
             ${SERVICE_NAME}:
               image: ${SCAS_UI_IMAGE}
-              command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]
+          $(if [ -n "${ui_command}" ]; then printf '    %s\n' "${ui_command}"; fi)
               env_file:
                 - ${env_file}
               environment:
-                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
-                STREAMLIT_SERVER_HEADLESS: "true"
-                STREAMLIT_SERVER_PORT: "8501"
+          ${ui_environment}
               ports:
-                - "127.0.0.1:${LOCAL_HEALTH_PORT}:8501"
+                - "127.0.0.1:${LOCAL_HEALTH_PORT}:${SCAS_UI_CONTAINER_PORT}"
               restart: unless-stopped
           EOF
 
@@ -573,14 +729,20 @@ jobs:
             -f "${REMOTE_OVERRIDE_PATH}" \
             up -d "${SERVICE_NAME}"
 
-          health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}/_stcore/health"
+          health_url="http://127.0.0.1:${LOCAL_HEALTH_PORT}${SCAS_UI_HEALTH_PATH}"
+          expected_content_marker=""
+          forbidden_content_marker=""
+          if [ "${UI_APP}" = "liquisto-workbench" ]; then
+            expected_content_marker="Command Center"
+            forbidden_content_marker="daskuechenhaus"
+          fi
           health_passed=0
           for attempt in $(seq 1 30); do
             if curl -fsS --max-time 10 "${health_url}" >/dev/null; then
               health_passed=1
               break
             fi
-            echo "Waiting for Streamlit health check (${attempt}/30)." >&2
+            echo "Waiting for tenant UI health check (${attempt}/30)." >&2
             sleep 3
           done
 
@@ -597,17 +759,62 @@ jobs:
             exit 1
           fi
 
+          if [ -n "${expected_content_marker}" ]; then
+            container_body="$(mktemp)"
+            curl -fsS --max-time 10 "${health_url}" -o "${container_body}"
+            if ! grep -Fq "${expected_content_marker}" "${container_body}"; then
+              rm -f "${container_body}"
+              echo "Post-deploy content check failed: expected marker was not served by the tenant UI container." >&2
+              if [ -n "${previous_image}" ]; then
+                sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
+                docker compose \
+                  -p "${COMPOSE_PROJECT}" \
+                  -f "${REMOTE_OVERRIDE_PATH}" \
+                  up -d "${SERVICE_NAME}"
+                echo "Rolled back to previous image ${previous_image}." >&2
+              fi
+              exit 1
+            fi
+            if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${container_body}"; then
+              rm -f "${container_body}"
+              echo "Post-deploy content check failed: forbidden cross-tenant marker was served by the tenant UI container." >&2
+              if [ -n "${previous_image}" ]; then
+                sed -i "s|image: ${SCAS_UI_IMAGE}|image: ${previous_image}|" "${REMOTE_OVERRIDE_PATH}"
+                docker compose \
+                  -p "${COMPOSE_PROJECT}" \
+                  -f "${REMOTE_OVERRIDE_PATH}" \
+                  up -d "${SERVICE_NAME}"
+                echo "Rolled back to previous image ${previous_image}." >&2
+              fi
+              exit 1
+            fi
+            rm -f "${container_body}"
+          fi
+
           reverse_proxy_status="not managed"
           if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
             nginx_site="${REVERSE_PROXY_CONFIG_PATH}"
             nginx_enabled="/etc/nginx/sites-enabled/$(basename "${nginx_site}")"
             cert_dir="/etc/letsencrypt/live/${REVERSE_PROXY_CERT_HOSTNAME}"
+            origin_cert_dir="/etc/ssl/cloudflare"
+            origin_cert_file="${origin_cert_dir}/${TENANT_ID}-origin.pem"
+            origin_key_file="${origin_cert_dir}/${TENANT_ID}-origin.key"
             nginx_candidate="${evidence_dir}/nginx-site.conf"
             nginx_backup="${evidence_dir}/nginx-site.previous"
 
             if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
-              echo "Origin certificate files are missing for ${REVERSE_PROXY_CERT_HOSTNAME}." >&2
-              exit 1
+              if [ ! -f "${REMOTE_ORIGIN_CERT}" ] || [ ! -f "${REMOTE_ORIGIN_KEY}" ]; then
+                echo "Origin certificate files are missing for ${REVERSE_PROXY_CERT_HOSTNAME}." >&2
+                exit 1
+              fi
+              sudo_if_needed install -d -o root -g root -m 0755 "${origin_cert_dir}"
+              sudo_if_needed install -o root -g root -m 0644 "${REMOTE_ORIGIN_CERT}" "${origin_cert_file}"
+              sudo_if_needed install -o root -g root -m 0600 "${REMOTE_ORIGIN_KEY}" "${origin_key_file}"
+              cert_file="${origin_cert_file}"
+              key_file="${origin_key_file}"
+            else
+              cert_file="${cert_dir}/fullchain.pem"
+              key_file="${cert_dir}/privkey.pem"
             fi
 
             cat > "${nginx_candidate}" <<EOF
@@ -622,8 +829,8 @@ jobs:
               listen 443 ssl http2;
               server_name ${TENANT_HOSTNAME};
 
-              ssl_certificate ${cert_dir}/fullchain.pem;
-              ssl_certificate_key ${cert_dir}/privkey.pem;
+              ssl_certificate ${cert_file};
+              ssl_certificate_key ${key_file};
 
               location / {
                   proxy_pass http://127.0.0.1:${LOCAL_HEALTH_PORT};
@@ -664,7 +871,22 @@ jobs:
             curl -kfsS \
               --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
               --max-time 10 \
-              "https://${TENANT_HOSTNAME}/_stcore/health" >/dev/null
+              "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" >/dev/null
+            if [ -n "${expected_content_marker}" ]; then
+              origin_body="$(mktemp)"
+              curl -kfsS \
+                --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
+                --max-time 10 \
+                "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" \
+                -o "${origin_body}"
+              grep -Fq "${expected_content_marker}" "${origin_body}"
+              if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                rm -f "${origin_body}"
+                echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
+                exit 1
+              fi
+              rm -f "${origin_body}"
+            fi
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
           fi
 
@@ -674,6 +896,7 @@ jobs:
             printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
             printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
+            printf -- '- UI app: `%s`\n' "${UI_APP}"
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
             printf -- '- Compose project: `%s`\n' "${COMPOSE_PROJECT}"
             printf -- '- Auth mode: `%s`\n' "${SCAS_UI_AUTH_MODE_TARGET}"
@@ -681,13 +904,160 @@ jobs:
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
+            printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
+            printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
+            printf -- '- Expected content marker: `%s`\n' "${expected_content_marker:-not-required}"
+            printf -- '- Forbidden content marker: `%s`\n' "${forbidden_content_marker:-not-required}"
             printf -- '- Upstream auth evidence: `%s`\n' "${UPSTREAM_AUTH_EVIDENCE_URL}"
             printf -- '- Health check: `passed`\n'
             printf -- '- Collected at: `%s`\n' "$(date -Is)"
           } > "${evidence_dir}/deployment.md"
 
-          rm -f "${image_archive}"
+          rm -f "${image_archive}" "${REMOTE_ORIGIN_CERT:-}" "${REMOTE_ORIGIN_KEY:-}"
           REMOTE
+
+      - name: Sync Cloudflare DNS to deployment host
+        if: env.APPLY_DEPLOY == 'true' && env.SYNC_CLOUDFLARE_DNS == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "${LIQUISTO_CLOUDFLARE_ZONE_ID}" ]; then
+            echo "::error::Missing LIQUISTO_CLOUDFLARE_ZONE_ID."
+            exit 1
+          fi
+
+          deploy_origin_ipv4="$(
+            TARGET_HETZNER_HOST="${TARGET_HETZNER_HOST}" python3 - <<'PY'
+          import ipaddress
+          import os
+          import socket
+
+          host = os.environ["TARGET_HETZNER_HOST"]
+          candidates = socket.getaddrinfo(host, 443, socket.AF_INET, socket.SOCK_STREAM)
+          if not candidates:
+              raise SystemExit("Deployment host did not resolve to an IPv4 address.")
+          print(str(ipaddress.ip_address(candidates[0][4][0])))
+          PY
+          )"
+          echo "::add-mask::${deploy_origin_ipv4}"
+
+          CLOUDFLARE_API_TOKEN="${LIQUISTO_CLOUDFLARE_API_TOKEN}" \
+          CLOUDFLARE_ZONE_ID="${LIQUISTO_CLOUDFLARE_ZONE_ID}" \
+          DEPLOY_ORIGIN_IPV4="${deploy_origin_ipv4}" \
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          hostname = os.environ["TENANT_HOSTNAME"]
+          origin_ipv4 = os.environ["DEPLOY_ORIGIN_IPV4"]
+          base_url = "https://api.cloudflare.com/client/v4"
+
+          def cloudflare(path: str, method: str = "GET", payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base_url}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+              if not body.get("success"):
+                  raise RuntimeError(f"Cloudflare API request failed for {method} {path}.")
+              return body
+
+          def list_records(record_type: str, name: str) -> list[dict]:
+              encoded_name = urllib.parse.quote(name, safe="")
+              payload = cloudflare(
+                  f"/zones/{zone_id}/dns_records?type={record_type}&name={encoded_name}&per_page=100"
+              )
+              return list(payload.get("result", []))
+
+          def upsert(record_type: str, name: str, content: str) -> None:
+              desired = {
+                  "type": record_type,
+                  "name": name,
+                  "content": content,
+                  "ttl": 1,
+                  "proxied": True,
+              }
+              records = list_records(record_type, name)
+              if not records:
+                  cloudflare(f"/zones/{zone_id}/dns_records", method="POST", payload=desired)
+                  return
+              cloudflare(
+                  f"/zones/{zone_id}/dns_records/{records[0]['id']}",
+                  method="PUT",
+                  payload=desired,
+              )
+              for extra in records[1:]:
+                  cloudflare(f"/zones/{zone_id}/dns_records/{extra['id']}", method="DELETE")
+
+          upsert("A", hostname, origin_ipv4)
+          upsert("CNAME", f"www.{hostname}", hostname)
+          print(
+              json.dumps(
+                  {
+                      "hostname": hostname,
+                      "apex_a_record": "synced-to-deployment-host",
+                      "www_cname_record": "synced-to-apex",
+                      "origin_content_printed": False,
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Verify public tenant UI content
+        if: env.APPLY_DEPLOY == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_content_marker=""
+          forbidden_content_marker=""
+          if [ "${UI_APP}" = "liquisto-workbench" ]; then
+            expected_content_marker="Command Center"
+            forbidden_content_marker="daskuechenhaus"
+          fi
+
+          public_url="https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}"
+          public_check_passed=0
+          for attempt in $(seq 1 30); do
+            public_body="$(mktemp)"
+            if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
+              if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
+                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${public_body}"; then
+                  echo "Public tenant UI content check found a forbidden cross-tenant marker." >&2
+                else
+                  public_check_passed=1
+                  rm -f "${public_body}"
+                  break
+                fi
+              fi
+            fi
+            rm -f "${public_body}"
+            echo "Waiting for public tenant UI content check (${attempt}/30)." >&2
+            sleep 5
+          done
+
+          if [ "${public_check_passed}" -ne 1 ]; then
+            echo "::error::Public tenant UI content check failed."
+            exit 1
+          fi
 
       - name: Download deployment evidence
         if: env.APPLY_DEPLOY == 'true'

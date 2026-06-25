@@ -1,6 +1,6 @@
 # Liquisto Tenant DNS Evidence
 
-Last checked: 2026-06-17 22:40 Europe/Berlin
+Last checked: 2026-06-25 21:56 Europe/Berlin
 
 This evidence records public DNS observations for the SCAS Liquisto tenant.
 Public DNS is routing evidence only. It is not an authorization boundary and it
@@ -10,8 +10,8 @@ does not prove the hidden Cloudflare origin configuration.
 
 - Tenant ID: `liquisto`
 - Area ID: `liquisto`
-- Hostname: `liquisto.condata.io`
-- Expected origin IP in tenant fixture: `178.105.62.169`
+- Hostname: `liquisto.cloud`
+- Expected origin IP in tenant fixture: `145.239.222.45`
 - Cloudflare proxy expected: `true`
 - Runtime authority: server-side hostname resolution plus authenticated tenant
   membership and sealed runtime profile validation
@@ -21,37 +21,36 @@ does not prove the hidden Cloudflare origin configuration.
 Commands:
 
 ```powershell
-Resolve-DnsName liquisto.condata.io -Type A
-Resolve-DnsName liquisto.condata.io -Type A -Server 1.1.1.1
-Resolve-DnsName liquisto.condata.io -Type A -Server 8.8.8.8
-Resolve-DnsName condata.io -Type NS
+Resolve-DnsName liquisto.cloud -Type A
+Resolve-DnsName liquisto.cloud -Type A -Server 1.1.1.1
+Resolve-DnsName liquisto.cloud -Type A -Server 8.8.8.8
+Resolve-DnsName liquisto.cloud -Type NS
 ```
 
-Observed A records for `liquisto.condata.io`:
+Observed A records for `liquisto.cloud`:
 
 | Resolver | TTL | A records |
 | --- | ---: | --- |
-| System resolver | 300 | `172.67.186.195`, `104.21.36.65` |
-| `1.1.1.1` | 300 | `104.21.36.65`, `172.67.186.195` |
-| `8.8.8.8` | 300 | `104.21.36.65`, `172.67.186.195` |
+| `1.1.1.1` | 300 | `172.67.207.208`, `104.21.45.21` |
 
-Observed NS records for `condata.io`:
+Observed NS records for `liquisto.cloud`:
 
 | Resolver | TTL | NS records |
 | --- | ---: | --- |
-| System resolver | 42874 | `dayana.ns.cloudflare.com`, `coby.ns.cloudflare.com` |
+| System resolver | pending | pending |
 
 HTTP route observation:
 
 | URL | Status | Server | Content-Type | Interpretation |
 | --- | ---: | --- | --- | --- |
-| `https://liquisto.condata.io/` | 200 | `cloudflare` | `text/html` | Public route is reachable and serves the Streamlit login shell. Post-login UI state was not verified. |
+| `https://liquisto.cloud/` | 200 | `cloudflare` | `text/html` | Public route is reachable through the Cloudflare proxy. |
+| `https://www.liquisto.cloud/` | 200 | `cloudflare` | `text/html` | `www` route is reachable through the Cloudflare proxy. |
 
 ## Interpretation
 
-The public A records are Cloudflare proxy IPs and are consistent across the
-checked resolvers. This is consistent with a Cloudflare-proxied hostname whose
-internal origin may be `178.105.62.169`.
+The public A records must be Cloudflare proxy IPs and must be consistent across
+the checked resolvers. This is consistent with a Cloudflare-proxied hostname
+whose internal origin is hidden.
 
 Public DNS does not expose or prove the hidden origin record. Treat the origin
 mapping as unverified until checked through the Cloudflare dashboard or an
@@ -61,7 +60,7 @@ authorized Cloudflare API read.
 
 - Unknown hostnames must fail closed.
 - Disabled tenants must fail closed.
-- `liquisto.condata.io` must map to exactly one tenant authority.
+- `liquisto.cloud` must map to exactly one tenant authority.
 - Prompt-supplied tenant IDs must not override hostname-derived authority.
 - Tenant admin routes require tenant-admin bearer authorization and
   `x-scas-tenant-hostname`.
@@ -70,28 +69,41 @@ authorized Cloudflare API read.
 
 ## Authoritative Cloudflare Evidence
 
-Manual `Tenant Cloudflare Evidence` workflow runs on 2026-06-17 collected the
-authoritative Cloudflare evidence for `liquisto.condata.io` without printing
-the hidden origin record value.
+Apply or plan the Cloudflare DNS cutover with:
+
+```bash
+gh workflow run tenant-cloudflare-dns-cutover.yml \
+  --ref codex/liquisto-cloud-cutover \
+  -f hostname=liquisto.cloud \
+  -f origin_ipv4=145.239.222.45 \
+  -f apply_changes=true \
+  -f confirm_hostname=liquisto.cloud
+```
+
+The workflow must create or update:
+
+- proxied apex `A` record for `liquisto.cloud`,
+- proxied `www.liquisto.cloud` CNAME to `liquisto.cloud`.
+
+The manual `Tenant Cloudflare Evidence` workflow must collect authoritative
+Cloudflare evidence for `liquisto.cloud` without printing the hidden origin
+record value.
 
 | Environment | GitHub run | Result | Proxied A records | TLS mode | Worker routes | Worker route required |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| staging | `27716489830` | passed | 1 | `full` | 0 | `false` |
-| prod | `27716489895` | passed | 1 | `full` | 0 | `false` |
+| liquisto | `28196655630` | passed | 1 | `full` | 0 | `false` |
 
-Runs with `require_worker_route=true` failed for both staging and production
-because no Cloudflare Worker route exists for the tenant hostname:
+The same run applied the DNS cutover before verification:
 
-| Environment | GitHub run | Result | Failure |
-| --- | --- | --- | --- |
-| staging | `27716338428` | failed | `No Cloudflare Worker route found for tenant hostname.` |
-| prod | `27716338387` | failed | `No Cloudflare Worker route found for tenant hostname.` |
+- Apex A record: `created`.
+- WWW CNAME record: `created`.
+- Origin record content: not printed in the evidence artifact.
 
-Current accepted routing state: `liquisto.condata.io` is a Cloudflare-proxied
-DNS route to the Hetzner/Nginx/Streamlit runtime path. It is not a Cloudflare
-Worker route. The tenant Control API remains on Cloudflare Workers, but this UI
-hostname does not require a Worker route unless the deployment architecture is
-changed explicitly.
+Current target routing state: `liquisto.cloud` is a Cloudflare-proxied DNS route
+to the approved origin for the Liquisto UI. It is not a Cloudflare Worker route
+unless the deployment architecture is changed explicitly. The tenant Control API
+remains on Cloudflare Workers, but this UI hostname does not require a Worker
+route for the current architecture.
 
 ## Follow-Up
 
@@ -107,7 +119,5 @@ The manual `Tenant Cloudflare Evidence` workflow
 (`.github/workflows/tenant-cloudflare-evidence.yml`) records authoritative
 Cloudflare DNS proxy, TLS mode, and optional Worker route evidence without
 printing the hidden origin record content. It must use
-`SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN` or
-`SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN`, not a deploy token. The token needs
-read-only `Zone DNS`, `Zone Settings`, and `Zone Workers Routes` access on the
-`condata.io` zone.
+`LIQUISTO_CLOUDFLARE_API_TOKEN` and `LIQUISTO_CLOUDFLARE_ZONE_ID`. The token
+must be scoped to the `liquisto.cloud` zone and the owning Cloudflare account.

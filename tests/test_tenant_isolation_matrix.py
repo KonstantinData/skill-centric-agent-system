@@ -46,7 +46,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
 
     expected = {
         "demo-tenant.example.invalid": "demo-tenant",
-        "liquisto.condata.io": "liquisto",
+        "liquisto.cloud": "liquisto",
         "daskuechenhaus.condata.io": "daskuechenhaus",
     }
     for hostname, tenant_id in expected.items():
