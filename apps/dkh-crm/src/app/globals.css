@@ -490,6 +490,12 @@ a {
     padding-left: 2mm;
   }
 
+  .print-item-row-1 .print-item-supplier,
+  .print-item-row-1 .print-item-quantity,
+  .print-item-row-1 .print-item-price {
+    transform: translateY(-1mm);
+  }
+
   .print-item-quantity {
     text-align: center;
   }

@@ -100,6 +100,12 @@ def test_dkh_crm_purchase_contract_print_layout_matches_blank_form_offsets() -> 
     assert ".print-items {\n    left: 20mm;\n    top: 107.5mm;" in globals_css
     assert "row-gap: 3.5mm;" in globals_css
     assert "transform: translateY(-2mm);" in globals_css
+    assert (
+        ".print-item-row-1 .print-item-supplier,\n"
+        "  .print-item-row-1 .print-item-quantity,\n"
+        "  .print-item-row-1 .print-item-price {\n"
+        "    transform: translateY(-1mm);"
+    ) in globals_css
     assert ".print-item-row-1 .print-item-description" not in globals_css
 
 
