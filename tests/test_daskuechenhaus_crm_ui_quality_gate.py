@@ -223,7 +223,14 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert "row-gap: 3mm;" in globals_css
     assert "grid-template-columns: 30mm 10.5mm 101mm 28.5mm;" in globals_css
     assert ".invoice-print-item-row-1 > * {\n    transform: translateY(-4mm);" in globals_css
-    assert "line-height: 3mm;" in globals_css
+    assert (
+        ".invoice-print-item-description {\n"
+        "    white-space: pre-wrap;\n"
+        "    overflow-wrap: anywhere;\n"
+        "    font-size: 8.5pt;\n"
+        "    line-height: 3mm;"
+        in globals_css
+    )
     assert ".invoice-print-money {\n    left: 160.5mm;" in globals_css
     assert ".invoice-print-gross {\n    top: 238.5mm;" in globals_css
     assert ".invoice-print-remaining {\n    top: 255mm;" in globals_css
