@@ -689,10 +689,6 @@ a {
     padding-top: 0.7mm;
   }
 
-  .invoice-print-item-row-1 > * {
-    transform: translateY(-4mm);
-  }
-
   .invoice-print-item-supplier {
     padding-left: 2mm;
   }
