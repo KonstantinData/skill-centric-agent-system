@@ -213,13 +213,13 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
 
     assert ".invoice-print {" in globals_css
     assert ".invoice-print-page {" in globals_css
-    assert ".invoice-print-number {\n    left: 151mm;" in globals_css
-    assert "top: 47.5mm;" in globals_css
+    assert ".invoice-print-number {\n    left: 154mm;" in globals_css
+    assert "top: 50.5mm;" in globals_css
     assert ".invoice-print-customer-number {\n    left: 157mm;" in globals_css
     assert "top: 61.5mm;" in globals_css
     assert ".invoice-print-date {\n    left: 157mm;" in globals_css
     assert "top: 69.5mm;" in globals_css
-    assert ".invoice-print-items {\n    left: 20mm;\n    top: 94mm;" in globals_css
+    assert ".invoice-print-items {\n    left: 20mm;\n    top: 90mm;" in globals_css
     assert "row-gap: 3mm;" in globals_css
     assert "grid-template-columns: 30mm 10.5mm 101mm 28.5mm;" in globals_css
     assert "invoice-print-item-row-1" not in globals_css

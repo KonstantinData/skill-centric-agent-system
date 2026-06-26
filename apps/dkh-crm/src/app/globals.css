@@ -644,8 +644,8 @@ a {
   }
 
   .invoice-print-number {
-    left: 151mm;
-    top: 47.5mm;
+    left: 154mm;
+    top: 50.5mm;
     width: 72mm;
     font-size: 12pt;
     font-weight: 700;
@@ -665,7 +665,7 @@ a {
 
   .invoice-print-items {
     left: 20mm;
-    top: 94mm;
+    top: 90mm;
     width: 181mm;
     height: 132.5mm;
     display: grid;
