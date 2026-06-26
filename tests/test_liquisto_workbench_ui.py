@@ -51,16 +51,17 @@ def test_liquisto_workbench_navigation_prioritizes_business_processes() -> None:
 def test_liquisto_workbench_surfaces_business_processes_not_marketing_site() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
+    data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "Geschaeftsprozess-Plattform" in home
-    assert "Excess Inventory" in home
-    assert "Monetarisierung" in home
-    assert "Repurposing" in home
-    assert "SCAS Workbench ist ein Register" in home
-    assert "Task Analyzer und Agent Composer" in section_page
-    assert "unveränderlichen Runtime Profile" in section_page
-    assert "Denials" in section_page
+    assert "Business process platform" in home
+    assert "excess inventory" in home
+    assert "monetization" in home
+    assert "Repurposing" in data
+    assert "SCAS Workbench is one register" in home
+    assert "Task Analyzer and Agent Composer" in section_page
+    assert "immutable" in section_page
+    assert "denials" in section_page
     assert ".hero-band" in globals_css
     assert ".metric-grid" in globals_css
     assert ".command-surface" in globals_css
@@ -125,3 +126,34 @@ def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
     assert "cf-access-authenticated-user-email" in auth
     assert "liquisto.cloud" in top_bar
     assert "Cloudflare Access" in top_bar
+
+
+def test_liquisto_workbench_ui_copy_is_english() -> None:
+    source_files = [
+        APP_ROOT / "src" / "app" / "page.tsx",
+        APP_ROOT / "src" / "app" / "[section]" / "page.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx",
+        APP_ROOT / "src" / "lib" / "workbench-data.ts",
+    ]
+    combined = "\n".join(load_text(path) for path in source_files)
+
+    forbidden_fragments = (
+        " oder ",
+        " und ",
+        " fuer ",
+        "Geschaeft",
+        "Monetarisierung",
+        "Freigabe",
+        "Freigaben",
+        "Angemeldet",
+        "Benutzername",
+        "Passwort",
+        "Heute",
+        "Morgen",
+        "Pruefung",
+        "Prüfung",
+        "prüf",
+        "veränderlich",
+    )
+    for fragment in forbidden_fragments:
+        assert fragment not in combined
