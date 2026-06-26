@@ -44,7 +44,7 @@ Latest production apply evidence:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
-| 2026-06-26 | pending | pending | Re-run after adding `www.liquisto.cloud` to the managed Nginx server names, Cloudflare Origin certificate SANs, origin content check, and public content check. |
+| 2026-06-26 07:19 Europe/Berlin | `28218809860` | passed | Image `scas-liquisto-workbench:6ceb8e91385f95e35496c0e149767ea770a4ff91`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027` with server names `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified for apex and `www`. |
 | 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified. |
 
 Do not use the legacy Streamlit deployment mode for Liquisto Workbench.
