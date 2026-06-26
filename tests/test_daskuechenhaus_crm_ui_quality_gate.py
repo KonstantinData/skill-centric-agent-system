@@ -180,6 +180,11 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert 'Label label="Rechnungsdatum"' in invoice_source
     assert 'Label label="Anzahlungen"' in invoice_source
     assert 'Label label="Restbetrag"' in invoice_source
+    assert "const discountAmount = roundMoney(itemTotal * 0.02)" in invoice_source
+    assert "const discountNote = itemTotal ? formatMoney(discountAmount) : \"\"" in invoice_source
+    assert "roundMoney(remainingAmount * 0.02)" not in invoice_source
+    assert "name=\"discount_note\"" in invoice_source
+    assert "aria-label=\"2 Prozent Skonto aus Rechnungsendbetrag\"" in invoice_source
     assert "invoice-print-number" in invoice_source
     assert "invoice-print-customer-number" in invoice_source
     assert "invoice-print-date" in invoice_source

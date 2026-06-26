@@ -22,7 +22,6 @@ type InvoiceDraft = {
   invoiceDate: string;
   customerVatRate: string;
   downPayments: string;
-  discountNote: string;
   notes: string;
   items: InvoiceItem[];
 };
@@ -61,7 +60,6 @@ function createInitialDraft(initialDraft?: InvoiceFormProps["initialDraft"]): In
     invoiceDate: todayValue(),
     customerVatRate: "19",
     downPayments: "",
-    discountNote: "",
     notes: "",
     ...initialDraft,
     items: initialDraft?.items?.length
@@ -165,6 +163,8 @@ export function InvoiceForm({
       : 0;
   const downPayments = parseMoney(draft.downPayments);
   const remainingAmount = roundMoney(itemTotal - downPayments);
+  const discountAmount = roundMoney(itemTotal * 0.02);
+  const discountNote = itemTotal ? formatMoney(discountAmount) : "";
 
   function updateDraft<K extends keyof InvoiceDraft>(key: K, value: InvoiceDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -396,9 +396,9 @@ export function InvoiceForm({
                 <Label label="Skonto-Hinweis">
                   <Field
                     name="discount_note"
-                    value={draft.discountNote}
-                    onChange={(event) => updateDraft("discountNote", event.target.value)}
-                    placeholder="z. B. 2 % Skonto"
+                    value={discountNote}
+                    readOnly
+                    aria-label="2 Prozent Skonto aus Rechnungsendbetrag"
                   />
                 </Label>
                 <Label label="Interne Notiz">
@@ -433,6 +433,7 @@ export function InvoiceForm({
 
       <InvoicePrintOverlay
         draft={draft}
+        discountNote={discountNote}
         includedVat={includedVat}
         invoiceGross={itemTotal}
         remainingAmount={remainingAmount}
@@ -443,11 +444,13 @@ export function InvoiceForm({
 
 function InvoicePrintOverlay({
   draft,
+  discountNote,
   includedVat,
   invoiceGross,
   remainingAmount,
 }: {
   draft: InvoiceDraft;
+  discountNote: string;
   includedVat: number;
   invoiceGross: number;
   remainingAmount: number;
@@ -495,7 +498,7 @@ function InvoicePrintOverlay({
           {formatMoney(remainingAmount)}
         </div>
         <div className="invoice-print-money invoice-print-discount">
-          {draft.discountNote}
+          {discountNote}
         </div>
       </section>
     </div>
