@@ -38,7 +38,7 @@ Cloudflare apex and `www` records to the resolved deployment host without
 printing the hidden origin IP in logs or evidence. The deploy is considered
 successful only after the container, the Nginx origin routes for both apex and
 `www`, and the public Cloudflare routes serve the Workbench content marker
-`Command Center`.
+`Liquisto workspace`.
 
 Latest production apply evidence:
 

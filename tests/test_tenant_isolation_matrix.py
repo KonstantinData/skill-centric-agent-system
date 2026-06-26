@@ -200,7 +200,7 @@ def test_liquisto_deploy_gate_rejects_daskuechenhaus_content_marker() -> None:
     workflow = TENANT_UI_DEPLOY_WORKFLOW.read_text(encoding="utf-8")
 
     assert 'if [ "${UI_APP}" = "liquisto-workbench" ]; then' in workflow
-    assert 'expected_content_marker="Command Center"' in workflow
+    assert 'expected_content_marker="Liquisto workspace"' in workflow
     assert 'forbidden_content_marker="daskuechenhaus"' in workflow
     assert "forbidden cross-tenant marker" in workflow
 

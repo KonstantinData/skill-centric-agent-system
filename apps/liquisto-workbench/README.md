@@ -26,7 +26,6 @@ The current visible workflow surface is limited to:
 
 The first Cockpit screen is an application start surface. It includes:
 
-- Command Center for research tasks and admin settings
 - direct Research and Admin entry points
 - no fake operational counters, fake queues, fake runs, or evidence panels
 
