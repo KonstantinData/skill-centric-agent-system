@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "generated_at": "2026-06-17T13:17:00+00:00",
+  "generated_at": "2026-06-26T21:27:21+00:00",
   "lockfile_version": "0.1.0",
   "module_count": 20,
   "modules": [
@@ -99,7 +99,7 @@
       "name": "research-context-synthesis",
       "path": "registry/modules/skills/research-context-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "bae3eb7ae8d09f6699243af49224b0b955742534fa7bd54550f41166f626e664",
+      "sha256": "1ea8cdf9a8ee213ef2e2333aee858cf99885b44630ee3b7134421108b4631efd",
       "status": "active",
       "version": "0.1.0"
     },

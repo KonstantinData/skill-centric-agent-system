@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from scripts.runtime.live_dev_e2e import (
+    REDACTED_PRINCIPAL_ID,
+    _composition_request_summary,
     handler_binding_evidence_from_checkpoints,
 )
 from scripts.runtime.live_dev_e2e import (
@@ -42,6 +44,23 @@ def test_live_dev_e2e_gate_documents_required_live_surfaces() -> None:
     assert "tenant-missing-membership" in source
     assert "tenant-foreign-data-source" in source
     assert "tenant-tampered-authority" in source
+    assert "SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID" in source
+
+
+def test_live_dev_e2e_redacts_configured_secret_principal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    principal_id = "liqui" + "sto-prod-owner"
+    monkeypatch.setenv("SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID", principal_id)
+
+    summary = _composition_request_summary(
+        {
+            "principal": {"kind": "user", "id": principal_id},
+            "task": {"type": "research"},
+        }
+    )
+
+    assert summary["principal_id"] == REDACTED_PRINCIPAL_ID
 
 
 def test_live_dev_e2e_extracts_handler_binding_evidence(tmp_path: Path) -> None:

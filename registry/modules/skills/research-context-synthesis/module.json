@@ -21,9 +21,7 @@
     "retrieval-context"
   ],
   "kind": "skill",
-  "knowledge_scopes": [
-    "architecture-docs"
-  ],
+  "knowledge_scopes": [],
   "name": "research-context-synthesis",
   "optional_tools": [],
   "outputs": [

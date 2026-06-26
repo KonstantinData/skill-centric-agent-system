@@ -383,7 +383,7 @@ VALUES ('mv-require-file-references-0-1-0', 'mod-require-file-references', '0.1.
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
-VALUES ('mv-research-context-synthesis-0-1-0', 'mod-research-context-synthesis', '0.1.0', 'repo://registry/modules/skills/research-context-synthesis/module.json', 'sha256:bbfad155b815e9d72df7cab1d49b55af9cb753d745a675ce843db8595fabad5d', 0.68, '2026-05-22T00:00:00Z')
+VALUES ('mv-research-context-synthesis-0-1-0', 'mod-research-context-synthesis', '0.1.0', 'repo://registry/modules/skills/research-context-synthesis/module.json', 'sha256:66c7fa52276f9a58afe9726f2527e4ab958558588148a401e0eb932e00b61b5d', 0.68, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -620,10 +620,6 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
 VALUES ('dep-project-memory-validators-review-findings-contract', 'mv-project-memory-0-1-0', 'validator', 'mod-review-findings-contract', 1)
-ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
-
-INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
-VALUES ('dep-research-context-synthesis-knowledge-scopes-architecture-docs', 'mv-research-context-synthesis-0-1-0', 'knowledge_scope', 'mod-architecture-docs', 1)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, dependency_kind = excluded.dependency_kind, dependency_id = excluded.dependency_id, is_required = excluded.is_required;
 
 INSERT INTO module_dependencies (id, module_version_id, dependency_kind, dependency_id, is_required)
