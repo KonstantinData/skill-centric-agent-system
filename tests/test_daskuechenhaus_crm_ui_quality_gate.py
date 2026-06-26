@@ -162,6 +162,88 @@ def test_dkh_crm_purchase_contract_input_flow_supports_editable_payment_split() 
     assert "restPaymentPercent: formatPercentValue(restPaymentPercent)" in source
 
 
+def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract() -> None:
+    invoice_source = load_text(APP_ROOT / "src" / "components" / "invoice" / "invoice-form.tsx")
+    invoice_launcher = load_text(
+        APP_ROOT / "src" / "components" / "invoice" / "customer-invoice-launcher.tsx"
+    )
+    templates_page = load_text(APP_ROOT / "src" / "app" / "vorlagen" / "page.tsx")
+    invoice_page = load_text(APP_ROOT / "src" / "app" / "rechnung" / "page.tsx")
+    customer_file = load_text(APP_ROOT / "src" / "app" / "kunden" / "[id]" / "page.tsx")
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    assert "export function InvoiceForm(" in invoice_source
+    assert "type InvoiceDraft" in invoice_source
+    assert 'const STORAGE_KEY = "dkh.invoice.draft.v1"' in invoice_source
+    assert 'Label label="Rechnungs-Nr."' in invoice_source
+    assert 'Label label="Kunden-Nr."' in invoice_source
+    assert 'Label label="Rechnungsdatum"' in invoice_source
+    assert 'Label label="Anzahlungen"' in invoice_source
+    assert 'Label label="Restbetrag"' in invoice_source
+    assert "const discountAmount = roundMoney(itemTotal * 0.02)" in invoice_source
+    assert "const discountNote = itemTotal ? formatMoney(discountAmount) : \"\"" in invoice_source
+    assert "roundMoney(remainingAmount * 0.02)" not in invoice_source
+    assert "name=\"discount_note\"" in invoice_source
+    assert "aria-label=\"2 Prozent Skonto aus Rechnungsendbetrag\"" in invoice_source
+    assert "invoice-print-number" in invoice_source
+    assert "invoice-print-customer-number" in invoice_source
+    assert "invoice-print-date" in invoice_source
+    assert "invoice-print-items" in invoice_source
+    assert 'className="invoice-print-item-row"' in invoice_source
+    assert "invoice-print-gross" in invoice_source
+    assert "invoice-print-remaining" in invoice_source
+    assert "draft.items.slice(0, 23)" in invoice_source
+    assert "PurchaseContract" not in invoice_source
+
+    assert "CustomerInvoiceLauncher" in invoice_launcher
+    assert "Kundenverknüpfte Rechnung für diesen Vorgang." in invoice_launcher
+    assert 'storageKey={`dkh.invoice.case.${selectedCase.id}.draft.v1`}' in customer_file
+    assert 'activeRegister === "rechnung_abschluss"' in customer_file
+    assert "const invoiceInitialDraft = {" in customer_file
+    assert (
+        "customerNumber: selectedCase.carat_order_number || selectedCase.case_number || \"\""
+        in customer_file
+    )
+
+    assert "Blanco Rechnung" in templates_page
+    assert 'storageKey="dkh.invoice.template.blanco.draft.v1"' in templates_page
+    assert "customerNumberReadOnly={false}" in templates_page
+    assert "title=\"Rechnung\"" in invoice_page
+    assert "Eingabemaske für Rechnungsdaten" in invoice_page
+
+    assert ".invoice-print {" in globals_css
+    assert ".invoice-print {\n    display: block;" in globals_css
+    assert "    color: #000;\n    background: transparent;" in globals_css
+    assert ".invoice-print-page {" in globals_css
+    assert ".invoice-print-page {\n    position: relative;" in globals_css
+    assert "    color: #000;\n    print-color-adjust: exact;" in globals_css
+    assert ".contract-print-page {\n    position: relative;" in globals_css
+    assert "    color: #000;\n    print-color-adjust: exact;" in globals_css
+    assert ".invoice-print-number {\n    left: 154mm;" in globals_css
+    assert "top: 50.5mm;" in globals_css
+    assert ".invoice-print-customer-number {\n    left: 157mm;" in globals_css
+    assert "top: 61.5mm;" in globals_css
+    assert ".invoice-print-date {\n    left: 157mm;" in globals_css
+    assert "top: 69.5mm;" in globals_css
+    assert ".invoice-print-items {\n    left: 20mm;\n    top: 90mm;" in globals_css
+    assert "row-gap: 3mm;" in globals_css
+    assert "grid-template-columns: 30mm 10.5mm 101mm 28.5mm;" in globals_css
+    assert "invoice-print-item-row-1" not in globals_css
+    assert "translateY(-4mm)" not in globals_css
+    assert (
+        ".invoice-print-item-description {\n"
+        "    white-space: pre-wrap;\n"
+        "    overflow-wrap: anywhere;\n"
+        "    transform: translateX(3mm);\n"
+        "    font-size: 8.5pt;\n"
+        "    line-height: 3mm;"
+        in globals_css
+    )
+    assert ".invoice-print-money {\n    left: 160.5mm;" in globals_css
+    assert ".invoice-print-gross {\n    top: 238.5mm;" in globals_css
+    assert ".invoice-print-remaining {\n    top: 255mm;" in globals_css
+
+
 def test_dkh_crm_proxy_routes_keep_backend_contracts_guarded() -> None:
     proxy = load_text(APP_ROOT / "src" / "lib" / "proxy.ts")
     kunden_search = load_text(APP_ROOT / "src" / "app" / "api" / "kunden" / "search" / "route.ts")
