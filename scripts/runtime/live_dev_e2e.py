@@ -31,6 +31,7 @@ GENERIC_TASK_SUITE = (
     ("general-task", "examples/tasks/general-task.json"),
 )
 TENANT_TASK_FILE = "examples/tasks/tenant-research-task.json"
+REDACTED_PRINCIPAL_ID = "<redacted>"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -511,7 +512,9 @@ def _composition_request_summary(
         "principal_kind": (
             principal.get("kind") if isinstance(principal, Mapping) else None
         ),
-        "principal_id": principal.get("id") if isinstance(principal, Mapping) else None,
+        "principal_id": _redact_principal_id(
+            principal.get("id") if isinstance(principal, Mapping) else None
+        ),
         "task_type": task.get("type") if isinstance(task, Mapping) else None,
         "tenant_context_present": isinstance(tenant_context, Mapping),
         "tenant_id": (
@@ -575,6 +578,13 @@ def _composition_response_summary(
             else []
         ),
     }
+
+
+def _redact_principal_id(principal_id: Any) -> Any:
+    secret_principal_id = os.getenv("SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID", "")
+    if secret_principal_id and principal_id == secret_principal_id:
+        return REDACTED_PRINCIPAL_ID
+    return principal_id
 
 
 def _reference_count(context_response: Mapping[str, Any], key: str) -> int:

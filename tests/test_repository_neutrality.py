@@ -22,6 +22,7 @@ FORBIDDEN_BRAND = "liqui" + "sto"
 FORBIDDEN_REMOVED_UI = "stream" + "lit"
 ALLOWED_TENANT_ONBOARDING_PATHS = {
     ".github/workflows/tenant-cloudflare-dns-cutover.yml",
+    ".github/workflows/live-runtime-gates.yml",
     "apps/liquisto-workbench/README.md",
     "apps/liquisto-workbench/package-lock.json",
     "apps/liquisto-workbench/package.json",
