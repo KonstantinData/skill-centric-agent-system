@@ -71,7 +71,6 @@ def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
 
 def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
-    home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
     assert "workspaceActions" in data
