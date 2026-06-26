@@ -16,28 +16,31 @@ def test_liquisto_workbench_exists_as_scas_tenant_app() -> None:
     readme = load_text(APP_ROOT / "README.md")
 
     assert '"name": "liquisto-workbench"' in package_json
-    assert "SCAS architecture" in readme
-    assert "not a Streamlit replacement" in readme
+    assert "Liquisto business processes" in readme
+    assert "the primary Liquisto platform surface" in readme
+    assert "not a\nSCAS-first console" in readme
     assert "Cloudflare Control Plane / Hetzner Runtime Plane" in readme
 
 
-def test_liquisto_workbench_navigation_matches_scas_operating_model() -> None:
+def test_liquisto_workbench_navigation_prioritizes_business_processes() -> None:
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
 
     for label in (
         "Cockpit",
-        "Tasks",
-        "Research",
-        "Cases",
-        "Knowledge",
-        "Agent Runs",
-        "Approvals",
-        "Data Sources",
-        "Audit",
-        "Admin",
+        "Inventory Intake",
+        "Excess Analysis",
+        "Initiatives",
+        "Monetization",
+        "Repurposing",
+        "Partner Network",
+        "SCAS Workbench",
     ):
         assert label in data
 
+    assert "Tasks" in data
+    assert "Agent Runs" in data
+    assert "Approvals" in data
+    assert "SCAS Workbench as one register" in load_text(APP_ROOT / "README.md")
     assert "Technical authority: liquisto.cloud" in data
     assert "Control Plane: Cloudflare" in data
     assert "Runtime Plane: Hetzner" in data
@@ -45,19 +48,20 @@ def test_liquisto_workbench_navigation_matches_scas_operating_model() -> None:
     assert "Cross-tenant access: fail closed" in data
 
 
-def test_liquisto_workbench_surfaces_agent_governance_not_marketing_site() -> None:
+def test_liquisto_workbench_surfaces_business_processes_not_marketing_site() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
+    data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "Operations Workbench" in home
-    assert "ein Runtime-Agent" in home
-    assert "tenant-spezifische Profile" in home
-    assert "kontrollierte Skills" in home
-    assert "überprüfbare" in home
-    assert "Task Analyzer und Agent Composer" in section_page
-    assert "unveränderlichen Runtime Profile" in section_page
-    assert "Denials" in section_page
+    assert "Business process platform" in home
+    assert "excess inventory" in home
+    assert "monetization" in home
+    assert "Repurposing" in data
+    assert "SCAS Workbench is one register" in home
+    assert "Task Analyzer and Agent Composer" in section_page
+    assert "immutable" in section_page
+    assert "denials" in section_page
     assert ".hero-band" in globals_css
     assert ".metric-grid" in globals_css
     assert ".command-surface" in globals_css
@@ -73,10 +77,13 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
 
     assert "commandSuggestions" in data
     assert "systemSignals" in data
+    assert "businessProcesses" in data
+    assert "scasWorkbenchAreas" in data
     assert "evidenceTimeline" in data
     assert "dataSourceHealth" in data
     assert "executionPhases" in data
     assert "Command Center" in home
+    assert "SCAS Workbench Register" in home
     assert "Evidence Timeline" in home
     assert "Data Source Health" in home
     assert "progress-track" in home
@@ -88,6 +95,29 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
     assert ".progress-track" in globals_css
 
 
+def test_liquisto_workbench_css_uses_liquisto_palette() -> None:
+    globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+
+    for color in (
+        "#007d8e",
+        "#ffffff",
+        "#000",
+        "#333",
+        "#999",
+        "#b3b3b3",
+        "#fafafa",
+        "#5ab963",
+        "#48944f",
+    ):
+        assert color in globals_css
+
+    assert "--petrol" in globals_css
+    assert "--white" in globals_css
+    assert "--black" in globals_css
+    assert "--medium-sea-green" in globals_css
+    assert "--sea-green" in globals_css
+
+
 def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
     auth = load_text(APP_ROOT / "src" / "lib" / "auth.ts")
     top_bar = load_text(APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx")
@@ -96,3 +126,34 @@ def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
     assert "cf-access-authenticated-user-email" in auth
     assert "liquisto.cloud" in top_bar
     assert "Cloudflare Access" in top_bar
+
+
+def test_liquisto_workbench_ui_copy_is_english() -> None:
+    source_files = [
+        APP_ROOT / "src" / "app" / "page.tsx",
+        APP_ROOT / "src" / "app" / "[section]" / "page.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx",
+        APP_ROOT / "src" / "lib" / "workbench-data.ts",
+    ]
+    combined = "\n".join(load_text(path) for path in source_files)
+
+    forbidden_fragments = (
+        " oder ",
+        " und ",
+        " fuer ",
+        "Geschaeft",
+        "Monetarisierung",
+        "Freigabe",
+        "Freigaben",
+        "Angemeldet",
+        "Benutzername",
+        "Passwort",
+        "Heute",
+        "Morgen",
+        "Pruefung",
+        "Prüfung",
+        "prüf",
+        "veränderlich",
+    )
+    for fragment in forbidden_fragments:
+        assert fragment not in combined

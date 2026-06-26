@@ -72,7 +72,7 @@ on:
         description: Remote compose override path managed by SCAS
         required: true
         type: string
-        default: /opt/liquisto/scas-streamlit-business-ui.override.yml
+        default: /opt/liquisto/scas-liquisto-workbench.override.yml
       service_name:
         description: Docker Compose service serving the tenant UI
         required: true
@@ -83,7 +83,6 @@ on:
         required: true
         type: choice
         options:
-          - streamlit-business-ui
           - liquisto-workbench
         default: liquisto-workbench
       local_health_port:
@@ -197,7 +196,7 @@ jobs:
           esac
 
           case "${UI_APP}" in
-            streamlit-business-ui|liquisto-workbench) ;;
+            liquisto-workbench) ;;
             *) echo "::error::Unsupported ui_app: ${UI_APP}" ; exit 1 ;;
           esac
 
@@ -290,14 +289,6 @@ jobs:
           set -euo pipefail
 
           case "${UI_APP}" in
-            streamlit-business-ui)
-              image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
-              dockerfile="deploy/streamlit-business-ui/Dockerfile"
-              image_title="SCAS Streamlit Business UI"
-              image_archive="scas-streamlit-business-ui-image.tar.gz"
-              container_port="8501"
-              health_path="/_stcore/health"
-              ;;
             liquisto-workbench)
               image_ref="scas-liquisto-workbench:${GITHUB_SHA}"
               dockerfile="deploy/liquisto-workbench/Dockerfile"
@@ -555,6 +546,18 @@ jobs:
             exit 1
           fi
 
+          cert_hostnames=("${REVERSE_PROXY_CERT_HOSTNAME}")
+          if [ "${TENANT_ID}" = "liquisto" ] && [ "${REVERSE_PROXY_CERT_HOSTNAME}" = "liquisto.cloud" ]; then
+            cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")
+          fi
+          subject_alt_name=""
+          for cert_hostname in "${cert_hostnames[@]}"; do
+            if [ -n "${subject_alt_name}" ]; then
+              subject_alt_name+=","
+            fi
+            subject_alt_name+="DNS:${cert_hostname}"
+          done
+
           mkdir -p tenant-ui-origin-cert
           openssl req \
             -new \
@@ -563,9 +566,11 @@ jobs:
             -keyout tenant-ui-origin-cert/origin.key \
             -out tenant-ui-origin-cert/origin.csr \
             -subj "/CN=${REVERSE_PROXY_CERT_HOSTNAME}" \
-            -addext "subjectAltName=DNS:${REVERSE_PROXY_CERT_HOSTNAME}" >/dev/null 2>&1
+            -addext "subjectAltName=${subject_alt_name}" >/dev/null 2>&1
 
-          CLOUDFLARE_API_TOKEN="${cf_api_token}" python3 - <<'PY'
+          CLOUDFLARE_API_TOKEN="${cf_api_token}" \
+          ORIGIN_CERT_HOSTNAMES="${cert_hostnames[*]}" \
+          python3 - <<'PY'
           import json
           import os
           import urllib.error
@@ -573,11 +578,11 @@ jobs:
           from pathlib import Path
 
           token = os.environ["CLOUDFLARE_API_TOKEN"]
-          hostname = os.environ["REVERSE_PROXY_CERT_HOSTNAME"]
+          hostnames = os.environ["ORIGIN_CERT_HOSTNAMES"].split()
           csr = Path("tenant-ui-origin-cert/origin.csr").read_text(encoding="utf-8")
           payload = {
               "csr": csr,
-              "hostnames": [hostname],
+              "hostnames": hostnames,
               "request_type": "origin-rsa",
               "requested_validity": 5475,
           }
@@ -697,24 +702,14 @@ jobs:
           } > "${env_file}"
           chmod 600 "${env_file}"
 
-          if [ "${UI_APP}" = "streamlit-business-ui" ]; then
-            ui_command='command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]'
-            ui_environment='
-                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
-                STREAMLIT_SERVER_HEADLESS: "true"
-                STREAMLIT_SERVER_PORT: "8501"'
-          else
-            ui_command=""
-            ui_environment='
+          ui_environment='
                 HOSTNAME: "0.0.0.0"
                 PORT: "3000"'
-          fi
 
           cat > "${REMOTE_OVERRIDE_PATH}" <<EOF
           services:
             ${SERVICE_NAME}:
               image: ${SCAS_UI_IMAGE}
-          $(if [ -n "${ui_command}" ]; then printf '    %s\n' "${ui_command}"; fi)
               env_file:
                 - ${env_file}
               environment:
@@ -793,6 +788,10 @@ jobs:
 
           reverse_proxy_status="not managed"
           if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
+            reverse_proxy_server_names="${TENANT_HOSTNAME}"
+            if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+              reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"
+            fi
             nginx_site="${REVERSE_PROXY_CONFIG_PATH}"
             nginx_enabled="/etc/nginx/sites-enabled/$(basename "${nginx_site}")"
             cert_dir="/etc/letsencrypt/live/${REVERSE_PROXY_CERT_HOSTNAME}"
@@ -820,14 +819,14 @@ jobs:
             cat > "${nginx_candidate}" <<EOF
           server {
               listen 80;
-              server_name ${TENANT_HOSTNAME};
+              server_name ${reverse_proxy_server_names};
 
               return 301 https://\$host\$request_uri;
           }
 
           server {
               listen 443 ssl http2;
-              server_name ${TENANT_HOSTNAME};
+              server_name ${reverse_proxy_server_names};
 
               ssl_certificate ${cert_file};
               ssl_certificate_key ${key_file};
@@ -868,25 +867,27 @@ jobs:
             fi
 
             sudo_if_needed systemctl reload nginx
-            curl -kfsS \
-              --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
-              --max-time 10 \
-              "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" >/dev/null
-            if [ -n "${expected_content_marker}" ]; then
-              origin_body="$(mktemp)"
+            for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
               curl -kfsS \
-                --resolve "${TENANT_HOSTNAME}:443:127.0.0.1" \
+                --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
                 --max-time 10 \
-                "https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" \
-                -o "${origin_body}"
-              grep -Fq "${expected_content_marker}" "${origin_body}"
-              if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" >/dev/null
+              if [ -n "${expected_content_marker}" ]; then
+                origin_body="$(mktemp)"
+                curl -kfsS \
+                  --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
+                  --max-time 10 \
+                  "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" \
+                  -o "${origin_body}"
+                grep -Fq "${expected_content_marker}" "${origin_body}"
+                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                  rm -f "${origin_body}"
+                  echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
+                  exit 1
+                fi
                 rm -f "${origin_body}"
-                echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
-                exit 1
               fi
-              rm -f "${origin_body}"
-            fi
+            done
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
           fi
 
@@ -895,6 +896,7 @@ jobs:
             printf -- '- Target environment: `%s`\n' "${TARGET_ENVIRONMENT}"
             printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
             printf -- '- Hostname: `%s`\n' "${TENANT_HOSTNAME}"
+            printf -- '- Reverse proxy server names: `%s`\n' "${reverse_proxy_server_names:-not-managed}"
             printf -- '- Image: `%s`\n' "${SCAS_UI_IMAGE}"
             printf -- '- UI app: `%s`\n' "${UI_APP}"
             printf -- '- Previous image: `%s`\n' "${previous_image:-unknown}"
@@ -1035,29 +1037,36 @@ jobs:
           fi
 
           public_url="https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}"
-          public_check_passed=0
-          for attempt in $(seq 1 30); do
-            public_body="$(mktemp)"
-            if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
-              if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
-                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${public_body}"; then
-                  echo "Public tenant UI content check found a forbidden cross-tenant marker." >&2
-                else
-                  public_check_passed=1
-                  rm -f "${public_body}"
-                  break
+          public_urls=("${public_url}")
+          if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+            public_urls+=("https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}")
+          fi
+
+          for public_url in "${public_urls[@]}"; do
+            public_check_passed=0
+            for attempt in $(seq 1 30); do
+              public_body="$(mktemp)"
+              if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
+                if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
+                  if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${public_body}"; then
+                    echo "Public tenant UI content check found a forbidden cross-tenant marker for ${public_url}." >&2
+                  else
+                    public_check_passed=1
+                    rm -f "${public_body}"
+                    break
+                  fi
                 fi
               fi
-            fi
-            rm -f "${public_body}"
-            echo "Waiting for public tenant UI content check (${attempt}/30)." >&2
-            sleep 5
-          done
+              rm -f "${public_body}"
+              echo "Waiting for public tenant UI content check for ${public_url} (${attempt}/30)." >&2
+              sleep 5
+            done
 
-          if [ "${public_check_passed}" -ne 1 ]; then
-            echo "::error::Public tenant UI content check failed."
-            exit 1
-          fi
+            if [ "${public_check_passed}" -ne 1 ]; then
+              echo "::error::Public tenant UI content check failed for ${public_url}."
+              exit 1
+            fi
+          done
 
       - name: Download deployment evidence
         if: env.APPLY_DEPLOY == 'true'

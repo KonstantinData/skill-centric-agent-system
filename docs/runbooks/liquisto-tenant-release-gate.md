@@ -10,12 +10,11 @@ ready beyond local fixture-backed development.
 Status: `migration-validation-required`
 
 The repository now contains a setup-state Liquisto tenant fixture, hostname
-authority evidence, tenant admin context API coverage, a tenant-aware operations
-UI shell with role-derived workspace areas, authenticated session gating,
+authority evidence, tenant admin context API coverage, a tenant-aware Liquisto
+Workbench with role-derived workspace areas, authenticated session gating,
 read-only admin UI for users, roles, settings, admin workflow routes and audit
 traceability, role-based task intake, tenant data-source connector coverage,
-tenant isolation tests, and a repository-owned Streamlit Business UI container
-and manual deployment workflow.
+tenant isolation tests, and a repository-owned Next.js deployment workflow.
 
 Previous production readiness evidence does not certify the `liquisto.cloud`
 authority after cutover. The Liquisto launch gate must be revalidated against
@@ -29,7 +28,7 @@ Run these checks before opening a release PR:
 ```powershell
 python -m pytest tests/test_tenant_hostname_resolution.py tests/test_control_plane_seed.py tests/test_tenant_isolation_matrix.py
 python -m pytest tests/test_tenant_runtime_e2e.py tests/test_tenant_data_source_connector.py
-python -m pytest tests/test_streamlit_business_ui.py tests/test_streamlit_task_intake_ui.py
+python -m pytest tests/test_liquisto_workbench_ui.py
 python -m ruff check .
 npm run worker:typecheck
 npm run worker:test
@@ -81,7 +80,7 @@ Control Plane seeded from the `main` repository snapshot.
 
 ## Live UI Runtime Inventory
 
-If `https://liquisto.cloud/` appears to load an old Streamlit UI, collect a
+If `https://liquisto.cloud/` appears to load an old tenant UI, collect a
 read-only production inventory before changing the service:
 
 ```bash
@@ -90,8 +89,8 @@ gh workflow run tenant-ui-runtime-inventory.yml \
   -f hostname=liquisto.cloud
 ```
 
-The workflow records candidate Streamlit processes, systemd units, container
-runtime metadata, compose/Dockerfile references, reverse-proxy references, Git
+The workflow records candidate UI processes, systemd units, container runtime
+metadata, compose/Dockerfile references, reverse-proxy references, Git
 repositories, and app paths from the target Hetzner environment. It must not
 mutate the runtime host. Use the inventory artifact to identify the actual
 service, image, code path, and deployed Git revision before any deployment or
@@ -120,7 +119,7 @@ Cloudflare Worker route:
 
 Do not treat a Worker route as required for `liquisto.cloud` unless the
 deployment architecture is explicitly changed. Cloudflare Workers remain the
-Control API path, not the Streamlit UI hostname path.
+Control API path, not the public UI hostname path.
 
 ## Liquisto Workbench Deployment
 
@@ -132,6 +131,7 @@ Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-06-26 07:19 Europe/Berlin | `28218809860` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:6ceb8e91385f95e35496c0e149767ea770a4ff91`; Nginx route managed at `127.0.0.1:3027` for `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified for apex and `www`. |
 | 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx route managed at `127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified. |
 
 Build-only plan mode:
@@ -157,7 +157,8 @@ host Compose files or host `.env` files. The fixed tenant binding means
 tenant through UI state. The workflow writes sanitized deployment evidence and
 rolls back to the previous Compose service image if the post-deploy health or
 Workbench content check fails. For `liquisto-workbench`, the workflow also
-verifies the public Cloudflare route before the deploy can pass.
+verifies the public Cloudflare routes for both `liquisto.cloud` and
+`www.liquisto.cloud` before the deploy can pass.
 
 ## Tenant Admin Bootstrap
 
@@ -200,9 +201,9 @@ The Liquisto tenant launch blockers below must be resolved for the
   evidence.
 - TLS mode is confirmed through the authorized Cloudflare evidence workflow.
 - Worker route requirement is explicit for the selected architecture. For the
-  current Cloudflare-proxied Hetzner/Nginx/Streamlit UI route, Worker route
-  count `0` is accepted and documented; a future Worker-routed UI path must pass
-  the evidence workflow with `require_worker_route=true`.
+  current Cloudflare-proxied Hetzner/Nginx/Next.js UI route, Worker route count
+  `0` is accepted and documented; a future Worker-routed UI path must pass the
+  evidence workflow with `require_worker_route=true`.
 - Initial owner identity is bootstrapped and no longer `null`.
 - Production legal, register, contact, and owner data is verified in the
   approved operational source. Public fixtures may contain only non-secret
