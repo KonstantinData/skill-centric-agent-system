@@ -464,6 +464,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
     assert "/client/v4/certificates" in workflow
     assert "tenant-ui-origin-cert/origin.pem" in workflow
+    assert 'cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")' in workflow
+    assert '"hostnames": hostnames' in workflow
     assert "Cloudflare DNS sync is only wired for the liquisto tenant" in workflow
     assert "Cloudflare DNS sync is only allowed for liquisto.cloud" in workflow
     assert "Sync Cloudflare DNS to deployment host" in workflow
@@ -483,15 +485,19 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow
     assert "nginx -t" in workflow
     assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
+    assert 'reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"' in workflow
+    assert "server_name ${reverse_proxy_server_names};" in workflow
     assert "systemctl reload nginx" in workflow
     assert "Reverse proxy:" in workflow
+    assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow
     assert "expected_content_marker=\"Command Center\"" in workflow
     assert 'forbidden_content_marker="daskuechenhaus"' in workflow
     assert "Post-deploy content check failed" in workflow
     assert "forbidden cross-tenant marker" in workflow
     assert "Verify public tenant UI content" in workflow
-    assert "Public tenant UI content check failed." in workflow
+    assert 'public_urls+=("https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}")' in workflow
+    assert "Public tenant UI content check failed for ${public_url}." in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:

@@ -132,6 +132,7 @@ Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-06-26 | pending | pending | Re-run after extending the managed Liquisto reverse proxy and public content check to both `liquisto.cloud` and `www.liquisto.cloud`. |
 | 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx route managed at `127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified. |
 
 Build-only plan mode:
@@ -157,7 +158,8 @@ host Compose files or host `.env` files. The fixed tenant binding means
 tenant through UI state. The workflow writes sanitized deployment evidence and
 rolls back to the previous Compose service image if the post-deploy health or
 Workbench content check fails. For `liquisto-workbench`, the workflow also
-verifies the public Cloudflare route before the deploy can pass.
+verifies the public Cloudflare routes for both `liquisto.cloud` and
+`www.liquisto.cloud` before the deploy can pass.
 
 ## Tenant Admin Bootstrap
 
