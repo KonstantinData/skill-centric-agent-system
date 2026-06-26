@@ -282,8 +282,41 @@ a {
   display: none;
 }
 
+.invoice-position-row {
+  align-items: start;
+}
+
+.invoice-position-row .label {
+  min-width: 0;
+}
+
+.invoice-quantity-field {
+  padding-left: 2px;
+  padding-right: 2px;
+  text-align: center;
+}
+
+.invoice-description-field {
+  min-height: 76px;
+}
+
+.invoice-position-delete {
+  align-self: end;
+  height: 40px;
+  margin-top: 22px;
+  width: 40px;
+}
+
+.invoice-print {
+  display: none;
+}
+
 @media (min-width: 1024px) {
   .purchase-contract-position-row {
+    grid-template-columns: 2.5cm 0.5cm minmax(9.5cm, 1fr) 2.5cm 40px;
+  }
+
+  .invoice-position-row {
     grid-template-columns: 2.5cm 0.5cm minmax(9.5cm, 1fr) 2.5cm 40px;
   }
 }
@@ -329,7 +362,8 @@ a {
   .app-shell > aside,
   .app-shell > nav,
   .app-main > header,
-  .purchase-contract-screen {
+  .purchase-contract-screen,
+  .invoice-screen {
     display: none !important;
   }
 
@@ -350,11 +384,24 @@ a {
   }
 
   .purchase-contract-print,
-  .purchase-contract-print * {
+  .purchase-contract-print *,
+  .invoice-print,
+  .invoice-print * {
     visibility: visible;
   }
 
   .purchase-contract-print {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    color: #000;
+    background: transparent;
+  }
+
+  .invoice-print {
     display: block;
     position: fixed;
     inset: 0;
@@ -378,6 +425,23 @@ a {
   }
 
   .contract-print-page > * {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  .invoice-print-page {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.18;
+    color: #000;
+    print-color-adjust: exact;
+  }
+
+  .invoice-print-page > * {
     position: absolute;
     overflow: hidden;
   }
@@ -558,5 +622,121 @@ a {
 
   .print-payment-rest {
     top: 258.8mm;
+  }
+
+  .invoice-print-address-block {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 4.7mm;
+  }
+
+  .invoice-print-customer-address {
+    left: 20mm;
+    top: 47mm;
+    width: 80mm;
+    height: 24mm;
+  }
+
+  .invoice-print-field {
+    height: 5mm;
+    font-size: 10pt;
+    line-height: 5mm;
+  }
+
+  .invoice-print-number {
+    left: 126mm;
+    top: 48.5mm;
+    width: 72mm;
+    font-size: 12pt;
+    font-weight: 700;
+  }
+
+  .invoice-print-customer-number {
+    left: 157mm;
+    top: 58.5mm;
+    width: 40mm;
+  }
+
+  .invoice-print-date {
+    left: 126mm;
+    top: 66.5mm;
+    width: 72mm;
+  }
+
+  .invoice-print-items {
+    left: 20mm;
+    top: 97mm;
+    width: 181mm;
+    height: 132.5mm;
+    display: grid;
+    row-gap: 0;
+    align-content: start;
+  }
+
+  .invoice-print-item-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 30mm 10.5mm 101mm 28.5mm;
+    min-height: 6mm;
+    break-inside: avoid;
+    font-size: 9.2pt;
+    line-height: 1.12;
+  }
+
+  .invoice-print-item-row > * {
+    min-width: 0;
+    overflow: hidden;
+    padding-top: 0.7mm;
+  }
+
+  .invoice-print-item-supplier {
+    padding-left: 2mm;
+  }
+
+  .invoice-print-item-quantity {
+    text-align: center;
+  }
+
+  .invoice-print-item-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-right: 3mm;
+  }
+
+  .invoice-print-item-price {
+    padding-right: 2mm;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .invoice-print-money {
+    left: 172.5mm;
+    width: 28.5mm;
+    height: 5.5mm;
+    padding-right: 1mm;
+    font-size: 9.2pt;
+    line-height: 5.5mm;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .invoice-print-gross {
+    top: 235.5mm;
+  }
+
+  .invoice-print-vat {
+    top: 241mm;
+  }
+
+  .invoice-print-down-payments {
+    top: 246.5mm;
+  }
+
+  .invoice-print-remaining {
+    top: 252mm;
+  }
+
+  .invoice-print-discount {
+    top: 257.5mm;
   }
 }

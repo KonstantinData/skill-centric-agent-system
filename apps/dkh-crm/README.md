@@ -154,6 +154,23 @@ Case status phases use the Das Kuechenhaus process labels: Anfrage, Beratung,
 Planung, Angebot, Auftrag, Bestellabwicklung, AB-Kontrolle, Lieferung und
 Montage, Rechnung, Kundendienst/Reklamation, and Abgeschlossen.
 
+## Printable Forms
+
+The CRM keeps printable form entry screens separate by document type.
+`Kaufvertrag` and `Rechnung` use separate React components, local-storage draft
+keys, launchers, routes, and print CSS selectors. Changes to one form must not
+change the other form implicitly.
+
+Customer-linked purchase contracts are available in the `Angebot / Auftrag`
+case register. Customer-linked invoices are available in the
+`Rechnung / Abschluss` case register and at `/rechnung` as a direct entry
+screen.
+
+For customer-linked invoices, `Kunden-Nr.` is prefilled from the case's
+`CARAT Vorgangsnummer` and falls back to the CRM case number when CARAT is not
+set. The Blanco invoice template under `/vorlagen` is intentionally not
+case-linked and keeps `Kunden-Nr.` editable instead of applying that fallback.
+
 ## AB Cockpit Phase 1
 
 The AB Cockpit v1 lives in the `Bestellabwicklung` register of a customer case.

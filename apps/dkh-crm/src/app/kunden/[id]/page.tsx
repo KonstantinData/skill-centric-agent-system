@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Script from "next/script";
 import { PageHero } from "@/components/chrome/page-hero";
+import { CustomerInvoiceLauncher } from "@/components/invoice/customer-invoice-launcher";
 import { CustomerPurchaseContractLauncher } from "@/components/purchase-contract/customer-purchase-contract-launcher";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Field, Label, Select, Textarea } from "@/components/ui/form";
@@ -1088,6 +1089,12 @@ function CaseDesktop({
     customerNumber: selectedCase.carat_order_number || selectedCase.case_number || "",
     customerVatRate: customerVatRate(customer),
   };
+  const invoiceInitialDraft = {
+    customerName: customer.company_name || customer.display_name,
+    customerAddress: customerAddressLines(customer),
+    customerNumber: selectedCase.carat_order_number || selectedCase.case_number || "",
+    customerVatRate: customerVatRate(customer),
+  };
 
   return (
     <div className="grid gap-4">
@@ -2056,6 +2063,13 @@ function CaseDesktop({
           <CustomerPurchaseContractLauncher
             initialDraft={purchaseContractInitialDraft}
             storageKey={`dkh.purchase-contract.case.${selectedCase.id}.draft.v1`}
+          />
+          ) : null}
+
+          {activeRegister === "rechnung_abschluss" ? (
+          <CustomerInvoiceLauncher
+            initialDraft={invoiceInitialDraft}
+            storageKey={`dkh.invoice.case.${selectedCase.id}.draft.v1`}
           />
           ) : null}
 
