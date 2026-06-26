@@ -234,6 +234,7 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
         ".invoice-print-item-description {\n"
         "    white-space: pre-wrap;\n"
         "    overflow-wrap: anywhere;\n"
+        "    transform: translateX(3mm);\n"
         "    font-size: 8.5pt;\n"
         "    line-height: 3mm;"
         in globals_css

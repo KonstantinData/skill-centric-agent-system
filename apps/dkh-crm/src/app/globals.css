@@ -700,6 +700,7 @@ a {
   .invoice-print-item-description {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    transform: translateX(3mm);
     font-size: 8.5pt;
     line-height: 3mm;
     padding-right: 3mm;
