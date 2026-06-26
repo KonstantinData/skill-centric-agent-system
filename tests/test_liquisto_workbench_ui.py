@@ -40,34 +40,29 @@ def test_liquisto_workbench_navigation_is_runtime_backed() -> None:
 
     assert "research-intake" in data
     assert "tenant-admin" in data
-    assert "Technical authority: liquisto.cloud" in data
-    assert "Control Plane: Cloudflare" in data
-    assert "Runtime Plane: Hetzner" in data
-    assert "Runtime model: single agent, immutable task profile" in data
-    assert "Cross-tenant access: fail closed" in data
 
 
-def test_liquisto_workbench_surfaces_only_configured_runtime_workflows() -> None:
+def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "configured research and administration workflows" in home
-    assert "tenant-scoped research" in home
-    assert "owner-only" in home
-    assert "tenant administration" in home
-    assert "runtimeSurfaces" in data
-    assert "runtimeWorkflowCards" in data
+    assert "Liquisto workspace" in home
+    assert "Open research" in home
+    assert "Admin" in home
+    assert "workspaceActions" in data
+    assert "Runtime Evidence" not in home
+    assert "Evidence Timeline" not in home
+    assert "Runtime Configuration" not in home
+    assert "Control Boundary" not in home
+    assert "isolation evidence" not in home
     assert "Task Analyzer and Agent Composer" in section_page
     assert "immutable" in section_page
     assert "denials" in section_page
     assert ".hero-band" in globals_css
-    assert ".metric-grid" in globals_css
     assert ".command-surface" in globals_css
     assert ".system-grid" in globals_css
-    assert ".timeline" in globals_css
-    assert ".source-table" in globals_css
 
 
 def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
@@ -76,22 +71,14 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
     assert "commandSuggestions" in data
-    assert "systemSignals" in data
-    assert "runtimeSurfaces" in data
-    assert "scasWorkbenchAreas" in data
-    assert "evidenceTimeline" in data
-    assert "dataSourceHealth" in data
-    assert "executionPhases" in data
+    assert "workspaceActions" in data
+    assert "systemSignals" not in data
+    assert "evidenceTimeline" not in data
+    assert "dataSourceHealth" not in data
     assert "Command Center" in home
-    assert "Runtime Configuration" in home
-    assert "Evidence Timeline" in home
-    assert "Runtime Evidence" in home
     assert "--accent-cool" in globals_css
     assert "--accent-warm" in globals_css
     assert "--success" in globals_css
-    assert ".work-table" in globals_css
-    assert ".phase-rail" in globals_css
-    assert ".progress-track" in globals_css
 
 
 def test_liquisto_workbench_css_uses_liquisto_palette() -> None:
