@@ -7,8 +7,8 @@ import { getUserEmail } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Liquisto Workbench",
-  description: "SCAS-based Liquisto operations workbench",
+  title: "Liquisto Business Platform",
+  description: "Liquisto business process platform with an embedded SCAS workbench",
 };
 
 export default async function RootLayout({

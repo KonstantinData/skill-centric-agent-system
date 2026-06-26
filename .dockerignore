@@ -12,5 +12,3 @@ node_modules
 *.pyc
 .secrets.scan.json
 security-evidence
-streamlit-business-ui.err.log
-streamlit-business-ui.out.log

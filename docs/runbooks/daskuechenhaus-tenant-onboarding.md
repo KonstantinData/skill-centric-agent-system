@@ -200,7 +200,7 @@ Authoritative Cloudflare evidence passed with `require_worker_route=false`:
 | prod | `27763474282` | passed | `false` |
 
 Runtime inventory run `27763766446` showed a blocking pre-fix condition:
-`daskuechenhaus.condata.io` fell through to an existing Streamlit runtime
+`daskuechenhaus.condata.io` fell through to an existing legacy UI runtime
 because no dedicated Daskuechenhaus Nginx server block or UI binding was
 present. Before activation, the tenant must run through a dedicated
 Daskuechenhaus UI binding or equivalent server-side hostname resolution that
@@ -218,7 +218,7 @@ continued to serve Liquisto content.
 Static tenant isolation is covered by focused tests:
 
 ```powershell
-python -m pytest tests/test_contract_schema_examples.py tests/test_tenant_hostname_resolution.py tests/test_tenant_isolation_matrix.py tests/test_streamlit_business_ui.py
+python -m pytest tests/test_contract_schema_examples.py tests/test_tenant_hostname_resolution.py tests/test_tenant_isolation_matrix.py tests/test_liquisto_workbench_ui.py
 ```
 
 The checks verify that:

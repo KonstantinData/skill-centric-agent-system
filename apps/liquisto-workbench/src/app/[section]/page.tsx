@@ -30,15 +30,15 @@ export default async function SectionPage({ params }: SectionPageProps) {
               <div className="icon-btn">
                 <Icon size={18} aria-hidden />
               </div>
-              <span className="badge badge-strong">Liquisto SCAS</span>
+              <span className="badge badge-strong">Liquisto Platform</span>
             </div>
             <h1 className="text-3xl font-black">{config.title}</h1>
             <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-[var(--muted)]">
               {config.subtitle}
             </p>
           </div>
-          <LinkButton href="/agent-runs" variant="primary">
-            Runtime-Sicht <ArrowRight size={16} aria-hidden />
+          <LinkButton href="/scas-workbench" variant="primary">
+            SCAS Register <ArrowRight size={16} aria-hidden />
           </LinkButton>
         </div>
       </Panel>
@@ -53,15 +53,15 @@ export default async function SectionPage({ params }: SectionPageProps) {
       </div>
 
       <Panel>
-        <h2 className="section-title">SCAS-Verankerung</h2>
+        <h2 className="section-title">Process And SCAS Anchoring</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
             <p className="text-xs font-black uppercase text-[var(--muted)]">
               Composition
             </p>
             <p className="mt-2 text-sm font-bold">
-              Task Analyzer und Agent Composer bestimmen Skills, Tools,
-              Knowledge und Validatoren.
+              Task Analyzer and Agent Composer select skills, tools,
+              knowledge, and validators.
             </p>
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
@@ -69,8 +69,8 @@ export default async function SectionPage({ params }: SectionPageProps) {
               Runtime
             </p>
             <p className="mt-2 text-sm font-bold">
-              Ein einzelner Agent arbeitet nur mit einem validierten,
-              unveränderlichen Runtime Profile.
+              One single agent works only with a validated, immutable
+              runtime profile.
             </p>
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
@@ -78,8 +78,8 @@ export default async function SectionPage({ params }: SectionPageProps) {
               Evidence
             </p>
             <p className="mt-2 text-sm font-bold">
-              Outputs, Denials und Freigaben bleiben als prüfbare Artefakte
-              nachvollziehbar.
+              Outputs, denials, and approvals remain traceable as auditable
+              artifacts.
             </p>
           </div>
         </div>

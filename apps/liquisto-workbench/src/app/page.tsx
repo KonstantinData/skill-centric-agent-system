@@ -13,12 +13,14 @@ import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import {
   agentRuns,
+  businessProcesses,
   commandSuggestions,
   cockpitMetrics,
   dataSourceHealth,
   evidenceTimeline,
   executionPhases,
   governanceRails,
+  scasWorkbenchAreas,
   systemSignals,
   workQueue,
 } from "@/lib/workbench-data";
@@ -30,7 +32,7 @@ export default function Home() {
         <div className="command-input">
           <Search size={18} aria-hidden />
           <span>Command Center</span>
-          <strong>Task, Run, Case oder Knowledge Record suchen</strong>
+          <strong>Search inventory, initiatives, partners, or SCAS evidence</strong>
         </div>
         <div className="command-suggestions">
           {commandSuggestions.map((suggestion) => (
@@ -47,16 +49,16 @@ export default function Home() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="badge badge-strong">Liquisto.com</span>
               <span className="badge">liquisto.cloud</span>
-              <span className="badge">SCAS Tenant</span>
+              <span className="badge">Business Platform</span>
             </div>
             <h1 className="max-w-3xl text-3xl font-black leading-tight md:text-5xl">
-              Operations Workbench für kontrollierte Agent-Arbeit.
+              Business process platform for excess inventory, circular economy, and data-driven decisions.
             </h1>
             <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-[var(--muted)]">
-              Cockpit, Tasks, Knowledge, Agent Runs, Approvals und Audit laufen
-              über die bestehende SCAS-Struktur: ein Runtime-Agent,
-              tenant-spezifische Profile, kontrollierte Skills und überprüfbare
-              Evidence.
+              Liquisto coordinates inventory intake, excess and shortage
+              analysis, initiatives, monetization, repurposing, and partner
+              work. The SCAS Workbench is one register inside this platform,
+              not the primary product purpose.
             </p>
           </div>
           <div className="phase-rail">
@@ -71,11 +73,11 @@ export default function Home() {
             })}
           </div>
           <div className="flex flex-wrap gap-2">
-            <LinkButton href="/tasks" variant="primary">
-              Tasks öffnen <ArrowRight size={16} aria-hidden />
+            <LinkButton href="/initiative-management" variant="primary">
+              Open initiatives <ArrowRight size={16} aria-hidden />
             </LinkButton>
-            <LinkButton href="/agent-runs">
-              Runs prüfen <Workflow size={16} aria-hidden />
+            <LinkButton href="/scas-workbench">
+              SCAS Workbench <Workflow size={16} aria-hidden />
             </LinkButton>
           </div>
         </Panel>
@@ -88,7 +90,7 @@ export default function Home() {
             <div>
               <h2 className="section-title">Control Boundary</h2>
               <p className="text-sm text-[var(--muted)]">
-                Sichtbare Betriebsregeln für Liquisto
+                SCAS as the control layer beneath Liquisto processes
               </p>
             </div>
           </div>
@@ -125,6 +127,25 @@ export default function Home() {
       </div>
 
       <div className="system-grid">
+        {businessProcesses.map((process) => {
+          const Icon = process.icon;
+          return (
+            <article key={process.title} className="system-tile tone-info">
+              <div className="flex items-center justify-between gap-3">
+                <Icon size={17} aria-hidden />
+                <span className="status-dot" aria-hidden />
+              </div>
+              <p className="mt-3 text-xs font-black uppercase text-[var(--muted)]">
+                Process
+              </p>
+              <p className="mt-1 text-lg font-black">{process.title}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{process.detail}</p>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="system-grid">
         {systemSignals.map((signal) => {
           const Icon = signal.icon;
           return (
@@ -147,12 +168,12 @@ export default function Home() {
         <Panel>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="section-title">Akute Arbeit</h2>
+              <h2 className="section-title">Business Processes</h2>
               <p className="text-sm text-[var(--muted)]">
-                Outcome-first Queue mit Review- und Risikosignal
+                Operational queue across intake, analysis, management, and monetization
               </p>
             </div>
-            <LinkButton href="/approvals">Freigaben</LinkButton>
+            <LinkButton href="/approvals">Approvals</LinkButton>
           </div>
           <div className="work-table">
             {workQueue.map((item) => (
@@ -180,10 +201,17 @@ export default function Home() {
 
         <Panel>
           <div className="mb-4">
-            <h2 className="section-title">Agent Runs</h2>
+            <h2 className="section-title">SCAS Workbench Register</h2>
             <p className="text-sm text-[var(--muted)]">
-              Single-Agent-Runtime mit Profil- und Validator-Sicht
+              Technical work areas as one register inside the business platform
             </p>
+          </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {scasWorkbenchAreas.map((area) => (
+              <span key={area} className="badge badge-strong">
+                {area}
+              </span>
+            ))}
           </div>
           <div className="grid gap-3">
             {agentRuns.map((run) => (
@@ -221,7 +249,7 @@ export default function Home() {
             <div>
               <h2 className="section-title">Evidence Timeline</h2>
               <p className="text-sm text-[var(--muted)]">
-                Prüfspur statt roher Tool-Ausgaben
+                Audit trail instead of raw tool output
               </p>
             </div>
           </div>
@@ -249,7 +277,7 @@ export default function Home() {
               <div>
                 <h2 className="section-title">Data Source Health</h2>
                 <p className="text-sm text-[var(--muted)]">
-                  Sichtbare Scope- und Sync-Signale
+                  Visible scope and sync signals
                 </p>
               </div>
             </div>

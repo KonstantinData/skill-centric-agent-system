@@ -208,12 +208,12 @@ jobs:
             done
 
             rollback_kept=0
-            mapfile -t streamlit_images < <(
-              docker images scas-streamlit-business-ui \
+            mapfile -t tenant_ui_images < <(
+              docker images scas-liquisto-workbench \
                 --format '{{.CreatedAt}}\t{{.ID}}\t{{.Repository}}:{{.Tag}}' \
                 | sort -r
             )
-            for row in "${streamlit_images[@]}"; do
+            for row in "${tenant_ui_images[@]}"; do
               image_id="$(printf '%s\n' "${row}" | awk -F '\t' '{print $2}')"
               image_ref="$(printf '%s\n' "${row}" | awk -F '\t' '{print $3}')"
               if [ -n "${keep_images[${image_id}]:-}" ]; then
@@ -356,21 +356,21 @@ jobs:
 
           section "Listening ports"
           if command -v ss >/dev/null 2>&1; then
-            ss -tulpn 2>/dev/null | grep -Ei 'streamlit|python|8501|80|443|nginx|caddy|apache' | redact || true
+            ss -tulpn 2>/dev/null | grep -Ei 'node|next|3000|3027|80|443|nginx|caddy|apache' | redact || true
           else
             printf 'ss command not available.\n'
           fi
 
           section "Candidate processes"
           ps -eo pid,user,etime,cmd --sort=cmd \
-            | grep -Ei 'streamlit|tenant|scas|python|gunicorn|uvicorn' \
+            | grep -Ei 'tenant|scas|node|next|nginx|caddy|apache' \
             | grep -v grep \
             | redact || true
 
           section "Candidate systemd units"
           if command -v systemctl >/dev/null 2>&1; then
             systemctl list-units --type=service --all --no-pager \
-              | grep -Ei 'streamlit|tenant|scas|condata|daskuechenhaus' \
+              | grep -Ei 'tenant|scas|condata|daskuechenhaus|liquisto' \
               | redact || true
           else
             printf 'systemctl command not available.\n'
@@ -400,7 +400,7 @@ jobs:
           section "Candidate systemd definitions"
           for dir in /etc/systemd/system /lib/systemd/system /usr/lib/systemd/system; do
             if [ -d "${dir}" ]; then
-              grep -RInE 'streamlit|tenant|condata|apps/streamlit_business_ui|apps/streamlit|SCAS_' "${dir}" 2>/dev/null \
+              grep -RInE 'tenant|condata|liquisto|SCAS_' "${dir}" 2>/dev/null \
                 | redact || true
             fi
           done
@@ -408,10 +408,10 @@ jobs:
           section "Container runtime"
           if command -v docker >/dev/null 2>&1; then
             docker ps --no-trunc --format 'table {{.ID}}\t{{.Image}}\t{{.Names}}\t{{.Ports}}\t{{.Command}}\t{{.Status}}' 2>/dev/null \
-              | grep -Ei 'streamlit|tenant|scas|8501|python|ui/app.py|IMAGE' \
+              | grep -Ei 'tenant|scas|liquisto|3000|3027|node|next|IMAGE' \
               | redact || true
             docker ps --no-trunc --format '{{.ID}} {{.Names}} {{.Image}} {{.Command}}' 2>/dev/null \
-              | grep -Ei 'streamlit|tenant|scas|8501|python|ui/app.py' \
+              | grep -Ei 'tenant|scas|liquisto|3000|3027|node|next' \
               | awk '{print $1}' \
               | while read -r container_id; do
                   printf '\n### Container `%s`\n\n' "${container_id}"
@@ -424,7 +424,7 @@ jobs:
           fi
 
           section "SCAS-managed runtime configuration keys"
-          for env_file in /opt/liquisto/scas-streamlit-business-ui.env; do
+          for env_file in /opt/liquisto/scas-liquisto-workbench.env; do
             if [ -f "${env_file}" ]; then
               printf '### `%s`\n\n' "${env_file}"
               grep -nE '^(SCAS_UI_AUTH_MODE|SCAS_UI_UPSTREAM_AUTH_TRUSTED|SCAS_CONTROL_API_URL|SCAS_TENANT_ADMIN_TOKEN|SCAS_UI_SESSION_CONTEXT_JSON)=' "${env_file}" \
@@ -446,7 +446,7 @@ jobs:
               -iname 'Dockerfile' \
             \) 2>/dev/null | sort | while read -r container_file; do
               printf '### `%s`\n\n' "${container_file}"
-              grep -nE 'image:|build:|container_name:|command:|ports:|volumes:|working_dir:|streamlit|ui/app.py|8501|SCAS_' "${container_file}" 2>/dev/null \
+              grep -nE 'image:|build:|container_name:|command:|ports:|volumes:|working_dir:|3000|3027|SCAS_' "${container_file}" 2>/dev/null \
                 | redact || true
               printf '\n'
             done
@@ -455,7 +455,7 @@ jobs:
           section "Reverse proxy references"
           for dir in /etc/nginx /etc/caddy /etc/apache2; do
             if [ -d "${dir}" ]; then
-              grep -RInE "${TENANT_HOSTNAME}|tenant|condata|streamlit|8501|proxy_pass|reverse_proxy" "${dir}" 2>/dev/null \
+              grep -RInE "${TENANT_HOSTNAME}|tenant|condata|liquisto|3000|3027|proxy_pass|reverse_proxy" "${dir}" 2>/dev/null \
                 | redact || true
             fi
           done
@@ -471,22 +471,19 @@ jobs:
               git -C "${repo}" rev-parse --short=12 HEAD 2>/dev/null | sed 's/^/- HEAD: `/' | sed 's/$/`/' || true
               git -C "${repo}" branch --show-current 2>/dev/null | sed 's/^/- Branch: `/' | sed 's/$/`/' || true
               git -C "${repo}" remote -v 2>/dev/null | redact | sed 's/^/- Remote: /' || true
-              if [ -f "${repo}/apps/streamlit_business_ui/app.py" ]; then
-                printf -- '- Contains `apps/streamlit_business_ui/app.py`: yes\n'
-              fi
               printf '\n'
             done
           done
 
-          section "Candidate Streamlit app files"
+          section "Candidate tenant UI app files"
           for root in /opt /srv /var/www /home; do
             if [ ! -d "${root}" ]; then
               continue
             fi
             find "${root}" -maxdepth 7 \( \
-              -path '*/apps/streamlit_business_ui/app.py' -o \
-              -path '*/apps/streamlit_task_intake_ui/app.py' -o \
-              -iname '*streamlit*' \
+              -path '*/apps/liquisto-workbench/package.json' -o \
+              -path '*/deploy/liquisto-workbench/Dockerfile' -o \
+              -iname '*liquisto*workbench*' \
             \) 2>/dev/null | sort | redact || true
           done
           REMOTE
