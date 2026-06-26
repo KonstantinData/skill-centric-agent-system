@@ -645,7 +645,7 @@ a {
 
   .invoice-print-number {
     left: 151mm;
-    top: 50.5mm;
+    top: 47.5mm;
     width: 72mm;
     font-size: 12pt;
     font-weight: 700;
@@ -665,7 +665,7 @@ a {
 
   .invoice-print-items {
     left: 20mm;
-    top: 94mm;
+    top: 90mm;
     width: 181mm;
     height: 132.5mm;
     display: grid;
@@ -677,7 +677,7 @@ a {
     position: relative;
     display: grid;
     grid-template-columns: 30mm 10.5mm 101mm 28.5mm;
-    min-height: 6mm;
+    min-height: 3mm;
     break-inside: avoid;
     font-size: 9.2pt;
     line-height: 1.12;
@@ -722,22 +722,22 @@ a {
   }
 
   .invoice-print-gross {
-    top: 248.5mm;
+    top: 238.5mm;
   }
 
   .invoice-print-vat {
-    top: 254mm;
+    top: 244mm;
   }
 
   .invoice-print-down-payments {
-    top: 259.5mm;
+    top: 249.5mm;
   }
 
   .invoice-print-remaining {
-    top: 265mm;
+    top: 255mm;
   }
 
   .invoice-print-discount {
-    top: 270.5mm;
+    top: 260.5mm;
   }
 }
