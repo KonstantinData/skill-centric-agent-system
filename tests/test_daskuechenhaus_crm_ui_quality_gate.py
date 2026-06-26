@@ -212,7 +212,13 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert "Eingabemaske für Rechnungsdaten" in invoice_page
 
     assert ".invoice-print {" in globals_css
+    assert ".invoice-print {\n    display: block;" in globals_css
+    assert "    color: #0057b8;\n    background: transparent;" in globals_css
     assert ".invoice-print-page {" in globals_css
+    assert ".invoice-print-page {\n    position: relative;" in globals_css
+    assert "    color: #0057b8;\n    print-color-adjust: exact;" in globals_css
+    assert ".contract-print-page {\n    position: relative;" in globals_css
+    assert "    color: #000;\n    print-color-adjust: exact;" in globals_css
     assert ".invoice-print-number {\n    left: 154mm;" in globals_css
     assert "top: 50.5mm;" in globals_css
     assert ".invoice-print-customer-number {\n    left: 157mm;" in globals_css
