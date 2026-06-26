@@ -43,6 +43,19 @@ a new profile through the same control path.
   records that pass validation and policy gates.
 - Unknown or unauthorized tools, scopes, validators, or policies fail closed.
 
+## Tenant Work Area Isolation
+
+- Treat `liquisto`, `daskuechenhaus`, and every future tenant as separate work
+  areas, even when their code lives in this repository.
+- When working on the Liquisto tenant, do not use `apps/dkh-crm/`,
+  `migrations/hetzner/tenants/daskuechenhaus/`,
+  Daskuechenhaus workflows, Daskuechenhaus scripts, or Daskuechenhaus customer
+  data as product sources, fixtures, examples, or implementation shortcuts.
+- Liquisto work may reference Daskuechenhaus only in explicit isolation tests,
+  release gates, or deployment checks that prove the foreign tenant is rejected
+  or absent.
+- Cross-tenant context mixing is a blocking failure, not a warning.
+
 ## Review Rules
 
 High-impact paths require code-owner review and passing governance gates:

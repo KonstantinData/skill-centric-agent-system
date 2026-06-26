@@ -55,6 +55,23 @@ not Daskuechenhaus customer cases, customer records, order state, email
 communication bodies, calendar contents, invoice-relevant state, or aftersales
 case content.
 
+## Tenant Context Separation
+
+Tenant-local code, fixtures, scripts, migrations, workflow inputs, runtime
+profiles, knowledge scopes, and memory scopes must not be reused across tenants
+as product context.
+
+For Liquisto tenant work, `apps/dkh-crm/`,
+`migrations/hetzner/tenants/daskuechenhaus/`, Daskuechenhaus workflows,
+Daskuechenhaus scripts, and Daskuechenhaus customer or CRM data are foreign
+tenant context. They must be ignored as implementation sources unless the task
+is explicitly an isolation audit, release gate, rollback check, or deployment
+guard proving that the foreign tenant is rejected or absent.
+
+Any runtime profile, role bundle, data-source grant, UI route, import path, or
+knowledge/memory retrieval result that mixes Liquisto with Daskuechenhaus scope
+must fail closed.
+
 ## Knowledge And Data Quality
 
 Every production knowledge or data source must define:

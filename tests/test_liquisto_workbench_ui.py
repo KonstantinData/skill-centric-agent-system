@@ -16,31 +16,30 @@ def test_liquisto_workbench_exists_as_scas_tenant_app() -> None:
     readme = load_text(APP_ROOT / "README.md")
 
     assert '"name": "liquisto-workbench"' in package_json
-    assert "Liquisto business processes" in readme
-    assert "the primary Liquisto platform surface" in readme
-    assert "not a\nSCAS-first console" in readme
+    assert "configured Liquisto runtime workflows" in readme
+    assert "Do not add\nconceptual product areas" in readme
+    assert "placeholder workflows" in readme
     assert "Cloudflare Control Plane / Hetzner Runtime Plane" in readme
 
 
-def test_liquisto_workbench_navigation_prioritizes_business_processes() -> None:
+def test_liquisto_workbench_navigation_is_runtime_backed() -> None:
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
 
-    for label in (
-        "Cockpit",
+    for label in ("Cockpit", "Research", "Admin"):
+        assert label in data
+
+    for removed_label in (
         "Inventory Intake",
         "Excess Analysis",
         "Initiatives",
         "Monetization",
         "Repurposing",
         "Partner Network",
-        "SCAS Workbench",
     ):
-        assert label in data
+        assert removed_label not in data
 
-    assert "Tasks" in data
-    assert "Agent Runs" in data
-    assert "Approvals" in data
-    assert "SCAS Workbench as one register" in load_text(APP_ROOT / "README.md")
+    assert "research-intake" in data
+    assert "tenant-admin" in data
     assert "Technical authority: liquisto.cloud" in data
     assert "Control Plane: Cloudflare" in data
     assert "Runtime Plane: Hetzner" in data
@@ -48,17 +47,18 @@ def test_liquisto_workbench_navigation_prioritizes_business_processes() -> None:
     assert "Cross-tenant access: fail closed" in data
 
 
-def test_liquisto_workbench_surfaces_business_processes_not_marketing_site() -> None:
+def test_liquisto_workbench_surfaces_only_configured_runtime_workflows() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "Business process platform" in home
-    assert "excess inventory" in home
-    assert "monetization" in home
-    assert "Repurposing" in data
-    assert "SCAS Workbench is one register" in home
+    assert "configured research and administration workflows" in home
+    assert "tenant-scoped research" in home
+    assert "owner-only" in home
+    assert "tenant administration" in home
+    assert "runtimeSurfaces" in data
+    assert "runtimeWorkflowCards" in data
     assert "Task Analyzer and Agent Composer" in section_page
     assert "immutable" in section_page
     assert "denials" in section_page
@@ -77,16 +77,15 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
 
     assert "commandSuggestions" in data
     assert "systemSignals" in data
-    assert "businessProcesses" in data
+    assert "runtimeSurfaces" in data
     assert "scasWorkbenchAreas" in data
     assert "evidenceTimeline" in data
     assert "dataSourceHealth" in data
     assert "executionPhases" in data
     assert "Command Center" in home
-    assert "SCAS Workbench Register" in home
+    assert "Runtime Configuration" in home
     assert "Evidence Timeline" in home
-    assert "Data Source Health" in home
-    assert "progress-track" in home
+    assert "Runtime Evidence" in home
     assert "--accent-cool" in globals_css
     assert "--accent-warm" in globals_css
     assert "--success" in globals_css

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 MODULES_DIR = REPO_ROOT / "registry" / "modules"
 CRM_SKILL_PACKS_DIR = REPO_ROOT / "examples" / "crm-skill-packs"
+LIQUISTO_APP_ROOT = REPO_ROOT / "apps" / "liquisto-workbench"
+TENANT_UI_DEPLOY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "tenant-ui-deploy.yml"
 DKH_ACTION_AUDIT_MIGRATION_PATH = (
     REPO_ROOT
     / "migrations"
@@ -22,6 +25,15 @@ DKH_ACTION_AUDIT_MIGRATION_PATH = (
     / "tenants"
     / "daskuechenhaus"
     / "0007_crm_action_audit_evidence.sql"
+)
+LIQUISTO_FOREIGN_CONTEXT_MARKERS = (
+    "apps/dkh-crm",
+    "dkh-crm",
+    "daskuechenhaus",
+    "es-daskuechenhaus",
+    "tenant_daskuechenhaus",
+    "x-dkh-",
+    "customer_case_carat_import",
 )
 
 
@@ -39,6 +51,17 @@ def load_tenant(path: Path) -> dict[str, object]:
 
 def load_json(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def tracked_files_under(path: Path) -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", path.relative_to(REPO_ROOT).as_posix()],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [REPO_ROOT / line for line in result.stdout.splitlines() if line]
 
 
 def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> None:
@@ -150,6 +173,36 @@ def test_tenant_crm_skill_pack_bindings_are_tenant_local() -> None:
             assert skill_pack["composition"]["selection_path"] == (
                 "registry-scoring-policy-graph-profile"
             )
+
+
+def test_liquisto_tenant_fixture_excludes_daskuechenhaus_context() -> None:
+    tenant = load_tenant(TENANTS_DIR / "liquisto.json")
+    serialized = json.dumps(tenant, sort_keys=True).lower()
+
+    assert tenant["tenant_id"] == "liquisto"
+    assert tenant["area_id"] == "liquisto"
+    for marker in LIQUISTO_FOREIGN_CONTEXT_MARKERS:
+        assert marker not in serialized
+
+
+def test_liquisto_workbench_sources_do_not_reference_daskuechenhaus_context() -> None:
+    offenders: list[str] = []
+
+    for path in tracked_files_under(LIQUISTO_APP_ROOT):
+        content = path.read_text(encoding="utf-8", errors="ignore").lower()
+        if any(marker in content for marker in LIQUISTO_FOREIGN_CONTEXT_MARKERS):
+            offenders.append(path.relative_to(REPO_ROOT).as_posix())
+
+    assert not offenders
+
+
+def test_liquisto_deploy_gate_rejects_daskuechenhaus_content_marker() -> None:
+    workflow = TENANT_UI_DEPLOY_WORKFLOW.read_text(encoding="utf-8")
+
+    assert 'if [ "${UI_APP}" = "liquisto-workbench" ]; then' in workflow
+    assert 'expected_content_marker="Command Center"' in workflow
+    assert 'forbidden_content_marker="daskuechenhaus"' in workflow
+    assert "forbidden cross-tenant marker" in workflow
 
 
 def test_daskuechenhaus_crm_audit_evidence_is_tenant_pinned() -> None:

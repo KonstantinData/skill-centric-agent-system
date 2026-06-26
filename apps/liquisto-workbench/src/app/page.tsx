@@ -1,5 +1,4 @@
 import {
-  ArrowRight,
   Braces,
   CircleDot,
   DatabaseZap,
@@ -12,17 +11,17 @@ import {
 import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import {
-  agentRuns,
-  businessProcesses,
   commandSuggestions,
   cockpitMetrics,
   dataSourceHealth,
   evidenceTimeline,
   executionPhases,
   governanceRails,
+  runtimeSurfaces,
+  runtimeWorkflowCards,
   scasWorkbenchAreas,
   systemSignals,
-  workQueue,
+  workflowQueue,
 } from "@/lib/workbench-data";
 
 export default function Home() {
@@ -32,7 +31,7 @@ export default function Home() {
         <div className="command-input">
           <Search size={18} aria-hidden />
           <span>Command Center</span>
-          <strong>Search inventory, initiatives, partners, or SCAS evidence</strong>
+          <strong>Search tenant authority, research scope, or isolation evidence</strong>
         </div>
         <div className="command-suggestions">
           {commandSuggestions.map((suggestion) => (
@@ -49,16 +48,15 @@ export default function Home() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="badge badge-strong">Liquisto.com</span>
               <span className="badge">liquisto.cloud</span>
-              <span className="badge">Business Platform</span>
+              <span className="badge">Runtime-backed tenant surface</span>
             </div>
             <h1 className="max-w-3xl text-3xl font-black leading-tight md:text-5xl">
-              Business process platform for excess inventory, circular economy, and data-driven decisions.
+              Liquisto tenant workbench for configured research and administration workflows.
             </h1>
             <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-[var(--muted)]">
-              Liquisto coordinates inventory intake, excess and shortage
-              analysis, initiatives, monetization, repurposing, and partner
-              work. The SCAS Workbench is one register inside this platform,
-              not the primary product purpose.
+              This surface only exposes workflows that are present in the
+              Liquisto tenant configuration: tenant-scoped research, owner-only
+              tenant administration, and fail-closed isolation evidence.
             </p>
           </div>
           <div className="phase-rail">
@@ -73,11 +71,11 @@ export default function Home() {
             })}
           </div>
           <div className="flex flex-wrap gap-2">
-            <LinkButton href="/initiative-management" variant="primary">
-              Open initiatives <ArrowRight size={16} aria-hidden />
+            <LinkButton href="/research" variant="primary">
+              Open research <Workflow size={16} aria-hidden />
             </LinkButton>
-            <LinkButton href="/scas-workbench">
-              SCAS Workbench <Workflow size={16} aria-hidden />
+            <LinkButton href="/admin">
+              Admin <LockKeyhole size={16} aria-hidden />
             </LinkButton>
           </div>
         </Panel>
@@ -90,7 +88,7 @@ export default function Home() {
             <div>
               <h2 className="section-title">Control Boundary</h2>
               <p className="text-sm text-[var(--muted)]">
-                SCAS as the control layer beneath Liquisto processes
+                SCAS control layer for the Liquisto tenant
               </p>
             </div>
           </div>
@@ -127,19 +125,19 @@ export default function Home() {
       </div>
 
       <div className="system-grid">
-        {businessProcesses.map((process) => {
-          const Icon = process.icon;
+        {runtimeSurfaces.map((surface) => {
+          const Icon = surface.icon;
           return (
-            <article key={process.title} className="system-tile tone-info">
+            <article key={surface.title} className="system-tile tone-info">
               <div className="flex items-center justify-between gap-3">
                 <Icon size={17} aria-hidden />
                 <span className="status-dot" aria-hidden />
               </div>
               <p className="mt-3 text-xs font-black uppercase text-[var(--muted)]">
-                Process
+                Configured Surface
               </p>
-              <p className="mt-1 text-lg font-black">{process.title}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">{process.detail}</p>
+              <p className="mt-1 text-lg font-black">{surface.title}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{surface.detail}</p>
             </article>
           );
         })}
@@ -168,15 +166,15 @@ export default function Home() {
         <Panel>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="section-title">Business Processes</h2>
+              <h2 className="section-title">Configured Runtime Paths</h2>
               <p className="text-sm text-[var(--muted)]">
-                Operational queue across intake, analysis, management, and monetization
+                Workflows and policy gates present in the Liquisto tenant configuration
               </p>
             </div>
-            <LinkButton href="/approvals">Approvals</LinkButton>
+            <LinkButton href="/admin">Admin</LinkButton>
           </div>
           <div className="work-table">
-            {workQueue.map((item) => (
+            {workflowQueue.map((item) => (
               <article
                 key={item.title}
                 className="work-row"
@@ -186,13 +184,11 @@ export default function Home() {
                   <p className="mt-1 text-sm text-[var(--muted)]">{item.scope}</p>
                 </div>
                 <div className="work-meta">
-                  <span>{item.owner}</span>
-                  <span>{item.due}</span>
-                  <span>{item.confidence}</span>
+                  <span>{item.role}</span>
+                  <span>{item.validator}</span>
                 </div>
                 <div className="work-badges">
                   <span className="badge">{item.status}</span>
-                  <span className="badge badge-strong">{item.risk}</span>
                 </div>
               </article>
             ))}
@@ -201,9 +197,9 @@ export default function Home() {
 
         <Panel>
           <div className="mb-4">
-            <h2 className="section-title">SCAS Workbench Register</h2>
+            <h2 className="section-title">Runtime Configuration</h2>
             <p className="text-sm text-[var(--muted)]">
-              Technical work areas as one register inside the business platform
+              Visible areas are limited to configured Liquisto capabilities
             </p>
           </div>
           <div className="mb-4 flex flex-wrap gap-2">
@@ -214,27 +210,23 @@ export default function Home() {
             ))}
           </div>
           <div className="grid gap-3">
-            {agentRuns.map((run) => (
+            {runtimeWorkflowCards.map((workflow) => (
               <article
-                key={run.id}
-                className={`run-card tone-${run.tone}`}
+                key={workflow.id}
+                className={`run-card tone-${workflow.tone}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="truncate text-xs font-black text-[var(--muted)]">
-                    {run.id}
+                    {workflow.id}
                   </p>
-                  <span className="badge">{run.state}</span>
+                  <span className="badge">{workflow.capability}</span>
                 </div>
-                <p className="mt-2 font-black">{run.objective}</p>
+                <p className="mt-2 font-black">{workflow.title}</p>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  {run.profile} · {run.validator}
+                  {workflow.validator}
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs font-black text-[var(--muted)]">
-                  <span>{run.evidence}</span>
-                  <span>{run.progress}</span>
-                </div>
-                <div className="progress-track mt-2">
-                  <div style={{ width: run.progress }} />
+                  <span>{workflow.evidence}</span>
                 </div>
               </article>
             ))}
@@ -275,9 +267,9 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <DatabaseZap size={18} className="text-[var(--accent)]" aria-hidden />
               <div>
-                <h2 className="section-title">Data Source Health</h2>
+                <h2 className="section-title">Runtime Evidence</h2>
                 <p className="text-sm text-[var(--muted)]">
-                  Visible scope and sync signals
+                  Configuration and isolation signals behind the visible workflows
                 </p>
               </div>
             </div>
