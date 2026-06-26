@@ -49,9 +49,14 @@ def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
     assert "Liquisto workspace" in home
-    assert "Open research" in home
-    assert "Admin" in home
+    assert 'href: "/research"' in data
+    assert "Open research" in data
+    assert 'href: "/admin"' in data
+    assert "Admin" in data
     assert "workspaceActions" in data
+    assert "Command Center" not in home
+    assert "commandSuggestions" not in data
+    assert "Search research tasks" not in home
     assert "Runtime Evidence" not in home
     assert "Evidence Timeline" not in home
     assert "Runtime Configuration" not in home
@@ -61,7 +66,6 @@ def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
     assert "immutable" in section_page
     assert "denials" in section_page
     assert ".hero-band" in globals_css
-    assert ".command-surface" in globals_css
     assert ".system-grid" in globals_css
 
 
@@ -70,12 +74,10 @@ def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
-    assert "commandSuggestions" in data
     assert "workspaceActions" in data
     assert "systemSignals" not in data
     assert "evidenceTimeline" not in data
     assert "dataSourceHealth" not in data
-    assert "Command Center" in home
     assert "--accent-cool" in globals_css
     assert "--accent-warm" in globals_css
     assert "--success" in globals_css
@@ -112,6 +114,8 @@ def test_liquisto_workbench_uses_cloudflare_access_identity_header() -> None:
     assert "cf-access-authenticated-user-email" in auth
     assert "liquisto.cloud" in top_bar
     assert "Cloudflare Access" in top_bar
+    assert "Search tenant authority" not in top_bar
+    assert "Search research" not in top_bar
 
 
 def test_liquisto_workbench_ui_copy_is_english() -> None:

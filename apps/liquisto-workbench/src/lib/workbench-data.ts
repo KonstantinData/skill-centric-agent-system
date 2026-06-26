@@ -10,11 +10,6 @@ export const navItems = [
   { href: "/admin", label: "Admin", icon: KeyRound },
 ];
 
-export const commandSuggestions = [
-  "Open research workspace",
-  "Open admin",
-];
-
 export const workspaceActions = [
   {
     title: "Research",
