@@ -189,6 +189,7 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert "invoice-print-customer-number" in invoice_source
     assert "invoice-print-date" in invoice_source
     assert "invoice-print-items" in invoice_source
+    assert "invoice-print-item-row-${index + 1}" in invoice_source
     assert "invoice-print-gross" in invoice_source
     assert "invoice-print-remaining" in invoice_source
     assert "draft.items.slice(0, 23)" in invoice_source
@@ -218,9 +219,10 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert "top: 61.5mm;" in globals_css
     assert ".invoice-print-date {\n    left: 157mm;" in globals_css
     assert "top: 69.5mm;" in globals_css
-    assert ".invoice-print-items {\n    left: 20mm;\n    top: 90mm;" in globals_css
+    assert ".invoice-print-items {\n    left: 20mm;\n    top: 94mm;" in globals_css
+    assert "row-gap: 3mm;" in globals_css
     assert "grid-template-columns: 30mm 10.5mm 101mm 28.5mm;" in globals_css
-    assert "min-height: 3mm;" in globals_css
+    assert ".invoice-print-item-row-1 > * {\n    transform: translateY(-4mm);" in globals_css
     assert "line-height: 3mm;" in globals_css
     assert ".invoice-print-money {\n    left: 160.5mm;" in globals_css
     assert ".invoice-print-gross {\n    top: 238.5mm;" in globals_css

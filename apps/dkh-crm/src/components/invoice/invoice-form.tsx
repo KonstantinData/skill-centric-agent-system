@@ -477,8 +477,11 @@ function InvoicePrintOverlay({
         </div>
 
         <div className="invoice-print-items">
-          {firstPrintItems.map((item) => (
-            <div className="invoice-print-item-row" key={item.id}>
+          {firstPrintItems.map((item, index) => (
+            <div
+              className={`invoice-print-item-row invoice-print-item-row-${index + 1}`}
+              key={item.id}
+            >
               <div className="invoice-print-item-supplier">{item.supplier}</div>
               <div className="invoice-print-item-quantity">{item.quantity}</div>
               <div className="invoice-print-item-description">{item.description}</div>

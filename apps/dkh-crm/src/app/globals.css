@@ -665,11 +665,11 @@ a {
 
   .invoice-print-items {
     left: 20mm;
-    top: 90mm;
+    top: 94mm;
     width: 181mm;
     height: 132.5mm;
     display: grid;
-    row-gap: 0;
+    row-gap: 3mm;
     align-content: start;
   }
 
@@ -677,7 +677,7 @@ a {
     position: relative;
     display: grid;
     grid-template-columns: 30mm 10.5mm 101mm 28.5mm;
-    min-height: 3mm;
+    min-height: 6mm;
     break-inside: avoid;
     font-size: 9.2pt;
     line-height: 1.12;
@@ -687,6 +687,10 @@ a {
     min-width: 0;
     overflow: hidden;
     padding-top: 0.7mm;
+  }
+
+  .invoice-print-item-row-1 > * {
+    transform: translateY(-4mm);
   }
 
   .invoice-print-item-supplier {
