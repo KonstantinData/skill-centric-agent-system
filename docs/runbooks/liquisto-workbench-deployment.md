@@ -38,12 +38,15 @@ Cloudflare apex and `www` records to the resolved deployment host without
 printing the hidden origin IP in logs or evidence. The deploy is considered
 successful only after the container, the Nginx origin routes for both apex and
 `www`, and the public Cloudflare routes serve the Workbench content marker
-`Command Center`.
+`Liquisto workspace`.
 
 Latest production apply evidence:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-06-26 21:56 Europe/Berlin | `28261745148` | passed | Image `scas-liquisto-workbench:e0b2625673153e187d1668e5a0e71968fe375b34`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027` with server names `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public content marker `Liquisto workspace` verified for apex and `www`; checked that Cockpit serves no `Command Center`, `Search research tasks`, `Runtime Evidence`, `Evidence Timeline`, `Control Boundary`, or `Runtime Configuration` markers. |
+| 2026-06-26 21:33 Europe/Berlin | `28260625014` | passed | Image `scas-liquisto-workbench:11077d14892640ca3a07886ee837e2aef40ce211`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027` with server names `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified for apex and `www`; checked that Cockpit serves `Liquisto workspace` and no `Runtime Evidence`, `Evidence Timeline`, `Control Boundary`, `Runtime Configuration`, or `isolation evidence` markers. |
+| 2026-06-26 21:16 Europe/Berlin | `28259785528` | passed | Image `scas-liquisto-workbench:ce8664c0c296655f8ab4ffa607d689532e94613b`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027` with server names `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified for apex and `www`; checked that old Inventory/Monetization/Partner markers are absent. |
 | 2026-06-26 07:19 Europe/Berlin | `28218809860` | passed | Image `scas-liquisto-workbench:6ceb8e91385f95e35496c0e149767ea770a4ff91`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027` with server names `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified for apex and `www`. |
 | 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx managed at `/etc/nginx/sites-available/liquisto -> 127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public content marker `Command Center` verified. |
 

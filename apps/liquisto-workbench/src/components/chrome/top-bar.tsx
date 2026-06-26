@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Command, Search } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 
 export function TopBar({ userEmail }: { userEmail: string }) {
@@ -15,16 +14,11 @@ export function TopBar({ userEmail }: { userEmail: string }) {
           priority
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-black">Liquisto Business Platform</p>
+          <p className="truncate text-sm font-black">Liquisto Tenant Workbench</p>
           <p className="truncate text-xs font-bold text-[var(--muted)]">
-            liquisto.cloud · Business processes
+            liquisto.cloud · Runtime-backed workflows
           </p>
         </div>
-      </div>
-      <div className="hidden min-w-[280px] max-w-[520px] flex-1 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--field-surface)] px-3 py-2 text-sm text-[var(--muted)] md:flex">
-        <Search size={16} aria-hidden />
-        <span className="truncate">Search inventory, initiatives, or partners</span>
-        <Command className="ml-auto" size={15} aria-hidden />
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <ThemeToggle />

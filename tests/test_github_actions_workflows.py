@@ -490,7 +490,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Reverse proxy:" in workflow
     assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow
-    assert "expected_content_marker=\"Command Center\"" in workflow
+    assert "expected_content_marker=\"Liquisto workspace\"" in workflow
     assert 'forbidden_content_marker="daskuechenhaus"' in workflow
     assert "Post-deploy content check failed" in workflow
     assert "forbidden cross-tenant marker" in workflow

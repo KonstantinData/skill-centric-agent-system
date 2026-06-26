@@ -728,7 +728,7 @@ jobs:
           expected_content_marker=""
           forbidden_content_marker=""
           if [ "${UI_APP}" = "liquisto-workbench" ]; then
-            expected_content_marker="Command Center"
+            expected_content_marker="Liquisto workspace"
             forbidden_content_marker="daskuechenhaus"
           fi
           health_passed=0
@@ -1032,7 +1032,7 @@ jobs:
           expected_content_marker=""
           forbidden_content_marker=""
           if [ "${UI_APP}" = "liquisto-workbench" ]; then
-            expected_content_marker="Command Center"
+            expected_content_marker="Liquisto workspace"
             forbidden_content_marker="daskuechenhaus"
           fi
 
