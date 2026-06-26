@@ -72,7 +72,7 @@ on:
         description: Remote compose override path managed by SCAS
         required: true
         type: string
-        default: /opt/liquisto/scas-streamlit-business-ui.override.yml
+        default: /opt/liquisto/scas-liquisto-workbench.override.yml
       service_name:
         description: Docker Compose service serving the tenant UI
         required: true
@@ -83,7 +83,6 @@ on:
         required: true
         type: choice
         options:
-          - streamlit-business-ui
           - liquisto-workbench
         default: liquisto-workbench
       local_health_port:
@@ -197,7 +196,7 @@ jobs:
           esac
 
           case "${UI_APP}" in
-            streamlit-business-ui|liquisto-workbench) ;;
+            liquisto-workbench) ;;
             *) echo "::error::Unsupported ui_app: ${UI_APP}" ; exit 1 ;;
           esac
 
@@ -290,14 +289,6 @@ jobs:
           set -euo pipefail
 
           case "${UI_APP}" in
-            streamlit-business-ui)
-              image_ref="scas-streamlit-business-ui:${GITHUB_SHA}"
-              dockerfile="deploy/streamlit-business-ui/Dockerfile"
-              image_title="SCAS Streamlit Business UI"
-              image_archive="scas-streamlit-business-ui-image.tar.gz"
-              container_port="8501"
-              health_path="/_stcore/health"
-              ;;
             liquisto-workbench)
               image_ref="scas-liquisto-workbench:${GITHUB_SHA}"
               dockerfile="deploy/liquisto-workbench/Dockerfile"
@@ -711,24 +702,14 @@ jobs:
           } > "${env_file}"
           chmod 600 "${env_file}"
 
-          if [ "${UI_APP}" = "streamlit-business-ui" ]; then
-            ui_command='command: ["streamlit", "run", "apps/streamlit_business_ui/app.py"]'
-            ui_environment='
-                STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
-                STREAMLIT_SERVER_HEADLESS: "true"
-                STREAMLIT_SERVER_PORT: "8501"'
-          else
-            ui_command=""
-            ui_environment='
+          ui_environment='
                 HOSTNAME: "0.0.0.0"
                 PORT: "3000"'
-          fi
 
           cat > "${REMOTE_OVERRIDE_PATH}" <<EOF
           services:
             ${SERVICE_NAME}:
               image: ${SCAS_UI_IMAGE}
-          $(if [ -n "${ui_command}" ]; then printf '    %s\n' "${ui_command}"; fi)
               env_file:
                 - ${env_file}
               environment:

@@ -3,8 +3,9 @@
 Tenant-specific Next.js platform for running Liquisto business processes on
 `liquisto.cloud`.
 
-The app is intentionally not a Streamlit replacement and not a SCAS-first
-console. Its primary product surface is Liquisto's operational business flow:
+The app is intentionally the primary Liquisto platform surface, not a
+SCAS-first console. Its primary product surface is Liquisto's operational
+business flow:
 
 - Inventory Intake for ERP exports, material lists, and customer context
 - Excess & Shortage Analysis for risk, liquidity, and prioritization

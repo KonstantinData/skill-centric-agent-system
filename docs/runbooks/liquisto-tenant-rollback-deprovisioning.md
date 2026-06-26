@@ -31,7 +31,7 @@ deployment must be rolled back.
 5. Verify Cloudflare/DNS changes are planned only for `liquisto.cloud`.
 6. Verify retained evidence paths do not contain secrets, raw traces, or
    confidential customer data.
-7. Verify rollback to the previous Streamlit image is available through
+7. Verify rollback to the previous UI image is available through
    `.github/workflows/tenant-ui-deploy.yml` evidence or the remote Compose
    override.
 8. Run tenant isolation tests locally and record the commit SHA.
@@ -43,10 +43,10 @@ after the production deployment is applied:
 
 - target environment: `prod`,
 - compose project: `liquisto`,
-- compose file: `/opt/liquisto/scas-streamlit-business-ui.override.yml`,
+- compose file: `/opt/liquisto/scas-liquisto-workbench.override.yml`,
 - current image after apply: pending,
 - previous image available for rollback: pending,
-- post-deploy Streamlit health check: pending.
+- post-deploy UI health check: pending.
 
 The sanitized inventory evidence must confirm the current container is healthy
 and running the applied image. The inventory evidence records only SCAS-managed
@@ -56,7 +56,7 @@ configuration keys with redacted values.
 
 ```bash
 python -m pytest tests/test_tenant_hostname_resolution.py tests/test_tenant_isolation_matrix.py
-python -m pytest tests/test_tenant_runtime_e2e.py tests/test_streamlit_business_ui.py
+python -m pytest tests/test_tenant_runtime_e2e.py tests/test_liquisto_workbench_ui.py
 ```
 
 If any test fails, keep the tenant below production-ready and do not execute a

@@ -32,12 +32,6 @@
       "usage": "Static type-checking gate for Python runtime and composition modules."
     },
     {
-      "ecosystem": "python",
-      "package": "streamlit",
-      "owner": "@KonstantinData",
-      "usage": "Local executive business dashboard UI."
-    },
-    {
       "ecosystem": "npm",
       "package": "@cloudflare/vitest-pool-workers",
       "owner": "@KonstantinData",

@@ -119,7 +119,7 @@ Local contract checks:
 
 ```bash
 python -m pytest tests/test_tenant_runtime_e2e.py tests/test_tenant_isolation_matrix.py
-python -m pytest tests/test_streamlit_business_ui.py tests/test_streamlit_task_intake_ui.py
+python -m pytest tests/test_liquisto_workbench_ui.py
 ```
 
 Target-environment checks:

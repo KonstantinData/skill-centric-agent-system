@@ -17,8 +17,8 @@ def test_liquisto_workbench_exists_as_scas_tenant_app() -> None:
 
     assert '"name": "liquisto-workbench"' in package_json
     assert "Liquisto business processes" in readme
-    assert "not a Streamlit replacement" in readme
-    assert "not a SCAS-first" in readme
+    assert "the primary Liquisto platform surface" in readme
+    assert "not a\nSCAS-first console" in readme
     assert "Cloudflare Control Plane / Hetzner Runtime Plane" in readme
 
 

@@ -409,11 +409,10 @@ def test_tenant_ui_deploy_workflow_is_manual_only_and_builds_first() -> None:
     assert "apply_deploy:" in workflow
     assert "default: false" in workflow
     assert "ui_app:" in workflow
-    assert "- streamlit-business-ui" in workflow
     assert "- liquisto-workbench" in workflow
-    assert "deploy/streamlit-business-ui/Dockerfile" in workflow
     assert "deploy/liquisto-workbench/Dockerfile" in workflow
     assert "scas-liquisto-workbench:${GITHUB_SHA}" in workflow
+    assert "scas-liquisto-workbench.override.yml" in workflow
     assert "docker build" in workflow
     assert "docker save" in workflow
     assert "tenant-ui-deploy-plan" in workflow
@@ -478,7 +477,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "previous_image" in workflow
     assert "Post-deploy health check failed." in workflow
     assert "Rolled back to previous image" in workflow
-    assert "_stcore/health" in workflow
+    assert 'health_path="/"' in workflow
     assert "health_path=\"/\"" in workflow
     assert "tenant-ui-deployment-evidence" in workflow
     assert "manage_reverse_proxy:" in workflow

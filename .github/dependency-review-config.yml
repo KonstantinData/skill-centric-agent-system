@@ -42,7 +42,6 @@ allow-dependencies-licenses:
   - pkg:pypi/pyarrow
   - pkg:pypi/python-multipart
   - pkg:pypi/starlette
-  - pkg:pypi/streamlit
   - pkg:pypi/uvicorn
   - pkg:pypi/certifi
   # Next.js locks sharp as an optional image-optimization dependency even when
