@@ -484,6 +484,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
     assert "KHH_CLOUDFLARE_API_TOKEN" in workflow
     assert "KHH_CLOUDFLARE_ZONE_ID" in workflow
+    assert "skipping origin certificate creation" in workflow
+    assert "target host must already have a certificate" in workflow
     assert "/client/v4/certificates" in workflow
     assert "tenant-ui-origin-cert/origin.pem" in workflow
     assert 'cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")' in workflow

@@ -572,8 +572,9 @@ jobs:
           esac
 
           if [ -z "${cf_api_token}" ]; then
-            echo "::error::Missing Cloudflare API token for tenant ${TENANT_ID}; cannot create origin certificate."
-            exit 1
+            echo "::warning::Missing Cloudflare API token for tenant ${TENANT_ID}; skipping origin certificate creation."
+            echo "::warning::Reverse proxy deployment will continue only if an existing certificate is present on the target host."
+            exit 0
           fi
 
           cert_hostnames=("${REVERSE_PROXY_CERT_HOSTNAME}")
@@ -657,18 +658,22 @@ jobs:
             "${SCAS_UI_IMAGE_ARCHIVE}" \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-${GITHUB_RUN_ID}.tar.gz"
           if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
-            scp \
-              -i "${HOME}/.ssh/hetzner_key" \
-              -o BatchMode=yes \
-              -o ConnectTimeout=10 \
-              tenant-ui-origin-cert/origin.pem \
-              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem"
-            scp \
-              -i "${HOME}/.ssh/hetzner_key" \
-              -o BatchMode=yes \
-              -o ConnectTimeout=10 \
-              tenant-ui-origin-cert/origin.key \
-              "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key"
+            if [ -f tenant-ui-origin-cert/origin.pem ] && [ -f tenant-ui-origin-cert/origin.key ]; then
+              scp \
+                -i "${HOME}/.ssh/hetzner_key" \
+                -o BatchMode=yes \
+                -o ConnectTimeout=10 \
+                tenant-ui-origin-cert/origin.pem \
+                "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.pem"
+              scp \
+                -i "${HOME}/.ssh/hetzner_key" \
+                -o BatchMode=yes \
+                -o ConnectTimeout=10 \
+                tenant-ui-origin-cert/origin.key \
+                "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:/tmp/scas-tenant-ui-origin-${GITHUB_RUN_ID}.key"
+            else
+              echo "::notice::No generated origin certificate was uploaded; target host must already have a certificate for ${REVERSE_PROXY_CERT_HOSTNAME}."
+            fi
           fi
 
       - name: Deploy image with rollback guard
