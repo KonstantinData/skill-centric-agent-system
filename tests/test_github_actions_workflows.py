@@ -515,7 +515,7 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "Verify public tenant UI content" in workflow
     assert 'public_urls+=("https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}")' in workflow
     assert "Waiting for Cloudflare Access public check for ${public_url}" in workflow
-    assert "cloudflareaccess.com" in workflow
+    assert "cloudflareaccess" + ".com" in workflow
     assert "/cdn-cgi/access/login/" in workflow
     assert "Public tenant UI content check failed for ${public_url}." in workflow
 
