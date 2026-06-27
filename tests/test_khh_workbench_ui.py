@@ -53,9 +53,15 @@ def test_khh_workbench_home_is_application_surface() -> None:
     assert "Agent-Hinweise" in home
     assert "Arbeitsansicht" in section_page
     assert "Beispiel ohne Stammdaten" in section_page
-    assert "--kh-yellow" in globals_css
-    assert "--kh-green" in globals_css
+    assert "--foreground: #1e293b" in globals_css
+    assert "--background: #fafaf7" in globals_css
+    assert "--accent: #6f8f72" in globals_css
+    assert "--danger-soft" in globals_css
+    assert "--warning-soft" in globals_css
+    assert "--success-soft" in globals_css
     assert ".day-strip" in globals_css
+    assert ".nav-link" in globals_css
+    assert ".section-list-item" in globals_css
 
 
 def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:

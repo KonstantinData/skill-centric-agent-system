@@ -39,12 +39,12 @@ export default async function SectionPage({ params }: SectionPageProps) {
         </div>
       </Panel>
 
-      <div className="signal-grid">
+      <div className="section-list">
         {config.items.map((item) => (
-          <Panel key={item}>
-            <CheckCircle2 size={18} className="mb-3 text-[var(--accent)]" aria-hidden />
-            <p className="font-black">{item}</p>
-          </Panel>
+          <div className="section-list-item" key={item}>
+            <CheckCircle2 size={18} className="check-icon" aria-hidden />
+            <p className="font-bold leading-6">{item}</p>
+          </div>
         ))}
       </div>
 

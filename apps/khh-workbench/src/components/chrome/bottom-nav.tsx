@@ -11,7 +11,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--chrome-surface)] lg:hidden">
+    <nav className="mobile-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--border)] px-2 py-1 lg:hidden">
       {mobileItems.map((item) => {
         const active =
           item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -21,8 +21,8 @@ export function BottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex h-16 flex-col items-center justify-center gap-1 px-1 text-[10px] font-bold text-[var(--muted)]",
-              active && "text-[var(--foreground)]",
+              "mobile-nav-link",
+              active && "mobile-nav-link-active",
             )}
           >
             <Icon size={18} aria-hidden />

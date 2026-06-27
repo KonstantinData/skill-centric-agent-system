@@ -33,8 +33,8 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-bold text-[var(--muted)]",
-                active && "bg-[var(--surface-soft)] text-[var(--foreground)]",
+                "nav-link",
+                active && "nav-link-active",
               )}
             >
               <Icon size={17} aria-hidden />
@@ -45,7 +45,7 @@ export function Sidebar() {
       </nav>
       <Link
         href="/cdn-cgi/access/logout"
-        className="mt-auto flex min-h-10 items-center gap-3 rounded-lg border border-transparent px-3 text-sm font-bold text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+        className="nav-link mt-auto"
       >
         <LogOut size={17} aria-hidden />
         <span>Abmelden</span>
