@@ -13,14 +13,14 @@ export const navItems = [
 export const workspaceActions = [
   {
     title: "Research",
-    detail: "Work with tenant-scoped research tasks and source synthesis.",
+    detail: "Prepare company, market, and meeting intelligence for Liquisto sales work.",
     href: "/research",
     cta: "Open research",
     icon: FileSearch,
   },
   {
     title: "Admin",
-    detail: "Manage Liquisto tenant users, roles, and settings.",
+    detail: "Manage approved Liquisto users, roles, and workspace settings.",
     href: "/admin",
     cta: "Open admin",
     icon: KeyRound,
@@ -30,22 +30,22 @@ export const workspaceActions = [
 export const sections = {
   research: {
     title: "Research",
-    subtitle: "Tenant-scoped research workflow backed by Liquisto role grants and validators.",
+    subtitle: "Prepare evidence-backed company intelligence before manufacturer meetings.",
     icon: FileSearch,
     items: [
-      "Role bundles grant research-intake to Liquisto owner and researcher",
-      "Runtime composition uses research-context-synthesis",
-      "Outputs must pass research-output-contract and tenant scope validators",
+      "Create a pre-meeting intelligence brief from company name and domain",
+      "Summarize company profile, markets served, financial signals, and current market context",
+      "Highlight excess-inventory hypotheses, buyer segment angles, open questions, and source confidence",
     ],
   },
   admin: {
     title: "Admin",
-    subtitle: "Owner-only tenant administration workflow.",
+    subtitle: "Manage approved workspace access and settings.",
     icon: KeyRound,
     items: [
-      "liquisto-owner has tenant-admin capability",
-      "User permissions are checked through user-permission-validator",
-      "Admin actions require admin-action-validator",
+      "Review workspace users and their approved responsibilities",
+      "Keep role assignments aligned with Liquisto operating needs",
+      "Update workspace settings through controlled administration actions",
     ],
   },
 } as const;
