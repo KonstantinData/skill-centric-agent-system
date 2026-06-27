@@ -247,6 +247,8 @@ def test_khh_deploy_gate_rejects_foreign_content_marker() -> None:
     assert 'if [ "${UI_APP}" = "khh-workbench" ]; then' in workflow
     assert 'expected_content_marker="Leitungs-Cockpit"' in workflow
     assert 'forbidden_content_marker="liquisto"' in workflow
+    assert 'if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then' in workflow
+    assert "Waiting for Cloudflare Access public check for ${public_url}" in workflow
     assert "KHH_CLOUDFLARE_API_TOKEN" in workflow
     assert "KHH_CLOUDFLARE_ZONE_ID" in workflow
 

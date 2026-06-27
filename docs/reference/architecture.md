@@ -275,6 +275,22 @@ permission prompts, deployment wiring, and runtime environment configuration.
 Shared packages must remain tenant-scoped and must not bypass tenant isolation,
 area-brain boundaries, or data-minimization policy.
 
+The KHH foundation now implements the first shared boundary:
+
+- `packages/tenant-workbench-domain/` owns KHH route IDs, navigation, sections,
+  daily signals, quick actions, icon IDs, and privacy classes without React,
+  Next.js, DOM, or icon-library imports.
+- `packages/tenant-workbench-client/` owns the workbench client, immutable
+  tenant/area scope checks, the Cloudflare Access web adapter, write-intent
+  denial, and native auth/offline/push/permission contracts.
+- `packages/tenant-workbench-ui/` owns platform-neutral view models. It does
+  not render DOM or import Next.js.
+- `apps/khh-workbench/` remains the Next.js web shell and owns only Next.js
+  routing, images, CSS, lucide icon adaptation, theme storage, and deployment
+  wiring.
+- `apps/khh-mobile-proof/` is a minimal Expo/iOS proof shell that imports the
+  same shared contracts. It is proof evidence, not a native release.
+
 The accepted target architecture for KHH and future tenant workbenches is
 ADR-0012 in
 `docs/adr/0012-platform-neutral-tenant-workbench-architecture.md`. The delivery

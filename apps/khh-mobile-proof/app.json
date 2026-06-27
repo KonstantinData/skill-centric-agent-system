@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "KHH Workbench Proof",
+    "slug": "khh-mobile-proof",
+    "scheme": "khhworkbench",
+    "platforms": [
+      "ios"
+    ],
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "de.kinderhaus-heuschrecken.workbench.proof"
+    }
+  }
+}

@@ -71,3 +71,23 @@ allow-dependencies-licenses:
   - pkg:npm/%40img/sharp-win32-arm64
   - pkg:npm/%40img/sharp-win32-ia32
   - pkg:npm/%40img/sharp-win32-x64
+  # KHH native-readiness proof pulls Expo/React Native tooling. Keep these as
+  # package-scoped exceptions because GitHub currently classifies these
+  # permissive transitive licenses as composite or non-SPDX scan-code values.
+  - pkg:npm/big-integer
+  - pkg:npm/glob
+  - pkg:npm/lru-cache
+  - pkg:npm/minimatch
+  - pkg:npm/minipass
+  - pkg:npm/path-scurry
+  - pkg:npm/sax
+  - pkg:npm/unicode-match-property-value-ecmascript
+  - pkg:npm/unicode-property-aliases-ecmascript
+  - pkg:npm/xmlbuilder
+  # Private, repository-local workspace packages are covered by the repository
+  # license notice and are not external third-party dependencies.
+  - pkg:npm/khh-mobile-proof
+  - pkg:npm/expo
+  - pkg:npm/%40scas/tenant-workbench-client
+  - pkg:npm/%40scas/tenant-workbench-domain
+  - pkg:npm/%40scas/tenant-workbench-ui

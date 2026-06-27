@@ -178,6 +178,7 @@ jobs:
       SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID }}
       LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
       LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
+      KHH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.KHH_CLOUDFLARE_ACCOUNT_ID }}
       KHH_CLOUDFLARE_API_TOKEN: ${{ secrets.KHH_CLOUDFLARE_API_TOKEN }}
       KHH_CLOUDFLARE_ZONE_ID: ${{ secrets.KHH_CLOUDFLARE_ZONE_ID }}
 
@@ -845,6 +846,33 @@ jobs:
             origin_key_file="${origin_cert_dir}/${TENANT_ID}-origin.key"
             nginx_candidate="${evidence_dir}/nginx-site.conf"
             nginx_backup="${evidence_dir}/nginx-site.previous"
+            nginx_conflict_backup_dir="${evidence_dir}/nginx-sites-enabled-conflicts"
+            disabled_nginx_conflicts="none"
+            nginx_required_access_guard=""
+            origin_check_auth_headers=()
+            origin_access_gate="not-required"
+            if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then
+              nginx_required_access_guard='
+              if ($http_cf_access_authenticated_user_email = "") {
+                  return 403;
+              }
+              proxy_set_header cf-access-authenticated-user-email $http_cf_access_authenticated_user_email;
+              proxy_set_header cf-access-user-id $http_cf_access_user_id;'
+              origin_check_auth_headers=(
+                -H "cf-access-authenticated-user-email: deploy-check@kinderhaus-heuschrecken.cloud"
+                -H "cf-access-user-id: deploy-check"
+              )
+              origin_access_gate="cf-access-authenticated-user-email-required"
+            fi
+
+            restore_nginx_conflicts() {
+              if [ -d "${nginx_conflict_backup_dir}" ]; then
+                for conflict_backup in "${nginx_conflict_backup_dir}"/*; do
+                  [ -e "${conflict_backup}" ] || continue
+                  sudo_if_needed cp -a "${conflict_backup}" "/etc/nginx/sites-enabled/$(basename "${conflict_backup}")"
+                done
+              fi
+            }
 
             if [ ! -f "${cert_dir}/fullchain.pem" ] || [ ! -f "${cert_dir}/privkey.pem" ]; then
               if [ ! -f "${REMOTE_ORIGIN_CERT}" ] || [ ! -f "${REMOTE_ORIGIN_KEY}" ]; then
@@ -877,6 +905,7 @@ jobs:
               ssl_certificate_key ${key_file};
 
               location / {
+          ${nginx_required_access_guard}
                   proxy_pass http://127.0.0.1:${LOCAL_HEALTH_PORT};
                   proxy_http_version 1.1;
                   proxy_set_header Host \$host;
@@ -894,10 +923,41 @@ jobs:
               sudo_if_needed cp "${nginx_site}" "${nginx_backup}"
             fi
 
+            install -d -m 700 "${nginx_conflict_backup_dir}"
+            for enabled_entry in /etc/nginx/sites-enabled/*; do
+              [ -e "${enabled_entry}" ] || continue
+              if [ "${enabled_entry}" = "${nginx_enabled}" ]; then
+                continue
+              fi
+              if [ "$(readlink -f "${enabled_entry}" 2>/dev/null || true)" = "$(readlink -f "${nginx_site}" 2>/dev/null || printf '%s' "${nginx_site}")" ]; then
+                continue
+              fi
+
+              conflict_found=0
+              for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
+                if sudo_if_needed grep -Eq "server_name[[:space:]][^;]*(^|[[:space:]])${reverse_proxy_hostname//./\\.}([[:space:];]|$)" "${enabled_entry}" 2>/dev/null; then
+                  conflict_found=1
+                  break
+                fi
+              done
+              if [ "${conflict_found}" -eq 1 ]; then
+                conflict_name="$(basename "${enabled_entry}")"
+                sudo_if_needed cp -a "${enabled_entry}" "${nginx_conflict_backup_dir}/${conflict_name}"
+                sudo_if_needed rm -f "${enabled_entry}"
+                if [ "${disabled_nginx_conflicts}" = "none" ]; then
+                  disabled_nginx_conflicts="${conflict_name}"
+                else
+                  disabled_nginx_conflicts="${disabled_nginx_conflicts} ${conflict_name}"
+                fi
+              fi
+            done
+
             sudo_if_needed install -m 644 "${nginx_candidate}" "${nginx_site}"
             sudo_if_needed ln -sfn "${nginx_site}" "${nginx_enabled}"
 
-            if ! sudo_if_needed nginx -t; then
+            nginx_test_output="$(mktemp)"
+            if ! sudo_if_needed nginx -t >"${nginx_test_output}" 2>&1; then
+              cat "${nginx_test_output}" >&2
               if [ -f "${nginx_backup}" ]; then
                 sudo_if_needed install -m 644 "${nginx_backup}" "${nginx_site}"
               else
@@ -906,10 +966,29 @@ jobs:
                   sudo_if_needed rm -f "${nginx_enabled}"
                 fi
               fi
+              restore_nginx_conflicts
               sudo_if_needed nginx -t || true
               echo "Nginx configuration failed validation; restored previous state." >&2
               exit 1
             fi
+            cat "${nginx_test_output}" >&2
+            for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
+              if grep -Fq "conflicting server name \"${reverse_proxy_hostname}\"" "${nginx_test_output}"; then
+                if [ -f "${nginx_backup}" ]; then
+                  sudo_if_needed install -m 644 "${nginx_backup}" "${nginx_site}"
+                else
+                  sudo_if_needed rm -f "${nginx_site}"
+                  if [ -L "${nginx_enabled}" ]; then
+                    sudo_if_needed rm -f "${nginx_enabled}"
+                  fi
+                fi
+                restore_nginx_conflicts
+                sudo_if_needed nginx -t || true
+                echo "Nginx configuration still has a conflicting server_name for ${reverse_proxy_hostname}; restored previous state." >&2
+                exit 1
+              fi
+            done
+            rm -f "${nginx_test_output}"
 
             if ! sudo_if_needed systemctl reload nginx; then
               if ! sudo_if_needed nginx -s reload; then
@@ -917,24 +996,46 @@ jobs:
               fi
             fi
             for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
-              curl -kfsS \
-                --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
-                --max-time 10 \
-                "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" >/dev/null
-              if [ -n "${expected_content_marker}" ]; then
+              reverse_proxy_passed=0
+              for reverse_proxy_attempt in $(seq 1 30); do
                 origin_body="$(mktemp)"
-                curl -kfsS \
+                if curl -kfsS \
                   --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
                   --max-time 10 \
+                  "${origin_check_auth_headers[@]}" \
                   "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" \
-                  -o "${origin_body}"
-                grep -Fq "${expected_content_marker}" "${origin_body}"
-                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
-                  rm -f "${origin_body}"
-                  echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
-                  exit 1
+                  -o "${origin_body}"; then
+                  if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${origin_body}"; then
+                    if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                      rm -f "${origin_body}"
+                      echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
+                      exit 1
+                    fi
+                    reverse_proxy_passed=1
+                    rm -f "${origin_body}"
+                    break
+                  fi
                 fi
                 rm -f "${origin_body}"
+                echo "Waiting for reverse proxy origin check for ${reverse_proxy_hostname} (${reverse_proxy_attempt}/30)." >&2
+                sleep 3
+              done
+              if [ "${reverse_proxy_passed}" -ne 1 ]; then
+                echo "Reverse proxy origin check failed for ${reverse_proxy_hostname}." >&2
+                if [ -f /var/log/nginx/error.log ]; then
+                  sudo_if_needed tail -n 80 /var/log/nginx/error.log >&2 || true
+                fi
+                service_id="$(
+                  docker ps \
+                    --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" \
+                    --filter "label=com.docker.compose.service=${SERVICE_NAME}" \
+                    --format '{{.ID}}' \
+                    | head -n 1 || true
+                )"
+                if [ -n "${service_id}" ]; then
+                  docker logs --tail 80 "${service_id}" >&2 || true
+                fi
+                exit 1
               fi
             done
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
@@ -955,6 +1056,8 @@ jobs:
             printf -- '- Deployment mode: `SCAS-managed compose file; legacy compose files and .env are not read`\n'
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
+            printf -- '- Disabled conflicting Nginx enabled entries: `%s`\n' "${disabled_nginx_conflicts:-none}"
+            printf -- '- Origin access gate: `%s`\n' "${origin_access_gate}"
             printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
             printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
             printf -- '- Expected content marker: `%s`\n' "${expected_content_marker:-not-required}"
@@ -1094,6 +1197,314 @@ jobs:
           )
           PY
 
+      - name: Ensure KHH Cloudflare Access is fail closed
+        if: env.APPLY_DEPLOY == 'true' && env.SCAS_UI_AUTH_MODE_TARGET == 'required' && env.TENANT_ID == 'tenant_kinderhaus'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${KHH_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${KHH_CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::Missing KHH Cloudflare account Access credentials."
+            exit 1
+          fi
+
+          mkdir -p tenant-ui-access-evidence
+          {
+            printf '# KHH Cloudflare Access Fail-Closed Evidence\n\n'
+            printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
+            printf -- '- Hostnames: `%s www.%s`\n' "${TENANT_HOSTNAME}" "${TENANT_HOSTNAME}"
+            printf -- '- Allowed emails: `kontakt@konstantinmilonas.de`\n'
+            printf -- '- Account Access API mutation: `started-before-cloudflare-api-call`\n'
+            printf -- '- Origin gate: `Nginx requires cf-access-authenticated-user-email before proxying to the KHH container`\n'
+            printf -- '- Public gate: `Verify public tenant UI content must observe Cloudflare Access redirect or 403 and rejects public 200 HTML`\n'
+          } > tenant-ui-access-evidence/access.md
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          account_id = os.environ["KHH_CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["KHH_CLOUDFLARE_API_TOKEN"]
+          primary_hostname = os.environ["TENANT_HOSTNAME"].strip().lower()
+          expected_hostnames = {
+              "kinderhaus-heuschrecken.cloud",
+              "www.kinderhaus-heuschrecken.cloud",
+          }
+          hostnames = [primary_hostname, f"www.{primary_hostname}"]
+          allowed_emails = ["kontakt@konstantinmilonas.de"]
+          base = "https://api.cloudflare.com/client/v4"
+          app_name = "KHH Workbench"
+          policy_name = "SCAS KHH Workbench allowed users"
+          deny_message = "Account is not enabled for Kinderhaus Heuschrecken Workbench."
+
+          if primary_hostname != "kinderhaus-heuschrecken.cloud" or set(hostnames) != expected_hostnames:
+              raise SystemExit("KHH Access automation may only manage the KHH apex and www hostnames.")
+
+          def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload, sort_keys=True).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {detail}") from exc
+              if not body.get("success", False):
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
+              return body
+
+          def destination_uris(app: dict) -> set[str]:
+              uris: set[str] = set()
+              for destination in app.get("destinations") or []:
+                  if destination.get("type") == "public" and destination.get("uri"):
+                      uris.add(str(destination["uri"]).lower().rstrip("/"))
+              for domain in app.get("self_hosted_domains") or []:
+                  uris.add(str(domain).lower().rstrip("/"))
+              if app.get("domain"):
+                  uris.add(str(app["domain"]).lower().rstrip("/"))
+              return uris
+
+          def find_app(candidates: list[dict], hostname: str, used_ids: set[str]) -> dict | None:
+              exact = [
+                  app for app in candidates
+                  if app.get("type") == "self_hosted" and destination_uris(app) == {hostname}
+              ]
+              if exact:
+                  return exact[0]
+              for app in candidates:
+                  if app.get("type") != "self_hosted" or str(app.get("id")) in used_ids:
+                      continue
+                  if hostname in destination_uris(app):
+                      return app
+              return None
+
+          def is_one_time_pin_provider(provider: dict) -> bool:
+              provider_type = str(provider.get("type") or "").lower()
+              provider_name = str(provider.get("name") or "").lower()
+              return provider_type == "onetimepin" or "one-time pin" in provider_name or "otp" in provider_name
+
+          def app_payload(hostname: str, app: dict | None, one_time_pin_provider_ids: list[str]) -> dict:
+              allowed_keys = {
+                  "type",
+                  "name",
+                  "domain",
+                  "destinations",
+                  "session_duration",
+                  "allowed_idps",
+                  "app_launcher_visible",
+                  "auto_redirect_to_identity",
+                  "enable_binding_cookie",
+                  "http_only_cookie_attribute",
+                  "same_site_cookie_attribute",
+                  "path_cookie_attribute",
+                  "custom_deny_message",
+                  "custom_deny_url",
+                  "custom_non_identity_deny_url",
+                  "cors_headers",
+                  "tags",
+              }
+              payload = {}
+              if app:
+                  payload = {
+                      key: copy.deepcopy(value)
+                      for key, value in app.items()
+                      if key in allowed_keys and value is not None
+                  }
+              payload["type"] = "self_hosted"
+              payload["name"] = f"{app_name} ({hostname})"
+              payload["domain"] = hostname
+              payload["destinations"] = [{"type": "public", "uri": hostname}]
+              payload["allowed_idps"] = one_time_pin_provider_ids
+              payload["auto_redirect_to_identity"] = False
+              payload["app_launcher_visible"] = True
+              payload["custom_deny_message"] = deny_message
+              payload["http_only_cookie_attribute"] = True
+              payload["same_site_cookie_attribute"] = "lax"
+              payload["path_cookie_attribute"] = False
+              payload["session_duration"] = "24h"
+              payload.pop("self_hosted_domains", None)
+              return payload
+
+          def policy_payload() -> dict:
+              return {
+                  "name": policy_name,
+                  "decision": "allow",
+                  "precedence": 1,
+                  "include": [{"email": {"email": email}} for email in allowed_emails],
+                  "exclude": [],
+                  "require": [],
+              }
+
+          def policy_emails(policy: dict) -> set[str]:
+              emails: set[str] = set()
+              for rule in policy.get("include") or []:
+                  if isinstance(rule.get("email"), dict) and rule["email"].get("email"):
+                      emails.add(str(rule["email"]["email"]).lower())
+                  elif rule.get("_type") == "email" and rule.get("email"):
+                      emails.add(str(rule["email"]).lower())
+              return emails
+
+          def ensure_policy(app: dict) -> tuple[list[str], list[str]]:
+              policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
+              changes: list[str] = []
+              summaries = [
+                  f"{policy.get('name')} ({policy.get('decision')}) emails={','.join(sorted(policy_emails(policy))) or 'none'}"
+                  for policy in policies
+              ]
+              target = next((policy for policy in policies if policy.get("name") == policy_name), None)
+              desired = policy_payload()
+              if target:
+                  if target.get("decision") != "allow" or policy_emails(target) != set(allowed_emails) or int(target.get("precedence", 0) or 0) != 1:
+                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", desired)
+                      changes.append(f"{app.get('domain')}:updated-allow-policy")
+              else:
+                  target = cf_request("POST", f"/accounts/{account_id}/access/apps/{app['id']}/policies", desired).get("result", {})
+                  changes.append(f"{app.get('domain')}:created-allow-policy")
+              target_id = str((target or {}).get("id") or "")
+              for policy in policies:
+                  if str(policy.get("id")) == target_id or policy.get("name") == policy_name:
+                      continue
+                  cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{policy['id']}")
+                  changes.append(f"{app.get('domain')}:{policy.get('name', policy['id'])}:removed")
+              return changes, summaries
+
+          apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
+          one_time_pin_provider_ids = [
+              str(provider["id"])
+              for provider in identity_providers
+              if provider.get("id") and is_one_time_pin_provider(provider)
+          ]
+          if not one_time_pin_provider_ids:
+              raise SystemExit("No Cloudflare Access One-Time PIN identity provider is configured.")
+
+          used_ids: set[str] = set()
+          app_changes: list[str] = []
+          target_apps: dict[str, dict] = {}
+          for hostname in hostnames:
+              app = find_app(apps, hostname, used_ids)
+              payload = app_payload(hostname, app, one_time_pin_provider_ids)
+              if app:
+                  cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                  app_changes.append(f"{hostname}:updated")
+                  used_ids.add(str(app["id"]))
+              else:
+                  created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
+                  app_changes.append(f"{hostname}:created")
+                  if created.get("id"):
+                      used_ids.add(str(created["id"]))
+              apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+
+          refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          target_ids: set[str] = set()
+          used_ids = set()
+          for hostname in hostnames:
+              app = find_app(refreshed_apps, hostname, used_ids)
+              if not app:
+                  raise RuntimeError(f"Missing Access application after update: {hostname}")
+              target_apps[hostname] = app
+              used_ids.add(str(app["id"]))
+              target_ids.add(str(app["id"]))
+
+          deleted_duplicate_apps: list[str] = []
+          for app in refreshed_apps:
+              uris = destination_uris(app)
+              if (
+                  app.get("type") == "self_hosted"
+                  and uris
+                  and uris.issubset(expected_hostnames)
+                  and str(app.get("id")) not in target_ids
+              ):
+                  cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
+                  deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
+
+          policy_changes: list[str] = []
+          policy_summaries: list[str] = []
+          cookie_scope_summaries: list[str] = []
+          path_scoped_apps: list[str] = []
+          target_audiences: list[str] = []
+          for hostname, app in target_apps.items():
+              changes, summaries = ensure_policy(app)
+              policy_changes.extend(changes)
+              policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+              if app.get("aud"):
+                  target_audiences.append(str(app["aud"]))
+              path_cookie_attribute = app.get("path_cookie_attribute")
+              cookie_scope_summaries.append(
+                  (
+                      f"{hostname}: path_cookie_attribute={path_cookie_attribute!r}, "
+                      f"same_site_cookie_attribute={app.get('same_site_cookie_attribute', 'not-set')!r}, "
+                      f"http_only_cookie_attribute={app.get('http_only_cookie_attribute', 'not-set')!r}, "
+                      f"session_duration={app.get('session_duration', 'not-set')!r}"
+                  )
+              )
+              if path_cookie_attribute is True:
+                  path_scoped_apps.append(hostname)
+          if path_scoped_apps:
+              raise SystemExit(
+                  "KHH Access app still has path-scoped cookies enabled: "
+                  + ", ".join(path_scoped_apps)
+              )
+
+          evidence = [
+              "# KHH Cloudflare Access Fail-Closed Evidence",
+              "",
+              "- Account Access API mutation: `performed-by-tenant-ui-deploy`",
+              f"- Tenant ID: `{os.environ['TENANT_ID']}`",
+              f"- Hostnames: `{', '.join(hostnames)}`",
+              f"- Allowed emails: `{', '.join(allowed_emails)}`",
+              "- Authentication method: `Cloudflare Access One-Time PIN email verification`",
+              f"- One-Time PIN provider count: `{len(one_time_pin_provider_ids)}`",
+              "- Origin gate: `Nginx requires cf-access-authenticated-user-email before proxying to the KHH container`",
+              "- Public gate: `Verify public tenant UI content must observe Cloudflare Access redirect or 403 and rejects public 200 HTML`",
+              f"- App changes: `{', '.join(app_changes) if app_changes else 'none'}`",
+              f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
+              f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
+              f"- Application audience tags after: `{', '.join(target_audiences) if target_audiences else 'none'}`",
+              "- Cookie scope after:",
+              *[f"  - `{summary}`" for summary in cookie_scope_summaries],
+              "- Existing policy summary before changes:",
+              *[f"  - `{summary}`" for summary in policy_summaries],
+              f"- Collected at: `{datetime.now(UTC).isoformat()}`",
+              "",
+          ]
+          Path("tenant-ui-access-evidence/access.md").write_text(
+              "\n".join(evidence),
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "access_status": "updated",
+              "allowed_emails": allowed_emails,
+              "app_changes": app_changes,
+              "deleted_duplicate_apps": deleted_duplicate_apps,
+              "hostnames": hostnames,
+              "one_time_pin_provider_count": len(one_time_pin_provider_ids),
+              "policy_changes": policy_changes,
+          }, sort_keys=True))
+          PY
+
+      - name: Upload KHH Access evidence
+        if: env.APPLY_DEPLOY == 'true' && env.SCAS_UI_AUTH_MODE_TARGET == 'required' && env.TENANT_ID == 'tenant_kinderhaus'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tenant-ui-khh-access-evidence-${{ inputs.target_environment }}
+          path: tenant-ui-access-evidence/access.md
+          if-no-files-found: error
+
       - name: Verify public tenant UI content
         if: env.APPLY_DEPLOY == 'true'
         shell: bash
@@ -1123,7 +1534,7 @@ jobs:
           for public_url in "${public_urls[@]}"; do
             public_check_passed=0
             for attempt in $(seq 1 30); do
-              if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+              if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then
                 status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${public_url}")"
                 location="$(curl -sS -I --max-time 15 "${public_url}" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
                 if { [ "${status}" = "302" ] || [ "${status}" = "303" ] || [ "${status}" = "403" ]; } && { [ "${status}" = "403" ] || [[ "${location}" == *"cloudflareaccess.com"* || "${location}" == *"/cdn-cgi/access/login/"* ]]; }; then

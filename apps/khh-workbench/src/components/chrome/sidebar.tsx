@@ -4,8 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
-import { navItems } from "@/lib/workbench-data";
+import { khhTenantWorkbenchDefinition } from "@scas/tenant-workbench-domain/khh";
+import { createNavigationViewModel } from "@scas/tenant-workbench-ui";
+import { resolveIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+
+const navItems = createNavigationViewModel(khhTenantWorkbenchDefinition.navigation);
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -27,7 +31,7 @@ export function Sidebar() {
         {navItems.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          const Icon = item.icon;
+          const Icon = resolveIcon(item.iconId);
           return (
             <Link
               key={item.href}

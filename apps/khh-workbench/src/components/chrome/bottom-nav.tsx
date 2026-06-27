@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navItems } from "@/lib/workbench-data";
+import { khhTenantWorkbenchDefinition } from "@scas/tenant-workbench-domain/khh";
+import { createMobileNavigationViewModel } from "@scas/tenant-workbench-ui";
+import { resolveIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
-const mobileItems = navItems.slice(0, 5);
+const mobileItems = createMobileNavigationViewModel(
+  khhTenantWorkbenchDefinition.navigation,
+);
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -15,7 +19,7 @@ export function BottomNav() {
       {mobileItems.map((item) => {
         const active =
           item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-        const Icon = item.icon;
+        const Icon = resolveIcon(item.iconId);
         return (
           <Link
             key={item.href}

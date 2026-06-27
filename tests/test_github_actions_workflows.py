@@ -35,6 +35,9 @@ TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH = (
 LIQUISTO_CLOUDFLARE_ACCESS_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "liquisto-cloudflare-access.yml"
 )
+KHH_CLOUDFLARE_ACCESS_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "khh-cloudflare-access.yml"
+)
 ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
 )
@@ -110,6 +113,10 @@ def load_tenant_cloudflare_dns_cutover_workflow() -> str:
 
 def load_liquisto_cloudflare_access_workflow() -> str:
     return LIQUISTO_CLOUDFLARE_ACCESS_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_khh_cloudflare_access_workflow() -> str:
+    return KHH_CLOUDFLARE_ACCESS_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def load_es_daskuechenhaus_site_deploy_workflow() -> str:
@@ -512,11 +519,20 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow
     assert "nginx -t" in workflow
     assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
+    assert "nginx-sites-enabled-conflicts" in workflow
+    assert "restore_nginx_conflicts" in workflow
+    assert 'rm -f "${enabled_entry}"' in workflow
+    assert 'conflicting server name \\"${reverse_proxy_hostname}\\"' in workflow
     assert 'reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"' in workflow
     assert "server_name ${reverse_proxy_server_names};" in workflow
     assert "systemctl reload nginx" in workflow
     assert "nginx -s reload" in workflow
     assert "systemctl start nginx" in workflow
+    assert "reverse_proxy_attempt" in workflow
+    assert "Waiting for reverse proxy origin check for ${reverse_proxy_hostname}" in workflow
+    assert "Reverse proxy origin check failed for ${reverse_proxy_hostname}." in workflow
+    assert "tail -n 80 /var/log/nginx/error.log" in workflow
+    assert 'docker logs --tail 80 "${service_id}"' in workflow
     assert "Reverse proxy:" in workflow
     assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow
@@ -532,6 +548,15 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "cloudflareaccess" + ".com" in workflow
     assert "/cdn-cgi/access/login/" in workflow
     assert "Public tenant UI content check failed for ${public_url}." in workflow
+    assert "Ensure KHH Cloudflare Access is fail closed" in workflow
+    assert "tenant-ui-khh-access-evidence" in workflow
+    assert "cf-access-authenticated-user-email-required" in workflow
+    assert "proxy_set_header cf-access-authenticated-user-email" in workflow
+    assert "Nginx requires cf-access-authenticated-user-email" in workflow
+    assert "KHH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "Cloudflare Access One-Time PIN email verification" in workflow
+    assert "kontakt@konstantinmilonas.de" in workflow
+    assert "Account Access API mutation: `performed-by-tenant-ui-deploy`" in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
@@ -678,6 +703,40 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "Verify public Access redirect" in workflow
     assert "cloudflareaccess" + ".com" in workflow
     assert "liquisto-access-evidence" in workflow
+    assert "DKH_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN" not in workflow
+
+
+def test_khh_cloudflare_access_workflow_restricts_public_workbench() -> None:
+    assert KHH_CLOUDFLARE_ACCESS_WORKFLOW_PATH.exists()
+    workflow = load_khh_cloudflare_access_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "apply_changes:" in workflow
+    assert "confirm_production:" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "confirm_production must be true when apply_changes=true" in workflow
+    assert "confirm_hostname must match primary_hostname when apply_changes=true" in workflow
+    assert "KHH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "KHH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "default: kinderhaus-heuschrecken.cloud www.kinderhaus-heuschrecken.cloud" in workflow
+    assert "default: kontakt@konstantinmilonas.de" in workflow
+    assert "hostnames must be exactly the KHH apex and www hostnames." in workflow
+    assert "allowed_emails must be exactly kontakt@konstantinmilonas.de." in workflow
+    assert "Cloudflare Access One-Time PIN email verification" in workflow
+    assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
+    assert 'payload["same_site_cookie_attribute"] = "lax"' in workflow
+    assert 'payload["path_cookie_attribute"] = False' in workflow
+    assert "KHH Access app still has path-scoped cookies enabled" in workflow
+    assert "Cookie scope after:" in workflow
+    assert "must allow account-scoped Cloudflare Access application, policy" in workflow
+    assert "Verify public Access redirect" in workflow
+    assert "Expected Cloudflare Access login redirect" in workflow
+    assert "Waiting for Cloudflare Access login redirect" in workflow
+    assert "cloudflareaccess" + ".com" in workflow
+    assert "khh-access-evidence" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" not in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" not in workflow
     assert "SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN" not in workflow
 

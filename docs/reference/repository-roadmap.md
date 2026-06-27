@@ -331,8 +331,14 @@ workbench surfaces once the shared package boundary is established.
 6. Add a minimal Expo/native proof shell and drift gates before any native
    release claim.
 
-Status: planned. The detailed backlog, estimates, sprint recommendation, and
-acceptance criteria live in `docs/roadmap/platform-neutral-app-readiness.md`.
+Status: in progress. ADR-0012 is accepted, the shared package scaffold exists,
+KHH domain/navigation/privacy data has moved out of the Next.js app, the web
+shell consumes shared domain/client/UI contracts, the Native Proof shell exists,
+and the tenant deploy workflow now expects Cloudflare Access redirect/403 when
+`auth_mode=required`. Remaining work is deeper shared UI migration, real API
+adapters, native auth implementation evidence, and production release gates.
+The detailed backlog, estimates, sprint recommendation, and acceptance criteria
+live in `docs/roadmap/platform-neutral-app-readiness.md`.
 
 ## Historical Runtime Preflight Backlog Titles (Canon)
 

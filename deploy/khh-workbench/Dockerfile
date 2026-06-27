@@ -5,6 +5,7 @@ WORKDIR /app
 COPY apps/khh-workbench/package.json apps/khh-workbench/package-lock.json ./apps/khh-workbench/
 RUN npm ci --prefix apps/khh-workbench
 
+COPY packages ./packages
 COPY apps/khh-workbench ./apps/khh-workbench
 RUN npm run --prefix apps/khh-workbench build
 
