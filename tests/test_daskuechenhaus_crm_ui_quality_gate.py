@@ -182,8 +182,14 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
     assert 'Label label="Restbetrag"' in invoice_source
     assert "const discountAmount = roundMoney(itemTotal * 0.02)" in invoice_source
     assert "const discountNote = itemTotal ? formatMoney(discountAmount) : \"\"" in invoice_source
+    assert "const printedDiscountNote = draft.includeDiscountNote ? discountNote : \"\"" in invoice_source
+    assert "includeDiscountNote: true" in invoice_source
     assert "roundMoney(remainingAmount * 0.02)" not in invoice_source
     assert "name=\"discount_note\"" in invoice_source
+    assert "name=\"include_discount_note\"" in invoice_source
+    assert "<span>Skonto-ausweisen</span>" in invoice_source
+    assert "checked={draft.includeDiscountNote}" in invoice_source
+    assert "disabled={!draft.includeDiscountNote}" in invoice_source
     assert "aria-label=\"2 Prozent Skonto aus Rechnungsendbetrag\"" in invoice_source
     assert "invoice-print-number" in invoice_source
     assert "invoice-print-customer-number" in invoice_source
@@ -205,7 +211,10 @@ def test_dkh_crm_invoice_input_and_print_flow_is_separate_from_purchase_contract
         in customer_file
     )
 
-    assert "Blanco Rechnung" in templates_page
+    assert "Blanko Kaufvertrag" in templates_page
+    assert "Blanko Rechnung" in templates_page
+    assert "Blanco Kaufvertrag" not in templates_page
+    assert "Blanco Rechnung" not in templates_page
     assert 'storageKey="dkh.invoice.template.blanco.draft.v1"' in templates_page
     assert "customerNumberReadOnly={false}" in templates_page
     assert "title=\"Rechnung\"" in invoice_page

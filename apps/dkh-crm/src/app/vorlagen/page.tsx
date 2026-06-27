@@ -37,7 +37,7 @@ export default function TemplatesPage() {
             >
               <span className="grid place-items-center gap-3">
                 <FileText size={30} aria-hidden />
-                <span className="text-sm font-bold leading-tight">Blanco Kaufvertrag</span>
+                <span className="text-sm font-bold leading-tight">Blanko Kaufvertrag</span>
               </span>
             </button>
 
@@ -48,7 +48,7 @@ export default function TemplatesPage() {
             >
               <span className="grid place-items-center gap-3">
                 <FileText size={30} aria-hidden />
-                <span className="text-sm font-bold leading-tight">Blanco Rechnung</span>
+                <span className="text-sm font-bold leading-tight">Blanko Rechnung</span>
               </span>
             </button>
           </div>
@@ -60,13 +60,13 @@ export default function TemplatesPage() {
           className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Blanco Kaufvertrag"
+          aria-label="Blanko Kaufvertrag"
         >
           <section className="flex max-h-[92vh] min-h-0 w-full max-w-[1500px] flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-2xl">
             <header className="shrink-0 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
               <div>
                 <p className="badge">Vorlage</p>
-                <h2 className="mt-2 text-xl font-bold">Blanco Kaufvertrag</h2>
+                <h2 className="mt-2 text-xl font-bold">Blanko Kaufvertrag</h2>
               </div>
               <Button
                 type="button"
@@ -93,13 +93,13 @@ export default function TemplatesPage() {
           className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Blanco Rechnung"
+          aria-label="Blanko Rechnung"
         >
           <section className="flex max-h-[92vh] min-h-0 w-full max-w-[1500px] flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-2xl">
             <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
               <div>
                 <p className="badge">Vorlage</p>
-                <h2 className="mt-2 text-xl font-bold">Blanco Rechnung</h2>
+                <h2 className="mt-2 text-xl font-bold">Blanko Rechnung</h2>
               </div>
               <Button
                 type="button"
