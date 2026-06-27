@@ -58,6 +58,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "examples/tenants/liquisto.json",
     "package.json",
     "tests/test_github_actions_workflows.py",
+    "tests/test_khh_workbench_ui.py",
     "tests/test_liquisto_workbench_ui.py",
     "tests/test_contract_schema_examples.py",
     "tests/test_control_plane_seed.py",

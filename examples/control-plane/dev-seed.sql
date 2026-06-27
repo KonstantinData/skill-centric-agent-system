@@ -18,6 +18,10 @@ INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_loca
 VALUES ('liquisto', 'liquisto', 'Liquisto', 'Liquisto Technologies GmbH', 'setup', 'de-DE', 'admin@liquisto.com', NULL, 'https://liquisto.com', 'brain-area-liquisto', 0, 'knowledge-liquisto', '["fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
+INSERT INTO tenants (id, area_id, display_name, legal_name, status, default_locale, contact_email, contact_phone, contact_website, memory_area_brain_id, shared_promotion_allowed, knowledge_scope_id, policy_bundle_json, validators_json, created_at, updated_at)
+VALUES ('tenant_kinderhaus', 'kinderhaus-heuschrecken', 'Kinderhaus Heuschrecken', 'Eltern-Kinder-Gruppe Heuschrecken e.V.', 'setup', 'de-DE', 'info@kinderhaus-heuschrecken.de', NULL, 'https://kinderhaus-heuschrecken.de', 'brain-area-tenant_kinderhaus', 0, 'knowledge-tenant_kinderhaus', '["data-minimization-required","fail-closed-unknown-scope","no-cross-area-access","no-cross-tenant-access","strict-tenant-isolation"]', '["admin-action-validator","data-minimization-validator","knowledge-scope-validator","memory-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","skill-scope-compatibility-validator","tenant-profile-validator","tool-scope-compatibility-validator","user-permission-validator"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET area_id = excluded.area_id, display_name = excluded.display_name, legal_name = excluded.legal_name, status = excluded.status, default_locale = excluded.default_locale, contact_email = excluded.contact_email, contact_phone = excluded.contact_phone, contact_website = excluded.contact_website, memory_area_brain_id = excluded.memory_area_brain_id, shared_promotion_allowed = excluded.shared_promotion_allowed, knowledge_scope_id = excluded.knowledge_scope_id, policy_bundle_json = excluded.policy_bundle_json, validators_json = excluded.validators_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
 INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
 VALUES ('th-daskuechenhaus-daskuechenhaus-condata-io', 'daskuechenhaus', 'daskuechenhaus.condata.io', 'primary-ui', '178.105.62.169', 1)
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
@@ -34,6 +38,10 @@ INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin,
 VALUES ('th-liquisto-liquisto-cloud', 'liquisto', 'liquisto.cloud', 'primary-ui', '145.239.222.45', 1)
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
 
+INSERT INTO tenant_hostnames (id, tenant_id, hostname, purpose, expected_origin, cloudflare_proxy_expected)
+VALUES ('th-tenant_kinderhaus-kinderhaus-heuschrecken-cloud', 'tenant_kinderhaus', 'kinderhaus-heuschrecken.cloud', 'primary-ui', NULL, 1)
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, hostname = excluded.hostname, purpose = excluded.purpose, expected_origin = excluded.expected_origin, cloudflare_proxy_expected = excluded.cloudflare_proxy_expected;
+
 INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
 VALUES ('daskuechenhaus-website', 'daskuechenhaus', 'website', 'Daskuechenhaus Website', '["read"]', 'planned', 'public')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
@@ -44,6 +52,14 @@ ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excl
 
 INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
 VALUES ('inactive-demo-tenant-website', 'inactive-demo-tenant', 'website', 'Inactive Demo Tenant Website', '["read"]', 'disabled', 'public')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
+
+INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
+VALUES ('kinderhaus-minimal-operations', 'tenant_kinderhaus', 'database', 'Minimal leadership cockpit records', '["read","write"]', 'planned', 'restricted')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
+
+INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
+VALUES ('kinderhaus-public-website', 'tenant_kinderhaus', 'website', 'Kinderhaus Heuschrecken public website', '["read"]', 'planned', 'public')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, source_type = excluded.source_type, display_name = excluded.display_name, access_modes_json = excluded.access_modes_json, status = excluded.status, sensitivity = excluded.sensitivity;
 
 INSERT INTO tenant_data_sources (id, tenant_id, source_type, display_name, access_modes_json, status, sensitivity)
@@ -82,6 +98,14 @@ INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assigna
 VALUES ('liquisto-researcher', 'liquisto', 'Researcher', 'tenant-custom', 1, '["research-context-synthesis"]', '["research-intake"]', '["filesystem-list","filesystem-read"]', '["no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
+INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
+VALUES ('tenant_kinderhaus-leitung', 'tenant_kinderhaus', 'Leitung', 'tenant-custom', 1, '["document-synthesis","task-execution-planning"]', '["deadline-review","development-planning","leadership-cockpit"]', '["filesystem-list","filesystem-read"]', '["data-minimization-required","no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["data-minimization-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","tenant-profile-validator"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
+
+INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
+VALUES ('tenant_kinderhaus-owner', 'tenant_kinderhaus', 'Tenant Owner', 'system', 1, '["document-synthesis","task-execution-planning"]', '["deadline-review","development-planning","leadership-cockpit","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["data-minimization-required","no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","data-minimization-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","tenant-profile-validator","user-permission-validator"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
+
 INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
 VALUES ('tm-daskuechenhaus-repository-maintainer', 'daskuechenhaus', 'repository-maintainer', 'active', '["daskuechenhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
@@ -96,6 +120,10 @@ ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = exc
 
 INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
 VALUES ('tm-liquisto-repository-maintainer', 'liquisto', 'repository-maintainer', 'active', '["liquisto-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
+VALUES ('tm-tenant_kinderhaus-repository-maintainer', 'tenant_kinderhaus', 'repository-maintainer', 'active', '["tenant_kinderhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
@@ -154,6 +182,34 @@ INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capabi
 VALUES ('trcg-liquisto-researcher-research', 'liquisto', 'liquisto-researcher', 'research')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
 
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-leitung-deadline-review', 'tenant_kinderhaus', 'tenant_kinderhaus-leitung', 'deadline-review')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-leitung-development-planning', 'tenant_kinderhaus', 'tenant_kinderhaus-leitung', 'development-planning')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-leitung-leadership-cockpit', 'tenant_kinderhaus', 'tenant_kinderhaus-leitung', 'leadership-cockpit')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-owner-deadline-review', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'deadline-review')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-owner-development-planning', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'development-planning')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-owner-leadership-cockpit', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'leadership-cockpit')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-owner-tenant-admin', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'tenant-admin')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
 INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
 VALUES ('trdsg-daskuechenhaus-owner-daskuechenhaus-website', 'daskuechenhaus', 'daskuechenhaus-owner', 'daskuechenhaus-website', '["read"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
@@ -180,6 +236,18 @@ ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = e
 
 INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
 VALUES ('trdsg-liquisto-researcher-liquisto-website', 'liquisto', 'liquisto-researcher', 'liquisto-website', '["read"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
+
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-tenant_kinderhaus-leitung-kinderhaus-minimal-operations', 'tenant_kinderhaus', 'tenant_kinderhaus-leitung', 'kinderhaus-minimal-operations', '["read","write"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
+
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-tenant_kinderhaus-owner-kinderhaus-minimal-operations', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'kinderhaus-minimal-operations', '["read","write"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
+
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-tenant_kinderhaus-owner-kinderhaus-public-website', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'kinderhaus-public-website', '["read"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -235,6 +303,18 @@ VALUES ('mod-inactive-demo-tenant-website-read', 'inactive-demo-tenant-website-r
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-kinderhaus-minimal-operations-read', 'kinderhaus-minimal-operations-read', 'data_scope', 'active', 'mv-kinderhaus-minimal-operations-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-kinderhaus-minimal-operations-write', 'kinderhaus-minimal-operations-write', 'data_scope', 'active', 'mv-kinderhaus-minimal-operations-write-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-kinderhaus-public-website-read', 'kinderhaus-public-website-read', 'data_scope', 'active', 'mv-kinderhaus-public-website-read-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-knowledge-daskuechenhaus-docs', 'knowledge-daskuechenhaus-docs', 'knowledge_scope', 'active', 'mv-knowledge-daskuechenhaus-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
@@ -248,6 +328,10 @@ ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
 VALUES ('mod-knowledge-liquisto-docs', 'knowledge-liquisto-docs', 'knowledge_scope', 'active', 'mv-knowledge-liquisto-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
+
+INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
+VALUES ('mod-knowledge-tenant_kinderhaus-docs', 'knowledge-tenant_kinderhaus-docs', 'knowledge_scope', 'active', 'mv-knowledge-tenant_kinderhaus-docs-0-1-0', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, status = excluded.status, current_version_id = excluded.current_version_id, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)
@@ -347,6 +431,18 @@ VALUES ('mv-inactive-demo-tenant-website-read-0-1-0', 'mod-inactive-demo-tenant-
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-kinderhaus-minimal-operations-read-0-1-0', 'mod-kinderhaus-minimal-operations-read', '0.1.0', 'generated://tenant-scope/kinderhaus-minimal-operations-read', 'sha256:generated-kinderhaus-minimal-operations-read', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-kinderhaus-minimal-operations-write-0-1-0', 'mod-kinderhaus-minimal-operations-write', '0.1.0', 'generated://tenant-scope/kinderhaus-minimal-operations-write', 'sha256:generated-kinderhaus-minimal-operations-write', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-kinderhaus-public-website-read-0-1-0', 'mod-kinderhaus-public-website-read', '0.1.0', 'generated://tenant-scope/kinderhaus-public-website-read', 'sha256:generated-kinderhaus-public-website-read', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-knowledge-daskuechenhaus-docs-0-1-0', 'mod-knowledge-daskuechenhaus-docs', '0.1.0', 'generated://tenant-scope/knowledge-daskuechenhaus-docs', 'sha256:generated-knowledge-daskuechenhaus-docs', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
@@ -360,6 +456,10 @@ ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
 VALUES ('mv-knowledge-liquisto-docs-0-1-0', 'mod-knowledge-liquisto-docs', '0.1.0', 'generated://tenant-scope/knowledge-liquisto-docs', 'sha256:generated-knowledge-liquisto-docs', 0.5, '2026-05-22T00:00:00Z')
+ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
+
+INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
+VALUES ('mv-knowledge-tenant_kinderhaus-docs-0-1-0', 'mod-knowledge-tenant_kinderhaus-docs', '0.1.0', 'generated://tenant-scope/knowledge-tenant_kinderhaus-docs', 'sha256:generated-knowledge-tenant_kinderhaus-docs', 0.5, '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET module_id = excluded.module_id, version = excluded.version, source_uri = excluded.source_uri, checksum = excluded.checksum, selection_base_score = excluded.selection_base_score, created_at = excluded.created_at;
 
 INSERT INTO module_versions (id, module_id, version, source_uri, checksum, selection_base_score, created_at)
@@ -459,6 +559,18 @@ VALUES ('msm-inactive-demo-tenant-website-read-0-1-0', 'mv-inactive-demo-tenant-
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-kinderhaus-minimal-operations-read-0-1-0', 'mv-kinderhaus-minimal-operations-read-0-1-0', 'Generated tenant data_scope module for kinderhaus-minimal-operations-read.', 'data_access', '["research","task-execution","tenant","tenant_kinderhaus"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["kinderhaus-minimal-operations-read","tenant_kinderhaus"]', '[]', '["kinderhaus-minimal-operations-read"]', '[]', '["kinderhaus-minimal-operations-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-kinderhaus-minimal-operations-write-0-1-0', 'mv-kinderhaus-minimal-operations-write-0-1-0', 'Generated tenant data_scope module for kinderhaus-minimal-operations-write.', 'data_access', '["research","task-execution","tenant","tenant_kinderhaus"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["kinderhaus-minimal-operations-write","tenant_kinderhaus"]', '[]', '["kinderhaus-minimal-operations-write"]', '[]', '["kinderhaus-minimal-operations-write-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-kinderhaus-public-website-read-0-1-0', 'mv-kinderhaus-public-website-read-0-1-0', 'Generated tenant data_scope module for kinderhaus-public-website-read.', 'data_access', '["research","task-execution","tenant","tenant_kinderhaus"]', '["research","task-execution"]', '["high","low","medium"]', '["research","task-execution"]', '[]', '["kinderhaus-public-website-read","tenant_kinderhaus"]', '[]', '["kinderhaus-public-website-read"]', '[]', '["kinderhaus-public-website-read-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-knowledge-daskuechenhaus-docs-0-1-0', 'mv-knowledge-daskuechenhaus-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-daskuechenhaus-docs.', 'knowledge_access', '["daskuechenhaus","knowledge-retrieval","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["daskuechenhaus","knowledge-daskuechenhaus-docs"]', '[]', '["knowledge-daskuechenhaus-docs"]', '[]', '["knowledge-daskuechenhaus-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
@@ -472,6 +584,10 @@ ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, de
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
 VALUES ('msm-knowledge-liquisto-docs-0-1-0', 'mv-knowledge-liquisto-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-liquisto-docs.', 'knowledge_access', '["knowledge-retrieval","liquisto","research","tenant"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["knowledge-liquisto-docs","liquisto"]', '[]', '["knowledge-liquisto-docs"]', '[]', '["knowledge-liquisto-docs-output"]', '[]', 0)
+ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
+
+INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
+VALUES ('msm-knowledge-tenant_kinderhaus-docs-0-1-0', 'mv-knowledge-tenant_kinderhaus-docs-0-1-0', 'Generated tenant knowledge_scope module for knowledge-tenant_kinderhaus-docs.', 'knowledge_access', '["knowledge-retrieval","research","tenant","tenant_kinderhaus"]', '["research"]', '["high","low","medium"]', '["knowledge-retrieval","research"]', '[]', '["knowledge-tenant_kinderhaus-docs","tenant_kinderhaus"]', '[]', '["knowledge-tenant_kinderhaus-docs"]', '[]', '["knowledge-tenant_kinderhaus-docs-output"]', '[]', 0)
 ON CONFLICT(id) DO UPDATE SET module_version_id = excluded.module_version_id, description = excluded.description, capability_class = excluded.capability_class, domain_tags_json = excluded.domain_tags_json, task_types_json = excluded.task_types_json, risk_levels_json = excluded.risk_levels_json, task_domains_json = excluded.task_domains_json, required_inputs_json = excluded.required_inputs_json, phrases_json = excluded.phrases_json, negative_phrases_json = excluded.negative_phrases_json, triggers_json = excluded.triggers_json, inputs_json = excluded.inputs_json, outputs_json = excluded.outputs_json, score_modifiers_json = excluded.score_modifiers_json, requires_all_policies = excluded.requires_all_policies;
 
 INSERT INTO module_selection_metadata (id, module_version_id, description, capability_class, domain_tags_json, task_types_json, risk_levels_json, task_domains_json, required_inputs_json, phrases_json, negative_phrases_json, triggers_json, inputs_json, outputs_json, score_modifiers_json, requires_all_policies)
@@ -719,6 +835,18 @@ VALUES ('sb-repository-maintainer-inactive-demo-tenant-website-read', 'mod-inact
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-kinderhaus-minimal-operations-read', 'mod-kinderhaus-minimal-operations-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-kinderhaus-minimal-operations-write', 'mod-kinderhaus-minimal-operations-write', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-kinderhaus-public-website-read', 'mod-kinderhaus-public-website-read', 'data_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-knowledge-daskuechenhaus-docs', 'mod-knowledge-daskuechenhaus-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
@@ -732,6 +860,10 @@ ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = exclude
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
 VALUES ('sb-repository-maintainer-knowledge-liquisto-docs', 'mod-knowledge-liquisto-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
+ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
+
+INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
+VALUES ('sb-repository-maintainer-knowledge-tenant_kinderhaus-docs', 'mod-knowledge-tenant_kinderhaus-docs', 'knowledge_scope', 'role', 'repository-maintainer', 'mod-no-destructive-commands', 'allow')
 ON CONFLICT(id) DO UPDATE SET scope_id = excluded.scope_id, scope_kind = excluded.scope_kind, principal_kind = excluded.principal_kind, principal_id = excluded.principal_id, policy_id = excluded.policy_id, effect = excluded.effect;
 
 INSERT INTO scope_bindings (id, scope_id, scope_kind, principal_kind, principal_id, policy_id, effect)
