@@ -1,0 +1,493 @@
+name: Liquisto Cloudflare Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_changes:
+        description: Apply Cloudflare Access application and policy changes
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_changes=true
+        required: true
+        type: boolean
+        default: false
+      hostnames:
+        description: Space-separated public hostnames protected by Access
+        required: true
+        type: string
+        default: liquisto.cloud www.liquisto.cloud
+      allowed_emails:
+        description: Space-separated user emails allowed to use Liquisto Workbench
+        required: true
+        type: string
+        default: konstantin@liquisto.com aernout@liquisto.com
+      primary_hostname:
+        description: Canonical Access application hostname
+        required: true
+        type: string
+        default: liquisto.cloud
+      confirm_hostname:
+        description: Must match primary_hostname when apply_changes=true
+        required: true
+        type: string
+        default: liquisto.cloud
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liquisto-cloudflare-access
+  cancel-in-progress: false
+
+jobs:
+  configure-access:
+    name: Configure Liquisto Cloudflare Access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    env:
+      APPLY_CHANGES: ${{ inputs.apply_changes }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      LIQUISTO_ACCESS_HOSTNAMES: ${{ inputs.hostnames }}
+      LIQUISTO_ACCESS_ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
+      LIQUISTO_ACCESS_PRIMARY_HOSTNAME: ${{ inputs.primary_hostname }}
+      LIQUISTO_ACCESS_CONFIRM_HOSTNAME: ${{ inputs.confirm_hostname }}
+      LIQUISTO_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ACCOUNT_ID }}
+      LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Configure Access application and policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true when apply_changes=true."
+            exit 1
+          fi
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${LIQUISTO_ACCESS_CONFIRM_HOSTNAME}" != "${LIQUISTO_ACCESS_PRIMARY_HOSTNAME}" ]; then
+            echo "::error::confirm_hostname must match primary_hostname when apply_changes=true."
+            exit 1
+          fi
+          if [ -z "${LIQUISTO_CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing Liquisto Cloudflare account credentials."
+            exit 1
+          fi
+
+          install -d liquisto-access-evidence
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          account_id = os.environ["LIQUISTO_CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["LIQUISTO_CLOUDFLARE_API_TOKEN"]
+          apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
+          hostnames = [
+              value.strip().lower()
+              for value in os.environ["LIQUISTO_ACCESS_HOSTNAMES"].split()
+              if value.strip()
+          ]
+          allowed_emails = [
+              value.strip().lower()
+              for value in os.environ["LIQUISTO_ACCESS_ALLOWED_EMAILS"].split()
+              if value.strip()
+          ]
+          primary_hostname = os.environ["LIQUISTO_ACCESS_PRIMARY_HOSTNAME"].strip().lower()
+          base = "https://api.cloudflare.com/client/v4"
+          app_name = "Liquisto Workbench"
+          policy_name = "SCAS Liquisto Workbench allowed users"
+          deny_message = "Account is not enabled for Liquisto Workbench. Contact the Liquisto team."
+          login_header_text = "Liquisto Workbench"
+          login_footer_text = "Access is restricted to approved Liquisto users."
+
+          hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
+          email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+          expected_emails = {"konstantin@liquisto.com", "aernout@liquisto.com"}
+
+          if not hostnames or primary_hostname not in hostnames:
+              raise SystemExit("primary_hostname must be included in hostnames.")
+          unsupported_hostnames = [hostname for hostname in hostnames if hostname not in {"liquisto.cloud", "www.liquisto.cloud"}]
+          if unsupported_hostnames:
+              raise SystemExit(f"Unsupported Liquisto hostname value: {', '.join(unsupported_hostnames)}")
+          for hostname in hostnames:
+              if not hostname_pattern.fullmatch(hostname):
+                  raise SystemExit(f"Unsupported hostname value: {hostname}")
+          if set(allowed_emails) != expected_emails:
+              raise SystemExit("allowed_emails must be exactly konstantin@liquisto.com and aernout@liquisto.com.")
+          for email in allowed_emails:
+              if not email_pattern.fullmatch(email):
+                  raise SystemExit(f"Unsupported email value: {email}")
+
+          def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload, sort_keys=True).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {detail}") from exc
+              if not body.get("success", False):
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
+              return body
+
+          def destination_uris(app: dict) -> set[str]:
+              uris: set[str] = set()
+              for destination in app.get("destinations") or []:
+                  if destination.get("type") == "public" and destination.get("uri"):
+                      uris.add(str(destination["uri"]).lower().rstrip("/"))
+              for domain in app.get("self_hosted_domains") or []:
+                  uris.add(str(domain).lower().rstrip("/"))
+              if app.get("domain"):
+                  uris.add(str(app["domain"]).lower().rstrip("/"))
+              return uris
+
+          def exact_app_for_hostname(candidates: list[dict], hostname: str) -> dict | None:
+              for app in candidates:
+                  if app.get("type") == "self_hosted" and destination_uris(app) == {hostname}:
+                      return app
+              return None
+
+          def covering_app_for_hostname(candidates: list[dict], hostname: str, excluded_ids: set[str]) -> dict | None:
+              for app in candidates:
+                  if app.get("type") != "self_hosted" or str(app.get("id")) in excluded_ids:
+                      continue
+                  if hostname in destination_uris(app):
+                      return app
+              return None
+
+          def select_target_apps(candidates: list[dict]) -> dict[str, dict | None]:
+              target_apps: dict[str, dict | None] = {}
+              used_ids: set[str] = set()
+              primary = exact_app_for_hostname(candidates, primary_hostname) or covering_app_for_hostname(
+                  candidates,
+                  primary_hostname,
+                  used_ids,
+              )
+              if primary:
+                  target_apps[primary_hostname] = primary
+                  used_ids.add(str(primary["id"]))
+              for hostname in hostnames:
+                  if hostname == primary_hostname:
+                      continue
+                  app = exact_app_for_hostname(candidates, hostname) or covering_app_for_hostname(
+                      candidates,
+                      hostname,
+                      used_ids,
+                  )
+                  target_apps[hostname] = app
+                  if app:
+                      used_ids.add(str(app["id"]))
+              return target_apps
+
+          def is_one_time_pin_provider(provider: dict) -> bool:
+              provider_type = str(provider.get("type") or "").lower()
+              provider_name = str(provider.get("name") or "").lower()
+              return provider_type == "onetimepin" or "one-time pin" in provider_name or "otp" in provider_name
+
+          def app_payload(hostname: str, app: dict | None, one_time_pin_provider_ids: list[str]) -> dict:
+              allowed_keys = {
+                  "type",
+                  "name",
+                  "domain",
+                  "destinations",
+                  "session_duration",
+                  "allowed_idps",
+                  "app_launcher_visible",
+                  "auto_redirect_to_identity",
+                  "enable_binding_cookie",
+                  "http_only_cookie_attribute",
+                  "same_site_cookie_attribute",
+                  "path_cookie_attribute",
+                  "custom_deny_message",
+                  "custom_deny_url",
+                  "custom_non_identity_deny_url",
+                  "cors_headers",
+                  "tags",
+              }
+              payload = {}
+              if app:
+                  payload = {
+                      key: copy.deepcopy(value)
+                      for key, value in app.items()
+                      if key in allowed_keys and value is not None
+                  }
+              payload["type"] = "self_hosted"
+              payload["name"] = f"{app_name} ({hostname})"
+              payload["domain"] = hostname
+              payload["destinations"] = [{"type": "public", "uri": hostname}]
+              payload["allowed_idps"] = one_time_pin_provider_ids
+              payload["auto_redirect_to_identity"] = False
+              payload["app_launcher_visible"] = True
+              payload["custom_deny_message"] = deny_message
+              payload["http_only_cookie_attribute"] = True
+              payload["path_cookie_attribute"] = False
+              payload["session_duration"] = "24h"
+              payload.pop("self_hosted_domains", None)
+              return payload
+
+          def policy_payload(precedence: int = 1) -> dict:
+              return {
+                  "name": policy_name,
+                  "decision": "allow",
+                  "precedence": precedence,
+                  "include": [{"email": {"email": email}} for email in sorted(allowed_emails)],
+                  "exclude": [],
+                  "require": [],
+              }
+
+          def policy_emails(policy: dict) -> set[str]:
+              emails: set[str] = set()
+              for rule in policy.get("include") or []:
+                  if isinstance(rule.get("email"), dict) and rule["email"].get("email"):
+                      emails.add(str(rule["email"]["email"]).lower())
+                  elif rule.get("_type") == "email" and rule.get("email"):
+                      emails.add(str(rule["email"]).lower())
+              return emails
+
+          def sanitize_organization_for_update(organization: dict) -> dict:
+              allowed_keys = {
+                  "allow_authenticate_via_warp",
+                  "auth_domain",
+                  "auto_redirect_to_identity",
+                  "custom_pages",
+                  "deny_unmatched_requests",
+                  "deny_unmatched_requests_exempted_zone_names",
+                  "login_design",
+                  "mfa_required_for_all_apps",
+                  "name",
+                  "session_duration",
+                  "user_seat_expiration_inactive_time",
+                  "warp_auth_session_duration",
+              }
+              payload = {
+                  key: copy.deepcopy(value)
+                  for key, value in organization.items()
+                  if key in allowed_keys and value is not None
+              }
+              login_design = copy.deepcopy(payload.get("login_design") or {})
+              login_design["header_text"] = login_header_text
+              login_design["footer_text"] = login_footer_text
+              payload["name"] = "Liquisto Workbench"
+              payload["auto_redirect_to_identity"] = False
+              payload["mfa_required_for_all_apps"] = False
+              payload["login_design"] = login_design
+              return payload
+
+          def ensure_policy(app: dict) -> tuple[list[str], list[str]]:
+              policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
+              changes: list[str] = []
+              summaries = [
+                  f"{policy.get('name')} ({policy.get('decision')}) emails={','.join(sorted(policy_emails(policy))) or 'none'}"
+                  for policy in policies
+              ]
+              target = next((policy for policy in policies if policy.get("name") == policy_name), None)
+              desired = policy_payload(1)
+              if target:
+                  if target.get("decision") != "allow" or policy_emails(target) != set(allowed_emails) or int(target.get("precedence", 0) or 0) != 1:
+                      if apply_changes:
+                          cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", desired)
+                      changes.append(f"{app.get('domain')}:updated-allow-policy")
+              else:
+                  if apply_changes:
+                      target = cf_request("POST", f"/accounts/{account_id}/access/apps/{app['id']}/policies", desired).get("result", {})
+                  changes.append(f"{app.get('domain')}:created-allow-policy")
+              target_id = str((target or {}).get("id") or "")
+              for policy in policies:
+                  if str(policy.get("id")) == target_id or policy.get("name") == policy_name:
+                      continue
+                  if apply_changes:
+                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{policy['id']}")
+                  changes.append(f"{app.get('domain')}:{policy.get('name', policy['id'])}:removed")
+              return changes, summaries
+
+          apps_before = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          organization = cf_request("GET", f"/accounts/{account_id}/access/organizations").get("result", {})
+          identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
+          one_time_pin_provider_ids = [
+              str(provider["id"])
+              for provider in identity_providers
+              if provider.get("id") and is_one_time_pin_provider(provider)
+          ]
+          if not one_time_pin_provider_ids:
+              raise SystemExit("No Cloudflare Access One-Time PIN identity provider is configured.")
+
+          target_apps_before = select_target_apps(apps_before)
+          app_changes: list[str] = []
+          policy_changes: list[str] = []
+          policy_summaries: list[str] = []
+          deleted_duplicate_apps: list[str] = []
+          organization_status = "planned"
+          access_status = "planned"
+
+          if apply_changes:
+              cf_request("PUT", f"/accounts/{account_id}/access/organizations", sanitize_organization_for_update(organization))
+              organization_status = "updated"
+              refreshed_apps = apps_before
+              used_ids: set[str] = set()
+              for hostname in hostnames:
+                  app = exact_app_for_hostname(refreshed_apps, hostname) or covering_app_for_hostname(
+                      refreshed_apps,
+                      hostname,
+                      used_ids,
+                  )
+                  payload = app_payload(hostname, app, one_time_pin_provider_ids)
+                  if app:
+                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                      app_changes.append(f"{hostname}:updated")
+                      used_ids.add(str(app["id"]))
+                  else:
+                      created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
+                      app_changes.append(f"{hostname}:created")
+                      if created.get("id"):
+                          used_ids.add(str(created["id"]))
+                  refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+
+              refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+              target_apps = select_target_apps(refreshed_apps)
+              target_ids = {
+                  str(app["id"])
+                  for app in target_apps.values()
+                  if app and app.get("id")
+              }
+              for app in refreshed_apps:
+                  uris = destination_uris(app)
+                  if (
+                      app.get("type") == "self_hosted"
+                      and uris
+                      and uris.issubset(set(hostnames))
+                      and str(app.get("id")) not in target_ids
+                  ):
+                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
+                      deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
+              for hostname, app in target_apps.items():
+                  if not app:
+                      raise RuntimeError(f"Missing Access application after update: {hostname}")
+                  changes, summaries = ensure_policy(app)
+                  policy_changes.extend(changes)
+                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+              access_status = "updated"
+          else:
+              for hostname, app in target_apps_before.items():
+                  if not app:
+                      app_changes.append(f"{hostname}:would-create")
+                      continue
+                  changes, summaries = ensure_policy(app)
+                  policy_changes.extend(changes)
+                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+
+          apps_after = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          target_apps_after = select_target_apps(apps_after)
+          target_audiences_after = [
+              str(app.get("aud"))
+              for app in target_apps_after.values()
+              if app and app.get("aud")
+          ]
+          missing_after = [
+              hostname
+              for hostname, app in target_apps_after.items()
+              if not app
+          ]
+          if apply_changes and missing_after:
+              raise SystemExit(f"Missing Access apps after apply: {', '.join(missing_after)}")
+
+          evidence = [
+              "# Liquisto Cloudflare Access Evidence",
+              "",
+              f"- Apply changes: `{str(apply_changes).lower()}`",
+              f"- Primary hostname: `{primary_hostname}`",
+              f"- Hostnames: `{', '.join(hostnames)}`",
+              f"- Allowed emails: `{', '.join(sorted(allowed_emails))}`",
+              "- Authentication method: `Cloudflare Access One-Time PIN email verification`",
+              f"- One-Time PIN provider count: `{len(one_time_pin_provider_ids)}`",
+              f"- Organization before: `{organization.get('name', '')}` / auth domain `{organization.get('auth_domain', '')}`",
+              f"- Organization status: `{organization_status}`",
+              f"- Access status: `{access_status}`",
+              f"- App changes: `{', '.join(app_changes) if app_changes else 'none'}`",
+              f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
+              f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
+              f"- Application audience tags after: `{', '.join(target_audiences_after) if target_audiences_after else 'none'}`",
+              "- Host apps after:",
+          ]
+          for hostname in hostnames:
+              app = target_apps_after.get(hostname)
+              if app:
+                  evidence.append(
+                      f"  - `{hostname}: {app.get('name', '')} / {app.get('domain', '')} / aud {app.get('aud', '')}`"
+                  )
+              else:
+                  evidence.append(f"  - `{hostname}: missing`")
+          evidence.append("- Existing policy summary before changes:")
+          evidence.extend(f"  - `{summary}`" for summary in policy_summaries)
+          evidence.extend(
+              [
+                  f"- Collected at: `{datetime.now(UTC).isoformat()}`",
+                  "",
+              ]
+          )
+          Path("liquisto-access-evidence/access.md").write_text(
+              "\n".join(evidence),
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "access_status": access_status,
+              "allowed_emails": sorted(allowed_emails),
+              "apply_changes": apply_changes,
+              "app_changes": app_changes,
+              "deleted_duplicate_apps": deleted_duplicate_apps,
+              "hostnames": hostnames,
+              "one_time_pin_provider_count": len(one_time_pin_provider_ids),
+              "organization_status": organization_status,
+              "policy_changes": policy_changes,
+          }, sort_keys=True))
+          PY
+
+      - name: Verify public Access redirect
+        if: inputs.apply_changes == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '# Liquisto Cloudflare Access Public Smoke\n\n'
+            for hostname in ${LIQUISTO_ACCESS_HOSTNAMES}; do
+              status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${hostname}/")"
+              location="$(curl -sS -I "https://${hostname}/" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
+              if [ "${status}" != "302" ] && [ "${status}" != "303" ] && [ "${status}" != "403" ]; then
+                echo "::error::Expected Cloudflare Access redirect or deny for ${hostname}, got HTTP ${status}."
+                exit 1
+              fi
+              if [ "${status}" != "403" ] && [[ "${location}" != *"cloudflareaccess.com"* && "${location}" != *"/cdn-cgi/access/login/"* ]]; then
+                echo "::error::Expected Cloudflare Access login redirect for ${hostname}."
+                exit 1
+              fi
+              printf -- '- `%s`: HTTP `%s`, Access redirect/deny `present`\n' "${hostname}" "${status}"
+            done
+          } > liquisto-access-evidence/public-access-smoke.md
+
+      - name: Upload Access evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: liquisto-access-evidence
+          path: liquisto-access-evidence/
+          if-no-files-found: error
