@@ -1045,6 +1045,18 @@ jobs:
           for public_url in "${public_urls[@]}"; do
             public_check_passed=0
             for attempt in $(seq 1 30); do
+              if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+                status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${public_url}")"
+                location="$(curl -sS -I --max-time 15 "${public_url}" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
+                if { [ "${status}" = "302" ] || [ "${status}" = "303" ] || [ "${status}" = "403" ]; } && { [ "${status}" = "403" ] || [[ "${location}" == *"cloudflareaccess.com"* || "${location}" == *"/cdn-cgi/access/login/"* ]]; }; then
+                  public_check_passed=1
+                  break
+                fi
+                echo "Waiting for Cloudflare Access public check for ${public_url} (${attempt}/30), got HTTP ${status}." >&2
+                sleep 5
+                continue
+              fi
+
               public_body="$(mktemp)"
               if curl -fsS --max-time 15 "${public_url}" -o "${public_body}"; then
                 if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${public_body}"; then
