@@ -46,13 +46,19 @@ def test_khh_workbench_navigation_matches_leadership_cockpit() -> None:
 def test_khh_workbench_home_is_application_surface() -> None:
     home = load_text(APP_ROOT / "src" / "app" / "page.tsx")
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
+    page_hero = load_text(APP_ROOT / "src" / "components" / "chrome" / "page-hero.tsx")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
     assert "Leitungs-Cockpit" in home
     assert "Datenschutz-Leitplanke" in home
     assert "Agent-Hinweise" in home
+    assert "PageHero" in home
+    assert "PageHero" in section_page
+    assert "/kinderhaus-heuschrecken.jpg" in page_hero
     assert "Arbeitsansicht" in section_page
     assert "Beispiel ohne Stammdaten" in section_page
+    assert (APP_ROOT / "public" / "kinderhaus-heuschrecken.jpg").exists()
+    assert "height: 5cm" in globals_css
     assert "--foreground: #1e293b" in globals_css
     assert "--background: #fafaf7" in globals_css
     assert "--accent: #6f8f72" in globals_css
@@ -62,6 +68,7 @@ def test_khh_workbench_home_is_application_surface() -> None:
     assert ".day-strip" in globals_css
     assert ".nav-link" in globals_css
     assert ".section-list-item" in globals_css
+    assert "--shadow-strong" in globals_css
 
 
 def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:
@@ -70,6 +77,7 @@ def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:
         APP_ROOT / "src" / "app" / "page.tsx",
         APP_ROOT / "src" / "app" / "[section]" / "page.tsx",
         APP_ROOT / "src" / "components" / "chrome" / "bottom-nav.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "page-hero.tsx",
         APP_ROOT / "src" / "components" / "chrome" / "sidebar.tsx",
         APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx",
         APP_ROOT / "src" / "lib" / "workbench-data.ts",
@@ -86,6 +94,8 @@ def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:
         "Agent Composer",
         "Liquisto",
         "daskuechenhaus",
+        "tenant",
+        "kinderhaus-heuschrecken.cloud",
     )
     for fragment in forbidden_fragments:
         assert fragment not in combined
@@ -97,6 +107,6 @@ def test_khh_workbench_uses_cloudflare_access_identity_header() -> None:
 
     assert "x-khh-user-email" in auth
     assert "cf-access-authenticated-user-email" in auth
-    assert "kinderhaus-heuschrecken.cloud" in top_bar
-    assert "KHH Workbench" in top_bar
+    assert "Leitungs-Cockpit" in top_bar
+    assert "Heute, Dienste, Fristen und Aufgaben" in top_bar
     assert "liquisto" not in top_bar.lower()

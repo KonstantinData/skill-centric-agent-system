@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { PageHero } from "@/components/chrome/page-hero";
 import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { agentNotes, dailySignals, privacyRules, quickActions } from "@/lib/workbench-data";
@@ -6,32 +7,22 @@ import { agentNotes, dailySignals, privacyRules, quickActions } from "@/lib/work
 export default function Home() {
   return (
     <div className="content-stack">
-      <Panel className="hero-panel">
-        <div className="hero-content">
-          <div>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="badge badge-strong">KHH</span>
-              <span className="badge">kinderhaus-heuschrecken.cloud</span>
-            </div>
-            <h1 className="max-w-4xl text-3xl font-black leading-tight md:text-5xl">
-              Leitungs-Cockpit
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-[var(--muted)]">
-              Tageslage, Fristen, Personalrisiken, Dienste und Entwicklung in
-              einer ruhigen Arbeitsoberflaeche.
-            </p>
+      <PageHero
+        title="Leitungs-Cockpit"
+        functionText="Tageslage, Fristen, Personalrisiken, Dienste und Entwicklung schnell einordnen."
+      />
+
+      <Panel className="privacy-panel">
+        <div className="privacy-card">
+          <div className="mb-3 flex items-center gap-2">
+            <AlertTriangle size={18} aria-hidden />
+            <p className="font-black">Datenschutz-Leitplanke</p>
           </div>
-          <div className="privacy-card">
-            <div className="mb-3 flex items-center gap-2">
-              <AlertTriangle size={18} aria-hidden />
-              <p className="font-black">Datenschutz-Leitplanke</p>
-            </div>
-            <ul className="grid gap-2 text-sm font-bold leading-6 text-[var(--muted)]">
-              {privacyRules.slice(0, 3).map((rule) => (
-                <li key={rule}>{rule}</li>
-              ))}
-            </ul>
-          </div>
+          <ul className="grid gap-2 text-sm font-bold leading-6 text-[var(--muted)]">
+            {privacyRules.slice(0, 3).map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
         </div>
       </Panel>
 

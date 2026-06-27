@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
+import { PageHero } from "@/components/chrome/page-hero";
 import { Panel } from "@/components/ui/panel";
 import { sections, type SectionKey } from "@/lib/workbench-data";
 
@@ -22,22 +23,7 @@ export default async function SectionPage({ params }: SectionPageProps) {
 
   return (
     <div className="content-stack">
-      <Panel>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="icon-btn">
-                <Icon size={18} aria-hidden />
-              </div>
-              <span className="badge badge-strong">Kinderhaus Heuschrecken</span>
-            </div>
-            <h1 className="text-3xl font-black">{config.title}</h1>
-            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-[var(--muted)]">
-              {config.subtitle}
-            </p>
-          </div>
-        </div>
-      </Panel>
+      <PageHero title={config.title} functionText={config.subtitle} icon={Icon} />
 
       <div className="section-list">
         {config.items.map((item) => (

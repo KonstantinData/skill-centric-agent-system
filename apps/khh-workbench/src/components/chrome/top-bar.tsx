@@ -14,9 +14,9 @@ export function TopBar({ userEmail }: { userEmail: string }) {
           priority
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-black">KHH Workbench</p>
+          <p className="truncate text-sm font-black">Leitungs-Cockpit</p>
           <p className="truncate text-xs font-bold text-[var(--muted)]">
-            kinderhaus-heuschrecken.cloud · Leitungs-Cockpit
+            Heute, Dienste, Fristen und Aufgaben
           </p>
         </div>
       </div>

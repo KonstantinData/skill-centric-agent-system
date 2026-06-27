@@ -4,7 +4,7 @@
   --background: #fafaf7;
   --foreground: #1e293b;
   --surface: #fffefb;
-  --surface-soft: #f5f3ee;
+  --surface-soft: #f0ece2;
   --surface-strong: #ebe7dc;
   --field-surface: #fbfaf6;
   --chrome-surface: color-mix(in srgb, #fffefb 90%, transparent);
@@ -23,9 +23,10 @@
   --warning-soft: #f7efd8;
   --info: #5f8fa5;
   --info-soft: #e4f0f3;
-  --border: #e3ded2;
-  --border-strong: #d6cfc0;
-  --shadow: 0 10px 28px color-mix(in srgb, #334155 7%, transparent);
+  --border: #d8d0bf;
+  --border-strong: #bfb5a2;
+  --shadow: 0 14px 34px color-mix(in srgb, #334155 12%, transparent);
+  --shadow-strong: 0 18px 42px color-mix(in srgb, #334155 18%, transparent);
 }
 
 [data-theme="dark"] {
@@ -54,6 +55,7 @@
   --border: #3d463b;
   --border-strong: #53604f;
   --shadow: 0 14px 32px color-mix(in srgb, #000 28%, transparent);
+  --shadow-strong: 0 18px 42px color-mix(in srgb, #000 36%, transparent);
   color-scheme: dark;
 }
 
@@ -108,7 +110,7 @@ button {
 
 .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 18px;
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -209,19 +211,71 @@ button {
   display: block;
 }
 
-.hero-panel {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 82%, var(--surface)), var(--surface) 62%),
-    var(--surface);
+.page-hero {
+  position: relative;
+  min-height: 5cm;
+  height: 5cm;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-strong);
 }
 
-.hero-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 22px;
-  align-items: stretch;
-  padding: 24px;
+.page-hero-image {
+  object-fit: cover;
+  object-position: center 52%;
+}
+
+.page-hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #111827 72%, transparent), color-mix(in srgb, #111827 28%, transparent) 58%, transparent),
+    linear-gradient(0deg, color-mix(in srgb, #111827 34%, transparent), transparent 56%);
+}
+
+.page-hero-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  padding: 22px;
+  color: #fff;
+}
+
+.page-hero-icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #fff 34%, transparent);
+  background: color-mix(in srgb, #fff 18%, transparent);
+  color: #fff;
+}
+
+.page-hero-title {
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  font-weight: 900;
+  line-height: 1.02;
+}
+
+.page-hero-function {
+  max-width: 720px;
+  margin-top: 8px;
+  color: color-mix(in srgb, #fff 88%, transparent);
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.privacy-panel {
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent-soft));
 }
 
 .privacy-card,
@@ -237,11 +291,11 @@ button {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  background: var(--surface);
   padding: 12px 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-strong);
 }
 
 .day-strip span,
@@ -261,8 +315,8 @@ button {
 }
 
 .day-strip strong {
-  border: 1px solid var(--border);
-  background: var(--field-surface);
+  border: 1px solid var(--border-strong);
+  background: #fff;
 }
 
 .signal-grid {
@@ -279,6 +333,8 @@ button {
 
 .status-card {
   position: relative;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-strong);
 }
 
 .status-card::before {
@@ -296,7 +352,7 @@ button {
 }
 
 .tone-success {
-  background: linear-gradient(180deg, var(--success-soft), var(--surface) 62%);
+  background: linear-gradient(180deg, var(--success-soft), #fff 68%);
 }
 
 .tone-success::before {
@@ -309,7 +365,7 @@ button {
 }
 
 .tone-warning {
-  background: linear-gradient(180deg, var(--warning-soft), var(--surface) 62%);
+  background: linear-gradient(180deg, var(--warning-soft), #fff 68%);
 }
 
 .tone-warning::before {
@@ -322,7 +378,7 @@ button {
 }
 
 .tone-danger {
-  background: linear-gradient(180deg, var(--danger-soft), var(--surface) 62%);
+  background: linear-gradient(180deg, var(--danger-soft), #fff 68%);
 }
 
 .tone-danger::before {
@@ -335,7 +391,7 @@ button {
 }
 
 .tone-info {
-  background: linear-gradient(180deg, var(--info-soft), var(--surface) 62%);
+  background: linear-gradient(180deg, var(--info-soft), #fff 68%);
 }
 
 .tone-info::before {
@@ -458,8 +514,7 @@ button {
 
 @media (max-width: 1120px) {
   .signal-grid,
-  .system-grid,
-  .hero-content {
+  .system-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -480,13 +535,16 @@ button {
 
 @media (max-width: 720px) {
   .signal-grid,
-  .system-grid,
-  .hero-content {
+  .system-grid {
     grid-template-columns: 1fr;
   }
 
   .panel-pad,
-  .hero-content {
+  .page-hero-content {
     padding: 18px;
+  }
+
+  .page-hero-shade {
+    background: linear-gradient(90deg, color-mix(in srgb, #111827 76%, transparent), color-mix(in srgb, #111827 36%, transparent));
   }
 }
