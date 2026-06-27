@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { PageHero } from "@/components/chrome/page-hero";
 import { Panel } from "@/components/ui/panel";
-import { sections, type SectionKey } from "@/lib/workbench-data";
+import { createKhhWorkbenchClient } from "@scas/tenant-workbench-client";
+import {
+  khhSectionAliases,
+  type KhhSectionSlug,
+} from "@scas/tenant-workbench-domain/khh";
+import { createSectionViewModel } from "@scas/tenant-workbench-ui";
+import { resolveIcon } from "@/lib/icons";
 
 type SectionPageProps = {
   params: Promise<{
@@ -11,15 +17,20 @@ type SectionPageProps = {
 };
 
 export function generateStaticParams() {
-  return Object.keys(sections).map((section) => ({ section }));
+  return Object.keys(khhSectionAliases).map((section) => ({ section }));
 }
 
 export default async function SectionPage({ params }: SectionPageProps) {
   const { section } = await params;
-  if (!(section in sections)) notFound();
+  if (!(section in khhSectionAliases)) notFound();
 
-  const config = sections[section as SectionKey];
-  const Icon = config.icon;
+  const routeId = khhSectionAliases[section as KhhSectionSlug];
+  const client = createKhhWorkbenchClient();
+  const sectionConfig = await client.getSection(routeId);
+  if (!sectionConfig) notFound();
+
+  const config = createSectionViewModel(sectionConfig);
+  const Icon = resolveIcon(config.iconId);
 
   return (
     <div className="content-stack">

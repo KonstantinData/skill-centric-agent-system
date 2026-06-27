@@ -1,0 +1,13 @@
+{
+  "name": "@scas/tenant-workbench-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./native-contracts": "./src/native-contracts.ts"
+  },
+  "dependencies": {
+    "@scas/tenant-workbench-domain": "0.1.0"
+  }
+}

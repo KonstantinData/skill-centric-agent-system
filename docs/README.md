@@ -92,6 +92,17 @@ This repository uses `docs/` as an operational documentation surface, not only a
   `kinderhaus-heuschrecken.cloud`. New KHH feature work must move through the
   platform-neutral tenant workbench architecture in ADR-0012 before deeper
   feature build-out.
+- `apps/khh-mobile-proof/`: minimal Expo/iOS proof shell that consumes the same
+  KHH shared domain, client, and UI contracts as the web shell. It is not a
+  production native app.
+- `packages/tenant-workbench-domain/`: platform-neutral tenant workbench domain,
+  navigation, workflow, privacy, and route contracts.
+- `packages/tenant-workbench-client/`: platform-neutral state/API client,
+  Cloudflare Access header adapter, native auth/offline/push/permission
+  contracts, and fail-closed tenant-scope checks.
+- `packages/tenant-workbench-ui/`: platform-neutral view-model contracts for
+  dashboards, navigation, and sections. Platform shells adapt these contracts to
+  web or native rendering.
 
 ## Roadmap
 

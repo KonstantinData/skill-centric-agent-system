@@ -11,9 +11,16 @@ The target is platform-neutral readiness, not immediate native app shipment.
 
 Current state:
 
-- `apps/khh-workbench` is a responsive Next.js web app.
+- `apps/khh-workbench` is a responsive Next.js web shell consuming shared KHH
+  domain, client, and UI view-model contracts.
+- `apps/khh-mobile-proof` is a minimal Expo/iOS proof shell consuming the same
+  shared contracts.
+- `packages/tenant-workbench-domain`, `packages/tenant-workbench-client`, and
+  `packages/tenant-workbench-ui` provide the first shared package boundary.
 - KHH tenant identity, deployment, and privacy boundaries are versioned.
-- UI copy and feature structure are currently web-component centric.
+- UI copy and feature structure are no longer owned directly by Next.js
+  components, but deeper shared UI component migration and real API adapters
+  remain open.
 
 Required target state:
 
@@ -67,11 +74,14 @@ Acceptance:
 
 Estimate: 5.5 days.
 
+Status: partially implemented.
+
 Deliverables:
 
-- Workspace package scaffold for shared tenant workbench code.
-- Shared KHH domain/navigation/privacy definitions.
-- Platform-neutral API/state client with web adapter.
+- Workspace package scaffold for shared tenant workbench code. Done.
+- Shared KHH domain/navigation/privacy definitions. Done.
+- Platform-neutral API/state client with web adapter. Initial contract done;
+  real API adapters and richer state/error coverage remain.
 
 Acceptance:
 
@@ -100,11 +110,17 @@ Acceptance:
 
 Estimate: 3.5 days.
 
+Status: partially implemented.
+
 Deliverables:
 
 - Minimal Expo/native shell proof that imports shared domain/state/UI contracts.
-- Contract tests prevent web-only APIs from entering shared packages.
+  Done for proof shell.
+- Contract tests prevent web-only APIs from entering shared packages. Done for
+  domain and UI import boundaries.
 - Native auth/offline/push/permission contracts are linked from release gates.
+  Documented in the proof shell and client contracts; production release gates
+  remain open.
 
 Acceptance:
 
@@ -131,3 +147,18 @@ Minimum current-sprint acceptance:
 - Shared package scaffold exists.
 - KHH navigation/privacy/domain definitions are moved out of the Next.js app.
 - API/state client interface is specified and has initial tests.
+
+## Implemented Foundation Evidence
+
+- Root npm workspaces include `packages/*` and `apps/khh-mobile-proof`.
+- `packages/tenant-workbench-domain` has no React, Next.js, DOM, or lucide
+  dependency.
+- `packages/tenant-workbench-client` fails closed on tenant/area scope mismatch
+  and denies write intents until mutations are explicitly implemented.
+- `packages/tenant-workbench-ui` exposes platform-neutral view-model contracts
+  without DOM or Next.js imports.
+- `apps/khh-workbench` consumes the shared contracts and keeps web-specific
+  routing, images, CSS, and icon rendering in the shell.
+- `apps/khh-mobile-proof` typechecks as a minimal Expo/iOS proof shell.
+- The tenant deploy workflow treats `auth_mode=required` public checks as
+  successful only on Cloudflare Access redirect or 403.

@@ -1,25 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
+    "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
       "@scas/tenant-workbench-domain": [
         "../../packages/tenant-workbench-domain/src/index.ts"
       ],
@@ -38,13 +28,10 @@
     }
   },
   "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
+    "App.tsx",
+    "types/**/*.d.ts",
     "../../packages/tenant-workbench-domain/src/**/*.ts",
     "../../packages/tenant-workbench-client/src/**/*.ts",
     "../../packages/tenant-workbench-ui/src/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  ]
 }

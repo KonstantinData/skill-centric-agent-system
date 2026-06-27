@@ -4,6 +4,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 APP_ROOT = REPO_ROOT / "apps" / "khh-workbench"
+DOMAIN_ROOT = REPO_ROOT / "packages" / "tenant-workbench-domain"
 
 
 def load_text(path: Path) -> str:
@@ -23,7 +24,8 @@ def test_khh_workbench_exists_as_product_facing_app() -> None:
 
 
 def test_khh_workbench_navigation_matches_leadership_cockpit() -> None:
-    data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
+    data = load_text(DOMAIN_ROOT / "src" / "khh.ts")
+    reexport = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
 
     for label in (
         "Heute",
@@ -41,6 +43,8 @@ def test_khh_workbench_navigation_matches_leadership_cockpit() -> None:
     assert "Keine vollstaendigen Kinder-, Eltern- oder Personalstammdaten" in data
     assert "Personenbezug nur mit Vorname, Kuerzel oder interner Referenz" in data
     assert "Meldungen an Jugendamt, KVJS oder Gesundheitsamt nur nach Freigabe" in data
+    assert "lucide-react" not in data
+    assert "export * from" in reexport
 
 
 def test_khh_workbench_home_is_application_surface() -> None:
@@ -48,8 +52,9 @@ def test_khh_workbench_home_is_application_surface() -> None:
     section_page = load_text(APP_ROOT / "src" / "app" / "[section]" / "page.tsx")
     page_hero = load_text(APP_ROOT / "src" / "components" / "chrome" / "page-hero.tsx")
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
+    domain = load_text(DOMAIN_ROOT / "src" / "khh.ts")
 
-    assert "Leitungs-Cockpit" in home
+    assert "Leitungs-Cockpit" in domain
     assert "Datenschutz-Leitplanke" not in home
     assert "Agent-Hinweise" not in home
     assert "PageHero" in home
@@ -80,9 +85,13 @@ def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:
         APP_ROOT / "src" / "components" / "chrome" / "page-hero.tsx",
         APP_ROOT / "src" / "components" / "chrome" / "sidebar.tsx",
         APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx",
-        APP_ROOT / "src" / "lib" / "workbench-data.ts",
     ]
     combined = "\n".join(load_text(path) for path in source_files)
+    visible_copy_surface = "\n".join(
+        line
+        for line in combined.splitlines()
+        if not line.strip().startswith("import ") and "@scas/" not in line
+    )
 
     forbidden_fragments = (
         "runtime profile",
@@ -98,15 +107,17 @@ def test_khh_workbench_visible_copy_hides_internal_architecture_terms() -> None:
         "kinderhaus-heuschrecken.cloud",
     )
     for fragment in forbidden_fragments:
-        assert fragment not in combined
+        assert fragment not in visible_copy_surface
 
 
 def test_khh_workbench_uses_cloudflare_access_identity_header() -> None:
     auth = load_text(APP_ROOT / "src" / "lib" / "auth.ts")
+    client = load_text(REPO_ROOT / "packages" / "tenant-workbench-client" / "src" / "index.ts")
     top_bar = load_text(APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx")
 
-    assert "x-khh-user-email" in auth
-    assert "cf-access-authenticated-user-email" in auth
+    assert "createCloudflareAccessHeaderAuthAdapter" in auth
+    assert "x-khh-user-email" in client
+    assert "cf-access-authenticated-user-email" in client
     assert "Leitungs-Cockpit" in top_bar
     assert "Heute, Dienste, Fristen und Aufgaben" in top_bar
     assert "liquisto" not in top_bar.lower()

@@ -1,29 +1,33 @@
 import { PageHero } from "@/components/chrome/page-hero";
 import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
-import { dailySignals, quickActions } from "@/lib/workbench-data";
+import { createKhhWorkbenchClient } from "@scas/tenant-workbench-client";
+import { createDashboardViewModel } from "@scas/tenant-workbench-ui";
+import { resolveIcon } from "@/lib/icons";
 
-export default function Home() {
+export default async function Home() {
+  const client = createKhhWorkbenchClient();
+  const dashboard = createDashboardViewModel(await client.getDashboard());
+
   return (
     <div className="content-stack">
       <PageHero
-        title="Leitungs-Cockpit"
-        functionText="Tageslage, Fristen, Personalrisiken, Dienste und Entwicklung schnell einordnen."
+        title={dashboard.hero.title}
+        functionText={dashboard.hero.functionText}
       />
 
       <div className="day-strip">
         <span>Heute</span>
-        <strong>Personal: pruefen</strong>
-        <strong>Fristen: 2 kritisch</strong>
-        <strong>Kochdienst: bestaetigt</strong>
-        <strong>Vorgaenge: 1 offen</strong>
+        {dashboard.dayStrip.map((item) => (
+          <strong key={item}>{item}</strong>
+        ))}
       </div>
 
       <div className="signal-grid">
-        {dailySignals.map((signal) => {
-          const Icon = signal.icon;
+        {dashboard.dailySignals.map((signal) => {
+          const Icon = resolveIcon(signal.iconId);
           return (
-            <Panel key={signal.title} className={`status-card tone-${signal.tone}`}>
+            <Panel key={signal.signalId} className={`status-card tone-${signal.tone}`}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="icon-btn">
                   <Icon size={18} aria-hidden />
@@ -43,10 +47,10 @@ export default function Home() {
       </div>
 
       <div className="system-grid">
-        {quickActions.map((action) => {
-          const Icon = action.icon;
+        {dashboard.quickActions.map((action) => {
+          const Icon = resolveIcon(action.iconId);
           return (
-            <Panel key={action.title}>
+            <Panel key={action.actionId}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="icon-btn">
                   <Icon size={18} aria-hidden />

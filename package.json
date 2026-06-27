@@ -4,6 +4,10 @@
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/khh-mobile-proof"
+  ],
   "scripts": {
     "worker:typecheck": "tsc --noEmit -p workers/control-api/tsconfig.json",
     "worker:test": "vitest run --config workers/control-api/vitest.config.ts",
@@ -15,7 +19,11 @@
     "dkh-crm:check": "npm run dkh-crm:lint && npm run dkh-crm:build",
     "liquisto-workbench:lint": "npm --prefix apps/liquisto-workbench run lint",
     "liquisto-workbench:build": "npm --prefix apps/liquisto-workbench run build",
-    "liquisto-workbench:check": "npm run liquisto-workbench:lint && npm run liquisto-workbench:build"
+    "liquisto-workbench:check": "npm run liquisto-workbench:lint && npm run liquisto-workbench:build",
+    "khh-workbench:lint": "npm --prefix apps/khh-workbench run lint",
+    "khh-workbench:build": "npm --prefix apps/khh-workbench run build",
+    "khh-mobile-proof:check": "npm --prefix apps/khh-mobile-proof run check",
+    "khh-workbench:check": "npm run khh-workbench:lint && npm run khh-workbench:build && npm run khh-mobile-proof:check"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.18",

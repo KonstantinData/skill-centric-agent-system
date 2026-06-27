@@ -9,6 +9,7 @@ Heuschrecken workbench.
 - Area ID: `kinderhaus-heuschrecken`
 - Primary hostname: `kinderhaus-heuschrecken.cloud`
 - UI app: `khh-workbench`
+- Native proof shell: `apps/khh-mobile-proof`
 - Dockerfile: `deploy/khh-workbench/Dockerfile`
 - App root: `apps/khh-workbench`
 
@@ -62,7 +63,14 @@ remote host.
 ```powershell
 npm --prefix apps/khh-workbench run lint
 npm --prefix apps/khh-workbench run build
+npm --prefix apps/khh-mobile-proof run check
 python -m pytest tests/test_khh_workbench_ui.py tests/test_tenant_hostname_resolution.py tests/test_tenant_isolation_matrix.py tests/test_contract_schema_examples.py
+python -m pytest tests/test_platform_neutral_app_readiness.py
 python -m pytest tests/test_security_governance.py tests/test_github_actions_workflows.py
 python -m ruff check .
 ```
+
+For applied deployments with `auth_mode=required`, the public smoke check must
+observe a Cloudflare Access redirect (`302` or `303`) or `403`. Publicly serving
+the KHH cockpit content is a failed gate unless the workflow is explicitly run
+in a non-required auth mode.
