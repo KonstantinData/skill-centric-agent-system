@@ -92,6 +92,9 @@ This repository uses `docs/` as an operational documentation surface, not only a
   `kinderhaus-heuschrecken.cloud`. New KHH feature work must move through the
   platform-neutral tenant workbench architecture in ADR-0012 before deeper
   feature build-out.
+- `apps/khh-ios/`: Native SwiftUI iOS shell for the KHH Workbench. It is an
+  additional iPhone surface beside the browser Workbench, not a replacement for
+  `apps/khh-workbench/`.
 - `apps/khh-mobile-proof/`: Expo Router iOS proof shell that consumes the same
   KHH shared domain, client, state, and UI contracts as the web shell. It is
   not a production native app.

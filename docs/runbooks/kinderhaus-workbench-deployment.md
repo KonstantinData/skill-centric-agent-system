@@ -9,9 +9,14 @@ Heuschrecken workbench.
 - Area ID: `kinderhaus-heuschrecken`
 - Primary hostname: `kinderhaus-heuschrecken.cloud`
 - UI app: `khh-workbench`
+- Native iOS app: `apps/khh-ios`
 - Native proof shell: `apps/khh-mobile-proof`
 - Dockerfile: `deploy/khh-workbench/Dockerfile`
 - App root: `apps/khh-workbench`
+
+The browser Workbench remains the deployed `kinderhaus-heuschrecken.cloud`
+surface. The native iOS app is built and released through Xcode/TestFlight/App
+Store workflows and must not change this web deployment path.
 
 `tenant_kinderhaus` intentionally uses the system tenant identifier with an
 underscore. Tenant registry and CRM skill pack schemas allow underscores for
