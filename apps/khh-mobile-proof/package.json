@@ -2,6 +2,7 @@
   "name": "khh-mobile-proof",
   "version": "0.1.0",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "main": "expo/AppEntry",
   "scripts": {
     "start": "expo start",
