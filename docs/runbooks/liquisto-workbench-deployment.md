@@ -45,6 +45,14 @@ successful only after the container, the Nginx origin routes for both apex and
 `www`, and the public Cloudflare routes serve the Workbench content marker
 `Liquisto workspace`.
 
+Before treating a Workbench deploy as release-ready, verify the visible UI uses
+Liquisto product language only. Public HTML must not contain internal
+architecture or tenant-model markers such as `tenant-scoped`, `runtime profile`,
+`policy gate`, `validator`, `tool selection`, `SCAS`, `isolation evidence`, or
+copy that lets users infer that other tenants exist. Feature cards may describe
+target use, required inputs, and expected outputs; they must not describe the
+internal function execution flow.
+
 After each production UI deploy, run or verify the Liquisto Cloudflare Access
 workflow in apply mode so unauthenticated public requests redirect to
 Cloudflare Access instead of serving Workbench HTML directly:

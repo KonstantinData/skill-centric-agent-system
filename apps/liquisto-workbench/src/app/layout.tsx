@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Liquisto Business Platform",
-  description: "Liquisto business process platform with an embedded SCAS workbench",
+  description: "Liquisto business process platform for research and administration",
 };
 
 export default async function RootLayout({

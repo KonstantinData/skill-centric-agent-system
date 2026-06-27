@@ -1,7 +1,6 @@
-# Liquisto Tenant Workbench
+# Liquisto Workbench
 
-Tenant-specific Next.js workbench for configured Liquisto runtime workflows on
-`liquisto.cloud`.
+Next.js workbench for configured Liquisto capabilities on `liquisto.cloud`.
 
 The app must only expose surfaces backed by actual Liquisto tenant
 configuration, role grants, validators, or deployment evidence. Do not add
@@ -33,6 +32,23 @@ The current implementation uses static contract data copied from tenant
 fixtures and deployment gates. Runtime mutation paths must be wired only after
 the Liquisto Control API and Hetzner runtime endpoints are explicitly scoped and
 validated.
+
+## Product Language Boundary
+
+The Workbench UI must describe user-facing Liquisto capabilities, goals, inputs,
+and outputs. It must not expose internal SCAS architecture terms, tenant model
+details, runtime profile composition, validator names, policy gates, tool
+selection, or isolation mechanics.
+
+Users must not see or infer that other tenants exist. Visible copy should use
+product language such as Research, Company Intelligence, Meeting Brief, Market
+Signals, Buyer Segments, Evidence, Confidence, and CRM Fields.
+
+Feature cards should describe target use, not internal execution flow. For
+example, a Research card may link to a Research page where a pre-meeting
+intelligence brief capability explains the intended business use, required
+company input, and expected output without naming selected skills, tools,
+policies, validators, runtime profiles, or tenant boundaries.
 
 ## Local Validation
 

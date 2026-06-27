@@ -10,19 +10,20 @@ def load_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_liquisto_workbench_exists_as_scas_tenant_app() -> None:
+def test_liquisto_workbench_exists_as_product_facing_app() -> None:
     assert APP_ROOT.exists()
     package_json = load_text(APP_ROOT / "package.json")
     readme = load_text(APP_ROOT / "README.md")
 
     assert '"name": "liquisto-workbench"' in package_json
-    assert "configured Liquisto runtime workflows" in readme
+    assert "configured Liquisto capabilities" in readme
     assert "Do not add\nconceptual product areas" in readme
     assert "placeholder workflows" in readme
-    assert "Cloudflare Control Plane / Hetzner Runtime Plane" in readme
+    assert "Product Language Boundary" in readme
+    assert "Users must not see or infer that other tenants exist" in readme
 
 
-def test_liquisto_workbench_navigation_is_runtime_backed() -> None:
+def test_liquisto_workbench_navigation_uses_product_language() -> None:
     data = load_text(APP_ROOT / "src" / "lib" / "workbench-data.ts")
 
     for label in ("Cockpit", "Research", "Admin"):
@@ -38,8 +39,10 @@ def test_liquisto_workbench_navigation_is_runtime_backed() -> None:
     ):
         assert removed_label not in data
 
-    assert "research-intake" in data
-    assert "tenant-admin" in data
+    assert "Prepare company, market, and meeting intelligence" in data
+    assert "pre-meeting intelligence brief" in data
+    assert "excess-inventory hypotheses" in data
+    assert "approved workspace access and settings" in data
 
 
 def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
@@ -62,11 +65,40 @@ def test_liquisto_workbench_cockpit_is_an_application_surface() -> None:
     assert "Runtime Configuration" not in home
     assert "Control Boundary" not in home
     assert "isolation evidence" not in home
-    assert "Task Analyzer and Agent Composer" in section_page
-    assert "immutable" in section_page
-    assert "denials" in section_page
+    assert "What This Supports" in section_page
+    assert "excess-inventory opportunities" in section_page
+    assert "facts from hypotheses" in section_page
     assert ".hero-band" in globals_css
     assert ".system-grid" in globals_css
+
+
+def test_liquisto_workbench_visible_copy_hides_internal_architecture_terms() -> None:
+    source_files = [
+        APP_ROOT / "src" / "app" / "layout.tsx",
+        APP_ROOT / "src" / "app" / "page.tsx",
+        APP_ROOT / "src" / "app" / "[section]" / "page.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "bottom-nav.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "sidebar.tsx",
+        APP_ROOT / "src" / "components" / "chrome" / "top-bar.tsx",
+        APP_ROOT / "src" / "lib" / "workbench-data.ts",
+    ]
+    combined = "\n".join(load_text(path) for path in source_files)
+
+    forbidden_fragments = (
+        "tenant-scoped",
+        "Tenant Workbench",
+        "Tenant-specific",
+        "runtime profile",
+        "policy gate",
+        "validator",
+        "tool selection",
+        "SCAS",
+        "isolation evidence",
+        "Task Analyzer",
+        "Agent Composer",
+    )
+    for fragment in forbidden_fragments:
+        assert fragment not in combined
 
 
 def test_liquisto_workbench_design_supports_sota_operations_surfaces() -> None:

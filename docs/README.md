@@ -83,10 +83,10 @@ This repository uses `docs/` as an operational documentation surface, not only a
 
 - `apps/dkh-crm/`: DKH CRM Next.js app served behind Cloudflare Access at
   `es-daskuechenhaus.de` / `www.es-daskuechenhaus.de`.
-- `apps/liquisto-workbench/`: Liquisto SCAS Workbench Next.js app for the
-  `liquisto.cloud` tenant surface. It exposes Cockpit, Tasks, Knowledge, Agent
-  Runs, Approvals, Data Sources, Audit, and Admin views over the existing SCAS
-  operating model.
+- `apps/liquisto-workbench/`: Liquisto Workbench Next.js app for
+  `liquisto.cloud`. It exposes product-facing Research and Admin entry points
+  while keeping SCAS architecture, tenant model details, runtime composition,
+  and governance evidence out of visible user copy.
 
 ## Roadmap
 
