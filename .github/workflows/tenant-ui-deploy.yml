@@ -1052,6 +1052,10 @@ jobs:
               )
               return list(payload.get("result", []))
 
+          def delete_records(record_type: str, name: str) -> None:
+              for record in list_records(record_type, name):
+                  cloudflare(f"/zones/{zone_id}/dns_records/{record['id']}", method="DELETE")
+
           def upsert(record_type: str, name: str, content: str) -> None:
               desired = {
                   "type": record_type,
@@ -1072,7 +1076,10 @@ jobs:
               for extra in records[1:]:
                   cloudflare(f"/zones/{zone_id}/dns_records/{extra['id']}", method="DELETE")
 
+          delete_records("CNAME", hostname)
           upsert("A", hostname, origin_ipv4)
+          delete_records("A", f"www.{hostname}")
+          delete_records("AAAA", f"www.{hostname}")
           upsert("CNAME", f"www.{hostname}", hostname)
           print(
               json.dumps(

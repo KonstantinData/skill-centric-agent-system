@@ -494,6 +494,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "tenant_kinderhaus:kinderhaus-heuschrecken.cloud" in workflow
     assert "Cloudflare DNS sync hostname is not approved for ${TENANT_ID}" in workflow
     assert "Sync Cloudflare DNS to deployment host" in workflow
+    assert 'delete_records("A", f"www.{hostname}")' in workflow
+    assert 'delete_records("AAAA", f"www.{hostname}")' in workflow
     assert "synced-to-deployment-host" in workflow
 
 
