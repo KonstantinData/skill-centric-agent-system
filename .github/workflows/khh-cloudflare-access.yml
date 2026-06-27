@@ -1,0 +1,499 @@
+name: KHH Cloudflare Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_changes:
+        description: Apply Cloudflare Access application and policy changes
+        required: true
+        type: boolean
+        default: false
+      confirm_production:
+        description: Required true when apply_changes=true
+        required: true
+        type: boolean
+        default: false
+      hostnames:
+        description: Space-separated public hostnames protected directly by Access
+        required: true
+        type: string
+        default: kinderhaus-heuschrecken.cloud www.kinderhaus-heuschrecken.cloud
+      allowed_emails:
+        description: Space-separated user emails allowed to use KHH Workbench
+        required: true
+        type: string
+        default: kontakt@konstantinmilonas.de
+      primary_hostname:
+        description: Canonical Access application hostname
+        required: true
+        type: string
+        default: kinderhaus-heuschrecken.cloud
+      confirm_hostname:
+        description: Must match primary_hostname when apply_changes=true
+        required: true
+        type: string
+        default: kinderhaus-heuschrecken.cloud
+
+permissions:
+  contents: read
+
+concurrency:
+  group: khh-cloudflare-access
+  cancel-in-progress: false
+
+jobs:
+  configure-access:
+    name: Configure KHH Cloudflare Access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    env:
+      APPLY_CHANGES: ${{ inputs.apply_changes }}
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      KHH_ACCESS_HOSTNAMES: ${{ inputs.hostnames }}
+      KHH_ACCESS_ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
+      KHH_ACCESS_PRIMARY_HOSTNAME: ${{ inputs.primary_hostname }}
+      KHH_ACCESS_CONFIRM_HOSTNAME: ${{ inputs.confirm_hostname }}
+      KHH_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.KHH_CLOUDFLARE_ACCOUNT_ID }}
+      KHH_CLOUDFLARE_API_TOKEN: ${{ secrets.KHH_CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Configure Access application and policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+            echo "::error::confirm_production must be true when apply_changes=true."
+            exit 1
+          fi
+          if [ "${APPLY_CHANGES}" = "true" ] && [ "${KHH_ACCESS_CONFIRM_HOSTNAME}" != "${KHH_ACCESS_PRIMARY_HOSTNAME}" ]; then
+            echo "::error::confirm_hostname must match primary_hostname when apply_changes=true."
+            exit 1
+          fi
+          if [ -z "${KHH_CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${KHH_CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Missing KHH Cloudflare account credentials."
+            exit 1
+          fi
+
+          install -d khh-access-evidence
+          {
+            printf '# KHH Cloudflare Access Evidence\n\n'
+            printf -- '- Apply changes: `%s`\n' "${APPLY_CHANGES}"
+            printf -- '- Primary hostname: `%s`\n' "${KHH_ACCESS_PRIMARY_HOSTNAME}"
+            printf -- '- Hostnames: `%s`\n' "${KHH_ACCESS_HOSTNAMES}"
+            printf -- '- Allowed emails: `%s`\n' "${KHH_ACCESS_ALLOWED_EMAILS}"
+            printf -- '- Status: `started-before-cloudflare-api-call`\n'
+            printf -- '- Failure guidance: `KHH_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, and identity-provider operations for KHH_CLOUDFLARE_ACCOUNT_ID.`\n'
+          } > khh-access-evidence/access.md
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          account_id = os.environ["KHH_CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["KHH_CLOUDFLARE_API_TOKEN"]
+          apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
+          hostnames = [
+              value.strip().lower()
+              for value in os.environ["KHH_ACCESS_HOSTNAMES"].split()
+              if value.strip()
+          ]
+          allowed_emails = [
+              value.strip().lower()
+              for value in os.environ["KHH_ACCESS_ALLOWED_EMAILS"].split()
+              if value.strip()
+          ]
+          primary_hostname = os.environ["KHH_ACCESS_PRIMARY_HOSTNAME"].strip().lower()
+          base = "https://api.cloudflare.com/client/v4"
+          app_name = "KHH Workbench"
+          policy_name = "SCAS KHH Workbench allowed users"
+          deny_message = "Account is not enabled for Kinderhaus Heuschrecken Workbench."
+
+          hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
+          email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+          expected_hostnames = {
+              "kinderhaus-heuschrecken.cloud",
+              "www.kinderhaus-heuschrecken.cloud",
+          }
+          expected_emails = {"kontakt@konstantinmilonas.de"}
+
+          if primary_hostname != "kinderhaus-heuschrecken.cloud":
+              raise SystemExit("primary_hostname must be kinderhaus-heuschrecken.cloud.")
+          if set(hostnames) != expected_hostnames:
+              raise SystemExit("hostnames must be exactly the KHH apex and www hostnames.")
+          if set(allowed_emails) != expected_emails:
+              raise SystemExit("allowed_emails must be exactly kontakt@konstantinmilonas.de.")
+          for hostname in hostnames:
+              if not hostname_pattern.fullmatch(hostname):
+                  raise SystemExit(f"Unsupported hostname value: {hostname}")
+          for email in allowed_emails:
+              if not email_pattern.fullmatch(email):
+                  raise SystemExit(f"Unsupported email value: {email}")
+
+          def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
+              data = None
+              headers = {"Authorization": f"Bearer {token}"}
+              if payload is not None:
+                  data = json.dumps(payload, sort_keys=True).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              request = urllib.request.Request(
+                  f"{base}{path}",
+                  data=data,
+                  headers=headers,
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {detail}") from exc
+              if not body.get("success", False):
+                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
+              return body
+
+          def destination_uris(app: dict) -> set[str]:
+              uris: set[str] = set()
+              for destination in app.get("destinations") or []:
+                  if destination.get("type") == "public" and destination.get("uri"):
+                      uris.add(str(destination["uri"]).lower().rstrip("/"))
+              for domain in app.get("self_hosted_domains") or []:
+                  uris.add(str(domain).lower().rstrip("/"))
+              if app.get("domain"):
+                  uris.add(str(app["domain"]).lower().rstrip("/"))
+              return uris
+
+          def exact_app_for_hostname(candidates: list[dict], hostname: str) -> dict | None:
+              for app in candidates:
+                  if app.get("type") == "self_hosted" and destination_uris(app) == {hostname}:
+                      return app
+              return None
+
+          def covering_app_for_hostname(
+              candidates: list[dict],
+              hostname: str,
+              excluded_ids: set[str],
+          ) -> dict | None:
+              for app in candidates:
+                  if app.get("type") != "self_hosted" or str(app.get("id")) in excluded_ids:
+                      continue
+                  if hostname in destination_uris(app):
+                      return app
+              return None
+
+          def select_target_apps(candidates: list[dict]) -> dict[str, dict | None]:
+              target_apps: dict[str, dict | None] = {}
+              used_ids: set[str] = set()
+              for hostname in sorted(hostnames, key=lambda value: value != primary_hostname):
+                  app = exact_app_for_hostname(candidates, hostname) or covering_app_for_hostname(
+                      candidates,
+                      hostname,
+                      used_ids,
+                  )
+                  target_apps[hostname] = app
+                  if app:
+                      used_ids.add(str(app["id"]))
+              return target_apps
+
+          def is_one_time_pin_provider(provider: dict) -> bool:
+              provider_type = str(provider.get("type") or "").lower()
+              provider_name = str(provider.get("name") or "").lower()
+              return provider_type == "onetimepin" or "one-time pin" in provider_name or "otp" in provider_name
+
+          def app_payload(hostname: str, app: dict | None, one_time_pin_provider_ids: list[str]) -> dict:
+              allowed_keys = {
+                  "type",
+                  "name",
+                  "domain",
+                  "destinations",
+                  "session_duration",
+                  "allowed_idps",
+                  "app_launcher_visible",
+                  "auto_redirect_to_identity",
+                  "enable_binding_cookie",
+                  "http_only_cookie_attribute",
+                  "same_site_cookie_attribute",
+                  "path_cookie_attribute",
+                  "custom_deny_message",
+                  "custom_deny_url",
+                  "custom_non_identity_deny_url",
+                  "cors_headers",
+                  "tags",
+              }
+              payload = {}
+              if app:
+                  payload = {
+                      key: copy.deepcopy(value)
+                      for key, value in app.items()
+                      if key in allowed_keys and value is not None
+                  }
+              payload["type"] = "self_hosted"
+              payload["name"] = f"{app_name} ({hostname})"
+              payload["domain"] = hostname
+              payload["destinations"] = [{"type": "public", "uri": hostname}]
+              payload["allowed_idps"] = one_time_pin_provider_ids
+              payload["auto_redirect_to_identity"] = False
+              payload["app_launcher_visible"] = True
+              payload["custom_deny_message"] = deny_message
+              payload["http_only_cookie_attribute"] = True
+              payload["same_site_cookie_attribute"] = "lax"
+              payload["path_cookie_attribute"] = False
+              payload["session_duration"] = "24h"
+              payload.pop("self_hosted_domains", None)
+              return payload
+
+          def policy_payload(precedence: int = 1) -> dict:
+              return {
+                  "name": policy_name,
+                  "decision": "allow",
+                  "precedence": precedence,
+                  "include": [{"email": {"email": email}} for email in sorted(allowed_emails)],
+                  "exclude": [],
+                  "require": [],
+              }
+
+          def policy_emails(policy: dict) -> set[str]:
+              emails: set[str] = set()
+              for rule in policy.get("include") or []:
+                  if isinstance(rule.get("email"), dict) and rule["email"].get("email"):
+                      emails.add(str(rule["email"]["email"]).lower())
+                  elif rule.get("_type") == "email" and rule.get("email"):
+                      emails.add(str(rule["email"]).lower())
+              return emails
+
+          def ensure_policy(app: dict) -> tuple[list[str], list[str]]:
+              policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
+              changes: list[str] = []
+              summaries = [
+                  f"{policy.get('name')} ({policy.get('decision')}) emails={','.join(sorted(policy_emails(policy))) or 'none'}"
+                  for policy in policies
+              ]
+              target = next((policy for policy in policies if policy.get("name") == policy_name), None)
+              desired = policy_payload(1)
+              if target:
+                  if target.get("decision") != "allow" or policy_emails(target) != set(allowed_emails) or int(target.get("precedence", 0) or 0) != 1:
+                      if apply_changes:
+                          cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{target['id']}", desired)
+                      changes.append(f"{app.get('domain')}:updated-allow-policy")
+              else:
+                  if apply_changes:
+                      target = cf_request("POST", f"/accounts/{account_id}/access/apps/{app['id']}/policies", desired).get("result", {})
+                  changes.append(f"{app.get('domain')}:created-allow-policy")
+              target_id = str((target or {}).get("id") or "")
+              for policy in policies:
+                  if str(policy.get("id")) == target_id or policy.get("name") == policy_name:
+                      continue
+                  if apply_changes:
+                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{policy['id']}")
+                  changes.append(f"{app.get('domain')}:{policy.get('name', policy['id'])}:removed")
+              return changes, summaries
+
+          apps_before = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
+          one_time_pin_provider_ids = [
+              str(provider["id"])
+              for provider in identity_providers
+              if provider.get("id") and is_one_time_pin_provider(provider)
+          ]
+          if not one_time_pin_provider_ids:
+              raise SystemExit("No Cloudflare Access One-Time PIN identity provider is configured.")
+
+          target_apps_before = select_target_apps(apps_before)
+          app_changes: list[str] = []
+          policy_changes: list[str] = []
+          policy_summaries: list[str] = []
+          deleted_duplicate_apps: list[str] = []
+          access_status = "planned"
+
+          if apply_changes:
+              refreshed_apps = apps_before
+              used_ids: set[str] = set()
+              for hostname in sorted(hostnames, key=lambda value: value != primary_hostname):
+                  app = exact_app_for_hostname(refreshed_apps, hostname) or covering_app_for_hostname(
+                      refreshed_apps,
+                      hostname,
+                      used_ids,
+                  )
+                  payload = app_payload(hostname, app, one_time_pin_provider_ids)
+                  if app:
+                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                      app_changes.append(f"{hostname}:updated")
+                      used_ids.add(str(app["id"]))
+                  else:
+                      created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
+                      app_changes.append(f"{hostname}:created")
+                      if created.get("id"):
+                          used_ids.add(str(created["id"]))
+                  refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+
+              refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+              target_apps = select_target_apps(refreshed_apps)
+              target_ids = {
+                  str(app["id"])
+                  for app in target_apps.values()
+                  if app and app.get("id")
+              }
+              for app in refreshed_apps:
+                  uris = destination_uris(app)
+                  if (
+                      app.get("type") == "self_hosted"
+                      and uris
+                      and uris.issubset(expected_hostnames)
+                      and str(app.get("id")) not in target_ids
+                  ):
+                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
+                      deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
+              for hostname, app in target_apps.items():
+                  if not app:
+                      raise RuntimeError(f"Missing Access application after update: {hostname}")
+                  changes, summaries = ensure_policy(app)
+                  policy_changes.extend(changes)
+                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+              access_status = "updated"
+          else:
+              for hostname, app in target_apps_before.items():
+                  if not app:
+                      app_changes.append(f"{hostname}:would-create")
+                      continue
+                  changes, summaries = ensure_policy(app)
+                  policy_changes.extend(changes)
+                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+
+          apps_after = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+          target_apps_after = select_target_apps(apps_after)
+          missing_after = [
+              hostname
+              for hostname, app in target_apps_after.items()
+              if not app
+          ]
+          if apply_changes and missing_after:
+              raise SystemExit(f"Missing Access apps after apply: {', '.join(missing_after)}")
+
+          cookie_scope_summaries: list[str] = []
+          path_scoped_apps: list[str] = []
+          target_audiences_after: list[str] = []
+          for hostname in sorted(hostnames, key=lambda value: value != primary_hostname):
+              app = target_apps_after.get(hostname)
+              if not app:
+                  continue
+              if app.get("aud"):
+                  target_audiences_after.append(str(app["aud"]))
+              path_cookie_attribute = app.get("path_cookie_attribute")
+              same_site_cookie_attribute = app.get("same_site_cookie_attribute", "not-set")
+              http_only_cookie_attribute = app.get("http_only_cookie_attribute", "not-set")
+              session_duration = app.get("session_duration", "not-set")
+              cookie_scope_summaries.append(
+                  (
+                      f"{hostname}: path_cookie_attribute={path_cookie_attribute!r}, "
+                      f"same_site_cookie_attribute={same_site_cookie_attribute!r}, "
+                      f"http_only_cookie_attribute={http_only_cookie_attribute!r}, "
+                      f"session_duration={session_duration!r}"
+                  )
+              )
+              if path_cookie_attribute is True:
+                  path_scoped_apps.append(hostname)
+
+          if apply_changes and path_scoped_apps:
+              raise SystemExit(
+                  "KHH Access app still has path-scoped cookies enabled: "
+                  + ", ".join(path_scoped_apps)
+              )
+
+          evidence = [
+              "# KHH Cloudflare Access Evidence",
+              "",
+              f"- Apply changes: `{str(apply_changes).lower()}`",
+              f"- Primary hostname: `{primary_hostname}`",
+              f"- Hostnames: `{', '.join(sorted(hostnames))}`",
+              f"- Allowed emails: `{', '.join(sorted(allowed_emails))}`",
+              "- Authentication method: `Cloudflare Access One-Time PIN email verification`",
+              f"- One-Time PIN provider count: `{len(one_time_pin_provider_ids)}`",
+              "- Organization scope: `not read or modified by this KHH workflow`",
+              f"- Access status: `{access_status}`",
+              f"- App changes: `{', '.join(app_changes) if app_changes else 'none'}`",
+              f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
+              f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
+              f"- Application audience tags after: `{', '.join(target_audiences_after) if target_audiences_after else 'none'}`",
+              "- Cookie scope after:",
+              *[f"  - `{summary}`" for summary in cookie_scope_summaries],
+              "- Host apps after:",
+          ]
+          for hostname in sorted(hostnames, key=lambda value: value != primary_hostname):
+              app = target_apps_after.get(hostname)
+              if app:
+                  evidence.append(
+                      f"  - `{hostname}: {app.get('name', '')} / {app.get('domain', '')} / aud {app.get('aud', '')}`"
+                  )
+              else:
+                  evidence.append(f"  - `{hostname}: missing`")
+          evidence.append("- Existing policy summary before changes:")
+          evidence.extend(f"  - `{summary}`" for summary in policy_summaries)
+          evidence.extend(
+              [
+                  f"- Collected at: `{datetime.now(UTC).isoformat()}`",
+                  "",
+              ]
+          )
+          Path("khh-access-evidence/access.md").write_text(
+              "\n".join(evidence),
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "access_status": access_status,
+              "allowed_emails": sorted(allowed_emails),
+              "apply_changes": apply_changes,
+              "app_changes": app_changes,
+              "cookie_scope": cookie_scope_summaries,
+              "deleted_duplicate_apps": deleted_duplicate_apps,
+              "hostnames": sorted(hostnames),
+              "one_time_pin_provider_count": len(one_time_pin_provider_ids),
+              "policy_changes": policy_changes,
+          }, sort_keys=True))
+          PY
+
+      - name: Verify public Access redirect
+        if: inputs.apply_changes == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '# KHH Cloudflare Access Public Smoke\n\n'
+            for hostname in ${KHH_ACCESS_HOSTNAMES}; do
+              status="000"
+              location=""
+              for attempt in $(seq 1 30); do
+                status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${hostname}/")"
+                location="$(curl -sS -I "https://${hostname}/" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
+                if { [ "${status}" = "302" ] || [ "${status}" = "303" ]; } && { [[ "${location}" == *"cloudflareaccess.com"* ]] || [[ "${location}" == *"/cdn-cgi/access/login/"* ]]; }; then
+                  break
+                fi
+                echo "Waiting for Cloudflare Access login redirect for ${hostname} (${attempt}/30), got HTTP ${status}." >&2
+                sleep 5
+              done
+              if [ "${status}" != "302" ] && [ "${status}" != "303" ]; then
+                echo "::error::Expected Cloudflare Access login redirect for ${hostname}, got HTTP ${status}."
+                exit 1
+              fi
+              if [[ "${location}" != *"cloudflareaccess.com"* && "${location}" != *"/cdn-cgi/access/login/"* ]]; then
+                echo "::error::Expected Cloudflare Access login redirect for ${hostname}."
+                exit 1
+              fi
+              printf -- '- `%s`: HTTP `%s`, Access login redirect `%s`\n' "${hostname}" "${status}" "${location}"
+            done
+          } > khh-access-evidence/public-access-smoke.md
+
+      - name: Upload Access evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: khh-access-evidence
+          path: khh-access-evidence/
+          if-no-files-found: error
