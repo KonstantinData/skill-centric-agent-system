@@ -168,10 +168,11 @@ screen.
 
 For customer-linked invoices, `Kunden-Nr.` is prefilled from the case's
 `CARAT Vorgangsnummer` and falls back to the CRM case number when CARAT is not
-set. The Blanco invoice template under `/vorlagen` is intentionally not
+set. The Blanko invoice template under `/vorlagen` is intentionally not
 case-linked and keeps `Kunden-Nr.` editable instead of applying that fallback.
-The invoice form calculates the `Skonto-Hinweis` as 2% of the invoice gross
-amount, before subtracting any down payments.
+The invoice form calculates the `Skonto-ausweisen` amount as 2% of the invoice
+gross amount, before subtracting any down payments. The print value is emitted
+only when the adjacent discount checkbox is active.
 
 ## AB Cockpit Phase 1
 
