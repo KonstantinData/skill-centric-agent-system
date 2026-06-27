@@ -14,7 +14,7 @@ export function TopBar({ userEmail }: { userEmail: string }) {
           priority
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-black">Liquisto Tenant Workbench</p>
+          <p className="truncate text-sm font-black">Liquisto Workbench</p>
           <p className="truncate text-xs font-bold text-[var(--muted)]">
             liquisto.cloud · Runtime-backed workflows
           </p>
