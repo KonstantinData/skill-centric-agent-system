@@ -22,6 +22,7 @@ type InvoiceDraft = {
   invoiceDate: string;
   customerVatRate: string;
   downPayments: string;
+  includeDiscountNote: boolean;
   notes: string;
   items: InvoiceItem[];
 };
@@ -60,6 +61,7 @@ function createInitialDraft(initialDraft?: InvoiceFormProps["initialDraft"]): In
     invoiceDate: todayValue(),
     customerVatRate: "19",
     downPayments: "",
+    includeDiscountNote: true,
     notes: "",
     ...initialDraft,
     items: initialDraft?.items?.length
@@ -165,6 +167,7 @@ export function InvoiceForm({
   const remainingAmount = roundMoney(itemTotal - downPayments);
   const discountAmount = roundMoney(itemTotal * 0.02);
   const discountNote = itemTotal ? formatMoney(discountAmount) : "";
+  const printedDiscountNote = draft.includeDiscountNote ? discountNote : "";
 
   function updateDraft<K extends keyof InvoiceDraft>(key: K, value: InvoiceDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -393,14 +396,30 @@ export function InvoiceForm({
                     readOnly
                   />
                 </Label>
-                <Label label="Skonto-Hinweis">
+                <label className="label">
+                  <span className="flex items-center justify-between gap-3">
+                    <span>Skonto-ausweisen</span>
+                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+                      <input
+                        name="include_discount_note"
+                        value="true"
+                        type="checkbox"
+                        checked={draft.includeDiscountNote}
+                        onChange={(event) =>
+                          updateDraft("includeDiscountNote", event.target.checked)
+                        }
+                      />
+                      Drucken
+                    </span>
+                  </span>
                   <Field
                     name="discount_note"
-                    value={discountNote}
+                    value={printedDiscountNote}
                     readOnly
+                    disabled={!draft.includeDiscountNote}
                     aria-label="2 Prozent Skonto aus Rechnungsendbetrag"
                   />
-                </Label>
+                </label>
                 <Label label="Interne Notiz">
                   <Textarea
                     name="notes"
@@ -433,7 +452,7 @@ export function InvoiceForm({
 
       <InvoicePrintOverlay
         draft={draft}
-        discountNote={discountNote}
+        discountNote={printedDiscountNote}
         includedVat={includedVat}
         invoiceGross={itemTotal}
         remainingAmount={remainingAmount}
