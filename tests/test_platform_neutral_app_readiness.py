@@ -114,6 +114,13 @@ def test_khh_web_shell_consumes_shared_domain_client_and_ui_contracts() -> None:
     assert "export * from \"@scas/tenant-workbench-domain\"" in workbench_data
 
 
+def test_khh_docker_build_context_includes_shared_packages() -> None:
+    dockerfile = read("deploy/khh-workbench/Dockerfile")
+
+    assert "COPY packages ./packages" in dockerfile
+    assert "RUN npm run --prefix apps/khh-workbench build" in dockerfile
+
+
 def test_native_proof_shell_uses_same_khh_contracts_and_native_runtime_policy() -> None:
     app = read_path(KHH_NATIVE_PROOF_ROOT / "App.tsx")
     package_json = read_path(KHH_NATIVE_PROOF_ROOT / "package.json")
