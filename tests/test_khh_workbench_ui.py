@@ -50,8 +50,8 @@ def test_khh_workbench_home_is_application_surface() -> None:
     globals_css = load_text(APP_ROOT / "src" / "app" / "globals.css")
 
     assert "Leitungs-Cockpit" in home
-    assert "Datenschutz-Leitplanke" in home
-    assert "Agent-Hinweise" in home
+    assert "Datenschutz-Leitplanke" not in home
+    assert "Agent-Hinweise" not in home
     assert "PageHero" in home
     assert "PageHero" in section_page
     assert "/kinderhaus-heuschrecken.jpg" in page_hero

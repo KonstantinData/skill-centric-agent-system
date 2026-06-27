@@ -1,8 +1,7 @@
-import { AlertTriangle } from "lucide-react";
 import { PageHero } from "@/components/chrome/page-hero";
 import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
-import { agentNotes, dailySignals, privacyRules, quickActions } from "@/lib/workbench-data";
+import { dailySignals, quickActions } from "@/lib/workbench-data";
 
 export default function Home() {
   return (
@@ -11,20 +10,6 @@ export default function Home() {
         title="Leitungs-Cockpit"
         functionText="Tageslage, Fristen, Personalrisiken, Dienste und Entwicklung schnell einordnen."
       />
-
-      <Panel className="privacy-panel">
-        <div className="privacy-card">
-          <div className="mb-3 flex items-center gap-2">
-            <AlertTriangle size={18} aria-hidden />
-            <p className="font-black">Datenschutz-Leitplanke</p>
-          </div>
-          <ul className="grid gap-2 text-sm font-bold leading-6 text-[var(--muted)]">
-            {privacyRules.slice(0, 3).map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
-        </div>
-      </Panel>
 
       <div className="day-strip">
         <span>Heute</span>
@@ -76,22 +61,6 @@ export default function Home() {
           );
         })}
       </div>
-
-      <Panel>
-        <h2 className="section-title">Agent-Hinweise</h2>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {agentNotes.map((note) => (
-            <div className="agent-note" key={note.observation}>
-              <p className="text-sm font-black">{note.observation}</p>
-              <p className="mt-2 text-sm font-bold text-[var(--muted)]">
-                {note.reason}
-              </p>
-              <p className="mt-2 text-sm font-bold">{note.proposal}</p>
-              <span className="badge badge-strong mt-3">{note.approval}</span>
-            </div>
-          ))}
-        </div>
-      </Panel>
     </div>
   );
 }
