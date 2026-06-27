@@ -20,8 +20,9 @@ Before starting each queue item:
 
 ## Next Start Point
 
-No queued Post-P5 item remains in this document. Select the next backlog item
-from Notion after confirming current repository and production-readiness state.
+Start `Platform-Neutral App Readiness M1: Native-Ready Architecture Contract`
+for KHH before adding further `tenant_kinderhaus` feature depth. Use ADR-0012
+and `docs/roadmap/platform-neutral-app-readiness.md` as the governing scope.
 
 ## Queue Order
 
@@ -33,6 +34,7 @@ from Notion after confirming current repository and production-readiness state.
 6. Phase 6 Governance (`P6.*`)
 7. Formal Safety Guarantees program (`FSG-01` to `FSG-12`)
 8. Post-P5 Production Hardening (`Post-P5:*`)
+9. Platform-Neutral Tenant Workbench Readiness (`ADR-0012`, KHH)
 
 ## Recently Completed
 

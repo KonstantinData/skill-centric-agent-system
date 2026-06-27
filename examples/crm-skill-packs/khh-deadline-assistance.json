@@ -1,0 +1,56 @@
+{
+  "contract_version": "0.1.0",
+  "id": "khh-deadline-assistance",
+  "tenant_id": "tenant_kinderhaus",
+  "display_name": "KHH deadline assistance",
+  "status": "planned",
+  "task_types": [
+    "deadline-review",
+    "document-synthesis"
+  ],
+  "required_capabilities": [
+    "deadline-review"
+  ],
+  "ui_binding": {
+    "surface_ids": [
+      "scas-actions",
+      "saved-views",
+      "quick-actions"
+    ],
+    "entrypoint_label": "Fristen und Nachweise vorbereiten",
+    "confirmation_required": true,
+    "grants_runtime_authority": false
+  },
+  "composition": {
+    "selection_path": "registry-scoring-policy-graph-profile",
+    "candidate_modules": [
+      "document-synthesis",
+      "task-execution-planning"
+    ],
+    "policies": [
+      "strict-tenant-isolation",
+      "no-cross-tenant-access",
+      "human-confirmation-required"
+    ],
+    "validators": [
+      "tenant-profile-validator",
+      "knowledge-scope-validator",
+      "crm-action-audit-validator"
+    ],
+    "requires_immutable_runtime_profile": true
+  },
+  "audit_evidence": {
+    "required_fields": [
+      "tenant_id",
+      "principal_id",
+      "role_bundle_ids",
+      "task_type",
+      "skill_pack_id",
+      "selected_module_ids",
+      "validator_results",
+      "confirmation_status",
+      "action_result"
+    ],
+    "retention_plane": "hetzner-runtime-plane"
+  }
+}

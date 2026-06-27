@@ -83,6 +83,7 @@ on:
         required: true
         type: choice
         options:
+          - khh-workbench
           - liquisto-workbench
         default: liquisto-workbench
       local_health_port:
@@ -163,6 +164,7 @@ jobs:
       SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      SCAS_STAGING_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
       SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
@@ -173,8 +175,11 @@ jobs:
       SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_CASES_API_SECRET }}
       SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID }}
+      SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID }}
       LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
       LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
+      KHH_CLOUDFLARE_API_TOKEN: ${{ secrets.KHH_CLOUDFLARE_API_TOKEN }}
+      KHH_CLOUDFLARE_ZONE_ID: ${{ secrets.KHH_CLOUDFLARE_ZONE_ID }}
 
     steps:
       - name: Check out repository
@@ -196,6 +201,7 @@ jobs:
           esac
 
           case "${UI_APP}" in
+            khh-workbench) ;;
             liquisto-workbench) ;;
             *) echo "::error::Unsupported ui_app: ${UI_APP}" ; exit 1 ;;
           esac
@@ -273,13 +279,24 @@ jobs:
             exit 1
           fi
 
-          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_ID}" != "liquisto" ]; then
-            echo "::error::Cloudflare DNS sync is only wired for the liquisto tenant."
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] \
+            && [ "${TENANT_ID}" != "liquisto" ] \
+            && [ "${TENANT_ID}" != "tenant_kinderhaus" ]; then
+            echo "::error::Cloudflare DNS sync is only wired for approved tenant UI hostnames."
             exit 1
           fi
 
-          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ] && [ "${TENANT_HOSTNAME}" != "liquisto.cloud" ]; then
-            echo "::error::Cloudflare DNS sync is only allowed for liquisto.cloud."
+          if [ "${SYNC_CLOUDFLARE_DNS}" = "true" ]; then
+            case "${TENANT_ID}:${TENANT_HOSTNAME}" in
+              liquisto:liquisto.cloud) ;;
+              tenant_kinderhaus:kinderhaus-heuschrecken.cloud) ;;
+              *) echo "::error::Cloudflare DNS sync hostname is not approved for ${TENANT_ID}." ; exit 1 ;;
+            esac
+          fi
+
+          if [ "${TENANT_ID}" = "tenant_kinderhaus" ] \
+            && [ "${TENANT_HOSTNAME}" != "kinderhaus-heuschrecken.cloud" ]; then
+            echo "::error::tenant_kinderhaus must deploy to kinderhaus-heuschrecken.cloud."
             exit 1
           fi
 
@@ -289,6 +306,14 @@ jobs:
           set -euo pipefail
 
           case "${UI_APP}" in
+            khh-workbench)
+              image_ref="scas-khh-workbench:${GITHUB_SHA}"
+              dockerfile="deploy/khh-workbench/Dockerfile"
+              image_title="SCAS KHH Workbench"
+              image_archive="scas-khh-workbench-image.tar.gz"
+              container_port="3000"
+              health_path="/"
+              ;;
             liquisto-workbench)
               image_ref="scas-liquisto-workbench:${GITHUB_SHA}"
               dockerfile="deploy/liquisto-workbench/Dockerfile"
@@ -366,6 +391,7 @@ jobs:
                     case "${TENANT_ID}" in
                       liquisto) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
                       daskuechenhaus) value="${SCAS_STAGING_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}" ;;
+                      tenant_kinderhaus) value="${SCAS_STAGING_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID:-}" ;;
                       *) echo "::error::Unsupported owner principal mapping for staging tenant ${TENANT_ID}" ; exit 1 ;;
                     esac
                     ;;
@@ -390,6 +416,7 @@ jobs:
                     case "${TENANT_ID}" in
                       liquisto) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
                       daskuechenhaus) value="${SCAS_PROD_DASKUECHENHAUS_OWNER_PRINCIPAL_ID:-}" ;;
+                      tenant_kinderhaus) value="${SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID:-}" ;;
                       *) echo "::error::Unsupported owner principal mapping for prod tenant ${TENANT_ID}" ; exit 1 ;;
                     esac
                     ;;
@@ -536,6 +563,9 @@ jobs:
             liquisto)
               cf_api_token="${LIQUISTO_CLOUDFLARE_API_TOKEN:-}"
               ;;
+            tenant_kinderhaus)
+              cf_api_token="${KHH_CLOUDFLARE_API_TOKEN:-}"
+              ;;
             *)
               cf_api_token=""
               ;;
@@ -548,6 +578,9 @@ jobs:
 
           cert_hostnames=("${REVERSE_PROXY_CERT_HOSTNAME}")
           if [ "${TENANT_ID}" = "liquisto" ] && [ "${REVERSE_PROXY_CERT_HOSTNAME}" = "liquisto.cloud" ]; then
+            cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")
+          fi
+          if [ "${TENANT_ID}" = "tenant_kinderhaus" ] && [ "${REVERSE_PROXY_CERT_HOSTNAME}" = "kinderhaus-heuschrecken.cloud" ]; then
             cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")
           fi
           subject_alt_name=""
@@ -731,6 +764,10 @@ jobs:
             expected_content_marker="Liquisto workspace"
             forbidden_content_marker="daskuechenhaus"
           fi
+          if [ "${UI_APP}" = "khh-workbench" ]; then
+            expected_content_marker="Leitungs-Cockpit"
+            forbidden_content_marker="liquisto"
+          fi
           health_passed=0
           for attempt in $(seq 1 30); do
             if curl -fsS --max-time 10 "${health_url}" >/dev/null; then
@@ -790,6 +827,9 @@ jobs:
           if [ "${MANAGE_REVERSE_PROXY}" = "true" ]; then
             reverse_proxy_server_names="${TENANT_HOSTNAME}"
             if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+              reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"
+            fi
+            if [ "${TENANT_ID}" = "tenant_kinderhaus" ] && [ "${TENANT_HOSTNAME}" = "kinderhaus-heuschrecken.cloud" ]; then
               reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"
             fi
             nginx_site="${REVERSE_PROXY_CONFIG_PATH}"
@@ -924,12 +964,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::error::Missing LIQUISTO_CLOUDFLARE_API_TOKEN."
+          case "${TENANT_ID}" in
+            liquisto)
+              tenant_cloudflare_api_token="${LIQUISTO_CLOUDFLARE_API_TOKEN:-}"
+              tenant_cloudflare_zone_id="${LIQUISTO_CLOUDFLARE_ZONE_ID:-}"
+              ;;
+            tenant_kinderhaus)
+              tenant_cloudflare_api_token="${KHH_CLOUDFLARE_API_TOKEN:-}"
+              tenant_cloudflare_zone_id="${KHH_CLOUDFLARE_ZONE_ID:-}"
+              ;;
+            *)
+              echo "::error::Cloudflare DNS sync is not configured for ${TENANT_ID}."
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${tenant_cloudflare_api_token}" ]; then
+            echo "::error::Missing Cloudflare API token for ${TENANT_ID}."
             exit 1
           fi
-          if [ -z "${LIQUISTO_CLOUDFLARE_ZONE_ID}" ]; then
-            echo "::error::Missing LIQUISTO_CLOUDFLARE_ZONE_ID."
+          if [ -z "${tenant_cloudflare_zone_id}" ]; then
+            echo "::error::Missing Cloudflare zone id for ${TENANT_ID}."
             exit 1
           fi
 
@@ -948,8 +1003,8 @@ jobs:
           )"
           echo "::add-mask::${deploy_origin_ipv4}"
 
-          CLOUDFLARE_API_TOKEN="${LIQUISTO_CLOUDFLARE_API_TOKEN}" \
-          CLOUDFLARE_ZONE_ID="${LIQUISTO_CLOUDFLARE_ZONE_ID}" \
+          CLOUDFLARE_API_TOKEN="${tenant_cloudflare_api_token}" \
+          CLOUDFLARE_ZONE_ID="${tenant_cloudflare_zone_id}" \
           DEPLOY_ORIGIN_IPV4="${deploy_origin_ipv4}" \
           python3 - <<'PY'
           import json
@@ -1035,10 +1090,17 @@ jobs:
             expected_content_marker="Liquisto workspace"
             forbidden_content_marker="daskuechenhaus"
           fi
+          if [ "${UI_APP}" = "khh-workbench" ]; then
+            expected_content_marker="Leitungs-Cockpit"
+            forbidden_content_marker="liquisto"
+          fi
 
           public_url="https://${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}"
           public_urls=("${public_url}")
           if [ "${TENANT_ID}" = "liquisto" ] && [ "${TENANT_HOSTNAME}" = "liquisto.cloud" ]; then
+            public_urls+=("https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}")
+          fi
+          if [ "${TENANT_ID}" = "tenant_kinderhaus" ] && [ "${TENANT_HOSTNAME}" = "kinderhaus-heuschrecken.cloud" ]; then
             public_urls+=("https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}")
           fi
 

@@ -1,0 +1,333 @@
+{
+  "contract_version": "0.1.0",
+  "tenant_id": "tenant_kinderhaus",
+  "area_id": "kinderhaus-heuschrecken",
+  "display_name": "Kinderhaus Heuschrecken",
+  "legal_profile": {
+    "legal_name": "Eltern-Kinder-Gruppe Heuschrecken e.V.",
+    "registered_address": {
+      "street": "Not stored in public fixture",
+      "street_number": "Not stored in public fixture",
+      "postal_code": "Not stored in public fixture",
+      "city": "Stuttgart",
+      "country": "Germany"
+    },
+    "legal_representatives": [
+      {
+        "name": "Not stored in public fixture",
+        "role": "Tenant Owner"
+      }
+    ],
+    "commercial_register": {
+      "register_court": "Not stored in public fixture",
+      "registration_number": "Not stored in public fixture"
+    },
+    "tax": {
+      "tax_number": null,
+      "vat_id": null,
+      "tax_number_sensitivity": "restricted-business-data"
+    }
+  },
+  "contact_profile": {
+    "email": "info@kinderhaus-heuschrecken.de",
+    "phone": null,
+    "website": "https://kinderhaus-heuschrecken.de"
+  },
+  "hostnames": [
+    {
+      "hostname": "kinderhaus-heuschrecken.cloud",
+      "purpose": "primary-ui",
+      "expected_origin": null,
+      "cloudflare_proxy_expected": true
+    }
+  ],
+  "status": "setup",
+  "default_locale": "de-DE",
+  "admin_model": {
+    "admin_routes": [
+      "/admin/users",
+      "/admin/roles",
+      "/admin/settings"
+    ],
+    "assignment_model": "users-receive-roles-only",
+    "initial_owner": null
+  },
+  "memory": {
+    "area_brain_id": "brain-area-tenant_kinderhaus",
+    "shared_promotion_allowed": false
+  },
+  "knowledge": {
+    "scope_id": "knowledge-tenant_kinderhaus",
+    "indexes": [
+      "knowledge-tenant_kinderhaus-docs"
+    ]
+  },
+  "data_sources": [
+    {
+      "id": "kinderhaus-public-website",
+      "tenant_id": "tenant_kinderhaus",
+      "type": "website",
+      "display_name": "Kinderhaus Heuschrecken public website",
+      "access_modes": [
+        "read"
+      ],
+      "status": "planned",
+      "sensitivity": "public"
+    },
+    {
+      "id": "kinderhaus-minimal-operations",
+      "tenant_id": "tenant_kinderhaus",
+      "type": "database",
+      "display_name": "Minimal leadership cockpit records",
+      "access_modes": [
+        "read",
+        "write"
+      ],
+      "status": "planned",
+      "sensitivity": "restricted"
+    }
+  ],
+  "role_bundles": [
+    {
+      "id": "tenant_kinderhaus-owner",
+      "tenant_id": "tenant_kinderhaus",
+      "display_name": "Tenant Owner",
+      "role_type": "system",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "tenant-admin",
+        "leadership-cockpit",
+        "deadline-review",
+        "development-planning"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "kinderhaus-public-website",
+          "access_modes": [
+            "read"
+          ]
+        },
+        {
+          "data_source_id": "kinderhaus-minimal-operations",
+          "access_modes": [
+            "read",
+            "write"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "document-synthesis",
+          "task-execution-planning"
+        ],
+        "workflows": [
+          "tenant-admin",
+          "leadership-cockpit",
+          "deadline-review",
+          "development-planning"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access",
+          "data-minimization-required"
+        ],
+        "validators": [
+          "admin-action-validator",
+          "knowledge-scope-validator",
+          "no-cross-area-scope-validator",
+          "no-cross-tenant-scope-validator",
+          "tenant-profile-validator",
+          "user-permission-validator",
+          "data-minimization-validator"
+        ]
+      }
+    },
+    {
+      "id": "tenant_kinderhaus-leitung",
+      "tenant_id": "tenant_kinderhaus",
+      "display_name": "Leitung",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "leadership-cockpit",
+        "deadline-review",
+        "development-planning"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "kinderhaus-minimal-operations",
+          "access_modes": [
+            "read",
+            "write"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "document-synthesis",
+          "task-execution-planning"
+        ],
+        "workflows": [
+          "leadership-cockpit",
+          "deadline-review",
+          "development-planning"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access",
+          "data-minimization-required"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator",
+          "data-minimization-validator"
+        ]
+      }
+    }
+  ],
+  "policy_bundle": [
+    "strict-tenant-isolation",
+    "no-cross-area-access",
+    "no-cross-tenant-access",
+    "fail-closed-unknown-scope",
+    "data-minimization-required"
+  ],
+  "validators": [
+    "tenant-profile-validator",
+    "no-cross-tenant-scope-validator",
+    "no-cross-area-scope-validator",
+    "skill-scope-compatibility-validator",
+    "tool-scope-compatibility-validator",
+    "memory-scope-validator",
+    "knowledge-scope-validator",
+    "user-permission-validator",
+    "admin-action-validator",
+    "data-minimization-validator"
+  ],
+  "ui_profile": {
+    "logo_path": "assets/images/tenant_kinderhaus/khh-workbench-logo.png",
+    "experience_standard": "sota-2026-tenant-crm",
+    "brand_assets": {
+      "logo_path": "assets/images/tenant_kinderhaus/khh-workbench-logo.png",
+      "favicon_path": null,
+      "app_icon_path": null,
+      "asset_scope": "tenant-owned"
+    },
+    "landing": {
+      "type": "internal-operations-dashboard",
+      "area_presentation": "tiles"
+    },
+    "theme": {
+      "background": "#F4F1E8",
+      "surface": "#FFFDF6",
+      "text": "#1D1D1B",
+      "secondary_text": "#7A7568",
+      "accent": "#3F7F2F",
+      "border": "#D2C7AD"
+    },
+    "navigation": {
+      "primary_area_ids": [
+        "leadership-cockpit",
+        "deadline-review",
+        "development-planning"
+      ],
+      "admin_area_ids": [
+        "tenant-admin"
+      ]
+    },
+    "command_center": {
+      "enabled": true,
+      "surfaces": [
+        "global-search",
+        "quick-actions",
+        "notifications",
+        "saved-views",
+        "scas-actions"
+      ],
+      "default_route": "/"
+    },
+    "scas_skill_packs": [
+      {
+        "id": "khh-deadline-assistance",
+        "task_types": [
+          "deadline-review",
+          "document-synthesis"
+        ],
+        "required_capabilities": [
+          "deadline-review"
+        ],
+        "status": "planned"
+      },
+      {
+        "id": "khh-development-planning",
+        "task_types": [
+          "development-planning",
+          "task-prioritization"
+        ],
+        "required_capabilities": [
+          "development-planning"
+        ],
+        "status": "planned"
+      }
+    ],
+    "terminology": {
+      "customer": "Familienreferenz",
+      "case": "Vorgang",
+      "task": "Aufgabe",
+      "email": "Nachricht",
+      "cockpit": "Leitungs-Cockpit"
+    },
+    "workspace_areas": [
+      {
+        "id": "leadership-cockpit",
+        "display_name": "Leitungs-Cockpit",
+        "description": "Tageslage, Personalrisiken, Dienste und sensible Vorgänge mit Datenminimierung.",
+        "route": "/",
+        "required_capability": "leadership-cockpit",
+        "admin_only": false,
+        "status": "active"
+      },
+      {
+        "id": "deadline-review",
+        "display_name": "Fristen und Nachweise",
+        "description": "Nachweise, Belehrungen und Wiedervorlagen ohne Stammdatenhaltung steuern.",
+        "route": "/fristen",
+        "required_capability": "deadline-review",
+        "admin_only": false,
+        "status": "active"
+      },
+      {
+        "id": "development-planning",
+        "display_name": "Entwicklung",
+        "description": "Pädagogik, Team, Räume, Elterninitiative und Zukunftsszenarien weiterentwickeln.",
+        "route": "/entwicklung",
+        "required_capability": "development-planning",
+        "admin_only": false,
+        "status": "active"
+      },
+      {
+        "id": "tenant-admin",
+        "display_name": "Admin Dashboard",
+        "description": "Tenant administration for users, roles, settings, and launch governance.",
+        "route": "/admin",
+        "required_capability": "tenant-admin",
+        "admin_only": true,
+        "status": "active"
+      }
+    ]
+  }
+}

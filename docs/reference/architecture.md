@@ -262,6 +262,25 @@ run state, hard profile enforcement, bounded tool execution, structured failure
 semantics, and observable artifacts. The entry checklist and task-neutral
 validation scenarios live in `docs/runbooks/runtime-preflight.md`.
 
+## Tenant Workbench Presentation Architecture
+
+Tenant-facing workbench apps are presentation shells over SCAS tenant contracts.
+New tenant workbench capability must keep product domain definitions, workflow
+metadata, privacy rules, API/state access, and reusable UI composition in
+platform-neutral packages before adding feature depth to a web-only shell.
+
+Web and native shells may own only platform concerns: routing/navigation
+integration, auth handoff, storage adapters, push notification adapters, device
+permission prompts, deployment wiring, and runtime environment configuration.
+Shared packages must remain tenant-scoped and must not bypass tenant isolation,
+area-brain boundaries, or data-minimization policy.
+
+The accepted target architecture for KHH and future tenant workbenches is
+ADR-0012 in
+`docs/adr/0012-platform-neutral-tenant-workbench-architecture.md`. The delivery
+backlog and sprint allocation live in
+`docs/roadmap/platform-neutral-app-readiness.md`.
+
 ## Production Readiness Gate
 
 Production-ready status is a separate release decision. It requires the
