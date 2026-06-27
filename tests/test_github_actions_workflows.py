@@ -512,6 +512,10 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "reverse_proxy_config_path must stay under /etc/nginx/sites-available" in workflow
     assert "nginx -t" in workflow
     assert 'if [ -L "${nginx_enabled}" ]; then' in workflow
+    assert "nginx-sites-enabled-conflicts" in workflow
+    assert "restore_nginx_conflicts" in workflow
+    assert 'rm -f "${enabled_entry}"' in workflow
+    assert 'conflicting server name \\"${reverse_proxy_hostname}\\"' in workflow
     assert 'reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"' in workflow
     assert "server_name ${reverse_proxy_server_names};" in workflow
     assert "systemctl reload nginx" in workflow
@@ -532,6 +536,11 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "cloudflareaccess" + ".com" in workflow
     assert "/cdn-cgi/access/login/" in workflow
     assert "Public tenant UI content check failed for ${public_url}." in workflow
+    assert "Ensure KHH Cloudflare Access is fail closed" in workflow
+    assert "tenant-ui-khh-access-evidence" in workflow
+    assert "KHH Access fail-closed guard may only manage kinderhaus-heuschrecken.cloud" in workflow
+    assert "Removed bypass policies:" in workflow
+    assert "Cloudflare Access deny-by-default when no Allow policy matches" in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:

@@ -161,3 +161,6 @@ def test_khh_public_deploy_gate_requires_access_when_auth_mode_required() -> Non
     assert "cloudflareaccess" + ".com" in workflow
     assert "/cdn-cgi/access/login/" in workflow
     assert "Leitungs-Cockpit" in workflow
+    assert "https://www.${TENANT_HOSTNAME}${SCAS_UI_HEALTH_PATH}" in workflow
+    assert "Ensure KHH Cloudflare Access is fail closed" in workflow
+    assert "Removed bypass policies:" in workflow

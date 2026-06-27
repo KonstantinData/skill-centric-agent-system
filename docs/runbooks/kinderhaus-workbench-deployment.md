@@ -46,6 +46,20 @@ The workflow allowlist only permits Cloudflare DNS sync for
 `tenant_kinderhaus:kinderhaus-heuschrecken.cloud`. Token values must never be
 written to repository files, Notion, logs, or generated evidence.
 
+When `auth_mode=required`, the deploy workflow also ensures that Cloudflare
+Access covers both `kinderhaus-heuschrecken.cloud` and
+`www.kinderhaus-heuschrecken.cloud` before the public smoke check runs. The
+guard is fail-closed: it creates or updates KHH self-hosted Access applications,
+removes duplicate KHH applications and bypass policies for those hostnames, and
+preserves non-bypass policies. If no allow policy matches, Cloudflare Access
+must deny the request rather than exposing workbench HTML.
+
+The managed reverse-proxy step owns one active Nginx server configuration for
+the KHH apex and `www` hostnames. Before `nginx -t`, it disables other active
+`sites-enabled` entries that declare the same hostnames and records the disabled
+entries in deployment evidence. If Nginx validation fails, the workflow restores
+the previous managed config and the disabled entries before failing.
+
 ## Dry-Run Build
 
 Use the existing manual `Tenant UI Deploy` GitHub Actions workflow with:
