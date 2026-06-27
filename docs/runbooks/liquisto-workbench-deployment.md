@@ -69,6 +69,13 @@ the independent DKH CRM Access setup.
 Workbench on a single Access application audience so users authenticate once
 while navigating the Workbench.
 
+The Access application must keep `path_cookie_attribute` disabled. If path
+cookies are enabled, Cloudflare Access treats paths such as `/research` and `/`
+as separate browser sessions and users are asked to authenticate again when
+switching between Research and Cockpit. The Access evidence must show the cookie
+scope after each apply, and production apply must fail if
+`path_cookie_attribute` is still `true`.
+
 ```powershell
 gh workflow run liquisto-cloudflare-access.yml `
   --repo KonstantinData/skill-centric-agent-system `

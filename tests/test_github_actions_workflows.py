@@ -638,6 +638,10 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     )
     assert "Cloudflare Access One-Time PIN email verification" in workflow
     assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
+    assert 'payload["same_site_cookie_attribute"] = "lax"' in workflow
+    assert 'payload["path_cookie_attribute"] = False' in workflow
+    assert "Liquisto Access app still has path-scoped cookies enabled" in workflow
+    assert "Cookie scope after:" in workflow
     assert "started-before-cloudflare-api-call" in workflow
     assert "must allow account-scoped Cloudflare Access application, policy" in workflow
     assert "zone-scoped Rulesets edit" in workflow
