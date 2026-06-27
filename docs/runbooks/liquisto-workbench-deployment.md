@@ -61,9 +61,6 @@ The Liquisto Access workflow must manage only the Liquisto self-hosted Access
 applications and their allow policies. It must not read or update the
 account-wide Cloudflare Zero Trust organization name or login branding because
 those settings currently belong to the independent DKH CRM Access setup.
-The workflow keeps `liquisto.cloud` and `www.liquisto.cloud` on one shared
-Liquisto Access application and policy so authenticated users do not cross into
-a second Access application session while moving through the Workbench.
 
 ```powershell
 gh workflow run liquisto-cloudflare-access.yml `

@@ -640,11 +640,6 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "Organization scope: `not read or modified by this Liquisto workflow`" in workflow
     assert "Das Küchenhaus CRM" not in workflow
     assert "SCAS Liquisto Workbench allowed users" in workflow
-    assert 'payload["name"] = app_name' in workflow
-    assert 'payload["domain"] = primary_hostname' in workflow
-    assert 'for hostname in hostnames' in workflow
-    assert "shared-app:updated" in workflow
-    assert "Shared app after:" in workflow
     assert (
         'cf_request("DELETE", '
         'f"/accounts/{account_id}/access/apps/{app[\'id\']}/policies/{policy[\'id\']}")'
