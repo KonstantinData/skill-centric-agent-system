@@ -35,6 +35,15 @@ LIQUISTO_FOREIGN_CONTEXT_MARKERS = (
     "x-dkh-",
     "customer_case_carat_import",
 )
+KHH_APP_ROOT = REPO_ROOT / "apps" / "khh-workbench"
+KHH_FOREIGN_CONTEXT_MARKERS = (
+    "apps/dkh-crm",
+    "dkh-crm",
+    "daskuechenhaus",
+    "tenant_daskuechenhaus",
+    "liquisto",
+    "tenant-liquisto",
+)
 
 
 def tenant_paths() -> list[Path]:
@@ -64,6 +73,17 @@ def tracked_files_under(path: Path) -> list[Path]:
     return [REPO_ROOT / line for line in result.stdout.splitlines() if line]
 
 
+def source_files_under(path: Path) -> list[Path]:
+    return [
+        candidate
+        for candidate in path.rglob("*")
+        if candidate.is_file()
+        and not {".next", "node_modules", "__pycache__"}.intersection(
+            candidate.relative_to(path).parts
+        )
+    ]
+
+
 def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> None:
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 
@@ -71,6 +91,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
         "demo-tenant.example.invalid": "demo-tenant",
         "liquisto.cloud": "liquisto",
         "daskuechenhaus.condata.io": "daskuechenhaus",
+        "kinderhaus-heuschrecken.cloud": "tenant_kinderhaus",
     }
     for hostname, tenant_id in expected.items():
         authority = resolver.resolve(hostname)
@@ -114,15 +135,18 @@ def test_seeded_tenant_scopes_are_disjoint() -> None:
     assert "liquisto-website-read" in module_names
     assert "demo-tenant-website-read" in module_names
     assert "daskuechenhaus-website-read" in module_names
+    assert "kinderhaus-public-website-read" in module_names
     assert "knowledge-liquisto-docs" in module_names
     assert "knowledge-demo-tenant-docs" in module_names
     assert "knowledge-daskuechenhaus-docs" in module_names
+    assert "knowledge-tenant_kinderhaus-docs" in module_names
     assert "liquisto-website-read" != "demo-tenant-website-read"
     assert "liquisto-website-read" != "daskuechenhaus-website-read"
     assert "demo-tenant-website-read" != "daskuechenhaus-website-read"
     assert "knowledge-liquisto-docs" != "knowledge-demo-tenant-docs"
     assert "knowledge-liquisto-docs" != "knowledge-daskuechenhaus-docs"
     assert "knowledge-demo-tenant-docs" != "knowledge-daskuechenhaus-docs"
+    assert "knowledge-liquisto-docs" != "knowledge-tenant_kinderhaus-docs"
 
 
 def test_tenant_ui_assets_do_not_fallback_across_tenant_directories() -> None:
@@ -196,6 +220,17 @@ def test_liquisto_workbench_sources_do_not_reference_daskuechenhaus_context() ->
     assert not offenders
 
 
+def test_khh_workbench_sources_do_not_reference_foreign_tenant_context() -> None:
+    offenders: list[str] = []
+
+    for path in source_files_under(KHH_APP_ROOT):
+        content = path.read_text(encoding="utf-8", errors="ignore").lower()
+        if any(marker in content for marker in KHH_FOREIGN_CONTEXT_MARKERS):
+            offenders.append(path.relative_to(REPO_ROOT).as_posix())
+
+    assert not offenders
+
+
 def test_liquisto_deploy_gate_rejects_daskuechenhaus_content_marker() -> None:
     workflow = TENANT_UI_DEPLOY_WORKFLOW.read_text(encoding="utf-8")
 
@@ -203,6 +238,17 @@ def test_liquisto_deploy_gate_rejects_daskuechenhaus_content_marker() -> None:
     assert 'expected_content_marker="Liquisto workspace"' in workflow
     assert 'forbidden_content_marker="daskuechenhaus"' in workflow
     assert "forbidden cross-tenant marker" in workflow
+
+
+def test_khh_deploy_gate_rejects_foreign_content_marker() -> None:
+    workflow = TENANT_UI_DEPLOY_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "- khh-workbench" in workflow
+    assert 'if [ "${UI_APP}" = "khh-workbench" ]; then' in workflow
+    assert 'expected_content_marker="Leitungs-Cockpit"' in workflow
+    assert 'forbidden_content_marker="liquisto"' in workflow
+    assert "KHH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "KHH_CLOUDFLARE_ZONE_ID" in workflow
 
 
 def test_daskuechenhaus_crm_audit_evidence_is_tenant_pinned() -> None:

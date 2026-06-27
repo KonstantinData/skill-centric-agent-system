@@ -263,6 +263,67 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
     ]
 
 
+def test_kinderhaus_tenant_registry_example_matches_schema_and_privacy_boundary(
+    tenant_registry_schema: dict[str, Any],
+    crm_skill_pack_schema: dict[str, Any],
+) -> None:
+    kinderhaus = load_json(REPO_ROOT / "examples" / "tenants" / "kinderhaus.json")
+
+    assert_valid(tenant_registry_schema, kinderhaus)
+    assert_tenant_registry_references_are_valid(kinderhaus)
+    assert kinderhaus["tenant_id"] == "tenant_kinderhaus"
+    assert kinderhaus["area_id"] == "kinderhaus-heuschrecken"
+    assert kinderhaus["hostnames"] == [
+        {
+            "hostname": "kinderhaus-heuschrecken.cloud",
+            "purpose": "primary-ui",
+            "expected_origin": None,
+            "cloudflare_proxy_expected": True,
+        }
+    ]
+    assert kinderhaus["memory"]["shared_promotion_allowed"] is False
+    assert kinderhaus["ui_profile"]["brand_assets"] == {
+        "logo_path": "assets/images/tenant_kinderhaus/khh-workbench-logo.png",
+        "favicon_path": None,
+        "app_icon_path": None,
+        "asset_scope": "tenant-owned",
+    }
+    assert (REPO_ROOT / kinderhaus["ui_profile"]["logo_path"]).is_file()
+    assert kinderhaus["ui_profile"]["navigation"] == {
+        "primary_area_ids": [
+            "leadership-cockpit",
+            "deadline-review",
+            "development-planning",
+        ],
+        "admin_area_ids": ["tenant-admin"],
+    }
+    assert [pack["id"] for pack in kinderhaus["ui_profile"]["scas_skill_packs"]] == [
+        "khh-deadline-assistance",
+        "khh-development-planning",
+    ]
+    serialized = json.dumps(kinderhaus, sort_keys=True).lower()
+    for forbidden in (
+        "nachname",
+        "adresse",
+        "geburtsdatum",
+        "diagnose",
+        "personalakte",
+        "liquisto",
+        "daskuechenhaus",
+    ):
+        assert forbidden not in serialized
+
+    for pack_ref in kinderhaus["ui_profile"]["scas_skill_packs"]:
+        skill_pack = load_json(
+            REPO_ROOT / "examples" / "crm-skill-packs" / f"{pack_ref['id']}.json"
+        )
+        assert_valid(crm_skill_pack_schema, skill_pack)
+        assert skill_pack["tenant_id"] == kinderhaus["tenant_id"]
+        assert skill_pack["task_types"] == pack_ref["task_types"]
+        assert skill_pack["required_capabilities"] == pack_ref["required_capabilities"]
+        assert skill_pack["ui_binding"]["grants_runtime_authority"] is False
+
+
 def test_tenant_ui_profile_rejects_unknown_navigation_area(
     tenant_registry_schema: dict[str, Any],
 ) -> None:

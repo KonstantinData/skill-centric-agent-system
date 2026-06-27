@@ -18,6 +18,8 @@ lib/
 lib64/
 !apps/liquisto-workbench/src/lib/
 !apps/liquisto-workbench/src/lib/**
+!apps/khh-workbench/src/lib/
+!apps/khh-workbench/src/lib/**
 parts/
 sdist/
 var/
@@ -60,6 +62,7 @@ security-evidence/
 coverage/
 node_modules/
 apps/liquisto-workbench/.next/
+apps/khh-workbench/.next/
 template/*
 !template/skills/
 !template/skills/**

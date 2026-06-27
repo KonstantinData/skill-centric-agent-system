@@ -58,6 +58,7 @@ ES_DASKUECHENHAUS_CUSTOMER_DATABASE_RESET_WORKFLOW_PATH = (
 )
 DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME = "LIQUI" + "STO_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME = "DASKUECHENHAUS_OWNER_PRINCIPAL_ID"
+TENANT_KINDERHAUS_OWNER_PRINCIPAL_ENV_NAME = "TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID"
 DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPALS_ENV_NAME = (
     "DASKUECHENHAUS_ADDITIONAL_ADMIN_PRINCIPAL_IDS_JSON"
 )
@@ -453,6 +454,8 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert f"SCAS_PROD_{DEFAULT_TENANT_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_STAGING_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert f"SCAS_PROD_{DASKUECHENHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_STAGING_{TENANT_KINDERHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
+    assert f"SCAS_PROD_{TENANT_KINDERHAUS_OWNER_PRINCIPAL_ENV_NAME}" in workflow
     assert "Unsupported owner principal mapping for staging tenant ${TENANT_ID}" in workflow
     assert "Unsupported owner principal mapping for prod tenant ${TENANT_ID}" in workflow
     assert "login_url must be an https URL when provided" in workflow
@@ -479,13 +482,20 @@ def test_tenant_ui_deploy_workflow_requires_auth_evidence_for_mutation() -> None
     assert "Create Cloudflare Origin certificate" in workflow
     assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
     assert "LIQUISTO_CLOUDFLARE_ZONE_ID" in workflow
+    assert "KHH_CLOUDFLARE_API_TOKEN" in workflow
+    assert "KHH_CLOUDFLARE_ZONE_ID" in workflow
+    assert "skipping origin certificate creation" in workflow
+    assert "target host must already have a certificate" in workflow
     assert "/client/v4/certificates" in workflow
     assert "tenant-ui-origin-cert/origin.pem" in workflow
     assert 'cert_hostnames+=("www.${REVERSE_PROXY_CERT_HOSTNAME}")' in workflow
     assert '"hostnames": hostnames' in workflow
-    assert "Cloudflare DNS sync is only wired for the liquisto tenant" in workflow
-    assert "Cloudflare DNS sync is only allowed for liquisto.cloud" in workflow
+    assert "Cloudflare DNS sync is only wired for approved tenant UI hostnames" in workflow
+    assert "tenant_kinderhaus:kinderhaus-heuschrecken.cloud" in workflow
+    assert "Cloudflare DNS sync hostname is not approved for ${TENANT_ID}" in workflow
     assert "Sync Cloudflare DNS to deployment host" in workflow
+    assert 'delete_records("A", f"www.{hostname}")' in workflow
+    assert 'delete_records("AAAA", f"www.{hostname}")' in workflow
     assert "synced-to-deployment-host" in workflow
 
 
@@ -505,11 +515,15 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert 'reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"' in workflow
     assert "server_name ${reverse_proxy_server_names};" in workflow
     assert "systemctl reload nginx" in workflow
+    assert "nginx -s reload" in workflow
+    assert "systemctl start nginx" in workflow
     assert "Reverse proxy:" in workflow
     assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow
     assert "expected_content_marker=\"Liquisto workspace\"" in workflow
     assert 'forbidden_content_marker="daskuechenhaus"' in workflow
+    assert 'expected_content_marker="Leitungs-Cockpit"' in workflow
+    assert 'forbidden_content_marker="liquisto"' in workflow
     assert "Post-deploy content check failed" in workflow
     assert "forbidden cross-tenant marker" in workflow
     assert "Verify public tenant UI content" in workflow

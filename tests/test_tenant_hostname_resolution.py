@@ -67,6 +67,20 @@ def test_tenant_hostname_resolver_returns_daskuechenhaus_setup_authority() -> No
     assert authority.cloudflare_proxy_expected is True
 
 
+def test_tenant_hostname_resolver_returns_kinderhaus_setup_authority() -> None:
+    resolver = TenantHostnameResolver.from_paths(tenant_paths())
+
+    authority = resolver.resolve("kinderhaus-heuschrecken.cloud")
+
+    assert authority.tenant_id == "tenant_kinderhaus"
+    assert authority.area_id == "kinderhaus-heuschrecken"
+    assert authority.hostname == "kinderhaus-heuschrecken.cloud"
+    assert authority.purpose == "primary-ui"
+    assert authority.status == "setup"
+    assert authority.expected_origin is None
+    assert authority.cloudflare_proxy_expected is True
+
+
 def test_tenant_hostname_resolver_rejects_unknown_hostname() -> None:
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 

@@ -78,6 +78,12 @@ main-protection desired-state validation, dependency policy, workflow
 hardening, pinned Actions, Actions-BOM, release SBOM generation, Data
 Governance documentation, and a generic knowledge/data-quality policy schema.
 
+The first KHH Workbench surface exists as a responsive Next.js web app for
+`tenant_kinderhaus`, but the active product direction is now platform-neutral
+tenant workbench delivery. Additional KHH feature depth must wait until the
+shared domain, API/state, UI, and native target-contract boundaries in ADR-0012
+and `docs/roadmap/platform-neutral-app-readiness.md` are in place.
+
 ## Phase 0: Runtime Preflight Gate
 
 - Synchronize the Notion Feature Backlog, this roadmap, `docs/reference/architecture.md`,
@@ -303,6 +309,30 @@ Production change gates now validate effective CODEOWNERS ownership for
 high-impact paths and separate deterministic PR desired-state checks from a
 scheduled/manual live GitHub governance drift workflow with structured
 remediation evidence.
+
+## Phase 9: Platform-Neutral Tenant Workbench Readiness
+
+This phase converts tenant workbench delivery from a web-only implementation
+path into a platform-neutral app architecture that can later support native
+iOS/Android shells without a second product implementation.
+
+The phase starts with KHH (`tenant_kinderhaus`) and applies to future tenant
+workbench surfaces once the shared package boundary is established.
+
+1. Accept ADR-0012 and native target contracts for auth, navigation, offline,
+   push, and device permissions.
+2. Add a shared tenant workbench package scaffold.
+3. Move KHH domain, navigation, workflow, copy-key, and privacy definitions out
+   of the Next.js app.
+4. Add a platform-neutral API/state client with web adapter and tenant-scope
+   tests.
+5. Introduce shared UI primitives and migrate the KHH web shell to consume
+   shared UI/domain/state packages.
+6. Add a minimal Expo/native proof shell and drift gates before any native
+   release claim.
+
+Status: planned. The detailed backlog, estimates, sprint recommendation, and
+acceptance criteria live in `docs/roadmap/platform-neutral-app-readiness.md`.
 
 ## Historical Runtime Preflight Backlog Titles (Canon)
 

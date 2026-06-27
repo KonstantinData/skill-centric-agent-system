@@ -172,7 +172,7 @@
   "$defs": {
     "id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9_-]*$"
     },
     "semver": {
       "type": "string",
@@ -765,7 +765,7 @@
         },
         "route": {
           "type": "string",
-          "pattern": "^/[a-z0-9/-]+$"
+          "pattern": "^/(?:[a-z0-9/-]+)?$"
         },
         "required_capability": {
           "$ref": "#/$defs/id"

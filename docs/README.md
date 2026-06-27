@@ -68,6 +68,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 
 - `docs/roadmap/scas-execution-queue.md`
 - `docs/roadmap/infrastructure-implementation-status.md`
+- `docs/roadmap/platform-neutral-app-readiness.md`
 - `docs/roadmap/production-readiness-backlog.md`
 
 ## Reference
@@ -87,9 +88,14 @@ This repository uses `docs/` as an operational documentation surface, not only a
   `liquisto.cloud`. It exposes product-facing Research and Admin entry points
   while keeping SCAS architecture, tenant model details, runtime composition,
   and governance evidence out of visible user copy.
+- `apps/khh-workbench/`: KHH Workbench web shell for
+  `kinderhaus-heuschrecken.cloud`. New KHH feature work must move through the
+  platform-neutral tenant workbench architecture in ADR-0012 before deeper
+  feature build-out.
 
 ## Roadmap
 
 - `docs/roadmap/memory-architecture-backlog.md`
+- `docs/roadmap/platform-neutral-app-readiness.md`
 - `docs/roadmap/production-readiness-backlog.md`
 - `docs/roadmap/scas-execution-queue.md`
