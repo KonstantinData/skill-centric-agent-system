@@ -642,6 +642,7 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "must allow account-scoped Cloudflare Access application, policy" in workflow
     assert "zone-scoped Rulesets edit" in workflow
     assert "http_request_dynamic_redirect" in workflow
+    assert '"code":10003' in workflow
     assert "liquisto_www_to_apex" in workflow
     assert 'concat("https://liquisto.cloud", http.request.uri.path)' in workflow
     assert "Liquisto Access may only protect liquisto.cloud directly." in workflow
