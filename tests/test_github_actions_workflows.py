@@ -513,6 +513,8 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert 'reverse_proxy_server_names="${TENANT_HOSTNAME} www.${TENANT_HOSTNAME}"' in workflow
     assert "server_name ${reverse_proxy_server_names};" in workflow
     assert "systemctl reload nginx" in workflow
+    assert "nginx -s reload" in workflow
+    assert "systemctl start nginx" in workflow
     assert "Reverse proxy:" in workflow
     assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow

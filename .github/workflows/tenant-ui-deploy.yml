@@ -911,7 +911,11 @@ jobs:
               exit 1
             fi
 
-            sudo_if_needed systemctl reload nginx
+            if ! sudo_if_needed systemctl reload nginx; then
+              if ! sudo_if_needed nginx -s reload; then
+                sudo_if_needed systemctl start nginx
+              fi
+            fi
             for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
               curl -kfsS \
                 --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
