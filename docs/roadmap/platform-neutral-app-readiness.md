@@ -14,6 +14,10 @@ Current state:
 - `apps/khh-workbench` is a responsive Next.js web shell consuming shared KHH
   domain, client, state, and headless UI contracts while preserving desktop
   shell rendering.
+- `apps/khh-ios` is a native SwiftUI iOS shell added beside the browser
+  Workbench. It currently renders a read-only KHH dashboard snapshot and keeps
+  TestFlight/App Store, Cloudflare Access/OIDC handoff, secure storage, push,
+  and write-intent work out of scope until those gates have evidence.
 - `apps/khh-mobile-proof` is an Expo Router iOS proof shell consuming the same
   shared contracts and explicit native adapter policies.
 - `packages/tenant-workbench-domain`, `packages/tenant-workbench-client`, and
@@ -184,6 +188,9 @@ Minimum current-sprint acceptance:
   DOM, Next.js, Expo, or React Native imports.
 - `apps/khh-workbench` consumes the shared contracts and keeps web-specific
   routing, images, CSS, and icon rendering in the shell.
+- `apps/khh-ios` provides a native SwiftUI app project that can be opened in
+  Xcode without replacing the `kinderhaus-heuschrecken.cloud` browser
+  Workbench.
 - `apps/khh-mobile-proof` typechecks as an Expo Router iOS proof shell with
   explicit auth handoff, tenant-scoped storage, offline summary, push opt-in,
   and permission gate adapters.
