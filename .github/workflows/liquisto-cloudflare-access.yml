@@ -184,8 +184,17 @@ jobs:
                       return app
               return None
 
+          def any_liquisto_host_app(candidates: list[dict]) -> dict | None:
+              expected = set(hostnames)
+              for app in candidates:
+                  if app.get("type") != "self_hosted":
+                      continue
+                  if destination_uris(app) & expected:
+                      return app
+              return None
+
           def select_target_app(candidates: list[dict]) -> dict | None:
-              return exact_shared_app(candidates) or primary_app(candidates)
+              return exact_shared_app(candidates) or primary_app(candidates) or any_liquisto_host_app(candidates)
 
           def is_one_time_pin_provider(provider: dict) -> bool:
               provider_type = str(provider.get("type") or "").lower()
@@ -303,6 +312,20 @@ jobs:
           if apply_changes:
               refreshed_apps = apps_before
               app = select_target_app(refreshed_apps)
+              app_id = str(app["id"]) if app and app.get("id") else ""
+              for duplicate in refreshed_apps:
+                  uris = destination_uris(duplicate)
+                  if (
+                      duplicate.get("type") == "self_hosted"
+                      and uris
+                      and uris.issubset(set(hostnames))
+                      and str(duplicate.get("id")) != app_id
+                  ):
+                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{duplicate['id']}")
+                      deleted_duplicate_apps.append(str(duplicate.get("domain") or duplicate["id"]))
+              if deleted_duplicate_apps:
+                  refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+                  app = select_target_app(refreshed_apps)
               payload = app_payload(app, one_time_pin_provider_ids)
               if app:
                   cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
@@ -315,17 +338,6 @@ jobs:
 
               refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
               target_app = select_target_app(refreshed_apps)
-              target_id = str(target_app["id"]) if target_app and target_app.get("id") else ""
-              for app in refreshed_apps:
-                  uris = destination_uris(app)
-                  if (
-                      app.get("type") == "self_hosted"
-                      and uris
-                      and uris.issubset(set(hostnames))
-                      and str(app.get("id")) != target_id
-                  ):
-                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
-                      deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
               if not target_app:
                   raise RuntimeError("Missing shared Liquisto Access application after update.")
               changes, summaries = ensure_policy(target_app)
