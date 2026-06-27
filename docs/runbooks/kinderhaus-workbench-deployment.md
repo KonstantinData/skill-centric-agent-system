@@ -46,13 +46,13 @@ The workflow allowlist only permits Cloudflare DNS sync for
 `tenant_kinderhaus:kinderhaus-heuschrecken.cloud`. Token values must never be
 written to repository files, Notion, logs, or generated evidence.
 
-When `auth_mode=required`, the deploy workflow also ensures that Cloudflare
-Access covers both `kinderhaus-heuschrecken.cloud` and
-`www.kinderhaus-heuschrecken.cloud` before the public smoke check runs. The
-guard is fail-closed: it creates or updates KHH self-hosted Access applications,
-removes duplicate KHH applications and bypass policies for those hostnames, and
-preserves non-bypass policies. If no allow policy matches, Cloudflare Access
-must deny the request rather than exposing workbench HTML.
+When `auth_mode=required`, the deploy workflow fails closed even if the
+Cloudflare account-level Access API scope is not available to the tenant deploy
+token. The managed Nginx origin only proxies to the KHH container when
+`cf-access-authenticated-user-email` is present; requests without the
+Cloudflare Access identity header receive `403` at the origin. The public smoke
+check still accepts only a Cloudflare Access redirect (`302` or `303`) or
+`403`, never public workbench HTML.
 
 The managed reverse-proxy step owns one active Nginx server configuration for
 the KHH apex and `www` hostnames. Before `nginx -t`, it disables other active

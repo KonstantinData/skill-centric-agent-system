@@ -847,6 +847,22 @@ jobs:
             nginx_backup="${evidence_dir}/nginx-site.previous"
             nginx_conflict_backup_dir="${evidence_dir}/nginx-sites-enabled-conflicts"
             disabled_nginx_conflicts="none"
+            nginx_required_access_guard=""
+            origin_check_auth_headers=()
+            origin_access_gate="not-required"
+            if [ "${SCAS_UI_AUTH_MODE_TARGET}" = "required" ]; then
+              nginx_required_access_guard='
+              if ($http_cf_access_authenticated_user_email = "") {
+                  return 403;
+              }
+              proxy_set_header cf-access-authenticated-user-email $http_cf_access_authenticated_user_email;
+              proxy_set_header cf-access-user-id $http_cf_access_user_id;'
+              origin_check_auth_headers=(
+                -H "cf-access-authenticated-user-email: deploy-check@kinderhaus-heuschrecken.cloud"
+                -H "cf-access-user-id: deploy-check"
+              )
+              origin_access_gate="cf-access-authenticated-user-email-required"
+            fi
 
             restore_nginx_conflicts() {
               if [ -d "${nginx_conflict_backup_dir}" ]; then
@@ -888,6 +904,7 @@ jobs:
               ssl_certificate_key ${key_file};
 
               location / {
+          ${nginx_required_access_guard}
                   proxy_pass http://127.0.0.1:${LOCAL_HEALTH_PORT};
                   proxy_http_version 1.1;
                   proxy_set_header Host \$host;
@@ -984,6 +1001,7 @@ jobs:
                 if curl -kfsS \
                   --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
                   --max-time 10 \
+                  "${origin_check_auth_headers[@]}" \
                   "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" \
                   -o "${origin_body}"; then
                   if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${origin_body}"; then
@@ -1038,6 +1056,7 @@ jobs:
             printf -- '- Compose file: `%s`\n' "${REMOTE_OVERRIDE_PATH}"
             printf -- '- Reverse proxy: `%s`\n' "${reverse_proxy_status}"
             printf -- '- Disabled conflicting Nginx enabled entries: `%s`\n' "${disabled_nginx_conflicts:-none}"
+            printf -- '- Origin access gate: `%s`\n' "${origin_access_gate}"
             printf -- '- Health path: `%s`\n' "${SCAS_UI_HEALTH_PATH}"
             printf -- '- Origin certificate: `%s`\n' "${cert_file:-not-managed}"
             printf -- '- Expected content marker: `%s`\n' "${expected_content_marker:-not-required}"
@@ -1183,227 +1202,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${KHH_CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::error::Missing KHH Cloudflare API token."
-            exit 1
-          fi
-          if [ -z "${KHH_CLOUDFLARE_ZONE_ID}" ]; then
-            echo "::error::Missing KHH Cloudflare zone id."
-            exit 1
-          fi
-
           mkdir -p tenant-ui-access-evidence
-          CLOUDFLARE_API_TOKEN="${KHH_CLOUDFLARE_API_TOKEN}" \
-          CLOUDFLARE_ZONE_ID="${KHH_CLOUDFLARE_ZONE_ID}" \
-          python3 - <<'PY'
-          import copy
-          import json
-          import os
-          import re
-          import urllib.error
-          import urllib.request
-          from datetime import UTC, datetime
-          from pathlib import Path
-
-          token = os.environ["CLOUDFLARE_API_TOKEN"]
-          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
-          tenant_id = os.environ["TENANT_ID"]
-          hostname = os.environ["TENANT_HOSTNAME"].strip().lower()
-          base_url = "https://api.cloudflare.com/client/v4"
-
-          if tenant_id != "tenant_kinderhaus" or hostname != "kinderhaus-heuschrecken.cloud":
-              raise SystemExit("KHH Access fail-closed guard may only manage kinderhaus-heuschrecken.cloud.")
-
-          hostnames = [hostname, f"www.{hostname}"]
-          hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
-          for value in hostnames:
-              if not hostname_pattern.fullmatch(value):
-                  raise SystemExit(f"Unsupported KHH hostname: {value}")
-
-          def cf_request(method: str, path: str, payload: dict | None = None) -> dict:
-              data = None
-              headers = {"Authorization": f"Bearer {token}"}
-              if payload is not None:
-                  data = json.dumps(payload, sort_keys=True).encode("utf-8")
-                  headers["Content-Type"] = "application/json"
-              request = urllib.request.Request(
-                  f"{base_url}{path}",
-                  data=data,
-                  headers=headers,
-                  method=method,
-              )
-              try:
-                  with urllib.request.urlopen(request, timeout=30) as response:
-                      body = json.loads(response.read().decode("utf-8"))
-              except urllib.error.HTTPError as exc:
-                  detail = exc.read().decode("utf-8", errors="replace")
-                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {detail}") from exc
-              if not body.get("success", False):
-                  raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
-              return body
-
-          def destination_uris(app: dict) -> set[str]:
-              uris: set[str] = set()
-              for destination in app.get("destinations") or []:
-                  if destination.get("type") == "public" and destination.get("uri"):
-                      uris.add(str(destination["uri"]).lower().rstrip("/"))
-              for domain in app.get("self_hosted_domains") or []:
-                  uris.add(str(domain).lower().rstrip("/"))
-              if app.get("domain"):
-                  uris.add(str(app["domain"]).lower().rstrip("/"))
-              return uris
-
-          def exact_app_for_hostname(candidates: list[dict], candidate_hostname: str) -> dict | None:
-              for app in candidates:
-                  if app.get("type") == "self_hosted" and destination_uris(app) == {candidate_hostname}:
-                      return app
-              return None
-
-          def covering_app_for_hostname(
-              candidates: list[dict],
-              candidate_hostname: str,
-              excluded_ids: set[str],
-          ) -> dict | None:
-              for app in candidates:
-                  if app.get("type") != "self_hosted" or str(app.get("id")) in excluded_ids:
-                      continue
-                  if candidate_hostname in destination_uris(app):
-                      return app
-              return None
-
-          def app_payload(candidate_hostname: str, app: dict | None) -> dict:
-              allowed_keys = {
-                  "type",
-                  "name",
-                  "domain",
-                  "destinations",
-                  "session_duration",
-                  "allowed_idps",
-                  "app_launcher_visible",
-                  "auto_redirect_to_identity",
-                  "enable_binding_cookie",
-                  "http_only_cookie_attribute",
-                  "same_site_cookie_attribute",
-                  "path_cookie_attribute",
-                  "custom_deny_message",
-                  "custom_deny_url",
-                  "custom_non_identity_deny_url",
-                  "cors_headers",
-                  "tags",
-              }
-              payload: dict = {}
-              if app:
-                  payload = {
-                      key: copy.deepcopy(value)
-                      for key, value in app.items()
-                      if key in allowed_keys and value is not None
-                  }
-              payload["type"] = "self_hosted"
-              payload["name"] = f"SCAS KHH Workbench ({candidate_hostname})"
-              payload["domain"] = candidate_hostname
-              payload["destinations"] = [{"type": "public", "uri": candidate_hostname}]
-              payload["auto_redirect_to_identity"] = False
-              payload["app_launcher_visible"] = False
-              payload["custom_deny_message"] = "Access to the KHH Workbench is not publicly available."
-              payload["http_only_cookie_attribute"] = True
-              payload["same_site_cookie_attribute"] = "lax"
-              payload["path_cookie_attribute"] = False
-              payload["session_duration"] = "24h"
-              payload.pop("self_hosted_domains", None)
-              return payload
-
-          zone = cf_request("GET", f"/zones/{zone_id}").get("result", {})
-          account_id = str(((zone.get("account") or {}).get("id") or ""))
-          if not account_id:
-              raise SystemExit("Cloudflare zone did not expose an account id for KHH Access management.")
-
-          apps_before = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-          app_changes: list[str] = []
-          removed_bypass_policies: list[str] = []
-          preserved_policies: list[str] = []
-          deleted_duplicate_apps: list[str] = []
-          used_ids: set[str] = set()
-
-          for candidate_hostname in hostnames:
-              app = exact_app_for_hostname(apps_before, candidate_hostname) or covering_app_for_hostname(
-                  apps_before,
-                  candidate_hostname,
-                  used_ids,
-              )
-              payload = app_payload(candidate_hostname, app)
-              if app:
-                  cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
-                  app_changes.append(f"{candidate_hostname}:updated")
-                  used_ids.add(str(app["id"]))
-              else:
-                  created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
-                  app_changes.append(f"{candidate_hostname}:created")
-                  if created.get("id"):
-                      used_ids.add(str(created["id"]))
-              apps_before = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-
-          refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-          target_apps: dict[str, dict] = {}
-          used_ids = set()
-          for candidate_hostname in hostnames:
-              app = exact_app_for_hostname(refreshed_apps, candidate_hostname) or covering_app_for_hostname(
-                  refreshed_apps,
-                  candidate_hostname,
-                  used_ids,
-              )
-              if not app:
-                  raise SystemExit(f"KHH Access application was not created for {candidate_hostname}.")
-              target_apps[candidate_hostname] = app
-              used_ids.add(str(app["id"]))
-
-          target_ids = {str(app["id"]) for app in target_apps.values()}
-          allowed_hostname_set = set(hostnames)
-          for app in refreshed_apps:
-              uris = destination_uris(app)
-              if (
-                  app.get("type") == "self_hosted"
-                  and uris
-                  and uris.issubset(allowed_hostname_set)
-                  and str(app.get("id")) not in target_ids
-              ):
-                  cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
-                  deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
-
-          for candidate_hostname, app in target_apps.items():
-              policies = cf_request(
-                  "GET",
-                  f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200",
-              ).get("result", [])
-              for policy in policies:
-                  decision = str(policy.get("decision") or "").lower()
-                  policy_name = str(policy.get("name") or policy.get("id") or "unknown")
-                  if decision == "bypass":
-                      cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}/policies/{policy['id']}")
-                      removed_bypass_policies.append(f"{candidate_hostname}:{policy_name}")
-                  else:
-                      preserved_policies.append(f"{candidate_hostname}:{policy_name}:{decision or 'unknown'}")
-
-          evidence = [
-              "# KHH Cloudflare Access Fail-Closed Evidence",
-              "",
-              f"- Tenant ID: `{tenant_id}`",
-              f"- Hostnames: `{' '.join(hostnames)}`",
-              f"- Access applications: `{', '.join(app_changes)}`",
-              f"- Deleted duplicate applications: `{', '.join(deleted_duplicate_apps) or 'none'}`",
-              f"- Removed bypass policies: `{', '.join(removed_bypass_policies) or 'none'}`",
-              f"- Preserved non-bypass policies: `{', '.join(preserved_policies) or 'none'}`",
-              "- Default posture: `Cloudflare Access deny-by-default when no Allow policy matches`",
-              f"- Collected at: `{datetime.now(UTC).isoformat()}`",
-              "",
-          ]
-          Path("tenant-ui-access-evidence/access.md").write_text("\n".join(evidence), encoding="utf-8")
-          print(json.dumps({
-              "app_changes": app_changes,
-              "deleted_duplicate_apps": deleted_duplicate_apps,
-              "hostnames": hostnames,
-              "removed_bypass_policy_count": len(removed_bypass_policies),
-          }, sort_keys=True))
-          PY
+          {
+            printf '# KHH Cloudflare Access Fail-Closed Evidence\n\n'
+            printf -- '- Tenant ID: `%s`\n' "${TENANT_ID}"
+            printf -- '- Hostnames: `%s www.%s`\n' "${TENANT_HOSTNAME}" "${TENANT_HOSTNAME}"
+            printf -- '- Account Access API mutation: `not-performed-by-tenant-ui-deploy`\n'
+            printf -- '- Origin gate: `Nginx requires cf-access-authenticated-user-email before proxying to the KHH container`\n'
+            printf -- '- Public gate: `Verify public tenant UI content must observe Cloudflare Access redirect or 403 and rejects public 200 HTML`\n'
+            printf -- '- Collected at: `%s`\n' "$(date -Is)"
+          } > tenant-ui-access-evidence/access.md
 
       - name: Upload KHH Access evidence
         if: env.APPLY_DEPLOY == 'true' && env.SCAS_UI_AUTH_MODE_TARGET == 'required' && env.TENANT_ID == 'tenant_kinderhaus'
