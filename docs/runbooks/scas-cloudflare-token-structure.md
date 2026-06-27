@@ -24,7 +24,7 @@ workflow, and prefer read-only Zone permissions for evidence collection.
 | `SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN` | Read-only tenant DNS, TLS, and Worker route evidence | `condata.io` zone |
 | `LIQUISTO_CLOUDFLARE_ACCOUNT_ID` | Liquisto Cloudflare account identifier for tenant-owned zone automation | `liquisto.cloud` account |
 | `LIQUISTO_CLOUDFLARE_ZONE_ID` | Liquisto tenant zone identifier | `liquisto.cloud` zone |
-| `LIQUISTO_CLOUDFLARE_API_TOKEN` | Liquisto DNS, TLS, and Access application automation | `liquisto.cloud` zone plus account-scoped Cloudflare Access application, policy, organization, and identity-provider resources |
+| `LIQUISTO_CLOUDFLARE_API_TOKEN` | Liquisto DNS, TLS, and Access application automation | `liquisto.cloud` zone plus account-scoped Cloudflare Access application, policy, and identity-provider resources |
 | `AI_GATEWAY_AUTH_TOKEN` | Runtime bearer token for Cloudflare Authenticated Gateway | Worker/runtime secret, not a Cloudflare management token |
 
 Using the same value for all `*_CLOUDFLARE_ACCOUNT_ID` secrets is correct when
@@ -77,9 +77,11 @@ Liquisto Access token:
 
 - Account-scoped to `LIQUISTO_CLOUDFLARE_ACCOUNT_ID`.
 - Must allow Cloudflare Access application and policy read/write operations.
-- Must allow Cloudflare Access organization and identity-provider read
-  operations; organization write is used to keep Access login branding and
-  auto-redirect behavior aligned.
+- Must allow Cloudflare Access identity-provider read operations.
+- Must not require or use Cloudflare Access organization write operations.
+  Zero Trust organization name and login branding are account-wide settings
+  owned by the DKH Access workflow until a tenant-separated Access account
+  strategy is documented and implemented.
 - Must also retain the Liquisto zone permissions used by DNS, TLS, and
   deployment evidence workflows.
 

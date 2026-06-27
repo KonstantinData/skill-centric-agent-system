@@ -57,6 +57,11 @@ After each production UI deploy, run or verify the Liquisto Cloudflare Access
 workflow in apply mode so unauthenticated public requests redirect to
 Cloudflare Access instead of serving Workbench HTML directly:
 
+The Liquisto Access workflow must manage only the Liquisto self-hosted Access
+applications and their allow policies. It must not read or update the
+account-wide Cloudflare Zero Trust organization name or login branding because
+those settings currently belong to the independent DKH CRM Access setup.
+
 ```powershell
 gh workflow run liquisto-cloudflare-access.yml `
   --repo KonstantinData/skill-centric-agent-system `
