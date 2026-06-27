@@ -633,6 +633,8 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     )
     assert "Cloudflare Access One-Time PIN email verification" in workflow
     assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
+    assert "started-before-cloudflare-api-call" in workflow
+    assert "must allow account-scoped Cloudflare Access application, policy" in workflow
     assert "SCAS Liquisto Workbench allowed users" in workflow
     assert (
         'cf_request("DELETE", '

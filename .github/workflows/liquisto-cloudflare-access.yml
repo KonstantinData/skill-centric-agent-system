@@ -78,6 +78,15 @@ jobs:
           fi
 
           install -d liquisto-access-evidence
+          {
+            printf '# Liquisto Cloudflare Access Evidence\n\n'
+            printf -- '- Apply changes: `%s`\n' "${APPLY_CHANGES}"
+            printf -- '- Primary hostname: `%s`\n' "${LIQUISTO_ACCESS_PRIMARY_HOSTNAME}"
+            printf -- '- Hostnames: `%s`\n' "${LIQUISTO_ACCESS_HOSTNAMES}"
+            printf -- '- Allowed emails: `%s`\n' "${LIQUISTO_ACCESS_ALLOWED_EMAILS}"
+            printf -- '- Status: `started-before-cloudflare-api-call`\n'
+            printf -- '- Failure guidance: `LIQUISTO_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, organization, and identity-provider operations for LIQUISTO_CLOUDFLARE_ACCOUNT_ID.`\n'
+          } > liquisto-access-evidence/access.md
 
           python3 - <<'PY'
           import copy
