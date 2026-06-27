@@ -324,21 +324,24 @@ workbench surfaces once the shared package boundary is established.
 2. Add a shared tenant workbench package scaffold.
 3. Move KHH domain, navigation, workflow, copy-key, and privacy definitions out
    of the Next.js app.
-4. Add a platform-neutral API/state client with web adapter and tenant-scope
-   tests.
-5. Introduce shared UI primitives and migrate the KHH web shell to consume
-   shared UI/domain/state packages.
-6. Add a minimal Expo/native proof shell and drift gates before any native
+4. Add a platform-neutral API/state client with auth session, query cache,
+   offline summary store, web adapter, and tenant-scope tests.
+5. Introduce shared UI view models, design tokens, headless component
+   contracts, web/native adapter plans, and migrate the KHH web shell to
+   consume shared UI/domain/state packages.
+6. Add an Expo Router native proof shell and drift gates before any native
    release claim.
 
 Status: in progress. ADR-0012 is accepted, the shared package scaffold exists,
-KHH domain/navigation/privacy data has moved out of the Next.js app, the web
-shell consumes shared domain/client/UI contracts, the Native Proof shell exists,
+KHH domain/navigation/privacy data has moved out of the Next.js app, the shared
+client owns auth session/query/offline/write-intent boundaries, the shared UI
+package owns headless contracts and adapter plans, the web shell consumes those
+contracts without losing desktop density, the Expo Router proof shell exists,
 and the tenant deploy workflow now expects Cloudflare Access redirect/403 when
-`auth_mode=required`. Remaining work is deeper shared UI migration, real API
-adapters, native auth implementation evidence, and production release gates.
-The detailed backlog, estimates, sprint recommendation, and acceptance criteria
-live in `docs/roadmap/platform-neutral-app-readiness.md`.
+`auth_mode=required`. Remaining work is production API integration, production
+native secure storage binding, iOS Simulator visual evidence, and production
+release gates. The detailed backlog, estimates, sprint recommendation, and
+acceptance criteria live in `docs/roadmap/platform-neutral-app-readiness.md`.
 
 ## Historical Runtime Preflight Backlog Titles (Canon)
 

@@ -2,12 +2,19 @@ import { PageHero } from "@/components/chrome/page-hero";
 import { LinkButton } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { createKhhWorkbenchClient } from "@scas/tenant-workbench-client";
-import { createDashboardViewModel } from "@scas/tenant-workbench-ui";
+import {
+  createDashboardSurfaceContract,
+  createDashboardViewModel,
+  createWebWorkbenchAdapterPlan,
+} from "@scas/tenant-workbench-ui";
 import { resolveIcon } from "@/lib/icons";
 
 export default async function Home() {
   const client = createKhhWorkbenchClient();
-  const dashboard = createDashboardViewModel(await client.getDashboard());
+  const dashboardData = await client.getDashboard();
+  const dashboard = createDashboardViewModel(dashboardData);
+  const surface = createDashboardSurfaceContract(dashboardData);
+  const webPlan = createWebWorkbenchAdapterPlan(surface);
 
   return (
     <div className="content-stack">
@@ -26,8 +33,10 @@ export default async function Home() {
       <div className="signal-grid">
         {dashboard.dailySignals.map((signal) => {
           const Icon = resolveIcon(signal.iconId);
+          const className =
+            webPlan.componentClassNames[`signal:${signal.signalId}`] ?? "status-card";
           return (
-            <Panel key={signal.signalId} className={`status-card tone-${signal.tone}`}>
+            <Panel key={signal.signalId} className={`${className} tone-${signal.tone}`}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="icon-btn">
                   <Icon size={18} aria-hidden />
@@ -49,8 +58,10 @@ export default async function Home() {
       <div className="system-grid">
         {dashboard.quickActions.map((action) => {
           const Icon = resolveIcon(action.iconId);
+          const className =
+            webPlan.componentClassNames[`quick-action:${action.actionId}`] ?? "";
           return (
-            <Panel key={action.actionId}>
+            <Panel key={action.actionId} className={className}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="icon-btn">
                   <Icon size={18} aria-hidden />
