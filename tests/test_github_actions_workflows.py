@@ -553,7 +553,10 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "cf-access-authenticated-user-email-required" in workflow
     assert "proxy_set_header cf-access-authenticated-user-email" in workflow
     assert "Nginx requires cf-access-authenticated-user-email" in workflow
-    assert "Account Access API mutation: `not-performed-by-tenant-ui-deploy`" in workflow
+    assert "KHH_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "Cloudflare Access One-Time PIN email verification" in workflow
+    assert "kontakt@konstantinmilonas.de" in workflow
+    assert "Account Access API mutation: `performed-by-tenant-ui-deploy`" in workflow
 
 
 def test_tenant_admin_bootstrap_workflow_is_manual_and_sanitized() -> None:
