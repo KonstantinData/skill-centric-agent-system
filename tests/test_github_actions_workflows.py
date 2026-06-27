@@ -628,7 +628,9 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "confirm_hostname must match primary_hostname when apply_changes=true" in workflow
     assert "LIQUISTO_CLOUDFLARE_ACCOUNT_ID" in workflow
     assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
-    assert "default: liquisto.cloud www.liquisto.cloud" in workflow
+    assert "default: liquisto.cloud" in workflow
+    assert "redirect_hostnames:" in workflow
+    assert "default: www.liquisto.cloud" in workflow
     assert "default: konstantin@liquisto.com aernout@liquisto.com" in workflow
     assert (
         "allowed_emails must be exactly konstantin@liquisto.com and aernout@liquisto.com"
@@ -638,9 +640,15 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
     assert "started-before-cloudflare-api-call" in workflow
     assert "must allow account-scoped Cloudflare Access application, policy" in workflow
+    assert "zone-scoped Rulesets edit" in workflow
+    assert "http_request_dynamic_redirect" in workflow
+    assert "liquisto_www_to_apex" in workflow
+    assert 'concat("https://liquisto.cloud", http.request.uri.path)' in workflow
+    assert "Liquisto Access may only protect liquisto.cloud directly." in workflow
     assert "organization, and identity-provider operations" not in workflow
     assert "access/organizations" not in workflow
     assert "Organization scope: `not read or modified by this Liquisto workflow`" in workflow
+    assert "Canonical redirect status:" in workflow
     assert "Das Küchenhaus CRM" not in workflow
     assert "SCAS Liquisto Workbench allowed users" in workflow
     assert (

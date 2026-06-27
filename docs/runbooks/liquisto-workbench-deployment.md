@@ -58,9 +58,16 @@ workflow in apply mode so unauthenticated public requests redirect to
 Cloudflare Access instead of serving Workbench HTML directly:
 
 The Liquisto Access workflow must manage only the Liquisto self-hosted Access
-applications and their allow policies. It must not read or update the
-account-wide Cloudflare Zero Trust organization name or login branding because
-those settings currently belong to the independent DKH CRM Access setup.
+application, its allow policy, and the Liquisto zone-level canonical host
+redirect. It must not read or update the account-wide Cloudflare Zero Trust
+organization name or login branding because those settings currently belong to
+the independent DKH CRM Access setup.
+
+`liquisto.cloud` is the only hostname protected directly by Cloudflare Access.
+`www.liquisto.cloud` must redirect at Cloudflare's Single Redirect phase to
+`https://liquisto.cloud` before Access evaluates the request. This keeps the
+Workbench on a single Access application audience so users authenticate once
+while navigating the Workbench.
 
 ```powershell
 gh workflow run liquisto-cloudflare-access.yml `
@@ -68,7 +75,8 @@ gh workflow run liquisto-cloudflare-access.yml `
   --ref main `
   -f apply_changes=true `
   -f confirm_production=true `
-  -f hostnames="liquisto.cloud www.liquisto.cloud" `
+  -f hostnames="liquisto.cloud" `
+  -f redirect_hostnames="www.liquisto.cloud" `
   -f allowed_emails="konstantin@liquisto.com aernout@liquisto.com" `
   -f primary_hostname=liquisto.cloud `
   -f confirm_hostname=liquisto.cloud

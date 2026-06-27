@@ -14,10 +14,15 @@ on:
         type: boolean
         default: false
       hostnames:
-        description: Space-separated public hostnames protected by Access
+        description: Space-separated public hostnames protected directly by Access
         required: true
         type: string
-        default: liquisto.cloud www.liquisto.cloud
+        default: liquisto.cloud
+      redirect_hostnames:
+        description: Space-separated public hostnames redirected to the primary hostname before Access
+        required: true
+        type: string
+        default: www.liquisto.cloud
       allowed_emails:
         description: Space-separated user emails allowed to use Liquisto Workbench
         required: true
@@ -52,10 +57,12 @@ jobs:
       APPLY_CHANGES: ${{ inputs.apply_changes }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       LIQUISTO_ACCESS_HOSTNAMES: ${{ inputs.hostnames }}
+      LIQUISTO_REDIRECT_HOSTNAMES: ${{ inputs.redirect_hostnames }}
       LIQUISTO_ACCESS_ALLOWED_EMAILS: ${{ inputs.allowed_emails }}
       LIQUISTO_ACCESS_PRIMARY_HOSTNAME: ${{ inputs.primary_hostname }}
       LIQUISTO_ACCESS_CONFIRM_HOSTNAME: ${{ inputs.confirm_hostname }}
       LIQUISTO_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ACCOUNT_ID }}
+      LIQUISTO_CLOUDFLARE_ZONE_ID: ${{ secrets.LIQUISTO_CLOUDFLARE_ZONE_ID }}
       LIQUISTO_CLOUDFLARE_API_TOKEN: ${{ secrets.LIQUISTO_CLOUDFLARE_API_TOKEN }}
 
     steps:
@@ -72,7 +79,7 @@ jobs:
             echo "::error::confirm_hostname must match primary_hostname when apply_changes=true."
             exit 1
           fi
-          if [ -z "${LIQUISTO_CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
+          if [ -z "${LIQUISTO_CLOUDFLARE_ACCOUNT_ID}" ] || [ -z "${LIQUISTO_CLOUDFLARE_ZONE_ID}" ] || [ -z "${LIQUISTO_CLOUDFLARE_API_TOKEN}" ]; then
             echo "::error::Missing Liquisto Cloudflare account credentials."
             exit 1
           fi
@@ -85,7 +92,8 @@ jobs:
             printf -- '- Hostnames: `%s`\n' "${LIQUISTO_ACCESS_HOSTNAMES}"
             printf -- '- Allowed emails: `%s`\n' "${LIQUISTO_ACCESS_ALLOWED_EMAILS}"
             printf -- '- Status: `started-before-cloudflare-api-call`\n'
-            printf -- '- Failure guidance: `LIQUISTO_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, and identity-provider operations for LIQUISTO_CLOUDFLARE_ACCOUNT_ID.`\n'
+            printf -- '- Redirect hostnames: `%s`\n' "${LIQUISTO_REDIRECT_HOSTNAMES}"
+            printf -- '- Failure guidance: `LIQUISTO_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, and identity-provider operations for LIQUISTO_CLOUDFLARE_ACCOUNT_ID plus zone-scoped Rulesets edit for LIQUISTO_CLOUDFLARE_ZONE_ID.`\n'
           } > liquisto-access-evidence/access.md
 
           python3 - <<'PY'
@@ -100,11 +108,17 @@ jobs:
           from pathlib import Path
 
           account_id = os.environ["LIQUISTO_CLOUDFLARE_ACCOUNT_ID"]
+          zone_id = os.environ["LIQUISTO_CLOUDFLARE_ZONE_ID"]
           token = os.environ["LIQUISTO_CLOUDFLARE_API_TOKEN"]
           apply_changes = os.environ["APPLY_CHANGES"].lower() == "true"
           hostnames = [
               value.strip().lower()
               for value in os.environ["LIQUISTO_ACCESS_HOSTNAMES"].split()
+              if value.strip()
+          ]
+          redirect_hostnames = [
+              value.strip().lower()
+              for value in os.environ["LIQUISTO_REDIRECT_HOSTNAMES"].split()
               if value.strip()
           ]
           allowed_emails = [
@@ -124,10 +138,19 @@ jobs:
 
           if not hostnames or primary_hostname not in hostnames:
               raise SystemExit("primary_hostname must be included in hostnames.")
-          unsupported_hostnames = [hostname for hostname in hostnames if hostname not in {"liquisto.cloud", "www.liquisto.cloud"}]
+          unsupported_hostnames = [hostname for hostname in hostnames if hostname != "liquisto.cloud"]
           if unsupported_hostnames:
-              raise SystemExit(f"Unsupported Liquisto hostname value: {', '.join(unsupported_hostnames)}")
-          for hostname in hostnames:
+              raise SystemExit("Liquisto Access may only protect liquisto.cloud directly.")
+          unsupported_redirect_hostnames = [hostname for hostname in redirect_hostnames if hostname != "www.liquisto.cloud"]
+          if unsupported_redirect_hostnames:
+              raise SystemExit("Liquisto redirects may only manage www.liquisto.cloud.")
+          overlapping_hostnames = sorted(set(hostnames).intersection(redirect_hostnames))
+          if overlapping_hostnames:
+              raise SystemExit(
+                  "redirect_hostnames must not also be directly protected by Access: "
+                  + ", ".join(overlapping_hostnames)
+              )
+          for hostname in [*hostnames, *redirect_hostnames]:
               if not hostname_pattern.fullmatch(hostname):
                   raise SystemExit(f"Unsupported hostname value: {hostname}")
           if set(allowed_emails) != expected_emails:
@@ -157,6 +180,9 @@ jobs:
               if not body.get("success", False):
                   raise RuntimeError(f"Cloudflare API {method} {path} failed: {body}")
               return body
+
+          def cf_zone_request(method: str, path: str, payload: dict | None = None) -> dict:
+              return cf_request(method, f"/zones/{zone_id}{path}", payload)
 
           def destination_uris(app: dict) -> set[str]:
               uris: set[str] = set()
@@ -309,12 +335,91 @@ jobs:
           if not one_time_pin_provider_ids:
               raise SystemExit("No Cloudflare Access One-Time PIN identity provider is configured.")
 
+          def canonical_redirect_rule() -> dict:
+              expression = " or ".join(
+                  f'http.host eq "{hostname}"' for hostname in sorted(redirect_hostnames)
+              )
+              return {
+                  "ref": "liquisto_www_to_apex",
+                  "description": "Redirect Liquisto www host to canonical apex before Access",
+                  "expression": f"({expression})",
+                  "action": "redirect",
+                  "action_parameters": {
+                      "from_value": {
+                          "status_code": 301,
+                          "target_url": {
+                              "expression": 'concat("https://liquisto.cloud", http.request.uri.path)'
+                          },
+                          "preserve_query_string": True,
+                      }
+                  },
+                  "enabled": True,
+              }
+
+          def read_dynamic_redirect_ruleset() -> dict | None:
+              try:
+                  return cf_zone_request(
+                      "GET",
+                      "/rulesets/phases/http_request_dynamic_redirect/entrypoint",
+                  ).get("result", {})
+              except RuntimeError as exc:
+                  if "HTTP 404" in str(exc) or '"code":10007' in str(exc):
+                      return None
+                  raise
+
+          def ensure_canonical_redirect() -> str:
+              if not redirect_hostnames:
+                  return "none"
+
+              desired_rule = canonical_redirect_rule()
+              ruleset = read_dynamic_redirect_ruleset()
+              if not apply_changes:
+                  return "planned-create" if not ruleset else "planned-update"
+
+              if not ruleset:
+                  cf_zone_request(
+                      "POST",
+                      "/rulesets",
+                      {
+                          "name": "Liquisto canonical redirects",
+                          "kind": "zone",
+                          "phase": "http_request_dynamic_redirect",
+                          "rules": [desired_rule],
+                      },
+                  )
+                  return "created"
+
+              existing_rules = list(ruleset.get("rules") or [])
+              updated_rules = []
+              found = False
+              for rule in existing_rules:
+                  if rule.get("ref") == desired_rule["ref"]:
+                      updated_rules.append({**desired_rule, "id": rule.get("id")})
+                      found = True
+                  else:
+                      updated_rules.append(rule)
+              if not found:
+                  updated_rules.append(desired_rule)
+
+              cf_zone_request(
+                  "PUT",
+                  f"/rulesets/{ruleset['id']}",
+                  {
+                      "name": ruleset.get("name") or "Liquisto canonical redirects",
+                      "kind": ruleset.get("kind") or "zone",
+                      "phase": ruleset.get("phase") or "http_request_dynamic_redirect",
+                      "rules": updated_rules,
+                  },
+              )
+              return "updated" if found else "added"
+
           target_apps_before = select_target_apps(apps_before)
           app_changes: list[str] = []
           policy_changes: list[str] = []
           policy_summaries: list[str] = []
           deleted_duplicate_apps: list[str] = []
           organization_status = "not-modified"
+          redirect_status = ensure_canonical_redirect()
           access_status = "planned"
 
           if apply_changes:
@@ -392,11 +497,13 @@ jobs:
               f"- Apply changes: `{str(apply_changes).lower()}`",
               f"- Primary hostname: `{primary_hostname}`",
               f"- Hostnames: `{', '.join(hostnames)}`",
+              f"- Redirect hostnames: `{', '.join(redirect_hostnames) if redirect_hostnames else 'none'}`",
               f"- Allowed emails: `{', '.join(sorted(allowed_emails))}`",
               "- Authentication method: `Cloudflare Access One-Time PIN email verification`",
               f"- One-Time PIN provider count: `{len(one_time_pin_provider_ids)}`",
               "- Organization scope: `not read or modified by this Liquisto workflow`",
               f"- Organization status: `{organization_status}`",
+              f"- Canonical redirect status: `{redirect_status}`",
               f"- Access status: `{access_status}`",
               f"- App changes: `{', '.join(app_changes) if app_changes else 'none'}`",
               f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
@@ -434,6 +541,8 @@ jobs:
               "one_time_pin_provider_count": len(one_time_pin_provider_ids),
               "organization_status": organization_status,
               "policy_changes": policy_changes,
+              "redirect_hostnames": redirect_hostnames,
+              "redirect_status": redirect_status,
           }, sort_keys=True))
           PY
 
@@ -444,7 +553,7 @@ jobs:
           set -euo pipefail
           {
             printf '# Liquisto Cloudflare Access Public Smoke\n\n'
-            for hostname in ${LIQUISTO_ACCESS_HOSTNAMES}; do
+             for hostname in ${LIQUISTO_ACCESS_HOSTNAMES}; do
               status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${hostname}/")"
               location="$(curl -sS -I "https://${hostname}/" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
               if [ "${status}" != "302" ] && [ "${status}" != "303" ] && [ "${status}" != "403" ]; then
@@ -455,9 +564,22 @@ jobs:
                 echo "::error::Expected Cloudflare Access login redirect for ${hostname}."
                 exit 1
               fi
-              printf -- '- `%s`: HTTP `%s`, Access redirect/deny `present`\n' "${hostname}" "${status}"
-            done
-          } > liquisto-access-evidence/public-access-smoke.md
+               printf -- '- `%s`: HTTP `%s`, Access redirect/deny `present`\n' "${hostname}" "${status}"
+             done
+             for hostname in ${LIQUISTO_REDIRECT_HOSTNAMES}; do
+               status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${hostname}/")"
+               location="$(curl -sS -I "https://${hostname}/" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, ""); print $0; exit}')"
+               if [ "${status}" != "301" ] && [ "${status}" != "302" ] && [ "${status}" != "308" ]; then
+                 echo "::error::Expected canonical redirect for ${hostname}, got HTTP ${status}."
+                 exit 1
+               fi
+               if [[ "${location}" != *"https://${LIQUISTO_ACCESS_PRIMARY_HOSTNAME}/"* ]]; then
+                 echo "::error::Expected ${hostname} to redirect to ${LIQUISTO_ACCESS_PRIMARY_HOSTNAME}."
+                 exit 1
+               fi
+               printf -- '- `%s`: HTTP `%s`, canonical redirect `%s`\n' "${hostname}" "${status}" "${location}"
+             done
+           } > liquisto-access-evidence/public-access-smoke.md
 
       - name: Upload Access evidence
         if: always()
