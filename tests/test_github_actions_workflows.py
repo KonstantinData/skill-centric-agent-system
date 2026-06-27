@@ -521,6 +521,11 @@ def test_tenant_ui_deploy_workflow_has_rollback_guard() -> None:
     assert "systemctl reload nginx" in workflow
     assert "nginx -s reload" in workflow
     assert "systemctl start nginx" in workflow
+    assert "reverse_proxy_attempt" in workflow
+    assert "Waiting for reverse proxy origin check for ${reverse_proxy_hostname}" in workflow
+    assert "Reverse proxy origin check failed for ${reverse_proxy_hostname}." in workflow
+    assert "tail -n 80 /var/log/nginx/error.log" in workflow
+    assert 'docker logs --tail 80 "${service_id}"' in workflow
     assert "Reverse proxy:" in workflow
     assert "Reverse proxy server names:" in workflow
     assert "Origin certificate:" in workflow

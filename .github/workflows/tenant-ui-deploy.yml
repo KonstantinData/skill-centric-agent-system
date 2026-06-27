@@ -978,24 +978,45 @@ jobs:
               fi
             fi
             for reverse_proxy_hostname in ${reverse_proxy_server_names}; do
-              curl -kfsS \
-                --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
-                --max-time 10 \
-                "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" >/dev/null
-              if [ -n "${expected_content_marker}" ]; then
+              reverse_proxy_passed=0
+              for reverse_proxy_attempt in $(seq 1 30); do
                 origin_body="$(mktemp)"
-                curl -kfsS \
+                if curl -kfsS \
                   --resolve "${reverse_proxy_hostname}:443:127.0.0.1" \
                   --max-time 10 \
                   "https://${reverse_proxy_hostname}${SCAS_UI_HEALTH_PATH}" \
-                  -o "${origin_body}"
-                grep -Fq "${expected_content_marker}" "${origin_body}"
-                if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
-                  rm -f "${origin_body}"
-                  echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
-                  exit 1
+                  -o "${origin_body}"; then
+                  if [ -z "${expected_content_marker}" ] || grep -Fq "${expected_content_marker}" "${origin_body}"; then
+                    if [ -n "${forbidden_content_marker}" ] && grep -Fiq "${forbidden_content_marker}" "${origin_body}"; then
+                      rm -f "${origin_body}"
+                      echo "Reverse proxy content check failed: forbidden cross-tenant marker was served by the tenant route." >&2
+                      exit 1
+                    fi
+                    reverse_proxy_passed=1
+                    rm -f "${origin_body}"
+                    break
+                  fi
                 fi
                 rm -f "${origin_body}"
+                echo "Waiting for reverse proxy origin check for ${reverse_proxy_hostname} (${reverse_proxy_attempt}/30)." >&2
+                sleep 3
+              done
+              if [ "${reverse_proxy_passed}" -ne 1 ]; then
+                echo "Reverse proxy origin check failed for ${reverse_proxy_hostname}." >&2
+                if [ -f /var/log/nginx/error.log ]; then
+                  sudo_if_needed tail -n 80 /var/log/nginx/error.log >&2 || true
+                fi
+                service_id="$(
+                  docker ps \
+                    --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" \
+                    --filter "label=com.docker.compose.service=${SERVICE_NAME}" \
+                    --format '{{.ID}}' \
+                    | head -n 1 || true
+                )"
+                if [ -n "${service_id}" ]; then
+                  docker logs --tail 80 "${service_id}" >&2 || true
+                fi
+                exit 1
               fi
             done
             reverse_proxy_status="managed ${nginx_site} -> 127.0.0.1:${LOCAL_HEALTH_PORT}"
