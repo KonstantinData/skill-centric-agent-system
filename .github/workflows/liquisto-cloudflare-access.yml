@@ -363,7 +363,7 @@ jobs:
                       "/rulesets/phases/http_request_dynamic_redirect/entrypoint",
                   ).get("result", {})
               except RuntimeError as exc:
-                  if "HTTP 404" in str(exc) or '"code":10007' in str(exc):
+                  if "HTTP 404" in str(exc) or '"code":10003' in str(exc) or '"code":10007' in str(exc):
                       return None
                   raise
 
