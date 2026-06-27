@@ -131,6 +131,7 @@ Latest production apply evidence for the current `liquisto.cloud` authority:
 
 | Date | GitHub run | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-06-27 11:30 Europe/Berlin | `28285197010` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:31f42d848c057fb7054b27529764ef94e7bda843`; Nginx route managed at `127.0.0.1:3027` for `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public `Liquisto workspace` marker verified for apex and `www`; verified public HTML serves `Liquisto Workbench` and no `Liquisto Tenant Workbench` marker. |
 | 2026-06-26 07:19 Europe/Berlin | `28218809860` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:6ceb8e91385f95e35496c0e149767ea770a4ff91`; Nginx route managed at `127.0.0.1:3027` for `liquisto.cloud www.liquisto.cloud`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified for apex and `www`. |
 | 2026-06-25 22:56 Europe/Berlin | `28199866868` | passed | Deployed `liquisto-workbench` image `scas-liquisto-workbench:f2572484724b3886c4cd3de08cc3945464e9348b`; Nginx route managed at `127.0.0.1:3027`; Cloudflare DNS synced to the deployment host; public `Command Center` marker verified. |
 
