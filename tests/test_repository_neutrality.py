@@ -21,6 +21,7 @@ SKIPPED_PARTS = {
 FORBIDDEN_BRAND = "liqui" + "sto"
 FORBIDDEN_REMOVED_UI = "stream" + "lit"
 ALLOWED_TENANT_ONBOARDING_PATHS = {
+    ".github/workflows/liquisto-cloudflare-access.yml",
     ".github/workflows/tenant-cloudflare-dns-cutover.yml",
     ".github/workflows/live-runtime-gates.yml",
     "apps/liquisto-workbench/README.md",
@@ -50,6 +51,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "docs/runbooks/liquisto-tenant-release-gate.md",
     "docs/runbooks/liquisto-tenant-rollback-deprovisioning.md",
     "docs/runbooks/liquisto-workbench-deployment.md",
+    "docs/runbooks/scas-cloudflare-token-structure.md",
     "deploy/liquisto-workbench/Dockerfile",
     "examples/control-plane/dev-seed.sql",
     "examples/crm-skill-packs/liquisto-research-assistance.json",
