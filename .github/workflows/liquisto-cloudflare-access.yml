@@ -274,6 +274,7 @@ jobs:
               payload["app_launcher_visible"] = True
               payload["custom_deny_message"] = deny_message
               payload["http_only_cookie_attribute"] = True
+              payload["same_site_cookie_attribute"] = "lax"
               payload["path_cookie_attribute"] = False
               payload["session_duration"] = "24h"
               payload.pop("self_hosted_domains", None)
@@ -496,6 +497,33 @@ jobs:
           if apply_changes and missing_after:
               raise SystemExit(f"Missing Access apps after apply: {', '.join(missing_after)}")
 
+          cookie_scope_summaries: list[str] = []
+          path_scoped_apps: list[str] = []
+          for hostname in hostnames:
+              app = target_apps_after.get(hostname)
+              if not app:
+                  continue
+              path_cookie_attribute = app.get("path_cookie_attribute")
+              same_site_cookie_attribute = app.get("same_site_cookie_attribute", "not-set")
+              http_only_cookie_attribute = app.get("http_only_cookie_attribute", "not-set")
+              session_duration = app.get("session_duration", "not-set")
+              cookie_scope_summaries.append(
+                  (
+                      f"{hostname}: path_cookie_attribute={path_cookie_attribute!r}, "
+                      f"same_site_cookie_attribute={same_site_cookie_attribute!r}, "
+                      f"http_only_cookie_attribute={http_only_cookie_attribute!r}, "
+                      f"session_duration={session_duration!r}"
+                  )
+              )
+              if path_cookie_attribute is True:
+                  path_scoped_apps.append(hostname)
+
+          if apply_changes and path_scoped_apps:
+              raise SystemExit(
+                  "Liquisto Access app still has path-scoped cookies enabled: "
+                  + ", ".join(path_scoped_apps)
+              )
+
           evidence = [
               "# Liquisto Cloudflare Access Evidence",
               "",
@@ -514,6 +542,8 @@ jobs:
               f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
               f"- Application audience tags after: `{', '.join(target_audiences_after) if target_audiences_after else 'none'}`",
+              "- Cookie scope after:",
+              *[f"  - `{summary}`" for summary in cookie_scope_summaries],
               "- Host apps after:",
           ]
           for hostname in hostnames:
@@ -541,6 +571,7 @@ jobs:
               "allowed_emails": sorted(allowed_emails),
               "apply_changes": apply_changes,
               "app_changes": app_changes,
+              "cookie_scope": cookie_scope_summaries,
               "deleted_duplicate_apps": deleted_duplicate_apps,
               "hostnames": hostnames,
               "one_time_pin_provider_count": len(one_time_pin_provider_ids),
