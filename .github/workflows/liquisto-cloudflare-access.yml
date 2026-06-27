@@ -85,7 +85,7 @@ jobs:
             printf -- '- Hostnames: `%s`\n' "${LIQUISTO_ACCESS_HOSTNAMES}"
             printf -- '- Allowed emails: `%s`\n' "${LIQUISTO_ACCESS_ALLOWED_EMAILS}"
             printf -- '- Status: `started-before-cloudflare-api-call`\n'
-            printf -- '- Failure guidance: `LIQUISTO_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, organization, and identity-provider operations for LIQUISTO_CLOUDFLARE_ACCOUNT_ID.`\n'
+            printf -- '- Failure guidance: `LIQUISTO_CLOUDFLARE_API_TOKEN must allow account-scoped Cloudflare Access application, policy, and identity-provider operations for LIQUISTO_CLOUDFLARE_ACCOUNT_ID.`\n'
           } > liquisto-access-evidence/access.md
 
           python3 - <<'PY'
@@ -117,8 +117,6 @@ jobs:
           app_name = "Liquisto Workbench"
           policy_name = "SCAS Liquisto Workbench allowed users"
           deny_message = "Account is not enabled for Liquisto Workbench. Contact the Liquisto team."
-          login_header_text = "Liquisto Workbench"
-          login_footer_text = "Access is restricted to approved Liquisto users."
 
           hostname_pattern = re.compile(r"^[a-z0-9.-]+$")
           email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -274,35 +272,6 @@ jobs:
                       emails.add(str(rule["email"]).lower())
               return emails
 
-          def sanitize_organization_for_update(organization: dict) -> dict:
-              allowed_keys = {
-                  "allow_authenticate_via_warp",
-                  "auth_domain",
-                  "auto_redirect_to_identity",
-                  "custom_pages",
-                  "deny_unmatched_requests",
-                  "deny_unmatched_requests_exempted_zone_names",
-                  "login_design",
-                  "mfa_required_for_all_apps",
-                  "name",
-                  "session_duration",
-                  "user_seat_expiration_inactive_time",
-                  "warp_auth_session_duration",
-              }
-              payload = {
-                  key: copy.deepcopy(value)
-                  for key, value in organization.items()
-                  if key in allowed_keys and value is not None
-              }
-              login_design = copy.deepcopy(payload.get("login_design") or {})
-              login_design["header_text"] = login_header_text
-              login_design["footer_text"] = login_footer_text
-              payload["name"] = "Liquisto Workbench"
-              payload["auto_redirect_to_identity"] = False
-              payload["mfa_required_for_all_apps"] = False
-              payload["login_design"] = login_design
-              return payload
-
           def ensure_policy(app: dict) -> tuple[list[str], list[str]]:
               policies = cf_request("GET", f"/accounts/{account_id}/access/apps/{app['id']}/policies?per_page=200").get("result", [])
               changes: list[str] = []
@@ -331,7 +300,6 @@ jobs:
               return changes, summaries
 
           apps_before = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-          organization = cf_request("GET", f"/accounts/{account_id}/access/organizations").get("result", {})
           identity_providers = cf_request("GET", f"/accounts/{account_id}/access/identity_providers?per_page=100").get("result", [])
           one_time_pin_provider_ids = [
               str(provider["id"])
@@ -346,12 +314,10 @@ jobs:
           policy_changes: list[str] = []
           policy_summaries: list[str] = []
           deleted_duplicate_apps: list[str] = []
-          organization_status = "planned"
+          organization_status = "not-modified"
           access_status = "planned"
 
           if apply_changes:
-              cf_request("PUT", f"/accounts/{account_id}/access/organizations", sanitize_organization_for_update(organization))
-              organization_status = "updated"
               refreshed_apps = apps_before
               used_ids: set[str] = set()
               for hostname in hostnames:
@@ -429,7 +395,7 @@ jobs:
               f"- Allowed emails: `{', '.join(sorted(allowed_emails))}`",
               "- Authentication method: `Cloudflare Access One-Time PIN email verification`",
               f"- One-Time PIN provider count: `{len(one_time_pin_provider_ids)}`",
-              f"- Organization before: `{organization.get('name', '')}` / auth domain `{organization.get('auth_domain', '')}`",
+              "- Organization scope: `not read or modified by this Liquisto workflow`",
               f"- Organization status: `{organization_status}`",
               f"- Access status: `{access_status}`",
               f"- App changes: `{', '.join(app_changes) if app_changes else 'none'}`",

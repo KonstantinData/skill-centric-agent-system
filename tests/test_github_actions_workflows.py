@@ -635,6 +635,10 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
     assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
     assert "started-before-cloudflare-api-call" in workflow
     assert "must allow account-scoped Cloudflare Access application, policy" in workflow
+    assert "organization, and identity-provider operations" not in workflow
+    assert "access/organizations" not in workflow
+    assert "Organization scope: `not read or modified by this Liquisto workflow`" in workflow
+    assert "Das Küchenhaus CRM" not in workflow
     assert "SCAS Liquisto Workbench allowed users" in workflow
     assert (
         'cf_request("DELETE", '
