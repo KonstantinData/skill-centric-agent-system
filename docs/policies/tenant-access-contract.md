@@ -58,6 +58,12 @@ its own `ui_profile.brand_assets`. Missing assets may degrade to a neutral
 unbranded state, but they must not fall back to another tenant's logo, favicon,
 app icon, colors, or copy.
 
+Tenant-facing UIs must present only product capabilities, goals, inputs, and
+outputs. Visible copy must not expose SCAS architecture terms, tenant model
+details, runtime profile composition, validator names, policy gates, tool
+selection, isolation mechanics, or the existence of other tenants. Internal
+tenant isolation remains mandatory, but it is not a user-facing product concept.
+
 Tenant UIs that are reachable outside local development must run in an
 authenticated session mode. The UI may use repository fixtures only for local
 contract verification. In authenticated mode, visible areas and admin access

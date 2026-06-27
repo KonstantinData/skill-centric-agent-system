@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { LinkButton } from "@/components/ui/button";
+import { CheckCircle2 } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { sections, type SectionKey } from "@/lib/workbench-data";
 
@@ -37,9 +36,6 @@ export default async function SectionPage({ params }: SectionPageProps) {
               {config.subtitle}
             </p>
           </div>
-          <LinkButton href="/scas-workbench" variant="primary">
-            SCAS Register <ArrowRight size={16} aria-hidden />
-          </LinkButton>
         </div>
       </Panel>
 
@@ -53,24 +49,24 @@ export default async function SectionPage({ params }: SectionPageProps) {
       </div>
 
       <Panel>
-        <h2 className="section-title">Process And SCAS Anchoring</h2>
+        <h2 className="section-title">What This Supports</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
             <p className="text-xs font-black uppercase text-[var(--muted)]">
-              Composition
+              Preparation
             </p>
             <p className="mt-2 text-sm font-bold">
-              Task Analyzer and Agent Composer select skills, tools,
-              knowledge, and validators.
+              Turn a small company intake into a focused brief for the next
+              customer conversation.
             </p>
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
             <p className="text-xs font-black uppercase text-[var(--muted)]">
-              Runtime
+              Focus
             </p>
             <p className="mt-2 text-sm font-bold">
-              One single agent works only with a validated, immutable
-              runtime profile.
+              Keep the work centered on excess-inventory opportunities for
+              manufacturers.
             </p>
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
@@ -78,8 +74,8 @@ export default async function SectionPage({ params }: SectionPageProps) {
               Evidence
             </p>
             <p className="mt-2 text-sm font-bold">
-              Outputs, denials, and approvals remain traceable as auditable
-              artifacts.
+              Show sources, unknowns, and confidence so the team can separate
+              facts from hypotheses.
             </p>
           </div>
         </div>
