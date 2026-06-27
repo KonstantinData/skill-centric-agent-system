@@ -12,20 +12,16 @@ export function Sidebar() {
 
   return (
     <aside className="hidden min-h-screen flex-col border-r border-[var(--border)] bg-[var(--chrome-surface)] px-4 py-5 lg:flex">
-      <Link href="/" className="mb-7 flex items-center gap-3 px-2">
+      <Link href="/" className="mb-7 block w-full">
         <Image
           src="/liquisto-logo.png"
           alt="Liquisto"
-          width={42}
-          height={42}
+          width={500}
+          height={113}
+          sizes="216px"
+          className="h-auto w-full"
           priority
         />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-black">Liquisto</p>
-          <p className="truncate text-xs font-bold text-[var(--muted)]">
-            Business Platform
-          </p>
-        </div>
       </Link>
       <nav className="grid gap-1">
         {navItems.map((item) => {
