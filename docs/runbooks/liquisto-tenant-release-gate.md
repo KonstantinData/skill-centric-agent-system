@@ -121,6 +121,26 @@ Do not treat a Worker route as required for `liquisto.cloud` unless the
 deployment architecture is explicitly changed. Cloudflare Workers remain the
 Control API path, not the public UI hostname path.
 
+## Cloudflare Access Evidence
+
+The public Workbench route must be protected by Cloudflare Access. The
+repository-owned Access configuration workflow is
+`.github/workflows/liquisto-cloudflare-access.yml`.
+
+Required policy:
+
+- hostnames: `liquisto.cloud`, `www.liquisto.cloud`,
+- authentication: Cloudflare Access One-Time PIN email verification,
+- allowed emails: `konstantin@liquisto.com`, `aernout@liquisto.com`,
+- fail-closed behavior: no broad Allow or Bypass policy may remain on the
+  Liquisto Workbench Access applications.
+
+Latest production Access evidence:
+
+| Date | GitHub run | Result | Evidence |
+| --- | --- | --- | --- |
+| pending | pending | pending | Run `liquisto-cloudflare-access.yml` with `apply_changes=true` and confirm unauthenticated public requests redirect to Cloudflare Access. |
+
 ## Liquisto Workbench Deployment
 
 The repository-owned deployment path is documented in
@@ -212,6 +232,9 @@ The Liquisto tenant launch blockers below must be resolved for the
 - Production runtime configuration points to the production Control API, or any
   temporary staging Control API dependency is explicitly approved with an owner,
   expiry, and rollback path.
+- Cloudflare Access protects the public Workbench route and allows only
+  `konstantin@liquisto.com` and `aernout@liquisto.com` through One-Time PIN
+  email verification.
 - The production service runs `SCAS_UI_AUTH_MODE=required` with a server-owned
   tenant session context from the approved upstream authentication layer.
   Fixture mode must not be used on the public hostname.

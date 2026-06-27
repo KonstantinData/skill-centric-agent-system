@@ -32,6 +32,9 @@ TENANT_CLOUDFLARE_EVIDENCE_WORKFLOW_PATH = (
 TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "tenant-cloudflare-dns-cutover.yml"
 )
+LIQUISTO_CLOUDFLARE_ACCESS_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "liquisto-cloudflare-access.yml"
+)
 ES_DASKUECHENHAUS_SITE_DEPLOY_WORKFLOW_PATH = (
     REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-site-deploy.yml"
 )
@@ -102,6 +105,10 @@ def load_tenant_cloudflare_evidence_workflow() -> str:
 
 def load_tenant_cloudflare_dns_cutover_workflow() -> str:
     return TENANT_CLOUDFLARE_DNS_CUTOVER_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def load_liquisto_cloudflare_access_workflow() -> str:
+    return LIQUISTO_CLOUDFLARE_ACCESS_WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 def load_es_daskuechenhaus_site_deploy_workflow() -> str:
@@ -603,6 +610,40 @@ def test_tenant_cloudflare_dns_cutover_workflow_is_guarded_and_hides_origin() ->
     assert "tenant-cloudflare-dns-cutover/evidence.md" in workflow
     assert "SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
     assert "SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN" not in workflow
+
+
+def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> None:
+    assert LIQUISTO_CLOUDFLARE_ACCESS_WORKFLOW_PATH.exists()
+    workflow = load_liquisto_cloudflare_access_workflow()
+
+    assert "workflow_dispatch:" in workflow
+    assert "apply_changes:" in workflow
+    assert "confirm_production:" in workflow
+    assert "environment:" in workflow
+    assert "name: production" in workflow
+    assert "confirm_production must be true when apply_changes=true" in workflow
+    assert "confirm_hostname must match primary_hostname when apply_changes=true" in workflow
+    assert "LIQUISTO_CLOUDFLARE_ACCOUNT_ID" in workflow
+    assert "LIQUISTO_CLOUDFLARE_API_TOKEN" in workflow
+    assert "default: liquisto.cloud www.liquisto.cloud" in workflow
+    assert "default: konstantin@liquisto.com aernout@liquisto.com" in workflow
+    assert (
+        "allowed_emails must be exactly konstantin@liquisto.com and aernout@liquisto.com"
+        in workflow
+    )
+    assert "Cloudflare Access One-Time PIN email verification" in workflow
+    assert "No Cloudflare Access One-Time PIN identity provider is configured" in workflow
+    assert "SCAS Liquisto Workbench allowed users" in workflow
+    assert (
+        'cf_request("DELETE", '
+        'f"/accounts/{account_id}/access/apps/{app[\'id\']}/policies/{policy[\'id\']}")'
+        in workflow
+    )
+    assert "Verify public Access redirect" in workflow
+    assert "cloudflareaccess.com" in workflow
+    assert "liquisto-access-evidence" in workflow
+    assert "DKH_CLOUDFLARE_API_TOKEN" not in workflow
+    assert "SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN" not in workflow
 
 
 def test_es_daskuechenhaus_site_deploy_workflow_is_protected() -> None:

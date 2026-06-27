@@ -3,6 +3,11 @@
 The Liquisto Workbench is deployed through the existing guarded
 `Tenant UI Deploy` GitHub Actions workflow.
 
+Public access to the Workbench must be protected by Cloudflare Access. The
+Access configuration is managed by `.github/workflows/liquisto-cloudflare-access.yml`
+and must allow only `konstantin@liquisto.com` and `aernout@liquisto.com` through
+Cloudflare Access One-Time PIN email verification.
+
 Use the `liquisto-workbench` UI app option for the Next.js workbench:
 
 ```powershell
@@ -39,6 +44,22 @@ printing the hidden origin IP in logs or evidence. The deploy is considered
 successful only after the container, the Nginx origin routes for both apex and
 `www`, and the public Cloudflare routes serve the Workbench content marker
 `Liquisto workspace`.
+
+After each production UI deploy, run or verify the Liquisto Cloudflare Access
+workflow in apply mode so unauthenticated public requests redirect to
+Cloudflare Access instead of serving Workbench HTML directly:
+
+```powershell
+gh workflow run liquisto-cloudflare-access.yml `
+  --repo KonstantinData/skill-centric-agent-system `
+  --ref main `
+  -f apply_changes=true `
+  -f confirm_production=true `
+  -f hostnames="liquisto.cloud www.liquisto.cloud" `
+  -f allowed_emails="konstantin@liquisto.com aernout@liquisto.com" `
+  -f primary_hostname=liquisto.cloud `
+  -f confirm_hostname=liquisto.cloud
+```
 
 Latest production apply evidence:
 

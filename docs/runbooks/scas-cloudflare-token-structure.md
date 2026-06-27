@@ -22,6 +22,9 @@ workflow, and prefer read-only Zone permissions for evidence collection.
 | `SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN` | Production Worker deploys and Worker secret sync | Production SCAS Cloudflare resources |
 | `SCAS_STAGING_CLOUDFLARE_EVIDENCE_TOKEN` | Read-only tenant DNS, TLS, and Worker route evidence | `condata.io` zone |
 | `SCAS_PROD_CLOUDFLARE_EVIDENCE_TOKEN` | Read-only tenant DNS, TLS, and Worker route evidence | `condata.io` zone |
+| `LIQUISTO_CLOUDFLARE_ACCOUNT_ID` | Liquisto Cloudflare account identifier for tenant-owned zone automation | `liquisto.cloud` account |
+| `LIQUISTO_CLOUDFLARE_ZONE_ID` | Liquisto tenant zone identifier | `liquisto.cloud` zone |
+| `LIQUISTO_CLOUDFLARE_API_TOKEN` | Liquisto DNS, TLS, and Access application automation | `liquisto.cloud` zone and Access resources |
 | `AI_GATEWAY_AUTH_TOKEN` | Runtime bearer token for Cloudflare Authenticated Gateway | Worker/runtime secret, not a Cloudflare management token |
 
 Using the same value for all `*_CLOUDFLARE_ACCOUNT_ID` secrets is correct when
@@ -38,6 +41,7 @@ zone split does not require workflow rewrites.
 | `.github/workflows/control-api-worker-secrets.yml` | `SCAS_{ENV}_CLOUDFLARE_ACCOUNT_ID`, `SCAS_{ENV}_CLOUDFLARE_DEPLOY_TOKEN` | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` for Wrangler |
 | `.github/workflows/live-runtime-gates.yml` when `seed_control_plane_dev=true` | `SCAS_{ENV}_CLOUDFLARE_ACCOUNT_ID`, `SCAS_{ENV}_CLOUDFLARE_DEPLOY_TOKEN` | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` for Wrangler |
 | `.github/workflows/tenant-cloudflare-evidence.yml` | `CLOUDFLARE_ZONE_ID`, `SCAS_{STAGING,PROD}_CLOUDFLARE_EVIDENCE_TOKEN` | `CLOUDFLARE_API_TOKEN` for Cloudflare REST requests |
+| `.github/workflows/liquisto-cloudflare-access.yml` | `LIQUISTO_CLOUDFLARE_ACCOUNT_ID`, `LIQUISTO_CLOUDFLARE_API_TOKEN` | Liquisto Access application and policy REST requests |
 
 The internal `CLOUDFLARE_API_TOKEN` environment variable is still used where
 Wrangler or the Cloudflare REST client expects that name. It must be populated
