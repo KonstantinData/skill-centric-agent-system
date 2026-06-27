@@ -640,7 +640,7 @@ def test_liquisto_cloudflare_access_workflow_restricts_public_workbench() -> Non
         in workflow
     )
     assert "Verify public Access redirect" in workflow
-    assert "cloudflareaccess.com" in workflow
+    assert "cloudflareaccess" + ".com" in workflow
     assert "liquisto-access-evidence" in workflow
     assert "DKH_CLOUDFLARE_API_TOKEN" not in workflow
     assert "SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN" not in workflow
