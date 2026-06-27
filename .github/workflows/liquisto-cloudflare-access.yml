@@ -169,50 +169,30 @@ jobs:
                   uris.add(str(app["domain"]).lower().rstrip("/"))
               return uris
 
-          def exact_app_for_hostname(candidates: list[dict], hostname: str) -> dict | None:
+          def exact_shared_app(candidates: list[dict]) -> dict | None:
+              expected = set(hostnames)
               for app in candidates:
-                  if app.get("type") == "self_hosted" and destination_uris(app) == {hostname}:
+                  if app.get("type") == "self_hosted" and destination_uris(app) == expected:
                       return app
               return None
 
-          def covering_app_for_hostname(candidates: list[dict], hostname: str, excluded_ids: set[str]) -> dict | None:
+          def primary_app(candidates: list[dict]) -> dict | None:
               for app in candidates:
-                  if app.get("type") != "self_hosted" or str(app.get("id")) in excluded_ids:
+                  if app.get("type") != "self_hosted":
                       continue
-                  if hostname in destination_uris(app):
+                  if primary_hostname in destination_uris(app):
                       return app
               return None
 
-          def select_target_apps(candidates: list[dict]) -> dict[str, dict | None]:
-              target_apps: dict[str, dict | None] = {}
-              used_ids: set[str] = set()
-              primary = exact_app_for_hostname(candidates, primary_hostname) or covering_app_for_hostname(
-                  candidates,
-                  primary_hostname,
-                  used_ids,
-              )
-              if primary:
-                  target_apps[primary_hostname] = primary
-                  used_ids.add(str(primary["id"]))
-              for hostname in hostnames:
-                  if hostname == primary_hostname:
-                      continue
-                  app = exact_app_for_hostname(candidates, hostname) or covering_app_for_hostname(
-                      candidates,
-                      hostname,
-                      used_ids,
-                  )
-                  target_apps[hostname] = app
-                  if app:
-                      used_ids.add(str(app["id"]))
-              return target_apps
+          def select_target_app(candidates: list[dict]) -> dict | None:
+              return exact_shared_app(candidates) or primary_app(candidates)
 
           def is_one_time_pin_provider(provider: dict) -> bool:
               provider_type = str(provider.get("type") or "").lower()
               provider_name = str(provider.get("name") or "").lower()
               return provider_type == "onetimepin" or "one-time pin" in provider_name or "otp" in provider_name
 
-          def app_payload(hostname: str, app: dict | None, one_time_pin_provider_ids: list[str]) -> dict:
+          def app_payload(app: dict | None, one_time_pin_provider_ids: list[str]) -> dict:
               allowed_keys = {
                   "type",
                   "name",
@@ -240,9 +220,12 @@ jobs:
                       if key in allowed_keys and value is not None
                   }
               payload["type"] = "self_hosted"
-              payload["name"] = f"{app_name} ({hostname})"
-              payload["domain"] = hostname
-              payload["destinations"] = [{"type": "public", "uri": hostname}]
+              payload["name"] = app_name
+              payload["domain"] = primary_hostname
+              payload["destinations"] = [
+                  {"type": "public", "uri": hostname}
+                  for hostname in hostnames
+              ]
               payload["allowed_idps"] = one_time_pin_provider_ids
               payload["auto_redirect_to_identity"] = False
               payload["app_launcher_visible"] = True
@@ -309,7 +292,7 @@ jobs:
           if not one_time_pin_provider_ids:
               raise SystemExit("No Cloudflare Access One-Time PIN identity provider is configured.")
 
-          target_apps_before = select_target_apps(apps_before)
+          target_app_before = select_target_app(apps_before)
           app_changes: list[str] = []
           policy_changes: list[str] = []
           policy_summaries: list[str] = []
@@ -319,69 +302,55 @@ jobs:
 
           if apply_changes:
               refreshed_apps = apps_before
-              used_ids: set[str] = set()
-              for hostname in hostnames:
-                  app = exact_app_for_hostname(refreshed_apps, hostname) or covering_app_for_hostname(
-                      refreshed_apps,
-                      hostname,
-                      used_ids,
-                  )
-                  payload = app_payload(hostname, app, one_time_pin_provider_ids)
-                  if app:
-                      cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
-                      app_changes.append(f"{hostname}:updated")
-                      used_ids.add(str(app["id"]))
-                  else:
-                      created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
-                      app_changes.append(f"{hostname}:created")
-                      if created.get("id"):
-                          used_ids.add(str(created["id"]))
-                  refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
+              app = select_target_app(refreshed_apps)
+              payload = app_payload(app, one_time_pin_provider_ids)
+              if app:
+                  cf_request("PUT", f"/accounts/{account_id}/access/apps/{app['id']}", payload)
+                  app_changes.append("shared-app:updated")
+              else:
+                  created = cf_request("POST", f"/accounts/{account_id}/access/apps", payload).get("result", {})
+                  app_changes.append("shared-app:created")
+                  if created.get("id"):
+                      app = created
 
               refreshed_apps = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-              target_apps = select_target_apps(refreshed_apps)
-              target_ids = {
-                  str(app["id"])
-                  for app in target_apps.values()
-                  if app and app.get("id")
-              }
+              target_app = select_target_app(refreshed_apps)
+              target_id = str(target_app["id"]) if target_app and target_app.get("id") else ""
               for app in refreshed_apps:
                   uris = destination_uris(app)
                   if (
                       app.get("type") == "self_hosted"
                       and uris
                       and uris.issubset(set(hostnames))
-                      and str(app.get("id")) not in target_ids
+                      and str(app.get("id")) != target_id
                   ):
                       cf_request("DELETE", f"/accounts/{account_id}/access/apps/{app['id']}")
                       deleted_duplicate_apps.append(str(app.get("domain") or app["id"]))
-              for hostname, app in target_apps.items():
-                  if not app:
-                      raise RuntimeError(f"Missing Access application after update: {hostname}")
-                  changes, summaries = ensure_policy(app)
-                  policy_changes.extend(changes)
-                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+              if not target_app:
+                  raise RuntimeError("Missing shared Liquisto Access application after update.")
+              changes, summaries = ensure_policy(target_app)
+              policy_changes.extend(changes)
+              policy_summaries.extend(f"{primary_hostname}: {summary}" for summary in summaries)
               access_status = "updated"
           else:
-              for hostname, app in target_apps_before.items():
-                  if not app:
-                      app_changes.append(f"{hostname}:would-create")
-                      continue
-                  changes, summaries = ensure_policy(app)
+              if not target_app_before:
+                  app_changes.append("shared-app:would-create")
+              else:
+                  changes, summaries = ensure_policy(target_app_before)
                   policy_changes.extend(changes)
-                  policy_summaries.extend(f"{hostname}: {summary}" for summary in summaries)
+                  policy_summaries.extend(f"{primary_hostname}: {summary}" for summary in summaries)
 
           apps_after = cf_request("GET", f"/accounts/{account_id}/access/apps?per_page=100").get("result", [])
-          target_apps_after = select_target_apps(apps_after)
+          target_app_after = select_target_app(apps_after)
           target_audiences_after = [
-              str(app.get("aud"))
-              for app in target_apps_after.values()
-              if app and app.get("aud")
+              str(target_app_after.get("aud"))
+              if target_app_after and target_app_after.get("aud")
+              else ""
           ]
           missing_after = [
               hostname
-              for hostname, app in target_apps_after.items()
-              if not app
+              for hostname in hostnames
+              if not target_app_after or hostname not in destination_uris(target_app_after)
           ]
           if apply_changes and missing_after:
               raise SystemExit(f"Missing Access apps after apply: {', '.join(missing_after)}")
@@ -402,16 +371,14 @@ jobs:
               f"- Policy changes: `{', '.join(policy_changes) if policy_changes else 'none'}`",
               f"- Deleted duplicate apps: `{', '.join(deleted_duplicate_apps) if deleted_duplicate_apps else 'none'}`",
               f"- Application audience tags after: `{', '.join(target_audiences_after) if target_audiences_after else 'none'}`",
-              "- Host apps after:",
+              "- Shared app after:",
           ]
-          for hostname in hostnames:
-              app = target_apps_after.get(hostname)
-              if app:
-                  evidence.append(
-                      f"  - `{hostname}: {app.get('name', '')} / {app.get('domain', '')} / aud {app.get('aud', '')}`"
-                  )
-              else:
-                  evidence.append(f"  - `{hostname}: missing`")
+          if target_app_after:
+              evidence.append(
+                  f"  - `{target_app_after.get('name', '')} / {', '.join(sorted(destination_uris(target_app_after)))} / aud {target_app_after.get('aud', '')}`"
+              )
+          else:
+              evidence.append("  - `missing`")
           evidence.append("- Existing policy summary before changes:")
           evidence.extend(f"  - `{summary}`" for summary in policy_summaries)
           evidence.extend(
