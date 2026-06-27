@@ -12,15 +12,21 @@ The target is platform-neutral readiness, not immediate native app shipment.
 Current state:
 
 - `apps/khh-workbench` is a responsive Next.js web shell consuming shared KHH
-  domain, client, and UI view-model contracts.
-- `apps/khh-mobile-proof` is a minimal Expo/iOS proof shell consuming the same
-  shared contracts.
+  domain, client, state, and headless UI contracts while preserving desktop
+  shell rendering.
+- `apps/khh-mobile-proof` is an Expo Router iOS proof shell consuming the same
+  shared contracts and explicit native adapter policies.
 - `packages/tenant-workbench-domain`, `packages/tenant-workbench-client`, and
   `packages/tenant-workbench-ui` provide the first shared package boundary.
 - KHH tenant identity, deployment, and privacy boundaries are versioned.
 - UI copy and feature structure are no longer owned directly by Next.js
-  components, but deeper shared UI component migration and real API adapters
-  remain open.
+  components.
+- `packages/tenant-workbench-client` now owns auth sessions, tenant scope
+  validation, query caching, optional read-only offline summary storage, API
+  transport boundaries, and fail-closed write-intent guards.
+- `packages/tenant-workbench-ui` now owns design tokens, view models, headless
+  component contracts, and web/native adapter plans without importing platform
+  renderers.
 
 Required target state:
 
@@ -74,14 +80,15 @@ Acceptance:
 
 Estimate: 5.5 days.
 
-Status: partially implemented.
+Status: implemented for the KHH foundation slice.
 
 Deliverables:
 
 - Workspace package scaffold for shared tenant workbench code. Done.
 - Shared KHH domain/navigation/privacy definitions. Done.
-- Platform-neutral API/state client with web adapter. Initial contract done;
-  real API adapters and richer state/error coverage remain.
+- Platform-neutral API/state client with auth session abstraction, tenant scope
+  validation, query cache, API transport boundary, offline summary store, and
+  fail-closed write-intent guard. Done for the read-only KHH foundation slice.
 
 Acceptance:
 
@@ -93,12 +100,16 @@ Acceptance:
 
 Estimate: 6.0 days.
 
+Status: partially implemented.
+
 Deliverables:
 
-- Shared UI primitives for status chips, panels, action rows, navigation
-  entries, and workbench sections.
-- KHH web shell migrated from web-only feature composition to shared UI/domain
-  packages.
+- Shared UI design tokens, view models, headless component contracts, and
+  web/native adapter plans. Done for navigation, dashboard, quick actions, and
+  section surfaces.
+- KHH web shell migrated from web-only feature composition to shared
+  UI/domain/client contracts while keeping Next.js routing, CSS, icon, table,
+  sidebar, and dense desktop layout adapters in the web shell.
 
 Acceptance:
 
@@ -115,12 +126,13 @@ Status: partially implemented.
 Deliverables:
 
 - Minimal Expo/native shell proof that imports shared domain/state/UI contracts.
-  Done for proof shell.
+  Done for an Expo Router proof shell.
 - Contract tests prevent web-only APIs from entering shared packages. Done for
-  domain and UI import boundaries.
-- Native auth/offline/push/permission contracts are linked from release gates.
-  Documented in the proof shell and client contracts; production release gates
-  remain open.
+  domain, client, and UI import boundaries.
+- Native auth/offline/push/permission adapters exist for handoff validation,
+  tenant-scoped storage keys, read-only offline summaries, default-denied push
+  opt-in, and default-denied permissions. Production device integration and
+  simulator evidence remain release-gate work.
 
 Acceptance:
 
@@ -128,13 +140,23 @@ Acceptance:
 - No production native release claim is made until auth, offline, push, and
   permission contracts have implementation evidence.
 
+Known residual risk:
+
+- `npm audit --omit=dev` currently reports `uuid@7.0.3` through the native
+  proof tooling path `expo -> @expo/config-plugins -> xcode -> uuid`. This is
+  not on the KHH web cockpit production path and the web app does not ship the
+  Expo/Cordova build toolchain. Treat it as `needs_review` for native build
+  tooling before any real iOS production release.
+- Do not use `npm audit fix --force` or a blind `uuid` override to clear this
+  finding. The force fix proposes an Expo downgrade, and an override must first
+  be validated with Expo prebuild, iOS build, and Simulator checks on a Mac.
+
 ## Blocking Decisions
 
 - Select the workspace/package manager strategy for JS/TS apps.
-- Decide whether the shared UI layer uses Expo/React Native for Web directly or
-  an intermediate component contract with platform adapters.
-- Decide whether native offline storage is scoped to read-only cached summaries
-  first or includes queued write intents behind explicit approvals.
+- Decide whether production native secure storage should use Expo SecureStore
+  directly or a project wrapper. The current proof uses a backend interface.
+- Collect iOS Simulator visual smoke evidence for the Expo Router shell.
 
 ## Current Sprint Recommendation
 
@@ -154,11 +176,16 @@ Minimum current-sprint acceptance:
 - `packages/tenant-workbench-domain` has no React, Next.js, DOM, or lucide
   dependency.
 - `packages/tenant-workbench-client` fails closed on tenant/area scope mismatch
-  and denies write intents until mutations are explicitly implemented.
-- `packages/tenant-workbench-ui` exposes platform-neutral view-model contracts
-  without DOM or Next.js imports.
+  and denies write intents until mutations are explicitly implemented. It also
+  exposes auth session, query cache, API transport, and offline summary store
+  contracts.
+- `packages/tenant-workbench-ui` exposes platform-neutral view models, design
+  tokens, headless component contracts, and web/native adapter plans without
+  DOM, Next.js, Expo, or React Native imports.
 - `apps/khh-workbench` consumes the shared contracts and keeps web-specific
   routing, images, CSS, and icon rendering in the shell.
-- `apps/khh-mobile-proof` typechecks as a minimal Expo/iOS proof shell.
+- `apps/khh-mobile-proof` typechecks as an Expo Router iOS proof shell with
+  explicit auth handoff, tenant-scoped storage, offline summary, push opt-in,
+  and permission gate adapters.
 - The tenant deploy workflow treats `auth_mode=required` public checks as
   successful only on Cloudflare Access redirect or 403.

@@ -24,7 +24,8 @@ def test_platform_neutral_adr_defines_native_ready_tenant_workbench_path() -> No
     assert "## Status\n\nAccepted" in adr
     assert "tenant_kinderhaus" in adr
     assert "kinderhaus-heuschrecken.cloud" in adr
-    assert "React Native for Web / Expo-compatible boundaries" in adr
+    assert "headless component" in adr
+    assert "explicit web and native adapters" in adr
     assert "auth, navigation, offline behavior, push" in adr
     assert "device permissions" in adr
     assert "does not require shipping native apps in the current sprint" in adr
@@ -96,6 +97,48 @@ def test_shared_ui_contract_has_no_next_or_dom_imports() -> None:
 
     assert "DashboardViewModel" in combined
     assert "SectionViewModel" in combined
+    assert "WorkbenchDesignTokens" in combined
+    assert "WorkbenchComponentContract" in combined
+    assert "createWebWorkbenchAdapterPlan" in combined
+    assert "createNativeWorkbenchAdapterPlan" in combined
+
+
+def test_shared_client_has_state_api_cache_and_write_intent_guards() -> None:
+    client = read_path(CLIENT_ROOT / "src" / "index.ts")
+
+    assert "TenantWorkbenchAuthSession" in client
+    assert "resolveTenantAuthSession" in client
+    assert "TenantWorkbenchQueryCache" in client
+    assert "createTenantWorkbenchMemoryCache" in client
+    assert "TenantWorkbenchApiTransport" in client
+    assert 'readonly requestJson: <T>(request: TenantWorkbenchApiRequest) => Promise<T>;' in client
+    assert "TenantWorkbenchOfflineSummaryStore" in client
+    assert "submitWriteIntent" in client
+    assert "TenantWriteIntentDeniedError" in client
+    assert "write-intents-not-enabled" in client
+
+
+def test_shared_packages_do_not_import_web_or_native_rendering_frameworks() -> None:
+    shared_sources = [
+        *sorted((DOMAIN_ROOT / "src").glob("*.ts")),
+        *sorted((CLIENT_ROOT / "src").glob("*.ts")),
+        *sorted((UI_ROOT / "src").glob("*.ts")),
+    ]
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in shared_sources)
+
+    forbidden = (
+        "next/",
+        "lucide-react",
+        "react-native",
+        "expo-router",
+        "ComponentProps<",
+        "HTMLElement",
+        "window.",
+        "document.",
+        "localStorage",
+    )
+    for marker in forbidden:
+        assert marker not in combined
 
 
 def test_khh_web_shell_consumes_shared_domain_client_and_ui_contracts() -> None:
@@ -107,7 +150,11 @@ def test_khh_web_shell_consumes_shared_domain_client_and_ui_contracts() -> None:
 
     assert "createKhhWorkbenchClient" in page
     assert "createDashboardViewModel" in page
+    assert "createDashboardSurfaceContract" in page
+    assert "createWebWorkbenchAdapterPlan" in page
     assert "createSectionViewModel" in section_page
+    assert "createSectionSurfaceContract" in section_page
+    assert "createWebWorkbenchAdapterPlan" in section_page
     assert "createNavigationViewModel" in sidebar
     assert "createMobileNavigationViewModel" in bottom_nav
     assert "lucide-react" not in workbench_data
@@ -123,15 +170,27 @@ def test_khh_docker_build_context_includes_shared_packages() -> None:
 
 def test_native_proof_shell_uses_same_khh_contracts_and_native_runtime_policy() -> None:
     app = read_path(KHH_NATIVE_PROOF_ROOT / "App.tsx")
+    router_layout = read_path(KHH_NATIVE_PROOF_ROOT / "app" / "_layout.tsx")
+    router_index = read_path(KHH_NATIVE_PROOF_ROOT / "app" / "index.tsx")
+    native_runtime = read_path(KHH_NATIVE_PROOF_ROOT / "src" / "native-runtime.ts")
     package_json = read_path(KHH_NATIVE_PROOF_ROOT / "package.json")
     readme = read_path(KHH_NATIVE_PROOF_ROOT / "README.md")
 
+    assert '"main": "expo-router/entry"' in package_json
     assert '"expo": "~56.0.0"' in package_json
+    assert '"expo-router": "56.2.11"' in package_json
     assert '"react-native": "0.85.0"' in package_json
-    assert "createKhhWorkbenchClient" in app
-    assert "createDashboardViewModel" in app
-    assert "readOnlySummaryOfflinePolicy" in app
-    assert "khhNativePushPolicy" in app
+    assert "export { default } from \"./app/index\"" in app
+    assert "Stack" in router_layout
+    assert "createKhhWorkbenchClient" in router_index
+    assert "createDashboardViewModel" in router_index
+    assert "createDashboardSurfaceContract" in router_index
+    assert "createNativeWorkbenchAdapterPlan" in router_index
+    assert "createNativeAuthHandoffAdapter" in native_runtime
+    assert "createTenantScopedSecureStorageAdapter" in native_runtime
+    assert "createOfflineSummaryStore" in native_runtime
+    assert "createDefaultDeniedPushOptInAdapter" in native_runtime
+    assert "createDefaultDeniedPermissionGateAdapter" in native_runtime
     assert "tenant-scoped storage keys" in readme
     assert "no sensitive payloads" in readme
 
@@ -147,6 +206,9 @@ def test_shared_client_fails_closed_for_tenant_scope_and_native_storage() -> Non
     assert "areaId: scope.areaId" in client
     assert "write-intents-not-enabled" in client
     assert "createTenantScopedStorageKey" in native_contracts
+    assert "createNativeAuthHandoffAdapter" in native_contracts
+    assert "createTenantScopedSecureStorageAdapter" in native_contracts
+    assert "createOfflineSummaryStore" in native_contracts
     assert "purgeOnLogout: true" in native_contracts
     assert "allowQueuedWrites: false" in native_contracts
     assert "sensitivePayloadsAllowed: false" in native_contracts

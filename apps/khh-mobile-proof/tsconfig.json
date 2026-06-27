@@ -29,6 +29,8 @@
   },
   "include": [
     "App.tsx",
+    "app/**/*.tsx",
+    "src/**/*.ts",
     "types/**/*.d.ts",
     "../../packages/tenant-workbench-domain/src/**/*.ts",
     "../../packages/tenant-workbench-client/src/**/*.ts",

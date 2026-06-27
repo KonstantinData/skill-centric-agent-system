@@ -29,13 +29,22 @@ The target architecture is:
   workflow definitions, permissions, and validation helpers;
 - a shared platform-neutral API and state client consumed by web and native
   shells;
-- shared UI primitives and feature components that can render on web and native
-  through React Native for Web / Expo-compatible boundaries or an equivalent
-  cross-platform component contract;
+- shared UI primitives and feature components that expose headless component
+  contracts, design tokens, and platform adapter plans. Platform shells render
+  those contracts through native web or Expo/React Native components instead of
+  importing Next.js, DOM, or native rendering frameworks into the shared
+  package;
 - thin platform shells for web and native navigation, auth handoff, storage,
   push, device permissions, and deployment/runtime wiring;
 - explicit native target contracts for auth, navigation, offline behavior, push
   notifications, and device permissions before native implementation begins.
+
+The accepted implementation pattern is an intermediate component contract with
+explicit web and native adapters. The KHH desktop shell may keep dense
+leadership layouts, tables, sidebar navigation, keyboard/mouse ergonomics, and
+Next.js-specific image/routing concerns in `apps/khh-workbench`. The native
+shell owns Expo Router, safe-area, touch, secure storage, push opt-in, and
+permission gate wiring.
 
 The current Next.js KHH workbench may remain as a short-lived delivery shell,
 but new tenant workbench capability work should target shared packages first.
@@ -71,5 +80,13 @@ Non-goals:
 - KHH workbench feature work is split into shared UI, shared API/state, and
   native target contract slices.
 - The web shell consumes shared domain and state contracts.
+- Shared UI exports platform-neutral design tokens, headless component
+  contracts, and web/native adapter plans without importing Next.js, DOM,
+  Expo, or React Native.
+- Shared client owns auth session abstraction, tenant scope validation, query
+  cache, read-only offline summary cache, and fail-closed write-intent guards.
+- The native proof app uses Expo Router structure and explicit adapters for
+  auth handoff, tenant-scoped storage, offline summaries, push opt-in, and
+  default-denied permissions.
 - Native app readiness is measured by executable or reviewable contracts, not
   by claims in chat or issue text.

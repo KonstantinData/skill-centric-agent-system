@@ -7,7 +7,11 @@ import {
   khhSectionAliases,
   type KhhSectionSlug,
 } from "@scas/tenant-workbench-domain/khh";
-import { createSectionViewModel } from "@scas/tenant-workbench-ui";
+import {
+  createSectionSurfaceContract,
+  createSectionViewModel,
+  createWebWorkbenchAdapterPlan,
+} from "@scas/tenant-workbench-ui";
 import { resolveIcon } from "@/lib/icons";
 
 type SectionPageProps = {
@@ -30,7 +34,11 @@ export default async function SectionPage({ params }: SectionPageProps) {
   if (!sectionConfig) notFound();
 
   const config = createSectionViewModel(sectionConfig);
+  const surface = createSectionSurfaceContract(sectionConfig);
+  const webPlan = createWebWorkbenchAdapterPlan(surface);
   const Icon = resolveIcon(config.iconId);
+  const workTableClassName =
+    webPlan.componentClassNames[`section:${config.sectionId}:work-table`] ?? "work-table";
 
   return (
     <div className="content-stack">
@@ -47,7 +55,7 @@ export default async function SectionPage({ params }: SectionPageProps) {
 
       <Panel>
         <h2 className="section-title">Arbeitsansicht</h2>
-        <div className="mt-4 work-table">
+        <div className={`mt-4 ${workTableClassName}`}>
           <div className="work-row work-head">
             {config.focus.map((item) => (
               <span key={item}>{item}</span>
