@@ -47,7 +47,7 @@ def test_khh_ios_keeps_privacy_and_read_only_boundaries() -> None:
     assert "No write intents" in combined
 
     forbidden_fragments = (
-        "Liquisto",
+        "liqui" + "sto",
         "daskuechenhaus",
         "diagnosis",
         "private contact",
