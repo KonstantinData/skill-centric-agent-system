@@ -148,6 +148,7 @@ def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
 
 def test_dkh_ios_readme_documents_native_device_authorization() -> None:
     readme = read(IOS_ROOT / "README.md")
+    readme_single_line = " ".join(readme.split())
 
     for label in (
         "No standalone app login area",
@@ -170,7 +171,7 @@ def test_dkh_ios_readme_documents_native_device_authorization() -> None:
         "same server state used by the browser CRM",
         "mobile_api_host: app.es-daskuechenhaus.de",
     ):
-        assert label in readme
+        assert label in readme or label in readme_single_line
 
     assert "loads that same Web App" not in readme
     assert "Safari-based in-app browser" not in readme
