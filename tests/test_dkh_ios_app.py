@@ -100,12 +100,25 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
     for expected in (
         "DKHOverviewState",
         "DKHCustomersState",
-        "DKHOverviewSection",
-        "DKHCustomersSection",
-        "DKHListDetailView",
+        "DKHHomePage",
+        "DKHAppointmentsPage",
+        "DKHTasksPage",
+        "DKHEmailsPage",
+        "DKHCustomersPage",
+        "DKHCustomerDetailPage",
+        "DKHCaseDetailPage",
+        "DKHTemplatesPage",
+        "DKHAdminPage",
         "DKH Serverdaten werden geladen",
     ):
         assert expected in native_app
+
+    for stale_view in (
+        "DKHOverviewSection",
+        "DKHCustomersSection",
+        "DKHListDetailView",
+    ):
+        assert stale_view not in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:

@@ -6,6 +6,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CRM_ROOT = REPO_ROOT / "apps" / "dkh-crm"
 IOS_ROOT = REPO_ROOT / "apps" / "dkh-ios"
 ADMIN_API = REPO_ROOT / "scripts" / "hetzner" / "daskuechenhaus_admin_api.py"
+MOBILE_ACTIONS = (
+    CRM_ROOT / "src" / "app" / "api" / "mobile" / "actions" / "[...path]" / "route.ts"
+)
 MOBILE_MIGRATION = (
     REPO_ROOT
     / "migrations"
@@ -36,7 +39,9 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     mobile_session = read(CRM_ROOT / "src" / "lib" / "mobile-session.ts")
     route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "session" / "route.ts")
     data_route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "[resource]" / "route.ts")
+    actions_route = read(MOBILE_ACTIONS)
     middleware = read(CRM_ROOT / "src" / "middleware.ts")
+    ios_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
 
     assert "https://appleid.apple.com/auth/keys" in apple_auth
     assert "jwtVerify(identityToken" in apple_auth
@@ -50,6 +55,25 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert "fetchDkhJson" in data_route
     assert '"overview/state"' in data_route
     assert '"customers/state"' in data_route
+    assert "verifyMobileSessionToken" in actions_route
+    assert "ACTION_ALLOWLIST" in actions_route
+    assert r"overview\/tasks" in actions_route
+    assert r"overview\/emails\/assign" in actions_route
+    assert r"customers\/cases" in actions_route
+    assert "DKHDeviceGrantView" in ios_app
+    assert "ASAuthorizationAppleIDProvider" in ios_app
+    assert "TabView" in ios_app
+    browser_sections = (
+        "Uebersicht",
+        "Termine",
+        "Aufgaben",
+        "E-Mails",
+        "Kunden",
+        "Vorlagen",
+        "Admin",
+    )
+    for browser_section in browser_sections:
+        assert browser_section in ios_app
     assert "session.email" in data_route
     assert "missing_mobile_session" in data_route
     assert 'request.nextUrl.pathname.startsWith("/api/mobile/")' in middleware
