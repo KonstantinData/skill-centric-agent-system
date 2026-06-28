@@ -20,6 +20,8 @@ lib64/
 !apps/liquisto-workbench/src/lib/**
 !apps/khh-workbench/src/lib/
 !apps/khh-workbench/src/lib/**
+!apps/dkh-crm/src/lib/
+!apps/dkh-crm/src/lib/**
 parts/
 sdist/
 var/
