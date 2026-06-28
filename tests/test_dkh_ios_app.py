@@ -52,15 +52,20 @@ def test_dkh_ios_is_native_and_does_not_start_websites() -> None:
 
     assert "DKHCRMRootView()" in app
     assert "import AuthenticationServices" in native_app
-    assert "SignInWithAppleButton" in native_app
-    assert "SignInWithAppleButton(.continue)" in native_app
+    assert "ASAuthorizationController" in native_app
+    assert "ASAuthorizationAppleIDProvider().createRequest()" in native_app
     assert "ASAuthorizationAppleIDCredential" in native_app
     assert "DKHKeychainStore" in native_app
     assert "DKHDeviceGrantView" in native_app
+    assert "SignInWithAppleButton" not in native_app
+    assert "Mit Apple" not in native_app
     assert "DKHAppleLoginView" not in native_app
     assert "signOut" not in native_app
     assert "Abmelden" not in native_app
     assert "signed_out" not in native_app
+    assert "mobileAPINotReachable" in native_app
+    assert "cannotFindHost" in native_app
+    assert "Es wurde kein Server mit dem angegebenen Hostnamen gefunden" not in native_app
     assert "SFSafariViewController" not in native_app
     assert "WKWebView" not in native_app
     assert "import SafariServices" not in native_app
@@ -117,9 +122,12 @@ def test_dkh_ios_readme_documents_native_device_authorization() -> None:
         "unlocking the",
         "iPhone is enough",
         "One-time iPhone device approval",
+        "No visible Apple login button",
+        "authorization dialog automatically",
         "Apple `identityToken`",
         "Keychain storage",
         "trusted-device user snapshot",
+        "User-facing network errors",
         "No `SFSafariViewController`",
         "no `WKWebView`",
         "no browser website startup",
