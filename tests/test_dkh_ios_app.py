@@ -144,6 +144,12 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
     assert "DKHCaseSectionEditSheet" in native_app
     assert "Dokument-Metadaten anlegen" in native_app
     assert "DKHNewDocumentSheet" in native_app
+    assert "import QuickLook" in native_app
+    assert "DKHDocumentPreview" in native_app
+    assert "downloadDocument" in native_app
+    assert 'Label("Vorschau", systemImage: "doc.viewfinder")' in native_app
+    assert "documents/\\(caseId)/\\(document.id)" not in native_app
+    assert "documents/\\(document.id)/archive" not in native_app
     assert "Aufgabe im Vorgang anlegen" in native_app
     assert "DKHCaratImportControls" in native_app
     assert "Lieferanten-AB erfassen" in native_app
