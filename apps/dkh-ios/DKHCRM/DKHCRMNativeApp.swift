@@ -15,25 +15,6 @@ struct DKHCRMUser: Codable, Equatable {
     let roles: [String]
 }
 
-struct DKHCRMSection: Identifiable, Equatable {
-    let id: String
-    let title: String
-    let systemImage: String
-    let summary: String
-}
-
-let dkhCRMSections: [DKHCRMSection] = [
-    DKHCRMSection(id: "uebersicht", title: "Uebersicht", systemImage: "chart.bar.doc.horizontal", summary: "Tageslage, Termine, Aufgaben und offene E-Mails"),
-    DKHCRMSection(id: "kunden", title: "Kunden", systemImage: "person.2", summary: "Kundenakte, Leads, Vorgaenge und Dokumente"),
-    DKHCRMSection(id: "termine", title: "Termine", systemImage: "calendar", summary: "Kalender, Besuchstermine und Wiedervorlagen"),
-    DKHCRMSection(id: "aufgaben", title: "Aufgaben", systemImage: "checklist", summary: "Team-Aufgaben, Faelligkeiten und Zuweisungen"),
-    DKHCRMSection(id: "emails", title: "E-Mails", systemImage: "envelope", summary: "Posteingang, Fallzuordnung und Antwortvorschlaege"),
-    DKHCRMSection(id: "vorgaenge", title: "Vorgaenge", systemImage: "folder", summary: "Aktive Kundenfaelle und Bearbeitungsstatus"),
-    DKHCRMSection(id: "kaufvertrag", title: "Kaufvertrag", systemImage: "doc.text", summary: "Vertragsdaten und Kaufvertragsstrecke"),
-    DKHCRMSection(id: "rechnung", title: "Rechnung", systemImage: "doc.plaintext", summary: "Rechnungsdaten und Zahlungsstatus"),
-    DKHCRMSection(id: "admin", title: "Admin", systemImage: "gearshape", summary: "Benutzer, Rollen und Systemeinstellungen"),
-]
-
 struct DKHSessionResponse: Codable {
     let sessionToken: String?
     let status: String
@@ -44,6 +25,110 @@ struct DKHStoredSession: Codable {
     let sessionToken: String
     let user: DKHCRMUser
     let storedAt: Date
+}
+
+struct DKHMobileResourceResponse<State: Decodable>: Decodable {
+    let status: String
+    let resource: String
+    let state: State
+}
+
+struct DKHOverviewState: Decodable {
+    let currentUser: DKHOverviewUser?
+    let customerCases: [DKHCustomerCase]?
+    let tasks: [DKHTask]?
+    let emails: [DKHEmail]?
+    let appointments: [DKHAppointment]?
+}
+
+struct DKHOverviewUser: Decodable {
+    let displayName: String?
+    let email: String?
+    let isAdmin: Bool?
+}
+
+struct DKHCustomerCase: Decodable, Identifiable {
+    let id: Int
+    let caseNumber: String?
+    let customerDisplayName: String
+    let customerNumber: String?
+    let statusPhase: Int?
+}
+
+struct DKHTask: Decodable, Identifiable {
+    let id: Int
+    let title: String
+    let statusName: String?
+    let priority: String?
+    let dueAt: String?
+    let caseInfo: DKHCustomerCase?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case statusName
+        case priority
+        case dueAt
+        case caseInfo = "case"
+    }
+}
+
+struct DKHEmail: Decodable, Identifiable {
+    let id: Int
+    let subject: String
+    let snippet: String?
+    let receivedAt: String?
+    let isUnassigned: Bool?
+}
+
+struct DKHAppointment: Decodable, Identifiable {
+    let id: Int
+    let title: String
+    let startsAt: String
+    let location: String?
+    let caseInfo: DKHAppointmentCase?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case startsAt
+        case location
+        case caseInfo = "case"
+    }
+}
+
+struct DKHAppointmentCase: Decodable {
+    let id: Int
+    let customerDisplayName: String
+}
+
+struct DKHCustomersState: Decodable {
+    let customers: [DKHCustomer]?
+    let leads: [DKHLead]?
+}
+
+struct DKHCustomer: Decodable, Identifiable {
+    let id: Int
+    let customerNumber: String?
+    let displayName: String
+    let primaryEmail: String?
+    let primaryPhone: String?
+    let primaryMobile: String?
+    let updatedAt: String?
+}
+
+struct DKHLead: Decodable, Identifiable {
+    let id: Int
+    let leadNumber: String?
+    let displayName: String
+    let status: String?
+    let source: String?
+    let updatedAt: String?
+}
+
+struct DKHLiveWorkspace {
+    let overview: DKHOverviewState
+    let customers: DKHCustomersState
 }
 
 enum DKHSessionError: LocalizedError {
@@ -72,6 +157,7 @@ enum DKHSessionError: LocalizedError {
 @MainActor
 final class DKHSessionStore: ObservableObject {
     @Published private(set) var user: DKHCRMUser?
+    @Published private(set) var storedSession: DKHStoredSession?
     @Published private(set) var status: String = "device_not_granted"
     @Published var errorMessage: String?
     @Published var isGrantingDevice = false
@@ -80,6 +166,7 @@ final class DKHSessionStore: ObservableObject {
 
     init() {
         if let storedSession = keychain.loadStoredSession() {
+            self.storedSession = storedSession
             user = storedSession.user
             status = "trusted_device"
         }
@@ -110,6 +197,7 @@ final class DKHSessionStore: ObservableObject {
 
     func resetDeviceGrant() {
         keychain.deleteStoredSession()
+        storedSession = nil
         user = nil
         status = "device_not_granted"
         errorMessage = nil
@@ -126,7 +214,9 @@ final class DKHSessionStore: ObservableObject {
             guard response.status == "active", let sessionToken = response.sessionToken, let user = response.user else {
                 throw DKHSessionError.unauthorized(response.status)
             }
-            keychain.saveStoredSession(DKHStoredSession(sessionToken: sessionToken, user: user, storedAt: Date()))
+            let storedSession = DKHStoredSession(sessionToken: sessionToken, user: user, storedAt: Date())
+            keychain.saveStoredSession(storedSession)
+            self.storedSession = storedSession
             self.user = user
         } catch {
             errorMessage = error.localizedDescription
@@ -156,6 +246,39 @@ struct DKHMobileSessionClient {
             return decoded
         }
         throw DKHSessionError.unauthorized(decoded.status)
+    }
+}
+
+struct DKHMobileDataClient {
+    let sessionToken: String
+
+    func fetchLiveWorkspace() async throws -> DKHLiveWorkspace {
+        async let overview: DKHOverviewState = fetchResource("overview", as: DKHOverviewState.self)
+        async let customers: DKHCustomersState = fetchResource("customers", as: DKHCustomersState.self)
+        return try await DKHLiveWorkspace(overview: overview, customers: customers)
+    }
+
+    private func fetchResource<State: Decodable>(_ resource: String, as type: State.Type) async throws -> State {
+        var request = URLRequest(url: DKHMobileAPI.baseURL.appending(path: resource))
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw DKHSessionError.serverMessage("Ungueltige Serverantwort.")
+        }
+        guard http.statusCode == 200 else {
+            throw DKHSessionError.serverMessage("DKH Serverdaten konnten nicht geladen werden (\(http.statusCode)).")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let decoded = try decoder.decode(DKHMobileResourceResponse<State>.self, from: data)
+        guard decoded.status == "active" else {
+            throw DKHSessionError.serverMessage("DKH Serverdaten sind nicht freigegeben (\(decoded.status)).")
+        }
+        return decoded.state
     }
 }
 
@@ -236,8 +359,8 @@ struct DKHCRMRootView: View {
 
     var body: some View {
         Group {
-            if let user = session.user {
-                DKHCRMDashboardView(user: user)
+            if let storedSession = session.storedSession {
+                DKHCRMDashboardView(storedSession: storedSession)
             } else {
                 DKHDeviceGrantView(session: session)
             }
@@ -306,63 +429,228 @@ struct DKHDeviceGrantView: View {
 }
 
 struct DKHCRMDashboardView: View {
-    let user: DKHCRMUser
+    let storedSession: DKHStoredSession
+    @State private var liveWorkspace: DKHLiveWorkspace?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(user.displayName)
+                        Text(storedSession.user.displayName)
                             .font(.headline)
-                        Text(user.email)
+                        Text(storedSession.user.email)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
 
-                Section("CRM") {
-                    ForEach(dkhCRMSections) { section in
-                        NavigationLink {
-                            DKHCRMSectionView(section: section)
-                        } label: {
-                            Label {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(section.title)
-                                    Text(section.summary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } icon: {
-                                Image(systemName: section.systemImage)
-                            }
+                if isLoading {
+                    Section {
+                        ProgressView("DKH Serverdaten werden geladen")
+                    }
+                }
+
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                        Button("Erneut laden") {
+                            Task { await loadLiveWorkspace() }
                         }
                     }
                 }
+
+                if let liveWorkspace {
+                    DKHOverviewSection(overview: liveWorkspace.overview)
+                    DKHCustomersSection(customersState: liveWorkspace.customers)
+                }
             }
             .navigationTitle("DKH CRM")
+            .refreshable {
+                await loadLiveWorkspace()
+            }
+            .task {
+                await loadLiveWorkspace()
+            }
+        }
+    }
+
+    @MainActor
+    private func loadLiveWorkspace() async {
+        guard !isLoading else { return }
+        isLoading = true
+        errorMessage = nil
+        do {
+            liveWorkspace = try await DKHMobileDataClient(sessionToken: storedSession.sessionToken).fetchLiveWorkspace()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+}
+
+struct DKHOverviewSection: View {
+    let overview: DKHOverviewState
+
+    var body: some View {
+        Section("Uebersicht") {
+            NavigationLink {
+                DKHListDetailView(
+                    title: "Aufgaben",
+                    rows: (overview.tasks ?? []).map {
+                        DKHListRow(
+                            title: $0.title,
+                            subtitle: [$0.statusName, $0.dueAt].compactMap { $0 }.joined(separator: " · "),
+                            detail: $0.caseInfo?.customerDisplayName
+                        )
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "Aufgaben", value: overview.tasks?.count ?? 0, systemImage: "checklist")
+            }
+
+            NavigationLink {
+                DKHListDetailView(
+                    title: "Termine",
+                    rows: (overview.appointments ?? []).map {
+                        DKHListRow(
+                            title: $0.title,
+                            subtitle: [$0.startsAt, $0.location].compactMap { $0 }.joined(separator: " · "),
+                            detail: $0.caseInfo?.customerDisplayName
+                        )
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "Termine", value: overview.appointments?.count ?? 0, systemImage: "calendar")
+            }
+
+            NavigationLink {
+                DKHListDetailView(
+                    title: "E-Mails",
+                    rows: (overview.emails ?? []).map {
+                        DKHListRow(title: $0.subject, subtitle: $0.receivedAt ?? "", detail: $0.snippet)
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "E-Mails", value: overview.emails?.count ?? 0, systemImage: "envelope")
+            }
+
+            NavigationLink {
+                DKHListDetailView(
+                    title: "Vorgaenge",
+                    rows: (overview.customerCases ?? []).map {
+                        DKHListRow(
+                            title: $0.customerDisplayName,
+                            subtitle: [$0.caseNumber, $0.customerNumber].compactMap { $0 }.joined(separator: " · "),
+                            detail: $0.statusPhase.map { "Phase \($0)" }
+                        )
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "Vorgaenge", value: overview.customerCases?.count ?? 0, systemImage: "folder")
+            }
         }
     }
 }
 
-struct DKHCRMSectionView: View {
-    let section: DKHCRMSection
+struct DKHCustomersSection: View {
+    let customersState: DKHCustomersState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: section.systemImage)
-                .font(.largeTitle)
-            Text(section.title)
-                .font(.title.bold())
-            Text(section.summary)
-                .foregroundStyle(.secondary)
-            Text("Diese native Ansicht wird ueber die DKH App-API mit produktiven CRM-Daten versorgt. Sie startet keine Webseite und nutzt keinen Cloudflare-Access-Flow.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Spacer()
+        Section("Kunden") {
+            NavigationLink {
+                DKHListDetailView(
+                    title: "Kunden",
+                    rows: (customersState.customers ?? []).map {
+                        DKHListRow(
+                            title: $0.displayName,
+                            subtitle: [$0.customerNumber, $0.primaryEmail].compactMap { $0 }.joined(separator: " · "),
+                            detail: $0.primaryPhone ?? $0.primaryMobile
+                        )
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "Kunden", value: customersState.customers?.count ?? 0, systemImage: "person.2")
+            }
+
+            NavigationLink {
+                DKHListDetailView(
+                    title: "Leads",
+                    rows: (customersState.leads ?? []).map {
+                        DKHListRow(
+                            title: $0.displayName,
+                            subtitle: [$0.leadNumber, $0.status, $0.source].compactMap { $0 }.joined(separator: " · "),
+                            detail: $0.updatedAt
+                        )
+                    }
+                )
+            } label: {
+                DKHMetricRow(title: "Leads", value: customersState.leads?.count ?? 0, systemImage: "person.crop.circle.badge.plus")
+            }
         }
-        .padding(24)
-        .navigationTitle(section.title)
+    }
+}
+
+struct DKHMetricRow: View {
+    let title: String
+    let value: Int
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            HStack {
+                Text(title)
+                Spacer()
+                Text("\(value)")
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+        }
+    }
+}
+
+struct DKHListRow: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let detail: String?
+}
+
+struct DKHListDetailView: View {
+    let title: String
+    let rows: [DKHListRow]
+
+    var body: some View {
+        List {
+            if rows.isEmpty {
+                Text("Keine Eintraege im aktuellen DKH Serverzustand.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.title)
+                            .font(.headline)
+                        if !row.subtitle.isEmpty {
+                            Text(row.subtitle)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let detail = row.detail, !detail.isEmpty {
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle(title)
     }
 }
