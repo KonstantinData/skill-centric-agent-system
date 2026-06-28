@@ -8,18 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		2B0001012B00000100000001 /* DKHCRMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002012B00000100000001 /* DKHCRMApp.swift */; };
-		2B0001022B00000100000001 /* DKHWorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002022B00000100000001 /* DKHWorkspaceModels.swift */; };
-		2B0001032B00000100000001 /* DKHWorkspaceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002032B00000100000001 /* DKHWorkspaceSnapshot.swift */; };
-		2B0001042B00000100000001 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002042B00000100000001 /* DashboardView.swift */; };
-		2B0001052B00000100000001 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002052B00000100000001 /* Components.swift */; };
+		2B0001022B00000100000001 /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002022B00000100000001 /* WebAppView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2B0002012B00000100000001 /* DKHCRMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DKHCRMApp.swift; sourceTree = "<group>"; };
-		2B0002022B00000100000001 /* DKHWorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DKHWorkspaceModels.swift; sourceTree = "<group>"; };
-		2B0002032B00000100000001 /* DKHWorkspaceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DKHWorkspaceSnapshot.swift; sourceTree = "<group>"; };
-		2B0002042B00000100000001 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		2B0002052B00000100000001 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		2B0002022B00000100000001 /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
 		2B0002062B00000100000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2B0002072B00000100000001 /* DKHCRM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DKHCRM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -47,8 +41,7 @@
 			isa = PBXGroup;
 			children = (
 				2B0002012B00000100000001 /* DKHCRMApp.swift */,
-				2B0004042B00000100000001 /* Models */,
-				2B0004052B00000100000001 /* Views */,
+				2B0002022B00000100000001 /* WebAppView.swift */,
 				2B0002062B00000100000001 /* Assets.xcassets */,
 			);
 			path = DKHCRM;
@@ -60,24 +53,6 @@
 				2B0002072B00000100000001 /* DKHCRM.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		2B0004042B00000100000001 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				2B0002022B00000100000001 /* DKHWorkspaceModels.swift */,
-				2B0002032B00000100000001 /* DKHWorkspaceSnapshot.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		2B0004052B00000100000001 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				2B0002042B00000100000001 /* DashboardView.swift */,
-				2B0002052B00000100000001 /* Components.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -150,10 +125,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2B0001012B00000100000001 /* DKHCRMApp.swift in Sources */,
-				2B0001022B00000100000001 /* DKHWorkspaceModels.swift in Sources */,
-				2B0001032B00000100000001 /* DKHWorkspaceSnapshot.swift in Sources */,
-				2B0001042B00000100000001 /* DashboardView.swift in Sources */,
-				2B0001052B00000100000001 /* Components.swift in Sources */,
+				2B0001022B00000100000001 /* WebAppView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

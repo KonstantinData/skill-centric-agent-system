@@ -17,19 +17,25 @@ Browser
   -> PostgreSQL tenant schema
 ```
 
-## Native iOS Companion
+## Native iOS App
 
-`apps/dkh-ios/` is a separate native SwiftUI companion app for the
-`daskuechenhaus` tenant. It does not replace this protected browser CRM path
-and does not change Cloudflare Access, Hetzner routing, object-storage, or
-PostgreSQL production authority.
+`apps/dkh-ios/` is a native SwiftUI iOS container for the same DKH CRM Web App
+used in the browser. It loads `https://es-daskuechenhaus.de` in `WKWebView`
+and therefore uses the existing Next.js routing, Hetzner Admin API proxy,
+object-storage document handling, and PostgreSQL tenant authority. It is not a
+demo snapshot and must not maintain a separate native copy of CRM pages or
+business logic.
 
-The current iOS scope is read-only and uses only sanitized DKH CRM workflow
-structure. It must not store customer master data, private contact details,
-documents, raw e-mails, API responses, Cloudflare Access tokens, Hetzner Admin
-API secrets, or runtime traces. Live mobile authentication, secure storage,
-offline summaries, push, write intents, TestFlight, and App Store release work
-need separate evidence before activation.
+The iOS app must not implement its own login or Access flow. User/device
+sign-in and any web session state are handled outside the app code; the app is
+only the iPhone container for the productive CRM surface.
+
+The iOS repository code must not store customer master data, private contact
+details, documents, raw e-mails, API responses, access tokens,
+Hetzner Admin API secrets, or runtime traces. Session cookies may exist only in
+the platform web data store at runtime. Offline summaries, push, background
+sync, TestFlight, and App Store release work need separate evidence before
+activation.
 
 ## Required Cloudflare State
 
