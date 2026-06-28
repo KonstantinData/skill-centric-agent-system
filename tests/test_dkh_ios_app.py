@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import re
+import struct
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +21,12 @@ def ios_text() -> str:
         if path.is_file()
         and path.suffix in {".md", ".swift", ".pbxproj", ".json", ".xcworkspacedata"}
     )
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    return struct.unpack(">II", data[16:24])
 
 
 def test_dkh_ios_app_exists_alongside_web_crm() -> None:
@@ -171,6 +179,28 @@ def test_dkh_ios_uses_requested_app_background_color() -> None:
     assert "navigationAppearance.backgroundColor = uiAppBackground" in native_app
     assert "tabAppearance.backgroundColor = uiAppBackground" in native_app
     assert ".preferredColorScheme(.light)" in native_app
+
+
+def test_dkh_ios_has_product_app_logo_assets() -> None:
+    native_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
+    app_icon_dir = IOS_ROOT / "DKHCRM" / "Assets.xcassets" / "AppIcon.appiconset"
+    logo_dir = IOS_ROOT / "DKHCRM" / "Assets.xcassets" / "DKHBrandLogo.imageset"
+
+    app_icon_contents = json.loads(read(app_icon_dir / "Contents.json"))
+    logo_contents = json.loads(read(logo_dir / "Contents.json"))
+
+    assert app_icon_contents["images"][0]["filename"] == "AppIcon.png"
+    assert png_size(app_icon_dir / "AppIcon.png") == (1024, 1024)
+    assert {item["filename"] for item in logo_contents["images"]} == {
+        "DKHBrandLogo.png",
+        "DKHBrandLogo-2x.png",
+        "DKHBrandLogo-3x.png",
+    }
+    assert png_size(logo_dir / "DKHBrandLogo.png") == (260, 88)
+    assert png_size(logo_dir / "DKHBrandLogo-2x.png") == (520, 176)
+    assert png_size(logo_dir / "DKHBrandLogo-3x.png") == (780, 264)
+    assert 'Image("DKHBrandLogo")' in native_app
+    assert "DKHBrandLogoView" in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:

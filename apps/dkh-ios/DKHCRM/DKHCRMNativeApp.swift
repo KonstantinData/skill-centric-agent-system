@@ -67,6 +67,15 @@ private extension View {
     }
 }
 
+struct DKHBrandLogoView: View {
+    var body: some View {
+        Image("DKHBrandLogo")
+            .resizable()
+            .scaledToFit()
+            .accessibilityLabel("das kuechenhaus")
+    }
+}
+
 struct DKHCRMUser: Codable, Equatable {
     let id: Int
     let displayName: String
@@ -900,6 +909,8 @@ struct DKHDeviceGrantView: View {
             Spacer()
 
             VStack(alignment: .leading, spacing: 10) {
+                DKHBrandLogoView()
+                    .frame(width: 208, height: 70, alignment: .leading)
                 Text("DKH CRM")
                     .font(.largeTitle.weight(.bold))
                 Text("Native App fuer Das Kuechenhaus")
@@ -1080,6 +1091,9 @@ struct DKHHomePage: View {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
+                        DKHBrandLogoView()
+                            .frame(width: 156, height: 53, alignment: .leading)
+                            .padding(.bottom, 6)
                         Text(user.displayName)
                             .font(.headline)
                         Text(user.email)
