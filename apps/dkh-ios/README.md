@@ -17,9 +17,8 @@ functions they use in the browser.
 - Same production backend, API proxy, object-storage document handling, and
   tenant database authority as `apps/dkh-crm/`.
 - No duplicate static CRM snapshot and no native demo dashboard.
-- No app-owned login or Access flow. The iOS app does not add a second
-  authentication layer; user/device sign-in and any existing web session are
-  handled outside the app code.
+- No app-owned authentication screen, credential prompt, or user/session
+  management. Device/user sign-in is handled outside the app code.
 - Tenant identity fixed to `daskuechenhaus` through the production DKH host.
 
 ## Tenant And App Boundaries
@@ -44,11 +43,9 @@ and its server-side controls.
   copied page payloads from production.
 - Customer data, document access, write actions, mail handling, purchase
   contracts, invoices, and admin functions stay in the existing Web App.
-- The iOS app uses the default `WKWebsiteDataStore` so normal web session
-  cookies can persist like a browser session; it does not store tokens in app
-  code or repository files.
-- Apple Developer credentials, provisioning profiles, access secrets, and API
-  tokens belong outside the repository.
+- The iOS app does not store tokens in app code or repository files.
+- Apple Developer credentials, provisioning profiles, secrets, and API tokens
+  belong outside the repository.
 
 ## Open In Xcode
 
