@@ -114,7 +114,7 @@ jobs:
             printf -- '- Apply deploy: `false`\n'
             printf -- '- Hetzner target: configured through GitHub secrets\n'
             printf -- '- Database: `tenant_daskuechenhaus`\n'
-            printf -- '- Migrations: `0008_customer_search_first_deduplication.sql`, `0009_customer_file_desktop.sql`, `0010_customer_case_document_metadata.sql`, `0011_customer_document_object_storage.sql`, `0012_carat_prjz_imports.sql`, `0013_supplier_order_confirmations.sql`, `0014_lead_intake.sql`, `0015_mobile_app_identities.sql`\n'
+            printf -- '- Migrations: `0008_customer_search_first_deduplication.sql`, `0009_customer_file_desktop.sql`, `0010_customer_case_document_metadata.sql`, `0011_customer_document_object_storage.sql`, `0012_carat_prjz_imports.sql`, `0013_supplier_order_confirmations.sql`, `0014_lead_intake.sql`, `0015_mobile_app_identities.sql`, `0016_mobile_app_konstantin_activation.sql`\n'
             printf -- '- Service: `daskuechenhaus-admin-api.service`\n'
             printf -- '- Remote mutation: none\n'
           } > es-daskuechenhaus-admin-api-evidence/plan.md
@@ -156,6 +156,7 @@ jobs:
           remote_supplier_confirmation_migration="/tmp/0013_supplier_order_confirmations-${GITHUB_RUN_ID}.sql"
           remote_lead_intake_migration="/tmp/0014_lead_intake-${GITHUB_RUN_ID}.sql"
           remote_mobile_app_identities_migration="/tmp/0015_mobile_app_identities-${GITHUB_RUN_ID}.sql"
+          remote_mobile_konstantin_activation_migration="/tmp/0016_mobile_app_konstantin_activation-${GITHUB_RUN_ID}.sql"
 
           scp -i "${HOME}/.ssh/hetzner_key" \
             scripts/hetzner/daskuechenhaus_admin_api.py \
@@ -187,10 +188,13 @@ jobs:
           scp -i "${HOME}/.ssh/hetzner_key" \
             migrations/hetzner/tenants/daskuechenhaus/0015_mobile_app_identities.sql \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_mobile_app_identities_migration}"
+          scp -i "${HOME}/.ssh/hetzner_key" \
+            migrations/hetzner/tenants/daskuechenhaus/0016_mobile_app_konstantin_activation.sql \
+            "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}:${remote_mobile_konstantin_activation_migration}"
 
           ssh -i "${HOME}/.ssh/hetzner_key" \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' REMOTE_DESKTOP_MIGRATION='${remote_desktop_migration}' REMOTE_DOCUMENT_MIGRATION='${remote_document_migration}' REMOTE_OBJECT_STORAGE_MIGRATION='${remote_object_storage_migration}' REMOTE_CARAT_IMPORT_MIGRATION='${remote_carat_import_migration}' REMOTE_SUPPLIER_CONFIRMATION_MIGRATION='${remote_supplier_confirmation_migration}' REMOTE_LEAD_INTAKE_MIGRATION='${remote_lead_intake_migration}' REMOTE_MOBILE_APP_IDENTITIES_MIGRATION='${remote_mobile_app_identities_migration}' DKH_OBJECT_STORAGE_ACCESS_KEY_ID='${DKH_OBJECT_STORAGE_ACCESS_KEY_ID}' DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY='${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY}' bash -s" <<'REMOTE'
+            "REMOTE_APP='${remote_app}' REMOTE_SERVICE='${remote_service}' REMOTE_MIGRATION='${remote_migration}' REMOTE_DESKTOP_MIGRATION='${remote_desktop_migration}' REMOTE_DOCUMENT_MIGRATION='${remote_document_migration}' REMOTE_OBJECT_STORAGE_MIGRATION='${remote_object_storage_migration}' REMOTE_CARAT_IMPORT_MIGRATION='${remote_carat_import_migration}' REMOTE_SUPPLIER_CONFIRMATION_MIGRATION='${remote_supplier_confirmation_migration}' REMOTE_LEAD_INTAKE_MIGRATION='${remote_lead_intake_migration}' REMOTE_MOBILE_APP_IDENTITIES_MIGRATION='${remote_mobile_app_identities_migration}' REMOTE_MOBILE_KONSTANTIN_ACTIVATION_MIGRATION='${remote_mobile_konstantin_activation_migration}' DKH_OBJECT_STORAGE_ACCESS_KEY_ID='${DKH_OBJECT_STORAGE_ACCESS_KEY_ID}' DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY='${DKH_OBJECT_STORAGE_SECRET_ACCESS_KEY}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           if ! sudo -n systemctl is-active --quiet postgresql.service; then
@@ -283,6 +287,7 @@ jobs:
           sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_SUPPLIER_CONFIRMATION_MIGRATION}"
           sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_LEAD_INTAKE_MIGRATION}"
           sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_MOBILE_APP_IDENTITIES_MIGRATION}"
+          sudo -n -u postgres psql -d tenant_daskuechenhaus -v ON_ERROR_STOP=1 -f "${REMOTE_MOBILE_KONSTANTIN_ACTIVATION_MIGRATION}"
           sudo -n install -d -o tenant_daskuechenhaus_app -g tenant_daskuechenhaus_app -m 0750 /opt/daskuechenhaus/admin-api
           sudo -n install -d -o root -g tenant_daskuechenhaus_app -m 0750 /etc/daskuechenhaus
           object_storage_env="/tmp/daskuechenhaus-object-storage-${RANDOM}.env"
@@ -320,7 +325,7 @@ jobs:
             "http://127.0.0.1:8715/customers/search?q=abc" \
             | grep -F '"ok": true'
 
-          rm -f "${REMOTE_APP}" "${REMOTE_SERVICE}" "${REMOTE_MIGRATION}" "${REMOTE_DESKTOP_MIGRATION}" "${REMOTE_DOCUMENT_MIGRATION}" "${REMOTE_OBJECT_STORAGE_MIGRATION}" "${REMOTE_CARAT_IMPORT_MIGRATION}" "${REMOTE_SUPPLIER_CONFIRMATION_MIGRATION}" "${REMOTE_LEAD_INTAKE_MIGRATION}"
+          rm -f "${REMOTE_APP}" "${REMOTE_SERVICE}" "${REMOTE_MIGRATION}" "${REMOTE_DESKTOP_MIGRATION}" "${REMOTE_DOCUMENT_MIGRATION}" "${REMOTE_OBJECT_STORAGE_MIGRATION}" "${REMOTE_CARAT_IMPORT_MIGRATION}" "${REMOTE_SUPPLIER_CONFIRMATION_MIGRATION}" "${REMOTE_LEAD_INTAKE_MIGRATION}" "${REMOTE_MOBILE_APP_IDENTITIES_MIGRATION}" "${REMOTE_MOBILE_KONSTANTIN_ACTIVATION_MIGRATION}"
           REMOTE
 
       - name: Upload deployment evidence
@@ -333,7 +338,7 @@ jobs:
             printf '# es-daskuechenhaus.de Admin API Deployment Evidence\n\n'
             printf -- '- Apply deploy: `true`\n'
             printf -- '- Database: `tenant_daskuechenhaus`\n'
-            printf -- '- Migrations: `0008_customer_search_first_deduplication.sql`, `0009_customer_file_desktop.sql`, `0010_customer_case_document_metadata.sql`, `0011_customer_document_object_storage.sql`, `0012_carat_prjz_imports.sql`, `0013_supplier_order_confirmations.sql`, `0014_lead_intake.sql`, `0015_mobile_app_identities.sql`\n'
+            printf -- '- Migrations: `0008_customer_search_first_deduplication.sql`, `0009_customer_file_desktop.sql`, `0010_customer_case_document_metadata.sql`, `0011_customer_document_object_storage.sql`, `0012_carat_prjz_imports.sql`, `0013_supplier_order_confirmations.sql`, `0014_lead_intake.sql`, `0015_mobile_app_identities.sql`, `0016_mobile_app_konstantin_activation.sql`\n'
             printf -- '- Service: `daskuechenhaus-admin-api.service`\n'
             printf -- '- Backend smoke: `/customers/search?q=abc`\n'
             printf -- '- Secret values in artifact: `none`\n'
