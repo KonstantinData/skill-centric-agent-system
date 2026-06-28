@@ -10,6 +10,41 @@ enum DKHMobileAPI {
     static let baseURL = URL(string: "https://app.es-daskuechenhaus.de/api/mobile")!
 }
 
+enum DKHTheme {
+    static let appBackgroundHex = "#76b726"
+    static let appBackground = Color(
+        red: Double(0x76) / 255.0,
+        green: Double(0xb7) / 255.0,
+        blue: Double(0x26) / 255.0
+    )
+    static let uiAppBackground = UIColor(
+        red: CGFloat(0x76) / 255.0,
+        green: CGFloat(0xb7) / 255.0,
+        blue: CGFloat(0x26) / 255.0,
+        alpha: 1.0
+    )
+
+    static func applyGlobalAppearance() {
+        UITableView.appearance().backgroundColor = uiAppBackground
+        UICollectionView.appearance().backgroundColor = uiAppBackground
+        UIScrollView.appearance().backgroundColor = uiAppBackground
+    }
+}
+
+private struct DKHAppBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(DKHTheme.appBackground.ignoresSafeArea())
+    }
+}
+
+private extension View {
+    func dkhAppBackground() -> some View {
+        modifier(DKHAppBackgroundModifier())
+    }
+}
+
 struct DKHCRMUser: Codable, Equatable {
     let id: Int
     let displayName: String
@@ -817,6 +852,10 @@ final class DKHDeviceAuthorizationController: NSObject, ObservableObject, ASAuth
 struct DKHCRMRootView: View {
     @StateObject private var session = DKHSessionStore()
 
+    init() {
+        DKHTheme.applyGlobalAppearance()
+    }
+
     var body: some View {
         Group {
             if let storedSession = session.storedSession {
@@ -825,6 +864,7 @@ struct DKHCRMRootView: View {
                 DKHDeviceGrantView(session: session)
             }
         }
+        .dkhAppBackground()
     }
 }
 
@@ -938,6 +978,7 @@ struct DKHCRMDashboardView: View {
                     DKHAdminPage(admin: liveWorkspace.admin)
                         .tabItem { Label("Admin", systemImage: "gearshape") }
                 }
+                .dkhAppBackground()
             } else {
                 NavigationStack {
                     List {
@@ -964,10 +1005,12 @@ struct DKHCRMDashboardView: View {
                             }
                         }
                     }
+                    .dkhAppBackground()
                     .navigationTitle("DKH CRM")
                 }
             }
         }
+        .dkhAppBackground()
         .task {
             await loadLiveWorkspace()
         }
