@@ -46,7 +46,10 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert "missing_mobile_session" in data_route
     assert 'request.nextUrl.pathname.startsWith("/api/mobile/")' in middleware
     assert "resolveAccessEmail(request)" in middleware
-    assert 'const BROWSER_STRIP_HEADERS = ["authorization", ...ACCESS_CONTEXT_HEADERS];' in middleware
+    assert (
+        'const BROWSER_STRIP_HEADERS = ["authorization", ...ACCESS_CONTEXT_HEADERS];'
+        in middleware
+    )
 
     mobile_middleware_block = middleware.split(
         'if (request.nextUrl.pathname.startsWith("/api/mobile/"))',
