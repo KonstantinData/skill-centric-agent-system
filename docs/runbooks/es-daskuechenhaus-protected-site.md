@@ -26,16 +26,15 @@ object-storage document handling, and PostgreSQL tenant authority. It is not a
 demo snapshot and must not maintain a separate native copy of CRM pages or
 business logic.
 
-The iOS app must not implement its own login or Access flow. User/device
-sign-in and any web session state are handled outside the app code; the app is
-only the iPhone container for the productive CRM surface.
+The iOS app must not implement its own authentication screen, credential
+prompt, or user/session management. Device/user sign-in is handled outside the
+app code; the app is only the iPhone container for the productive CRM surface.
 
 The iOS repository code must not store customer master data, private contact
 details, documents, raw e-mails, API responses, access tokens,
-Hetzner Admin API secrets, or runtime traces. Session cookies may exist only in
-the platform web data store at runtime. Offline summaries, push, background
-sync, TestFlight, and App Store release work need separate evidence before
-activation.
+Hetzner Admin API secrets, or runtime traces. Offline summaries, push,
+background sync, TestFlight, and App Store release work need separate evidence
+before activation.
 
 ## Required Cloudflare State
 
