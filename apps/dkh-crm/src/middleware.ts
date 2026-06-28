@@ -67,6 +67,14 @@ export async function middleware(request: NextRequest) {
     requestHeaders.delete(header);
   }
 
+  if (request.nextUrl.pathname.startsWith("/api/mobile/")) {
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
   const email = await resolveAccessEmail(request);
   if (!email && process.env.NODE_ENV === "production") {
     return new NextResponse("Nicht autorisiert", { status: 401 });

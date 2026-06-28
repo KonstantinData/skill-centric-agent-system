@@ -4,7 +4,7 @@ import SwiftUI
 struct DKHCRMApp: App {
     var body: some Scene {
         WindowGroup {
-            WebAppView(startURL: DKHWebApp.productionURL)
+            DKHCRMRootView()
         }
     }
 }
