@@ -129,6 +129,9 @@ struct DKHCustomerCase: Decodable, Identifiable {
     let notes: [DKHCaseNote]?
     let sections: [String: [String: DKHJSONValue]]?
     let documents: [DKHCaseDocument]?
+    let caratImports: [DKHCaratImport]?
+    let supplierOrders: [DKHSupplierOrder]?
+    let supplierOrderConfirmations: [DKHSupplierConfirmation]?
     let updatedAt: String?
 }
 
@@ -237,13 +240,29 @@ struct DKHCustomer: Decodable, Identifiable {
     let customerType: String?
     let displayName: String
     let salutation: String?
+    let title: String?
     let firstName: String?
     let lastName: String?
     let companyName: String?
     let primaryEmail: String?
     let primaryPhone: String?
     let primaryMobile: String?
+    let preferredContactChannel: String?
+    let legalForm: String?
+    let vatId: String?
+    let taxNumber: String?
+    let registryCourt: String?
+    let registryNumber: String?
+    let objectCustomerLabel: String?
+    let taxTreatment: String?
+    let taxTreatmentNote: String?
+    let hasCustomVat: Bool?
+    let customVatRate: Double?
+    let customVatRateLabel: String?
+    let country: String?
     let notes: String?
+    let ownerUserId: Int?
+    let fileSections: [String: [String: DKHJSONValue]]?
     let caseCount: Int?
     let updatedAt: String?
     let address: DKHCustomerAddress?
@@ -255,11 +274,36 @@ struct DKHLead: Decodable, Identifiable {
     let displayName: String
     let status: String?
     let source: String?
+    let sourceChannel: String?
+    let salutation: String?
+    let title: String?
+    let firstName: String?
+    let lastName: String?
+    let companyName: String?
     let primaryEmail: String?
     let primaryPhone: String?
     let primaryMobile: String?
+    let preferredContactChannel: String?
+    let country: String?
+    let postalCode: String?
+    let city: String?
     let projectSummary: String?
+    let initialMessage: String?
+    let notes: String?
+    let ownerUserId: Int?
+    let convertedCustomerId: Int?
+    let convertedAt: String?
     let updatedAt: String?
+    let notesHistory: [DKHLeadNote]?
+}
+
+struct DKHLeadNote: Decodable, Identifiable {
+    let id: Int
+    let noteType: String?
+    let body: String
+    let source: String?
+    let createdBy: String?
+    let createdAt: String?
 }
 
 struct DKHCustomerAddress: Decodable {
@@ -289,13 +333,106 @@ struct DKHCaseNote: Decodable, Identifiable {
 
 struct DKHCaseDocument: Decodable, Identifiable {
     let id: Int
+    let customerCaseId: Int?
+    let registerCode: String?
+    let documentCategory: String?
     let title: String
     let documentType: String?
     let documentStatus: String?
     let note: String?
+    let versionLabel: String?
+    let isCurrentVersion: Bool?
+    let replacesDocumentId: Int?
     let hasFile: Bool?
+    let storageBackend: String?
+    let contentSha256: String?
     let originalFilename: String?
+    let contentType: String?
+    let fileSizeBytes: Int?
+    let createdBy: String?
     let createdAt: String?
+    let updatedAt: String?
+}
+
+struct DKHCaratImport: Decodable, Identifiable {
+    let id: Int
+    let customerCaseId: Int?
+    let sourceFilename: String?
+    let projectNumber: String?
+    let projectName: String?
+    let customerName: String?
+    let currency: String?
+    let supplierCount: Int?
+    let positionCount: Int?
+    let status: String?
+    let createdAt: String?
+    let positions: [DKHCaratPosition]?
+}
+
+struct DKHCaratPosition: Decodable, Identifiable {
+    let id: Int
+    let positionNumber: String?
+    let supplierCode: String?
+    let supplierName: String?
+    let articleCode: String?
+    let title: String?
+    let description: String?
+    let quantity: Double?
+    let selectionStatus: String?
+}
+
+struct DKHSupplierOrder: Decodable, Identifiable {
+    let id: Int
+    let supplierName: String?
+    let orderNumber: String?
+    let title: String?
+    let status: String?
+    let orderedPositionCount: Int?
+    let createdAt: String?
+}
+
+struct DKHSupplierConfirmation: Decodable, Identifiable {
+    let id: Int
+    let supplierOrderId: Int?
+    let supplierName: String?
+    let confirmationNumber: String?
+    let status: String?
+    let orderedPositionCount: Int?
+    let confirmationPositionCount: Int?
+    let matchedPositionCount: Int?
+    let matchRate: Double?
+    let createdAt: String?
+    let positions: [DKHSupplierConfirmationPosition]?
+    let exceptions: [DKHSupplierConfirmationException]?
+}
+
+struct DKHSupplierConfirmationPosition: Decodable, Identifiable {
+    let id: Int
+    let positionNumber: String?
+    let articleCode: String?
+    let title: String?
+    let description: String?
+    let quantity: Double?
+    let unit: String?
+    let confirmedNetPrice: Double?
+    let confirmedDeliveryWeek: String?
+    let confirmedDeliveryDate: String?
+    let matchStatus: String?
+    let severity: String?
+}
+
+struct DKHSupplierConfirmationException: Decodable, Identifiable {
+    let id: Int
+    let differenceType: String?
+    let severity: String?
+    let status: String?
+    let orderedValue: String?
+    let confirmedValue: String?
+    let differenceValue: String?
+    let message: String?
+    let resolutionAction: String?
+    let resolutionNote: String?
+    let resolvedAt: String?
 }
 
 struct DKHCaseRegister: Identifiable {
@@ -1275,16 +1412,20 @@ struct DKHCustomersPage: View {
                 }
                 Section("Leads") {
                     ForEach(customersState.leads ?? []) { lead in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(lead.displayName)
-                                .font(.headline)
-                            Text([lead.leadNumber, lead.status, lead.source].compactMap { $0 }.joined(separator: " · "))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if let summary = lead.projectSummary, !summary.isEmpty {
-                                Text(summary)
-                                    .font(.caption)
+                        NavigationLink {
+                            DKHLeadDetailPage(lead: lead, runAction: runAction)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(lead.displayName)
+                                    .font(.headline)
+                                Text([lead.leadNumber, lead.status, lead.source].compactMap { $0 }.joined(separator: " · "))
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                if let summary = lead.projectSummary, !summary.isEmpty {
+                                    Text(summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -1581,12 +1722,84 @@ struct DKHNewCustomerSheet: View {
     }
 }
 
+struct DKHLeadDetailPage: View {
+    let lead: DKHLead
+    let runAction: (String, [String: String]) async -> Void
+    @State private var noteType = "call"
+    @State private var noteBody = ""
+
+    var body: some View {
+        List {
+            Section("Leadstammdaten") {
+                Text(lead.displayName)
+                    .font(.headline)
+                DKHInfoRow("Leadnummer", lead.leadNumber)
+                DKHInfoRow("Status", lead.status)
+                DKHInfoRow("Source", [lead.source, lead.sourceChannel].compactMap { $0 }.joined(separator: " · "))
+                DKHInfoRow("Kontakt", [lead.primaryEmail, lead.primaryPhone, lead.primaryMobile].compactMap { $0 }.joined(separator: " · "))
+                DKHInfoRow("Ort", [lead.postalCode, lead.city].compactMap { $0 }.joined(separator: " "))
+                DKHInfoRow("Kurzbeschreibung", lead.projectSummary)
+                DKHInfoRow("Letzte Aenderung", lead.updatedAt)
+            }
+            Section("Erste Informationen") {
+                Text(lead.initialMessage ?? "Noch keine erste Nachricht erfasst.")
+                    .foregroundStyle(lead.initialMessage == nil ? .secondary : .primary)
+                if let notes = lead.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section("Kommunikation dokumentieren") {
+                Picker("Art", selection: $noteType) {
+                    Text("Telefon").tag("call")
+                    Text("E-Mail").tag("email")
+                    Text("WhatsApp").tag("whatsapp")
+                    Text("Social Media").tag("social")
+                    Text("Kundenanfrage").tag("customer_request")
+                    Text("Intern").tag("internal")
+                    Text("Allgemein").tag("general")
+                }
+                TextField("Kurznotiz", text: $noteBody, axis: .vertical)
+                    .lineLimit(2...6)
+                Button("Kommunikation speichern") {
+                    Task {
+                        await runAction("customers/leads/\(lead.id)/notes", [
+                            "note_type": noteType,
+                            "body": noteBody
+                        ])
+                        noteBody = ""
+                    }
+                }
+                .disabled(noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            Section("Kommunikationsverlauf") {
+                if let notes = lead.notesHistory, !notes.isEmpty {
+                    ForEach(notes) { note in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(note.body)
+                            Text([note.noteType, note.createdBy, note.createdAt].compactMap { $0 }.joined(separator: " · "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    Text("Noch keine Kommunikation dokumentiert.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Lead")
+    }
+}
+
 struct DKHCustomerDetailPage: View {
     let customer: DKHCustomer
     let cases: [DKHCustomerCase]
     let customersState: DKHCustomersState
     let runAction: (String, [String: String]) async -> Void
     @State private var isShowingCaseForm = false
+    @State private var isShowingCustomerEdit = false
 
     var body: some View {
         List {
@@ -1601,6 +1814,11 @@ struct DKHCustomerDetailPage: View {
                     Text(notes)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            }
+            Section("Stammdaten bearbeiten") {
+                Button("Kundenstammdaten bearbeiten") {
+                    isShowingCustomerEdit = true
                 }
             }
             Section("Kontakt") {
@@ -1648,6 +1866,209 @@ struct DKHCustomerDetailPage: View {
                 customersState: customersState,
                 runAction: runAction
             )
+        }
+        .sheet(isPresented: $isShowingCustomerEdit) {
+            DKHCustomerEditSheet(
+                customer: customer,
+                customersState: customersState,
+                runAction: runAction
+            )
+        }
+    }
+}
+
+struct DKHCustomerEditSheet: View {
+    let customer: DKHCustomer
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var customerType: String
+    @State private var salutation: String
+    @State private var title: String
+    @State private var firstName: String
+    @State private var lastName: String
+    @State private var companyName: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var mobile: String
+    @State private var preferredContactChannel: String
+    @State private var street: String
+    @State private var houseNumber: String
+    @State private var postalCode: String
+    @State private var city: String
+    @State private var country: String
+    @State private var legalForm: String
+    @State private var vatId: String
+    @State private var taxNumber: String
+    @State private var registryCourt: String
+    @State private var registryNumber: String
+    @State private var objectCustomerLabel: String
+    @State private var taxTreatment: String
+    @State private var taxTreatmentNote: String
+    @State private var customVatRate: String
+    @State private var customVatRateLabel: String
+    @State private var ownerUserId: String
+    @State private var notes: String
+
+    init(
+        customer: DKHCustomer,
+        customersState: DKHCustomersState,
+        runAction: @escaping (String, [String: String]) async -> Void
+    ) {
+        self.customer = customer
+        self.customersState = customersState
+        self.runAction = runAction
+        _customerType = State(initialValue: customer.customerType ?? "private")
+        _salutation = State(initialValue: customer.salutation ?? "")
+        _title = State(initialValue: customer.title ?? "")
+        _firstName = State(initialValue: customer.firstName ?? "")
+        _lastName = State(initialValue: customer.lastName ?? "")
+        _companyName = State(initialValue: customer.companyName ?? "")
+        _email = State(initialValue: customer.primaryEmail ?? "")
+        _phone = State(initialValue: customer.primaryPhone ?? "")
+        _mobile = State(initialValue: customer.primaryMobile ?? "")
+        _preferredContactChannel = State(initialValue: customer.preferredContactChannel ?? "email")
+        _street = State(initialValue: customer.address?.street ?? "")
+        _houseNumber = State(initialValue: customer.address?.houseNumber ?? "")
+        _postalCode = State(initialValue: customer.address?.postalCode ?? "")
+        _city = State(initialValue: customer.address?.city ?? "")
+        _country = State(initialValue: customer.country ?? customer.address?.country ?? "DE")
+        _legalForm = State(initialValue: customer.legalForm ?? "")
+        _vatId = State(initialValue: customer.vatId ?? "")
+        _taxNumber = State(initialValue: customer.taxNumber ?? "")
+        _registryCourt = State(initialValue: customer.registryCourt ?? "")
+        _registryNumber = State(initialValue: customer.registryNumber ?? "")
+        _objectCustomerLabel = State(initialValue: customer.objectCustomerLabel ?? "")
+        _taxTreatment = State(initialValue: customer.taxTreatment ?? "standard_de")
+        _taxTreatmentNote = State(initialValue: customer.taxTreatmentNote ?? "")
+        _customVatRate = State(initialValue: customer.customVatRate.map { "\($0)" } ?? "")
+        _customVatRateLabel = State(initialValue: customer.customVatRateLabel ?? "")
+        _ownerUserId = State(initialValue: customer.ownerUserId.map(String.init) ?? "")
+        _notes = State(initialValue: customer.notes ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Stammdaten") {
+                    Picker("Kundentyp", selection: $customerType) {
+                        Text("Privatkunde").tag("private")
+                        Text("Objektkunde").tag("company")
+                    }
+                    Picker("Anrede", selection: $salutation) {
+                        Text("Keine Angabe").tag("")
+                        Text("Herr").tag("Herr")
+                        Text("Frau").tag("Frau")
+                        Text("Divers").tag("Divers")
+                        Text("Familie").tag("Familie")
+                    }
+                    TextField("Titel", text: $title)
+                    if customerType == "company" {
+                        TextField("Firma", text: $companyName)
+                        TextField("Objektkunden-Art", text: $objectCustomerLabel)
+                    } else {
+                        TextField("Vorname", text: $firstName)
+                        TextField("Nachname", text: $lastName)
+                    }
+                    TextField("E-Mail", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                    TextField("Telefon", text: $phone)
+                        .keyboardType(.phonePad)
+                    TextField("Mobil", text: $mobile)
+                        .keyboardType(.phonePad)
+                    Picker("Bevorzugter Kontaktweg", selection: $preferredContactChannel) {
+                        Text("E-Mail").tag("email")
+                        Text("Telefon").tag("phone")
+                        Text("Mobil").tag("mobile")
+                        Text("WhatsApp").tag("whatsapp")
+                        Text("Keiner").tag("none")
+                    }
+                }
+                Section("Adresse") {
+                    TextField("Strasse", text: $street)
+                    TextField("Hausnummer", text: $houseNumber)
+                    TextField("PLZ", text: $postalCode)
+                    TextField("Ort", text: $city)
+                    TextField("Land", text: $country)
+                }
+                Section("Firma / Steuern") {
+                    TextField("Rechtsform", text: $legalForm)
+                    TextField("USt-IdNr.", text: $vatId)
+                    TextField("Steuernummer", text: $taxNumber)
+                    TextField("Registergericht", text: $registryCourt)
+                    TextField("Registernummer", text: $registryNumber)
+                    Picker("Steuerbehandlung", selection: $taxTreatment) {
+                        Text("Deutschland Standard").tag("standard_de")
+                        Text("EU-Unternehmen").tag("eu_business")
+                        Text("Drittland").tag("third_country_export")
+                        Text("Schweiz").tag("switzerland_export")
+                        Text("NATO / US").tag("nato_forces")
+                        Text("Manuell pruefen").tag("custom")
+                    }
+                    TextField("Abweichender Mehrwertsteuersatz", text: $customVatRate)
+                        .keyboardType(.decimalPad)
+                    TextField("MwSt.-Bezeichnung", text: $customVatRateLabel)
+                    TextField("Hinweis zur Steuerbehandlung", text: $taxTreatmentNote, axis: .vertical)
+                }
+                Section("Zustaendig / Notizen") {
+                    Picker("Zustaendig", selection: $ownerUserId) {
+                        Text("DKH Server waehlt Standard").tag("")
+                        ForEach(customersState.users ?? []) { user in
+                            Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                                .tag(String(user.id))
+                        }
+                    }
+                    TextField("Notizen", text: $notes, axis: .vertical)
+                        .lineLimit(3...8)
+                }
+            }
+            .navigationTitle("Stammdaten")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var fields: [String: String] = [
+                                "customer_type": customerType,
+                                "salutation": salutation,
+                                "title": title,
+                                "first_name": firstName,
+                                "last_name": lastName,
+                                "company_name": companyName,
+                                "primary_email": email,
+                                "primary_phone": phone,
+                                "primary_mobile": mobile,
+                                "preferred_contact_channel": preferredContactChannel,
+                                "street": street,
+                                "house_number": houseNumber,
+                                "postal_code": postalCode,
+                                "city": city,
+                                "country": country,
+                                "legal_form": legalForm,
+                                "vat_id": vatId,
+                                "tax_number": taxNumber,
+                                "registry_court": registryCourt,
+                                "registry_number": registryNumber,
+                                "object_customer_label": objectCustomerLabel,
+                                "tax_treatment": taxTreatment,
+                                "tax_treatment_note": taxTreatmentNote,
+                                "has_custom_vat": customVatRate.isEmpty ? "false" : "true",
+                                "custom_vat_rate": customVatRate,
+                                "custom_vat_rate_label": customVatRateLabel,
+                                "notes": notes,
+                                "create_case": "false"
+                            ]
+                            if !ownerUserId.isEmpty { fields["owner_user_id"] = ownerUserId }
+                            await runAction("customers/customers/\(customer.id)", fields)
+                            dismiss()
+                        }
+                    }
+                    .disabled(customerType == "company" ? companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty : lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
         }
     }
 }
@@ -1721,6 +2142,7 @@ struct DKHCaseDetailPage: View {
     @State private var responsibleUserId: String
     @State private var registerNote = ""
     @State private var communicationNote = ""
+    @State private var isShowingDocumentForm = false
 
     init(
         caseRecord: DKHCustomerCase,
@@ -1799,6 +2221,7 @@ struct DKHCaseDetailPage: View {
                 caseRecord: caseRecord,
                 registerNote: $registerNote,
                 communicationNote: $communicationNote,
+                customersState: customersState,
                 runAction: runAction
             )
             Section("Notizen") {
@@ -1822,18 +2245,32 @@ struct DKHCaseDetailPage: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(document.title)
                                 .font(.headline)
-                            Text([document.documentType, document.documentStatus, document.originalFilename].compactMap { $0 }.joined(separator: " · "))
+                            Text([document.documentCategory, document.documentType, document.documentStatus, document.originalFilename].compactMap { $0 }.joined(separator: " · "))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                            HStack {
+                                Button("Archivieren") {
+                                    Task {
+                                        await runAction("customers/cases/\(caseRecord.id)/documents/\(document.id)/archive", [:])
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                            }
                         }
                     }
                 } else {
                     Text("Keine Dokumente im aktuellen Register.")
                         .foregroundStyle(.secondary)
                 }
+                Button("Dokument-Metadaten anlegen") {
+                    isShowingDocumentForm = true
+                }
             }
         }
         .navigationTitle("Vorgang")
+        .sheet(isPresented: $isShowingDocumentForm) {
+            DKHNewDocumentSheet(caseRecord: caseRecord, runAction: runAction)
+        }
     }
 
     private func registerStateText(_ phaseRange: ClosedRange<Int>) -> String {
@@ -1849,7 +2286,11 @@ struct DKHCaseRegisterSection: View {
     let caseRecord: DKHCustomerCase
     @Binding var registerNote: String
     @Binding var communicationNote: String
+    let customersState: DKHCustomersState
     let runAction: (String, [String: String]) async -> Void
+    @State private var isShowingSectionEditor = false
+    @State private var isShowingTaskForm = false
+    @State private var isShowingConfirmationForm = false
 
     var body: some View {
         Section(register.label) {
@@ -1870,7 +2311,8 @@ struct DKHCaseRegisterSection: View {
                 Text("Dokumente werden unten in der Dokumentenliste angezeigt.")
                     .foregroundStyle(.secondary)
             } else {
-                if let values = caseRecord.sections?[sectionCode(for: register.key)], !values.isEmpty {
+                let code = sectionCode(for: register.key)
+                if let values = caseRecord.sections?[code], !values.isEmpty {
                     ForEach(values.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
                         DKHInfoRow(prettySectionKey(key), value.displayText)
                     }
@@ -1878,19 +2320,38 @@ struct DKHCaseRegisterSection: View {
                     Text("Noch keine Registerdaten gespeichert.")
                         .foregroundStyle(.secondary)
                 }
-                TextField("Register-Notiz / Arbeitsstand", text: $registerNote, axis: .vertical)
-                    .lineLimit(3...8)
-                Button("Register speichern") {
-                    Task {
-                        await runAction("customers/cases/\(caseRecord.id)/sections/\(sectionCode(for: register.key))", [
-                            "mobile_note": registerNote,
-                            "mobile_register": register.label
-                        ])
-                        registerNote = ""
+                Button("Register bearbeiten") {
+                    isShowingSectionEditor = true
+                }
+                if register.key == "abwicklung" {
+                    Button("Aufgabe im Vorgang anlegen") {
+                        isShowingTaskForm = true
+                    }
+                    if !(caseRecord.caratImports ?? []).isEmpty {
+                        DKHCaratImportControls(caseRecord: caseRecord, runAction: runAction)
+                    }
+                    if !(caseRecord.supplierOrders ?? []).isEmpty || !(caseRecord.supplierOrderConfirmations ?? []).isEmpty {
+                        Button("Lieferanten-AB erfassen") {
+                            isShowingConfirmationForm = true
+                        }
+                        DKHSupplierConfirmationControls(caseRecord: caseRecord, runAction: runAction)
                     }
                 }
-                .disabled(registerNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+        }
+        .sheet(isPresented: $isShowingSectionEditor) {
+            DKHCaseSectionEditSheet(
+                caseRecord: caseRecord,
+                register: register,
+                sectionCode: sectionCode(for: register.key),
+                runAction: runAction
+            )
+        }
+        .sheet(isPresented: $isShowingTaskForm) {
+            DKHCaseTaskSheet(caseRecord: caseRecord, customersState: customersState, runAction: runAction)
+        }
+        .sheet(isPresented: $isShowingConfirmationForm) {
+            DKHConfirmationSheet(caseRecord: caseRecord, runAction: runAction)
         }
     }
 
@@ -1912,6 +2373,382 @@ struct DKHCaseRegisterSection: View {
     private func prettySectionKey(_ key: String) -> String {
         key.replacingOccurrences(of: "_", with: " ").capitalized
     }
+}
+
+struct DKHCaseSectionEditSheet: View {
+    let caseRecord: DKHCustomerCase
+    let register: DKHCaseRegister
+    let sectionCode: String
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var fields: [DKHEditableField]
+
+    init(
+        caseRecord: DKHCustomerCase,
+        register: DKHCaseRegister,
+        sectionCode: String,
+        runAction: @escaping (String, [String: String]) async -> Void
+    ) {
+        self.caseRecord = caseRecord
+        self.register = register
+        self.sectionCode = sectionCode
+        self.runAction = runAction
+        let existing = caseRecord.sections?[sectionCode] ?? [:]
+        let allKeys = Array(Set(defaultSectionKeys(for: sectionCode) + existing.keys)).sorted()
+        _fields = State(initialValue: allKeys.map { key in
+            DKHEditableField(key: key, label: prettyEditableKey(key), value: existing[key]?.displayText ?? "")
+        })
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(register.label) {
+                    Text(register.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach($fields) { $field in
+                        TextField(field.label, text: $field.value, axis: .vertical)
+                            .lineLimit(1...5)
+                    }
+                }
+            }
+            .navigationTitle("Register")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var payload: [String: String] = [:]
+                            for field in fields {
+                                payload[field.key] = field.value
+                            }
+                            await runAction("customers/cases/\(caseRecord.id)/sections/\(sectionCode)", payload)
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct DKHEditableField: Identifiable {
+    let id = UUID()
+    let key: String
+    let label: String
+    var value: String
+}
+
+struct DKHCaseTaskSheet: View {
+    let caseRecord: DKHCustomerCase
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var description = ""
+    @State private var priority = "normal"
+    @State private var dueAt = ""
+    @State private var assignedUserId = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(caseRecord.caseNumber ?? "Vorgang") {
+                    TextField("Aufgabe", text: $title)
+                    TextField("Beschreibung", text: $description, axis: .vertical)
+                        .lineLimit(2...6)
+                    Picker("Prioritaet", selection: $priority) {
+                        Text("Niedrig").tag("low")
+                        Text("Normal").tag("normal")
+                        Text("Hoch").tag("high")
+                        Text("Dringend").tag("urgent")
+                    }
+                    TextField("Faelligkeit YYYY-MM-DD HH:MM", text: $dueAt)
+                    Picker("Zuweisen an", selection: $assignedUserId) {
+                        Text("DKH Server waehlt Standard").tag("")
+                        ForEach(customersState.users ?? []) { user in
+                            Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                                .tag(String(user.id))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Aufgabe")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var payload: [String: String] = [
+                                "title": title,
+                                "description": description,
+                                "priority": priority,
+                                "related_case_id": String(caseRecord.id),
+                                "customer_case_id": String(caseRecord.id),
+                                "due_at": dueAt
+                            ]
+                            if !assignedUserId.isEmpty { payload["assigned_user_ids"] = assignedUserId }
+                            await runAction("overview/tasks", payload)
+                            dismiss()
+                        }
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+struct DKHNewDocumentSheet: View {
+    let caseRecord: DKHCustomerCase
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var documentCategory = "from_customer"
+    @State private var documentType = "other"
+    @State private var documentStatus = "received"
+    @State private var versionLabel = "1"
+    @State private var note = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Dokument") {
+                    TextField("Titel", text: $title)
+                    Picker("Dokumentart", selection: $documentCategory) {
+                        Text("Vom Kunden").tag("from_customer")
+                        Text("Planung").tag("planning")
+                        Text("Angebot / Auftrag").tag("offer_order")
+                        Text("Abwicklung").tag("order_processing")
+                        Text("Rechnung").tag("invoice")
+                        Text("Sonstiges").tag("other")
+                    }
+                    Picker("Dokumenttyp", selection: $documentType) {
+                        Text("Angebot").tag("offer")
+                        Text("Aufmass").tag("measurement")
+                        Text("AB").tag("order_confirmation")
+                        Text("Plan").tag("plan")
+                        Text("Foto").tag("photo")
+                        Text("Rechnung").tag("invoice")
+                        Text("Sonstiges").tag("other")
+                    }
+                    Picker("Status", selection: $documentStatus) {
+                        Text("Empfangen").tag("received")
+                        Text("Entwurf").tag("draft")
+                        Text("Gesendet").tag("sent")
+                        Text("Freigegeben").tag("approved")
+                    }
+                    TextField("Version", text: $versionLabel)
+                    TextField("Notiz", text: $note, axis: .vertical)
+                        .lineLimit(2...6)
+                }
+            }
+            .navigationTitle("Dokument")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            await runAction("customers/cases/\(caseRecord.id)/documents", [
+                                "title": title,
+                                "document_category": documentCategory,
+                                "document_type": documentType,
+                                "document_status": documentStatus,
+                                "version_label": versionLabel,
+                                "note": note
+                            ])
+                            dismiss()
+                        }
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+struct DKHCaratImportControls: View {
+    let caseRecord: DKHCustomerCase
+    let runAction: (String, [String: String]) async -> Void
+
+    var body: some View {
+        ForEach(caseRecord.caratImports ?? []) { item in
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.sourceFilename ?? "CARAT-Import \(item.id)")
+                    .font(.headline)
+                Text("\(item.supplierCount ?? 0) Lieferanten · \(item.positionCount ?? 0) Positionen")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Kandidaten uebernehmen") {
+                        Task {
+                            await runAction("customers/cases/\(caseRecord.id)/carat-imports/\(item.id)/positions", caratPayload(item, action: "transfer"))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button("Zuruecksetzen") {
+                        Task {
+                            await runAction("customers/cases/\(caseRecord.id)/carat-imports/\(item.id)/positions", caratPayload(item, action: "reset"))
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private func caratPayload(_ item: DKHCaratImport, action: String) -> [String: String] {
+        var payload = ["carat_action": action]
+        for position in item.positions ?? [] where position.selectionStatus != "transferred" {
+            payload["position_\(position.id)"] = "on"
+        }
+        return payload
+    }
+}
+
+struct DKHConfirmationSheet: View {
+    let caseRecord: DKHCustomerCase
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var supplierOrderId = ""
+    @State private var confirmationNumber = ""
+    @State private var documentId = ""
+    @State private var positions = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Lieferanten-AB") {
+                    Picker("Bestellung", selection: $supplierOrderId) {
+                        Text("Bitte waehlen").tag("")
+                        ForEach(caseRecord.supplierOrders ?? []) { order in
+                            Text([order.supplierName, order.orderNumber ?? order.title].compactMap { $0 }.joined(separator: " · "))
+                                .tag(String(order.id))
+                        }
+                    }
+                    TextField("AB-Nummer", text: $confirmationNumber)
+                    Picker("AB-Dokument", selection: $documentId) {
+                        Text("Ohne Dokument").tag("")
+                        ForEach(caseRecord.documents ?? []) { document in
+                            Text(document.title).tag(String(document.id))
+                        }
+                    }
+                    TextField("AB-Positionen: Artikel | Titel | Menge | Netto | KW | Datum | Beschreibung", text: $positions, axis: .vertical)
+                        .lineLimit(5...12)
+                }
+            }
+            .navigationTitle("AB pruefen")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var payload: [String: String] = [
+                                "supplier_order_id": supplierOrderId,
+                                "confirmation_number": confirmationNumber,
+                                "confirmation_positions": positions
+                            ]
+                            if !documentId.isEmpty { payload["document_id"] = documentId }
+                            await runAction("customers/cases/\(caseRecord.id)/confirmations", payload)
+                            dismiss()
+                        }
+                    }
+                    .disabled(supplierOrderId.isEmpty || positions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+struct DKHSupplierConfirmationControls: View {
+    let caseRecord: DKHCustomerCase
+    let runAction: (String, [String: String]) async -> Void
+
+    var body: some View {
+        ForEach(caseRecord.supplierOrderConfirmations ?? []) { confirmation in
+            VStack(alignment: .leading, spacing: 6) {
+                Text([confirmation.supplierName, confirmation.confirmationNumber].compactMap { $0 }.joined(separator: " · "))
+                    .font(.headline)
+                Text("\(Int((confirmation.matchRate ?? 0) * 100))% Match · \(confirmation.status ?? "")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach((confirmation.exceptions ?? []).filter { $0.status == "open" }) { exception in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exception.message ?? exception.differenceType ?? "Abweichung")
+                            .font(.subheadline)
+                        HStack {
+                            Button("Akzeptieren") {
+                                Task {
+                                    await runAction("customers/confirmations/\(confirmation.id)/exceptions/\(exception.id)/decide", ["action": "accept"])
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            Button("Aenderungs-AB") {
+                                Task {
+                                    await runAction("customers/confirmations/\(confirmation.id)/exceptions/\(exception.id)/decide", ["action": "request_corrected_ab"])
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+func defaultSectionKeys(for sectionCode: String) -> [String] {
+    switch sectionCode {
+    case "project_objects":
+        return [
+            "property_label",
+            "project_situation",
+            "delivery_postal_code",
+            "delivery_city",
+            "desired_timeline",
+            "urgency",
+            "first_appointment_wanted",
+            "timeline_reason",
+            "budget_range",
+            "budget_discussed",
+            "inquiry_source",
+            "referral_source",
+            "has_floor_plan",
+            "has_measurements",
+            "has_photos",
+            "has_architect_plan",
+            "planning_notes",
+            "intake_notes"
+        ]
+    case "project_contacts":
+        return [
+            "primary_contact_same_as_master",
+            "contact_role",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "contact_notes"
+        ]
+    case "process_control":
+        return ["next_control_step", "next_control_due", "control_notes"]
+    case "documents":
+        return ["document_type", "document_note", "invoice_note", "closing_note"]
+    default:
+        return ["mobile_note"]
+    }
+}
+
+func prettyEditableKey(_ key: String) -> String {
+    key.replacingOccurrences(of: "_", with: " ").capitalized
 }
 
 func DKHDefaultRegister(for phase: Int?) -> String {
