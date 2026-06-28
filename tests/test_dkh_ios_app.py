@@ -105,8 +105,11 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
         "DKHTasksPage",
         "DKHEmailsPage",
         "DKHCustomersPage",
+        "DKHNewLeadSheet",
+        "DKHNewCustomerSheet",
         "DKHCustomerDetailPage",
         "DKHCaseDetailPage",
+        "DKHCaseRegisters",
         "DKHTemplatesPage",
         "DKHAdminPage",
         "DKH Serverdaten werden geladen",
@@ -119,6 +122,21 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
         "DKHListDetailView",
     ):
         assert stale_view not in native_app
+
+    assert native_app.index('Label("Kunden", systemImage: "person.2")') < native_app.index(
+        'Label("Aufgaben", systemImage: "checklist")'
+    )
+    assert native_app.index('Label("Aufgaben", systemImage: "checklist")') < native_app.index(
+        'Label("E-Mails", systemImage: "envelope")'
+    )
+    assert native_app.index('Label("E-Mails", systemImage: "envelope")') < native_app.index(
+        'Label("Termine", systemImage: "calendar")'
+    )
+    assert "Kein Treffer gefunden" in native_app
+    assert "Leadanlage" in native_app
+    assert "Kundenanlage" in native_app
+    assert "Vorgang speichern" in native_app
+    assert "Register speichern" in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:

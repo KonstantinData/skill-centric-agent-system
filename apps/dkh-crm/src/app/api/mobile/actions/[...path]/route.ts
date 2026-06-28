@@ -17,6 +17,7 @@ const ACTION_ALLOWLIST: RegExp[] = [
   /^overview\/emails\/\d+\/delete$/,
   /^customers\/customers$/,
   /^customers\/customers\/\d+$/,
+  /^customers\/leads$/,
   /^customers\/cases$/,
   /^customers\/cases\/\d+$/,
   /^customers\/cases\/\d+\/notes$/,
