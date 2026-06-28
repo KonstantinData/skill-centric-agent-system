@@ -57,6 +57,11 @@ def test_dkh_ios_is_native_and_does_not_start_websites() -> None:
     assert "ASAuthorizationAppleIDCredential" in native_app
     assert "DKHKeychainStore" in native_app
     assert "DKHDeviceGrantView" in native_app
+    assert "DKHMobileDataClient" in native_app
+    assert "fetchLiveWorkspace" in native_app
+    assert 'appending(path: "overview")' not in native_app
+    assert 'fetchResource("overview"' in native_app
+    assert 'fetchResource("customers"' in native_app
     assert "SignInWithAppleButton" not in native_app
     assert "Mit Apple" not in native_app
     assert "DKHAppleLoginView" not in native_app
@@ -76,6 +81,31 @@ def test_dkh_ios_is_native_and_does_not_start_websites() -> None:
     assert "WebAppView.swift in Sources" not in project
     assert "DashboardView.swift in Sources" not in project
     assert "DKHWorkspaceSnapshot.swift in Sources" not in project
+
+
+def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
+    native_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
+
+    forbidden_fragments = (
+        "dkhCRMSections",
+        "DKHCRMSectionView",
+        "Diese native Ansicht",
+        "produktiven CRM-Daten versorgt",
+        "static CRM section database",
+        "mock customer",
+    )
+    for fragment in forbidden_fragments:
+        assert fragment not in native_app
+
+    for expected in (
+        "DKHOverviewState",
+        "DKHCustomersState",
+        "DKHOverviewSection",
+        "DKHCustomersSection",
+        "DKHListDetailView",
+        "DKH Serverdaten werden geladen",
+    ):
+        assert expected in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
@@ -100,6 +130,8 @@ def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
     for expected in (
         "no CRM data export",
         "no demo customer database",
+        "No demo workspace",
+        "static CRM section database",
         "does not store long-lived secrets in app code",
         "No embedded Apple tokens",
         "customer records",
@@ -127,15 +159,15 @@ def test_dkh_ios_readme_documents_native_device_authorization() -> None:
         "Apple `identityToken`",
         "Keychain storage",
         "trusted-device user snapshot",
+        "/api/mobile/overview",
+        "/api/mobile/customers",
         "User-facing network errors",
         "No `SFSafariViewController`",
         "no `WKWebView`",
         "no browser website startup",
         "No Cloudflare Access verification",
         "customers",
-        "purchase contract",
-        "invoice",
-        "admin",
+        "same server state used by the browser CRM",
         "mobile_api_host: app.es-daskuechenhaus.de",
     ):
         assert label in readme

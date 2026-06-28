@@ -27,6 +27,7 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     apple_auth = read(CRM_ROOT / "src" / "lib" / "apple-auth.ts")
     mobile_session = read(CRM_ROOT / "src" / "lib" / "mobile-session.ts")
     route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "session" / "route.ts")
+    data_route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "[resource]" / "route.ts")
     middleware = read(CRM_ROOT / "src" / "middleware.ts")
 
     assert "https://appleid.apple.com/auth/keys" in apple_auth
@@ -35,8 +36,14 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert "resolveMobileIdentity" in mobile_session
     assert "/mobile/apple-session" in mobile_session
     assert "DKH_MOBILE_SESSION_SECRET" in mobile_session
+    assert "verifyMobileSessionToken" in mobile_session
     assert "identity_token" in route
     assert "createMobileSessionToken" in route
+    assert "fetchDkhJson" in data_route
+    assert '"overview/state"' in data_route
+    assert '"customers/state"' in data_route
+    assert "session.email" in data_route
+    assert "missing_mobile_session" in data_route
     assert 'request.nextUrl.pathname.startsWith("/api/mobile/")' in middleware
     assert "resolveAccessEmail(request)" in middleware
 

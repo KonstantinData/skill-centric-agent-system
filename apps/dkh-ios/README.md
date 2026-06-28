@@ -5,14 +5,18 @@ Native iOS app for the productive DKH CRM tenant `daskuechenhaus`.
 The browser CRM in `apps/dkh-crm/` remains available at
 `https://es-daskuechenhaus.de` and `https://www.es-daskuechenhaus.de` behind
 Cloudflare Access. Cloudflare Access remains unchanged for the browser hosts.
-The iOS app does not start either website. It uses native SwiftUI screens and
-one-time Apple device authorization against the dedicated mobile API at
+The iOS app does not start either website. It uses native SwiftUI screens,
+productive CRM state from the DKH server, and one-time Apple device
+authorization against the dedicated mobile API at
 `https://app.es-daskuechenhaus.de/api/mobile`.
 
 ## Current Scope
 
-- Native SwiftUI app shell for overview, customers, appointments, tasks,
-  e-mails, cases, purchase contract, invoice, and admin.
+- Native SwiftUI app views for productive DKH overview, customers, appointments,
+  tasks, e-mails, cases, and leads loaded from the same server state used by the
+  browser CRM.
+- No demo workspace, static CRM section database, mock customer list, or local
+  placeholder content is allowed in the DKH tenant app.
 - No standalone app login area: after first device approval, unlocking the
   iPhone is enough for normal app entry.
 - One-time iPhone device approval through Apple's native authorization sheet.
@@ -25,6 +29,8 @@ one-time Apple device authorization against the dedicated mobile API at
 - Keychain storage for the short-lived DKH mobile session token.
 - Keychain storage for the trusted-device user snapshot so the app opens
   directly after the iPhone is unlocked.
+- Live mobile data requests use the stored mobile session token against
+  `/api/mobile/overview` and `/api/mobile/customers`.
 - User-facing network errors do not expose raw DNS/URLSession wording.
 - No `SFSafariViewController`, no `WKWebView`, and no browser website startup.
 - No Cloudflare Access verification in the iOS app path. Cloudflare Access
@@ -49,12 +55,19 @@ entrypoints. The server verifies the Apple identity token during the one-time
 device approval and then resolves the stable Apple user subject to an active
 DKH CRM user before returning a mobile session.
 
+After that first approval, the app uses the mobile session token to request
+productive JSON state from the DKH server. The server maps the token back to the
+same DKH user e-mail used by the browser CRM and calls the existing
+`overview/state` and `customers/state` backend paths. Changes made in the
+browser and changes made through future native write actions therefore share one
+tenant database instead of diverging into a separate app dataset.
+
 ## Privacy And Runtime Limits
 
 - The repository contains no CRM data export and no demo customer database.
 - Customer data, document access, write actions, mail handling, purchase
   contracts, invoices, and admin functions stay behind the existing DKH server
-  controls.
+  controls and must not be copied into local iOS fixtures.
 - The app does not store long-lived secrets in app code or repository files.
 - Apple Developer credentials, provisioning profiles, session secrets, and API
   tokens belong outside the repository.
@@ -85,4 +98,5 @@ python -m pytest tests/test_dkh_ios_app.py
 - Cloudflare Access verification inside the app.
 - A separate app login area.
 - Offline customer storage.
+- Separate demo data or local placeholder CRM content.
 - Push notifications, background sync, TestFlight, or App Store release.
