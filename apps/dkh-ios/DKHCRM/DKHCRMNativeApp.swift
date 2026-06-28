@@ -60,6 +60,21 @@ enum DKHJSONValue: Decodable {
             self = .string((try? container.decode(String.self)) ?? "")
         }
     }
+
+    var displayText: String {
+        switch self {
+        case .string(let value):
+            return value
+        case .int(let value):
+            return "\(value)"
+        case .double(let value):
+            return value.formatted()
+        case .bool(let value):
+            return value ? "Ja" : "Nein"
+        case .null:
+            return ""
+        }
+    }
 }
 
 struct DKHOverviewState: Decodable {
@@ -104,12 +119,15 @@ struct DKHCustomerCase: Decodable, Identifiable {
     let caseNumber: String?
     let caratOrderNumber: String?
     let caseTitle: String?
+    let caseStatus: String?
     let customerDisplayName: String
     let customerNumber: String?
     let customerEmail: String?
     let statusPhase: Int?
     let statusPhaseName: String?
+    let responsibleUserId: Int?
     let notes: [DKHCaseNote]?
+    let sections: [String: [String: DKHJSONValue]]?
     let documents: [DKHCaseDocument]?
     let updatedAt: String?
 }
@@ -279,6 +297,26 @@ struct DKHCaseDocument: Decodable, Identifiable {
     let originalFilename: String?
     let createdAt: String?
 }
+
+struct DKHCaseRegister: Identifiable {
+    let key: String
+    let label: String
+    let phaseRange: ClosedRange<Int>?
+    let description: String
+
+    var id: String { key }
+}
+
+let DKHCaseRegisters: [DKHCaseRegister] = [
+    DKHCaseRegister(key: "anfrage", label: "Anfrage", phaseRange: 1...1, description: "Projektgrundlagen und erster Anlass."),
+    DKHCaseRegister(key: "beratung", label: "Beratung", phaseRange: 2...2, description: "Ansprechpartner und Abstimmung."),
+    DKHCaseRegister(key: "planung", label: "Planung", phaseRange: 3...3, description: "Objekte, Raeume und Planungsnotizen."),
+    DKHCaseRegister(key: "angebot_auftrag", label: "Angebot / Auftrag", phaseRange: 4...5, description: "Angebote, Auftragsunterlagen und Dokumente."),
+    DKHCaseRegister(key: "abwicklung", label: "Abwicklung", phaseRange: 6...8, description: "Aufgaben, Termine und kritische Schritte."),
+    DKHCaseRegister(key: "rechnung_abschluss", label: "Rechnung / Abschluss", phaseRange: 9...11, description: "Rechnung, Abschluss und Vorgangshistorie."),
+    DKHCaseRegister(key: "kommunikation", label: "Kommunikation", phaseRange: 1...11, description: "Telefonnotizen, E-Mail-Entwuerfe und Historie."),
+    DKHCaseRegister(key: "dokumente", label: "Dokumente", phaseRange: nil, description: "Dokumente aus der Vorgangsakte.")
+]
 
 struct DKHAdminState: Decodable {
     let users: [DKHAdminUser]?
@@ -691,8 +729,11 @@ struct DKHCRMDashboardView: View {
                     )
                     .tabItem { Label("Uebersicht", systemImage: "rectangle.grid.2x2") }
 
-                    DKHAppointmentsPage(overview: liveWorkspace.overview)
-                        .tabItem { Label("Termine", systemImage: "calendar") }
+                    DKHCustomersPage(
+                        customersState: liveWorkspace.customers,
+                        runAction: runAction
+                    )
+                    .tabItem { Label("Kunden", systemImage: "person.2") }
 
                     DKHTasksPage(
                         overview: liveWorkspace.overview,
@@ -707,8 +748,8 @@ struct DKHCRMDashboardView: View {
                     )
                     .tabItem { Label("E-Mails", systemImage: "envelope") }
 
-                    DKHCustomersPage(customersState: liveWorkspace.customers)
-                        .tabItem { Label("Kunden", systemImage: "person.2") }
+                    DKHAppointmentsPage(overview: liveWorkspace.overview)
+                        .tabItem { Label("Termine", systemImage: "calendar") }
 
                     DKHTemplatesPage()
                         .tabItem { Label("Vorlagen", systemImage: "doc.text") }
@@ -1165,21 +1206,54 @@ struct DKHEmailDetailPage: View {
 
 struct DKHCustomersPage: View {
     let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
     @State private var query = ""
+    @State private var isShowingLeadForm = false
+    @State private var isShowingCustomerForm = false
 
     var customers: [DKHCustomer] {
         let all = customersState.customers ?? []
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return all }
-        return all.filter {
-            [$0.displayName, $0.customerNumber, $0.primaryEmail, $0.primaryPhone, $0.primaryMobile]
-                .compactMap { $0?.localizedCaseInsensitiveContains(query) }
-                .contains(true)
-        }
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else { return all }
+        return all.filter { customerMatches($0, normalizedQuery) }
+    }
+
+    var shouldOfferCreateChoice: Bool {
+        query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 && customers.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             List {
+                Section("Neukundenanlage") {
+                    TextField("Name, E-Mail, Kunden-/Vorgangsnummer, CARAT oder Telefon", text: $query)
+                        .textInputAutocapitalization(.words)
+
+                    if query.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
+                        Text("Geben Sie mindestens drei Zeichen ein.")
+                            .foregroundStyle(.secondary)
+                    } else if shouldOfferCreateChoice {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Kein Treffer gefunden")
+                                .font(.headline)
+                            Text("Legen Sie zuerst fest, ob eine schlanke Leadakte oder direkt eine Kundenakte entstehen soll.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            HStack {
+                                Button("Leadanlage") {
+                                    isShowingLeadForm = true
+                                }
+                                .buttonStyle(.borderedProminent)
+
+                                Button("Kundenanlage") {
+                                    isShowingCustomerForm = true
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
                 Section("Kunden direkt Suche") {
                     if customers.isEmpty {
                         Text("Keine Kunden gefunden.")
@@ -1187,7 +1261,12 @@ struct DKHCustomersPage: View {
                     } else {
                         ForEach(customers) { customer in
                             NavigationLink {
-                                DKHCustomerDetailPage(customer: customer, cases: cases(for: customer))
+                                DKHCustomerDetailPage(
+                                    customer: customer,
+                                    cases: cases(for: customer),
+                                    customersState: customersState,
+                                    runAction: runAction
+                                )
                             } label: {
                                 DKHCustomerRow(customer: customer)
                             }
@@ -1212,18 +1291,302 @@ struct DKHCustomersPage: View {
                 }
             }
             .navigationTitle("Kunden")
-            .searchable(text: $query, prompt: "Kunde, E-Mail, Telefon")
+            .sheet(isPresented: $isShowingLeadForm) {
+                DKHNewLeadSheet(
+                    initialSearchText: query,
+                    customersState: customersState,
+                    runAction: runAction
+                )
+            }
+            .sheet(isPresented: $isShowingCustomerForm) {
+                DKHNewCustomerSheet(
+                    initialSearchText: query,
+                    customersState: customersState,
+                    runAction: runAction
+                )
+            }
         }
     }
 
     private func cases(for customer: DKHCustomer) -> [DKHCustomerCase] {
         (customersState.customerCases ?? []).filter { $0.customerId == customer.id }
     }
+
+    private func customerMatches(_ customer: DKHCustomer, _ searchText: String) -> Bool {
+        let directHit = [
+            customer.displayName,
+            customer.customerNumber,
+            customer.primaryEmail,
+            customer.primaryPhone,
+            customer.primaryMobile
+        ].compactMap { $0?.localizedCaseInsensitiveContains(searchText) }.contains(true)
+        if directHit { return true }
+        return cases(for: customer).contains { item in
+            [
+                item.caseNumber,
+                item.caratOrderNumber,
+                item.caseTitle,
+                item.statusPhaseName
+            ].compactMap { $0?.localizedCaseInsensitiveContains(searchText) }.contains(true)
+        }
+    }
+}
+
+struct DKHNewLeadSheet: View {
+    let initialSearchText: String
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var companyName = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var projectSummary = ""
+    @State private var initialMessage = ""
+    @State private var source = "website"
+    @State private var preferredContactChannel = "phone"
+    @State private var ownerUserId = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Lead anlegen") {
+                    TextField("Vorname", text: $firstName)
+                    TextField("Nachname", text: $lastName)
+                    TextField("Firma / Objektbezug", text: $companyName)
+                    TextField("E-Mail", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                    TextField("Telefon", text: $phone)
+                        .keyboardType(.phonePad)
+                    Picker("Source", selection: $source) {
+                        Text("Website").tag("website")
+                        Text("E-Mail").tag("email")
+                        Text("Telefon").tag("phone")
+                        Text("Ausstellung").tag("showroom")
+                        Text("Empfehlung").tag("referral")
+                        Text("Sonstiges").tag("other")
+                    }
+                    Picker("Bevorzugter Kontaktweg", selection: $preferredContactChannel) {
+                        Text("Telefon").tag("phone")
+                        Text("E-Mail").tag("email")
+                        Text("Mobil").tag("mobile")
+                        Text("WhatsApp").tag("whatsapp")
+                        Text("Noch unklar").tag("none")
+                    }
+                }
+                Section("Anfrage") {
+                    TextField("Kurzbeschreibung", text: $projectSummary, axis: .vertical)
+                    TextField("Erste Nachricht / Gespraechsnotiz", text: $initialMessage, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+                Section("Zustaendig") {
+                    Picker("Benutzer", selection: $ownerUserId) {
+                        Text("DKH Server waehlt Standard").tag("")
+                        ForEach(customersState.users ?? []) { user in
+                            Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                                .tag(String(user.id))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Lead")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var fields: [String: String] = [
+                                "source": source,
+                                "source_channel": source,
+                                "preferred_contact_channel": preferredContactChannel,
+                                "first_name": firstName,
+                                "last_name": lastName,
+                                "company_name": companyName,
+                                "primary_email": email,
+                                "primary_phone": phone,
+                                "project_summary": projectSummary,
+                                "initial_message": initialMessage.isEmpty ? initialSearchText : initialMessage
+                            ]
+                            if !ownerUserId.isEmpty { fields["owner_user_id"] = ownerUserId }
+                            await runAction("customers/leads", fields)
+                            dismiss()
+                        }
+                    }
+                    .disabled(initialMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && initialSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                seedNameFields()
+                if initialMessage.isEmpty {
+                    initialMessage = initialSearchText
+                }
+            }
+        }
+    }
+
+    private func seedNameFields() {
+        guard firstName.isEmpty, lastName.isEmpty, companyName.isEmpty else { return }
+        let parts = initialSearchText.split(separator: " ").map(String.init)
+        if parts.count >= 2 {
+            firstName = parts.dropLast().joined(separator: " ")
+            lastName = parts.last ?? ""
+        } else if let first = parts.first {
+            lastName = first
+        }
+    }
+}
+
+struct DKHNewCustomerSheet: View {
+    let initialSearchText: String
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var customerType = "private"
+    @State private var salutation = ""
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var companyName = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var street = ""
+    @State private var houseNumber = ""
+    @State private var postalCode = ""
+    @State private var city = ""
+    @State private var notes = ""
+    @State private var createCase = true
+    @State private var caseTitle = ""
+    @State private var caratOrderNumber = ""
+    @State private var statusPhaseId = "1"
+    @State private var ownerUserId = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Kunde anlegen") {
+                    Picker("Kundentyp", selection: $customerType) {
+                        Text("Privatkunde").tag("private")
+                        Text("Objektkunde").tag("company")
+                    }
+                    Picker("Anrede", selection: $salutation) {
+                        Text("Keine Angabe").tag("")
+                        Text("Herr").tag("Herr")
+                        Text("Frau").tag("Frau")
+                        Text("Divers").tag("Divers")
+                        Text("Familie").tag("Familie")
+                    }
+                    if customerType == "company" {
+                        TextField("Firma", text: $companyName)
+                    } else {
+                        TextField("Vorname", text: $firstName)
+                        TextField("Nachname", text: $lastName)
+                    }
+                    TextField("E-Mail", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                    TextField("Telefon", text: $phone)
+                        .keyboardType(.phonePad)
+                }
+                Section("Adresse") {
+                    TextField("Strasse", text: $street)
+                    TextField("Hausnummer", text: $houseNumber)
+                    TextField("PLZ", text: $postalCode)
+                    TextField("Ort", text: $city)
+                }
+                Section("Vorgang") {
+                    Toggle("Direkt einen Vorgang anlegen", isOn: $createCase)
+                    if createCase {
+                        TextField("Vorgangstitel", text: $caseTitle)
+                        TextField("CARAT Vorgangsnummer", text: $caratOrderNumber)
+                            .textInputAutocapitalization(.characters)
+                        Picker("Statusphase", selection: $statusPhaseId) {
+                            ForEach(customersState.statusPhases ?? []) { phase in
+                                Text("\(phase.phase). \(phase.name)").tag(String(phase.phase))
+                            }
+                        }
+                    }
+                }
+                Section("Zustaendig / Notizen") {
+                    Picker("Benutzer", selection: $ownerUserId) {
+                        Text("DKH Server waehlt Standard").tag("")
+                        ForEach(customersState.users ?? []) { user in
+                            Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                                .tag(String(user.id))
+                        }
+                    }
+                    TextField("Notizen", text: $notes, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+            }
+            .navigationTitle("Kunde")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var fields: [String: String] = [
+                                "customer_type": customerType,
+                                "salutation": salutation,
+                                "first_name": firstName,
+                                "last_name": lastName,
+                                "company_name": companyName,
+                                "primary_email": email,
+                                "primary_phone": phone,
+                                "street": street,
+                                "house_number": houseNumber,
+                                "postal_code": postalCode,
+                                "city": city,
+                                "country": "DE",
+                                "tax_treatment": "standard_de",
+                                "notes": notes,
+                                "create_case": createCase ? "true" : "false",
+                                "case_title": caseTitle,
+                                "carat_order_number": caratOrderNumber,
+                                "status_phase_id": statusPhaseId
+                            ]
+                            if !ownerUserId.isEmpty {
+                                fields["owner_user_id"] = ownerUserId
+                                fields["responsible_user_id"] = ownerUserId
+                            }
+                            await runAction("customers/customers", fields)
+                            dismiss()
+                        }
+                    }
+                    .disabled(customerType == "company" ? companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty : lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                seedNameFields()
+                if caseTitle.isEmpty {
+                    caseTitle = "Kuechenplanung"
+                }
+            }
+        }
+    }
+
+    private func seedNameFields() {
+        guard firstName.isEmpty, lastName.isEmpty, companyName.isEmpty else { return }
+        let parts = initialSearchText.split(separator: " ").map(String.init)
+        if parts.count >= 2 {
+            firstName = parts.dropLast().joined(separator: " ")
+            lastName = parts.last ?? ""
+        } else if let first = parts.first {
+            lastName = first
+        }
+    }
 }
 
 struct DKHCustomerDetailPage: View {
     let customer: DKHCustomer
     let cases: [DKHCustomerCase]
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @State private var isShowingCaseForm = false
 
     var body: some View {
         List {
@@ -1255,7 +1618,11 @@ struct DKHCustomerDetailPage: View {
                 } else {
                     ForEach(cases) { item in
                         NavigationLink {
-                            DKHCaseDetailPage(caseRecord: item)
+                            DKHCaseDetailPage(
+                                caseRecord: item,
+                                customersState: customersState,
+                                runAction: runAction
+                            )
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.caseTitle ?? item.customerDisplayName)
@@ -1268,13 +1635,111 @@ struct DKHCustomerDetailPage: View {
                     }
                 }
             }
+            Section {
+                Button("Vorgang anlegen") {
+                    isShowingCaseForm = true
+                }
+            }
         }
         .navigationTitle(customer.displayName)
+        .sheet(isPresented: $isShowingCaseForm) {
+            DKHNewCaseSheet(
+                customer: customer,
+                customersState: customersState,
+                runAction: runAction
+            )
+        }
+    }
+}
+
+struct DKHNewCaseSheet: View {
+    let customer: DKHCustomer
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var caseTitle = "Kuechenplanung"
+    @State private var caratOrderNumber = ""
+    @State private var statusPhaseId = "1"
+    @State private var responsibleUserId = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(customer.displayName) {
+                    TextField("Vorgangstitel", text: $caseTitle)
+                    TextField("CARAT Vorgangsnummer", text: $caratOrderNumber)
+                        .textInputAutocapitalization(.characters)
+                    Picker("Statusphase", selection: $statusPhaseId) {
+                        ForEach(customersState.statusPhases ?? []) { phase in
+                            Text("\(phase.phase). \(phase.name)").tag(String(phase.phase))
+                        }
+                    }
+                    Picker("Vorgang verantwortlich", selection: $responsibleUserId) {
+                        Text("DKH Server waehlt Standard").tag("")
+                        ForEach(customersState.users ?? []) { user in
+                            Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                                .tag(String(user.id))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Vorgang")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schliessen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Task {
+                            var fields: [String: String] = [
+                                "customer_id": String(customer.id),
+                                "case_title": caseTitle,
+                                "carat_order_number": caratOrderNumber,
+                                "case_status": "active",
+                                "status_phase_id": statusPhaseId
+                            ]
+                            if !responsibleUserId.isEmpty { fields["responsible_user_id"] = responsibleUserId }
+                            await runAction("customers/cases", fields)
+                            dismiss()
+                        }
+                    }
+                    .disabled(caseTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }
 
 struct DKHCaseDetailPage: View {
     let caseRecord: DKHCustomerCase
+    let customersState: DKHCustomersState
+    let runAction: (String, [String: String]) async -> Void
+    @State private var selectedRegister: String
+    @State private var caseTitle: String
+    @State private var caratOrderNumber: String
+    @State private var statusPhaseId: String
+    @State private var responsibleUserId: String
+    @State private var registerNote = ""
+    @State private var communicationNote = ""
+
+    init(
+        caseRecord: DKHCustomerCase,
+        customersState: DKHCustomersState,
+        runAction: @escaping (String, [String: String]) async -> Void
+    ) {
+        self.caseRecord = caseRecord
+        self.customersState = customersState
+        self.runAction = runAction
+        _selectedRegister = State(initialValue: DKHDefaultRegister(for: caseRecord.statusPhase))
+        _caseTitle = State(initialValue: caseRecord.caseTitle ?? "")
+        _caratOrderNumber = State(initialValue: caseRecord.caratOrderNumber ?? "")
+        _statusPhaseId = State(initialValue: String(caseRecord.statusPhase ?? 1))
+        _responsibleUserId = State(initialValue: caseRecord.responsibleUserId.map(String.init) ?? "")
+    }
+
+    var activeRegister: DKHCaseRegister {
+        DKHCaseRegisters.first { $0.key == selectedRegister } ?? DKHCaseRegisters[0]
+    }
 
     var body: some View {
         List {
@@ -1285,6 +1750,57 @@ struct DKHCaseDetailPage: View {
                 DKHInfoRow("CARAT", caseRecord.caratOrderNumber)
                 DKHInfoRow("Status", caseRecord.statusPhaseName)
             }
+            Section("Vorgang bearbeiten") {
+                TextField("Vorgangstitel", text: $caseTitle)
+                TextField("CARAT Vorgangsnummer", text: $caratOrderNumber)
+                    .textInputAutocapitalization(.characters)
+                Picker("Ablaufphase", selection: $statusPhaseId) {
+                    ForEach(customersState.statusPhases ?? []) { phase in
+                        Text("\(phase.phase). \(phase.name)").tag(String(phase.phase))
+                    }
+                }
+                Picker("Vorgang verantwortlich", selection: $responsibleUserId) {
+                    Text("DKH Server waehlt Standard").tag("")
+                    ForEach(customersState.users ?? []) { user in
+                        Text(user.displayName.isEmpty ? user.email ?? "Benutzer" : user.displayName)
+                            .tag(String(user.id))
+                    }
+                }
+                Button("Vorgang speichern") {
+                    Task {
+                        var fields: [String: String] = [
+                            "case_title": caseTitle,
+                            "carat_order_number": caratOrderNumber,
+                            "case_status": caseRecord.caseStatus ?? "active",
+                            "status_phase_id": statusPhaseId
+                        ]
+                        if !responsibleUserId.isEmpty { fields["responsible_user_id"] = responsibleUserId }
+                        await runAction("customers/cases/\(caseRecord.id)", fields)
+                    }
+                }
+            }
+            Section("Register") {
+                Picker("Register", selection: $selectedRegister) {
+                    ForEach(DKHCaseRegisters) { item in
+                        Text(item.label).tag(item.key)
+                    }
+                }
+                Text(activeRegister.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let phaseRange = activeRegister.phaseRange {
+                    Text(registerStateText(phaseRange))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            DKHCaseRegisterSection(
+                register: activeRegister,
+                caseRecord: caseRecord,
+                registerNote: $registerNote,
+                communicationNote: $communicationNote,
+                runAction: runAction
+            )
             Section("Notizen") {
                 if let notes = caseRecord.notes, !notes.isEmpty {
                     ForEach(notes) { note in
@@ -1319,6 +1835,91 @@ struct DKHCaseDetailPage: View {
         }
         .navigationTitle("Vorgang")
     }
+
+    private func registerStateText(_ phaseRange: ClosedRange<Int>) -> String {
+        let currentPhase = caseRecord.statusPhase ?? 1
+        if phaseRange.upperBound < currentPhase { return "Vergangenheit" }
+        if phaseRange.lowerBound > currentPhase { return "Zukunft" }
+        return "Aktueller Bereich"
+    }
+}
+
+struct DKHCaseRegisterSection: View {
+    let register: DKHCaseRegister
+    let caseRecord: DKHCustomerCase
+    @Binding var registerNote: String
+    @Binding var communicationNote: String
+    let runAction: (String, [String: String]) async -> Void
+
+    var body: some View {
+        Section(register.label) {
+            if register.key == "kommunikation" {
+                TextField("Telefonnotiz, E-Mail-Entwurf oder Vorgangshinweis", text: $communicationNote, axis: .vertical)
+                    .lineLimit(3...8)
+                Button("Notiz speichern") {
+                    Task {
+                        await runAction("customers/cases/\(caseRecord.id)/notes", [
+                            "note_type": "general",
+                            "body": communicationNote
+                        ])
+                        communicationNote = ""
+                    }
+                }
+                .disabled(communicationNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            } else if register.key == "dokumente" {
+                Text("Dokumente werden unten in der Dokumentenliste angezeigt.")
+                    .foregroundStyle(.secondary)
+            } else {
+                if let values = caseRecord.sections?[sectionCode(for: register.key)], !values.isEmpty {
+                    ForEach(values.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                        DKHInfoRow(prettySectionKey(key), value.displayText)
+                    }
+                } else {
+                    Text("Noch keine Registerdaten gespeichert.")
+                        .foregroundStyle(.secondary)
+                }
+                TextField("Register-Notiz / Arbeitsstand", text: $registerNote, axis: .vertical)
+                    .lineLimit(3...8)
+                Button("Register speichern") {
+                    Task {
+                        await runAction("customers/cases/\(caseRecord.id)/sections/\(sectionCode(for: register.key))", [
+                            "mobile_note": registerNote,
+                            "mobile_register": register.label
+                        ])
+                        registerNote = ""
+                    }
+                }
+                .disabled(registerNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+
+    private func sectionCode(for registerKey: String) -> String {
+        switch registerKey {
+        case "anfrage", "planung":
+            return "project_objects"
+        case "beratung":
+            return "project_contacts"
+        case "abwicklung":
+            return "process_control"
+        case "angebot_auftrag", "rechnung_abschluss":
+            return "documents"
+        default:
+            return registerKey
+        }
+    }
+
+    private func prettySectionKey(_ key: String) -> String {
+        key.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+func DKHDefaultRegister(for phase: Int?) -> String {
+    let currentPhase = phase ?? 1
+    return DKHCaseRegisters.first { item in
+        guard let range = item.phaseRange, item.key != "kommunikation" else { return false }
+        return range.contains(currentPhase)
+    }?.key ?? "anfrage"
 }
 
 struct DKHTemplatesPage: View {

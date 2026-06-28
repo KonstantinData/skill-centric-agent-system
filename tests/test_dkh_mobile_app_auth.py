@@ -59,10 +59,15 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert "ACTION_ALLOWLIST" in actions_route
     assert r"overview\/tasks" in actions_route
     assert r"overview\/emails\/assign" in actions_route
+    assert r"customers\/leads" in actions_route
     assert r"customers\/cases" in actions_route
     assert "DKHDeviceGrantView" in ios_app
     assert "ASAuthorizationAppleIDProvider" in ios_app
     assert "TabView" in ios_app
+    assert "DKHNewLeadSheet" in ios_app
+    assert "DKHNewCustomerSheet" in ios_app
+    assert "DKHCaseRegisters" in ios_app
+    assert "Vorgang speichern" in ios_app
     browser_sections = (
         "Uebersicht",
         "Termine",
