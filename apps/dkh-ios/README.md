@@ -6,19 +6,23 @@ The browser CRM in `apps/dkh-crm/` remains available at
 `https://es-daskuechenhaus.de` and `https://www.es-daskuechenhaus.de` behind
 Cloudflare Access. Cloudflare Access remains unchanged for the browser hosts.
 The iOS app does not start either website. It uses native SwiftUI screens and
-authenticates with Sign in with Apple against the dedicated mobile API at
+one-time Apple device authorization against the dedicated mobile API at
 `https://app.es-daskuechenhaus.de/api/mobile`.
 
 ## Current Scope
 
 - Native SwiftUI app shell for overview, customers, appointments, tasks,
   e-mails, cases, purchase contract, invoice, and admin.
-- Sign in with Apple as the app-login entrypoint.
+- No standalone app login area: after first device approval, unlocking the
+  iPhone is enough for normal app entry.
+- One-time iPhone device approval through Apple's native authorization sheet.
 - Apple `identityToken` exchange through the DKH mobile API.
 - Server-side Apple subject mapping to a DKH CRM user.
 - The server-side Apple subject mapping is the durable access check after the
-  first approved Apple login.
+  first approved device authorization.
 - Keychain storage for the short-lived DKH mobile session token.
+- Keychain storage for the trusted-device user snapshot so the app opens
+  directly after the iPhone is unlocked.
 - No `SFSafariViewController`, no `WKWebView`, and no browser website startup.
 - No Cloudflare Access verification in the iOS app path. Cloudflare Access
   remains unchanged for the browser hosts.
@@ -38,9 +42,9 @@ bundle_id: de.daskuechenhaus.crm
 ```
 
 The iOS app may only talk to the DKH mobile API host. Browser URLs are not app
-entrypoints. The server verifies the Apple identity token and then resolves the
-stable Apple user subject to an active DKH CRM user before returning a mobile
-session.
+entrypoints. The server verifies the Apple identity token during the one-time
+device approval and then resolves the stable Apple user subject to an active
+DKH CRM user before returning a mobile session.
 
 ## Privacy And Runtime Limits
 
@@ -60,9 +64,9 @@ open apps/dkh-ios/DKHCRM.xcodeproj
 
 Then select the `DKHCRM` scheme and an iPhone simulator.
 
-The target includes the Sign in with Apple entitlement. Provisioning must use an
-Apple Developer team where the bundle ID `de.daskuechenhaus.crm` has Sign in
-with Apple enabled.
+The target includes Apple's authorization entitlement. Provisioning must use an
+Apple Developer team where the bundle ID `de.daskuechenhaus.crm` has the Apple
+authorization capability enabled.
 
 ## Command-Line Validation
 
@@ -75,6 +79,7 @@ python -m pytest tests/test_dkh_ios_app.py
 ## Not Part Of This App Yet
 
 - Replacing the DKH browser CRM.
-- Cloudflare Access login or verification inside the app.
+- Cloudflare Access verification inside the app.
+- A separate app login area.
 - Offline customer storage.
 - Push notifications, background sync, TestFlight, or App Store release.
