@@ -9,6 +9,17 @@ ADMIN_API = REPO_ROOT / "scripts" / "hetzner" / "daskuechenhaus_admin_api.py"
 MOBILE_ACTIONS = (
     CRM_ROOT / "src" / "app" / "api" / "mobile" / "actions" / "[...path]" / "route.ts"
 )
+MOBILE_DOCUMENTS = (
+    CRM_ROOT
+    / "src"
+    / "app"
+    / "api"
+    / "mobile"
+    / "documents"
+    / "[caseId]"
+    / "[documentId]"
+    / "route.ts"
+)
 MOBILE_MIGRATION = (
     REPO_ROOT
     / "migrations"
@@ -40,6 +51,7 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "session" / "route.ts")
     data_route = read(CRM_ROOT / "src" / "app" / "api" / "mobile" / "[resource]" / "route.ts")
     actions_route = read(MOBILE_ACTIONS)
+    documents_route = read(MOBILE_DOCUMENTS)
     middleware = read(CRM_ROOT / "src" / "middleware.ts")
     ios_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
 
@@ -64,9 +76,15 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert r"customers\/customers\/\d+\/sections" in actions_route
     assert r"customers\/cases" in actions_route
     assert r"customers\/cases\/\d+\/documents" in actions_route
+    assert r"customers\/cases\/\d+\/documents\/\d+\/archive" not in actions_route
     assert r"customers\/cases\/\d+\/carat-imports" in actions_route
     assert r"customers\/cases\/\d+\/confirmations" in actions_route
     assert r"customers\/confirmations\/\d+\/exceptions" in actions_route
+    assert "fetchDkhBinary" in documents_route
+    assert "verifyMobileSessionToken" in documents_route
+    assert "missing_mobile_session" in documents_route
+    assert "content-disposition" in documents_route
+    assert "customers/cases/${safeCaseId}/documents/${safeDocumentId}/download" in documents_route
     assert "DKHDeviceGrantView" in ios_app
     assert "ASAuthorizationAppleIDProvider" in ios_app
     assert "TabView" in ios_app
@@ -76,6 +94,8 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
     assert "DKHLeadDetailPage" in ios_app
     assert "DKHCaseSectionEditSheet" in ios_app
     assert "DKHNewDocumentSheet" in ios_app
+    assert "DKHDocumentPreview" in ios_app
+    assert "downloadDocument" in ios_app
     assert "DKHCaseRegisters" in ios_app
     assert "Vorgang speichern" in ios_app
     assert "Register bearbeiten" in ios_app

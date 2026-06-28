@@ -20,12 +20,7 @@ function adminApiUrl(path: string): string {
   return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
-export async function fetchDkhJson<T>(
-  path: string,
-  userEmail: string,
-  init: RequestInit = {},
-): Promise<T> {
-  noStore();
+function dkhRequestHeaders(userEmail: string, init: RequestInit = {}): Headers {
   const token = process.env.DKH_ADMIN_API_TOKEN;
   const headers = new Headers(init.headers);
   if (token) headers.set("authorization", `Bearer ${token}`);
@@ -33,6 +28,16 @@ export async function fetchDkhJson<T>(
     headers.set("x-access-user-email", userEmail);
     headers.set("cf-access-authenticated-user-email", userEmail);
   }
+  return headers;
+}
+
+export async function fetchDkhJson<T>(
+  path: string,
+  userEmail: string,
+  init: RequestInit = {},
+): Promise<T> {
+  noStore();
+  const headers = dkhRequestHeaders(userEmail, init);
   headers.set("accept", "application/json");
 
   const response = await fetch(adminApiUrl(path), {
@@ -47,6 +52,28 @@ export async function fetchDkhJson<T>(
   }
 
   return (await response.json()) as T;
+}
+
+export async function fetchDkhBinary(
+  path: string,
+  userEmail: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  noStore();
+  const headers = dkhRequestHeaders(userEmail, init);
+
+  const response = await fetch(adminApiUrl(path), {
+    ...init,
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`DKH API ${path} failed with ${response.status}`);
+  }
+
+  return response;
 }
 
 export async function fetchOverviewState(userEmail: string) {

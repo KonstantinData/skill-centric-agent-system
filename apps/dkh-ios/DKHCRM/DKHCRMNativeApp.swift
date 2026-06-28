@@ -1,7 +1,9 @@
 import AuthenticationServices
 import Foundation
+import QuickLook
 import Security
 import SwiftUI
+import UniformTypeIdentifiers
 import UIKit
 
 enum DKHMobileAPI {
@@ -656,6 +658,32 @@ struct DKHMobileDataClient {
         }
     }
 
+    func downloadDocument(caseId: Int, document: DKHCaseDocument) async throws -> URL {
+        let url = DKHMobileAPI.baseURL
+            .appending(path: "documents")
+            .appending(path: String(caseId))
+            .appending(path: String(document.id))
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/octet-stream", forHTTPHeaderField: "accept")
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
+
+        let (temporaryURL, response) = try await URLSession.shared.download(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw DKHSessionError.serverMessage("Ungueltige Serverantwort.")
+        }
+        guard http.statusCode == 200 else {
+            throw DKHSessionError.serverMessage("Dokument konnte nicht geladen werden (\(http.statusCode)).")
+        }
+
+        let filename = previewFilename(for: document, response: http)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let destination = folder.appendingPathComponent(filename)
+        try FileManager.default.moveItem(at: temporaryURL, to: destination)
+        return destination
+    }
+
     private func fetchResource<State: Decodable>(_ resource: String, as type: State.Type) async throws -> State {
         var request = URLRequest(url: DKHMobileAPI.baseURL.appending(path: resource))
         request.httpMethod = "GET"
@@ -696,6 +724,21 @@ struct DKHMobileDataClient {
         var allowed = CharacterSet.urlQueryAllowed
         allowed.remove(charactersIn: "&+=?")
         return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+    }
+
+    private func previewFilename(for document: DKHCaseDocument, response: HTTPURLResponse) -> String {
+        let candidate = response.suggestedFilename ?? document.originalFilename ?? document.title
+        let sanitized = candidate
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitized.isEmpty else { return "dokument.pdf" }
+        if sanitized.contains(".") { return sanitized }
+        let contentType = response.value(forHTTPHeaderField: "content-type") ?? document.contentType ?? ""
+        if let ext = UTType(mimeType: contentType)?.preferredFilenameExtension {
+            return "\(sanitized).\(ext)"
+        }
+        return sanitized
     }
 }
 
@@ -868,6 +911,7 @@ struct DKHCRMDashboardView: View {
 
                     DKHCustomersPage(
                         customersState: liveWorkspace.customers,
+                        sessionToken: storedSession.sessionToken,
                         runAction: runAction
                     )
                     .tabItem { Label("Kunden", systemImage: "person.2") }
@@ -1343,6 +1387,7 @@ struct DKHEmailDetailPage: View {
 
 struct DKHCustomersPage: View {
     let customersState: DKHCustomersState
+    let sessionToken: String
     let runAction: (String, [String: String]) async -> Void
     @State private var query = ""
     @State private var isShowingLeadForm = false
@@ -1402,6 +1447,7 @@ struct DKHCustomersPage: View {
                                     customer: customer,
                                     cases: cases(for: customer),
                                     customersState: customersState,
+                                    sessionToken: sessionToken,
                                     runAction: runAction
                                 )
                             } label: {
@@ -1797,6 +1843,7 @@ struct DKHCustomerDetailPage: View {
     let customer: DKHCustomer
     let cases: [DKHCustomerCase]
     let customersState: DKHCustomersState
+    let sessionToken: String
     let runAction: (String, [String: String]) async -> Void
     @State private var isShowingCaseForm = false
     @State private var isShowingCustomerEdit = false
@@ -1839,6 +1886,7 @@ struct DKHCustomerDetailPage: View {
                             DKHCaseDetailPage(
                                 caseRecord: item,
                                 customersState: customersState,
+                                sessionToken: sessionToken,
                                 runAction: runAction
                             )
                         } label: {
@@ -2134,6 +2182,7 @@ struct DKHNewCaseSheet: View {
 struct DKHCaseDetailPage: View {
     let caseRecord: DKHCustomerCase
     let customersState: DKHCustomersState
+    let sessionToken: String
     let runAction: (String, [String: String]) async -> Void
     @State private var selectedRegister: String
     @State private var caseTitle: String
@@ -2143,14 +2192,19 @@ struct DKHCaseDetailPage: View {
     @State private var registerNote = ""
     @State private var communicationNote = ""
     @State private var isShowingDocumentForm = false
+    @State private var previewItem: DKHDocumentPreviewItem?
+    @State private var documentPreviewError: String?
+    @State private var loadingDocumentId: Int?
 
     init(
         caseRecord: DKHCustomerCase,
         customersState: DKHCustomersState,
+        sessionToken: String,
         runAction: @escaping (String, [String: String]) async -> Void
     ) {
         self.caseRecord = caseRecord
         self.customersState = customersState
+        self.sessionToken = sessionToken
         self.runAction = runAction
         _selectedRegister = State(initialValue: DKHDefaultRegister(for: caseRecord.statusPhase))
         _caseTitle = State(initialValue: caseRecord.caseTitle ?? "")
@@ -2240,6 +2294,10 @@ struct DKHCaseDetailPage: View {
                 }
             }
             Section("Dokumente") {
+                if let documentPreviewError {
+                    Label(documentPreviewError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                }
                 if let documents = caseRecord.documents, !documents.isEmpty {
                     ForEach(documents) { document in
                         VStack(alignment: .leading, spacing: 4) {
@@ -2248,14 +2306,17 @@ struct DKHCaseDetailPage: View {
                             Text([document.documentCategory, document.documentType, document.documentStatus, document.originalFilename].compactMap { $0 }.joined(separator: " · "))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            HStack {
-                                Button("Archivieren") {
-                                    Task {
-                                        await runAction("customers/cases/\(caseRecord.id)/documents/\(document.id)/archive", [:])
-                                    }
+                            Button {
+                                Task { await openDocumentPreview(document) }
+                            } label: {
+                                if loadingDocumentId == document.id {
+                                    ProgressView()
+                                } else {
+                                    Label("Vorschau", systemImage: "doc.viewfinder")
                                 }
-                                .buttonStyle(.bordered)
                             }
+                            .buttonStyle(.bordered)
+                            .disabled(loadingDocumentId != nil)
                         }
                     }
                 } else {
@@ -2271,6 +2332,9 @@ struct DKHCaseDetailPage: View {
         .sheet(isPresented: $isShowingDocumentForm) {
             DKHNewDocumentSheet(caseRecord: caseRecord, runAction: runAction)
         }
+        .sheet(item: $previewItem) { item in
+            DKHDocumentPreview(url: item.url)
+        }
     }
 
     private func registerStateText(_ phaseRange: ClosedRange<Int>) -> String {
@@ -2278,6 +2342,63 @@ struct DKHCaseDetailPage: View {
         if phaseRange.upperBound < currentPhase { return "Vergangenheit" }
         if phaseRange.lowerBound > currentPhase { return "Zukunft" }
         return "Aktueller Bereich"
+    }
+
+    @MainActor
+    private func openDocumentPreview(_ document: DKHCaseDocument) async {
+        loadingDocumentId = document.id
+        documentPreviewError = nil
+        do {
+            let url = try await DKHMobileDataClient(sessionToken: sessionToken)
+                .downloadDocument(caseId: caseRecord.id, document: document)
+            previewItem = DKHDocumentPreviewItem(url: url)
+        } catch {
+            documentPreviewError = error.localizedDescription
+        }
+        loadingDocumentId = nil
+    }
+}
+
+struct DKHDocumentPreviewItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+struct DKHDocumentPreview: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(url: url)
+    }
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: QLPreviewController, context: Context) {
+        context.coordinator.url = url
+        uiViewController.reloadData()
+    }
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        var url: URL
+
+        init(url: URL) {
+            self.url = url
+        }
+
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
+            1
+        }
+
+        func previewController(
+            _ controller: QLPreviewController,
+            previewItemAt index: Int
+        ) -> QLPreviewItem {
+            url as NSURL
+        }
     }
 }
 

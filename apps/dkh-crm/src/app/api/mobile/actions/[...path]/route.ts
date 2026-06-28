@@ -24,7 +24,6 @@ const ACTION_ALLOWLIST: RegExp[] = [
   /^customers\/cases\/\d+$/,
   /^customers\/cases\/\d+\/notes$/,
   /^customers\/cases\/\d+\/documents$/,
-  /^customers\/cases\/\d+\/documents\/\d+\/archive$/,
   /^customers\/cases\/\d+\/carat-imports\/\d+\/positions$/,
   /^customers\/cases\/\d+\/confirmations$/,
   /^customers\/cases\/\d+\/sections\/[a-z0-9_/-]+$/,

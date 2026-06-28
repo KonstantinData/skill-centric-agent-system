@@ -20,6 +20,8 @@ authorization against the dedicated mobile API at
 - Native write actions cover customer master data, leads and lead notes, case
   master data, case registers, case notes, tasks, document metadata, CARAT
   position transfer, supplier confirmations, and supplier exception decisions.
+- The document register provides native QuickLook previews through the mobile
+  API; document archiving is intentionally not exposed in the iOS app.
 - No demo workspace, static CRM section database, mock customer list, or local
   placeholder content is allowed in the DKH tenant app.
 - No standalone app login area: after first device approval, unlocking the
@@ -35,7 +37,8 @@ authorization against the dedicated mobile API at
 - Keychain storage for the trusted-device user snapshot so the app opens
   directly after the iPhone is unlocked.
 - Live mobile data requests use the stored mobile session token against
-  `/api/mobile/overview` and `/api/mobile/customers`.
+  `/api/mobile/overview`, `/api/mobile/customers`, and mobile document preview
+  routes.
 - User-facing network errors do not expose raw DNS/URLSession wording.
 - No `SFSafariViewController`, no `WKWebView`, and no browser website startup.
 - No Cloudflare Access verification in the iOS app path. Cloudflare Access
