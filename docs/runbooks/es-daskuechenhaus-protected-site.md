@@ -20,15 +20,17 @@ Browser
 ## Native iOS App
 
 `apps/dkh-ios/` is a native SwiftUI iOS container for the same DKH CRM Web App
-used in the browser. It loads `https://es-daskuechenhaus.de` in `WKWebView`
-and therefore uses the existing Next.js routing, Hetzner Admin API proxy,
-object-storage document handling, and PostgreSQL tenant authority. It is not a
-demo snapshot and must not maintain a separate native copy of CRM pages or
-business logic.
+used in the browser. It loads `https://es-daskuechenhaus.de` through
+`SFSafariViewController` and therefore uses the existing Next.js routing,
+Hetzner Admin API proxy, object-storage document handling, and PostgreSQL
+tenant authority. It is not a demo snapshot and must not maintain a separate
+native copy of CRM pages or business logic.
 
 The iOS app must not implement its own authentication screen, credential
 prompt, or user/session management. Device/user sign-in is handled outside the
 app code; the app is only the iPhone container for the productive CRM surface.
+Do not start the protected host inside `WKWebView`; its isolated browser
+context can trigger invalid login-session behavior before the CRM loads.
 
 The iOS repository code must not store customer master data, private contact
 details, documents, raw e-mails, API responses, access tokens,

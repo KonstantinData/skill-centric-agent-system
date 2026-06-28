@@ -5,12 +5,13 @@ Native iOS container for the productive DKH CRM tenant `daskuechenhaus`.
 The CRM source of truth remains the production Web App in
 `apps/dkh-crm/`, served through `https://es-daskuechenhaus.de` and
 `https://www.es-daskuechenhaus.de`. The iOS app loads that same Web App in a
-`WKWebView`, so users see the same pages, content, design, and server-side
-functions they use in the browser.
+Safari-based in-app browser, so users see the same pages, content, design, and
+server-side functions they use in the browser without an isolated WebView login
+context.
 
 ## Current Scope
 
-- Full Web App execution through `WKWebView` against
+- Full Web App execution through `SFSafariViewController` against
   `https://es-daskuechenhaus.de`.
 - Same routing, customer pages, appointment/task/e-mail/case/template/admin
   surfaces, purchase contract and invoice flows as the browser app.
@@ -19,6 +20,9 @@ functions they use in the browser.
 - No duplicate static CRM snapshot and no native demo dashboard.
 - No app-owned authentication screen, credential prompt, or user/session
   management. Device/user sign-in is handled outside the app code.
+- No `WKWebView` startup against the protected host. The app uses the iOS
+  SafariServices browser context to avoid the invalid login-session behavior
+  seen in isolated embedded WebViews.
 - Tenant identity fixed to `daskuechenhaus` through the production DKH host.
 
 ## Tenant And App Boundaries
