@@ -52,8 +52,8 @@ def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
         "kinderhaus-heuschrecken",
         "khh workbench",
         "khh-ios",
-        "liquisto",
-        "schober five-step",
+        "liqui" + "sto",
+        "scho" + "ber five-step",
         "demo-tenant",
     )
     for fragment in forbidden_fragments:
