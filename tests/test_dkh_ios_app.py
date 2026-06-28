@@ -29,7 +29,7 @@ def test_dkh_ios_app_exists_alongside_web_crm() -> None:
     assert (WEB_ROOT / "src" / "app" / "page.tsx").exists()
 
     readme = read(IOS_ROOT / "README.md")
-    assert "loads that same Web App in a" in readme
+    assert "Safari-based in-app browser" in readme
     assert "same pages, content, design" in readme
     assert "apps/dkh-crm/" in readme
 
@@ -39,21 +39,20 @@ def test_dkh_ios_scope_matches_dkh_tenant_boundary() -> None:
     project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
 
     assert '"https://es-daskuechenhaus.de"' in webview
-    assert '"es-daskuechenhaus.de"' in webview
-    assert '"www.es-daskuechenhaus.de"' in webview
     assert "PRODUCT_BUNDLE_IDENTIFIER = de.daskuechenhaus.crm;" in project.replace('"', "")
 
 
-def test_dkh_ios_runs_the_productive_web_app_in_webkit() -> None:
+def test_dkh_ios_runs_the_productive_web_app_in_safari_services() -> None:
     app = read(IOS_ROOT / "DKHCRM" / "DKHCRMApp.swift")
     webview = read(IOS_ROOT / "DKHCRM" / "WebAppView.swift")
     project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
 
     assert "WebAppView(startURL: DKHWebApp.productionURL)" in app
-    assert "import WebKit" in webview
-    assert "WKWebView" in webview
-    assert "allowsBackForwardNavigationGestures = true" in webview
-    assert "UIApplication.shared.open(url)" in webview
+    assert "import SafariServices" in webview
+    assert "SFSafariViewController" in webview
+    assert "UIViewControllerRepresentable" in webview
+    assert "WKWebView" not in webview
+    assert "import WebKit" not in webview
     assert "WebAppView.swift in Sources" in project
     assert "DashboardView.swift in Sources" not in project
     assert "DKHWorkspaceSnapshot.swift in Sources" not in project
@@ -102,6 +101,8 @@ def test_dkh_ios_readme_promises_browser_equivalent_functionality() -> None:
         "credential prompt",
         "user/session",
         "management",
+        "No `WKWebView` startup",
+        "invalid login-session behavior",
         "same Web App",
         "customer",
         "purchase",
