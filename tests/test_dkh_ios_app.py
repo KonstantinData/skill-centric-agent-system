@@ -24,24 +24,40 @@ def ios_text() -> str:
 def test_dkh_ios_app_exists_alongside_web_crm() -> None:
     assert (IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj").exists()
     assert (IOS_ROOT / "DKHCRM" / "DKHCRMApp.swift").exists()
+    assert (IOS_ROOT / "DKHCRM" / "WebAppView.swift").exists()
     assert (WEB_ROOT / "README.md").exists()
     assert (WEB_ROOT / "src" / "app" / "page.tsx").exists()
 
     readme = read(IOS_ROOT / "README.md")
-    assert "additional iOS surface beside the browser version" in readme
-    assert "not a replacement" in readme
+    assert "loads that same Web App in a" in readme
+    assert "same pages, content, design" in readme
     assert "apps/dkh-crm/" in readme
 
 
 def test_dkh_ios_scope_matches_dkh_tenant_boundary() -> None:
-    snapshot = read(IOS_ROOT / "DKHCRM" / "Models" / "DKHWorkspaceSnapshot.swift")
+    webview = read(IOS_ROOT / "DKHCRM" / "WebAppView.swift")
     project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
 
-    assert 'tenantId: "daskuechenhaus"' in snapshot
-    assert 'areaId: "daskuechenhaus"' in snapshot
-    assert '"es-daskuechenhaus.de"' in snapshot
-    assert '"www.es-daskuechenhaus.de"' in snapshot
+    assert '"https://es-daskuechenhaus.de"' in webview
+    assert '"es-daskuechenhaus.de"' in webview
+    assert '"www.es-daskuechenhaus.de"' in webview
     assert 'PRODUCT_BUNDLE_IDENTIFIER = "de.daskuechenhaus.crm";' in project
+
+
+def test_dkh_ios_runs_the_productive_web_app_in_webkit() -> None:
+    app = read(IOS_ROOT / "DKHCRM" / "DKHCRMApp.swift")
+    webview = read(IOS_ROOT / "DKHCRM" / "WebAppView.swift")
+    project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
+
+    assert "WebAppView(startURL: DKHWebApp.productionURL)" in app
+    assert "import WebKit" in webview
+    assert "WKWebView" in webview
+    assert "WKWebsiteDataStore.default()" in webview
+    assert "allowsBackForwardNavigationGestures = true" in webview
+    assert "UIApplication.shared.open(url)" in webview
+    assert "WebAppView.swift in Sources" in project
+    assert "DashboardView.swift in Sources" not in project
+    assert "DKHWorkspaceSnapshot.swift in Sources" not in project
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
@@ -60,17 +76,15 @@ def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
         assert fragment not in combined
 
 
-def test_dkh_ios_keeps_privacy_and_read_only_boundaries() -> None:
+def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
     combined = ios_text()
 
     for expected in (
-        "Keine echten Kundennamen, E-Mail-Adressen, Telefonnummern oder Postadressen",
-        "Keine Dokumentinhalte, Roh-Mails, API-Antworten, Tokens oder Runtime-Traces",
-        "No write intents",
-        "No customer master-data cache",
-        "No object-storage document access",
-        "No Cloudflare Access token storage",
-        "No Hetzner Admin API secrets",
+        "no CRM data export",
+        "no demo customer database",
+        "it does not store tokens in app",
+        "not embed copied customer records",
+        "Live data remains behind the existing Web App",
     ):
         assert expected in combined
 
@@ -81,21 +95,22 @@ def test_dkh_ios_keeps_privacy_and_read_only_boundaries() -> None:
     assert "Handelsregister" not in combined
 
 
-def test_dkh_ios_dashboard_matches_core_dkh_crm_sections() -> None:
-    snapshot = read(IOS_ROOT / "DKHCRM" / "Models" / "DKHWorkspaceSnapshot.swift")
+def test_dkh_ios_readme_promises_browser_equivalent_functionality() -> None:
+    readme = read(IOS_ROOT / "README.md")
 
     for label in (
-        "Uebersicht",
-        "Termine",
-        "Aufgaben",
-        "E-Mails",
-        "Kunden",
-        "Vorgaenge",
-        "Kaufvertrag und Rechnung",
-        "Vorlagen",
-        "Admin",
+        "No app-owned login or Access flow",
+        "does not add a second",
+        "authentication layer",
+        "same Web App",
+        "customer",
+        "purchase",
+        "invoice",
+        "admin",
+        "No duplicate static CRM snapshot",
+        "no native demo dashboard",
     ):
-        assert label in snapshot
+        assert label in readme
 
 
 def test_dkh_ios_readme_documents_local_xcode_validation() -> None:

@@ -1,24 +1,26 @@
 # DKH iOS CRM
 
-Native SwiftUI companion app for the DKH CRM tenant `daskuechenhaus`.
+Native iOS container for the productive DKH CRM tenant `daskuechenhaus`.
 
-The existing browser CRM in `apps/dkh-crm/` remains the protected production
-Web App for `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de`. This app is
-an additional iOS surface beside the browser version, not a replacement.
+The CRM source of truth remains the production Web App in
+`apps/dkh-crm/`, served through `https://es-daskuechenhaus.de` and
+`https://www.es-daskuechenhaus.de`. The iOS app loads that same Web App in a
+`WKWebView`, so users see the same pages, content, design, and server-side
+functions they use in the browser.
 
 ## Current Scope
 
-- Native SwiftUI dashboard for DKH CRM operational overview.
-- Read-only status and navigation surface for overview, appointments, tasks,
-  e-mails, customers, cases, templates, purchase contracts, invoices, and
-  admin boundary awareness.
-- Static DKH CRM snapshot derived from `apps/dkh-crm/` and DKH repository
-  documentation.
-- Tenant identity fixed to `daskuechenhaus` and area `daskuechenhaus`.
-- No customer master-data records, no full contact details, no documents, no
-  runtime API transport, and no local offline customer-data storage.
-- No write intents, push notifications, App Store release configuration, or
-  Cloudflare Access/OIDC handoff yet.
+- Full Web App execution through `WKWebView` against
+  `https://es-daskuechenhaus.de`.
+- Same routing, customer pages, appointment/task/e-mail/case/template/admin
+  surfaces, purchase contract and invoice flows as the browser app.
+- Same production backend, API proxy, object-storage document handling, and
+  tenant database authority as `apps/dkh-crm/`.
+- No duplicate static CRM snapshot and no native demo dashboard.
+- No app-owned login or Access flow. The iOS app does not add a second
+  authentication layer; user/device sign-in and any existing web session are
+  handled outside the app code.
+- Tenant identity fixed to `daskuechenhaus` through the production DKH host.
 
 ## Tenant And App Boundaries
 
@@ -30,24 +32,23 @@ ios_app: apps/dkh-ios/
 production_web_hosts: es-daskuechenhaus.de, www.es-daskuechenhaus.de
 ```
 
-The iOS app may display DKH CRM workflow structure and sanitized status labels.
-It must not embed live customer records, private contact data, raw API
-responses, object-storage documents, secrets, Cloudflare Access tokens, or
-Hetzner runtime credentials.
+The iOS app may only load the DKH production CRM hosts listed above. It must
+not embed copied customer records, private contact data, raw API responses,
+object-storage documents, secrets, access tokens, or Hetzner runtime
+credentials in the repository. Live data remains behind the existing Web App
+and its server-side controls.
 
-## Privacy And Read-Only Limits
+## Privacy And Runtime Limits
 
-- Snapshot data is role/status/process oriented and contains no real customer
-  names, e-mail addresses, phone numbers, postal addresses, document contents,
-  or personal free text.
-- Customer and case references must remain generic, count-based, or internally
-  scoped until authenticated API, secure storage, redaction, and audit gates are
-  implemented.
-- The current app is read-only. Mutations, uploads, mail sending, appointment
-  writes, purchase contract writes, invoice writes, and admin changes are out of
-  scope.
-- Apple Developer credentials, provisioning profiles, Cloudflare Access
-  secrets, and API tokens belong outside the repository.
+- The repository contains no CRM data export, no demo customer database, and no
+  copied page payloads from production.
+- Customer data, document access, write actions, mail handling, purchase
+  contracts, invoices, and admin functions stay in the existing Web App.
+- The iOS app uses the default `WKWebsiteDataStore` so normal web session
+  cookies can persist like a browser session; it does not store tokens in app
+  code or repository files.
+- Apple Developer credentials, provisioning profiles, access secrets, and API
+  tokens belong outside the repository.
 
 ## Open In Xcode
 
@@ -68,8 +69,6 @@ python -m pytest tests/test_dkh_ios_app.py
 ## Not Part Of This App Yet
 
 - Replacing or modifying the DKH browser CRM.
-- Live Hetzner Admin API integration.
-- Cloudflare Access/OIDC mobile sign-in.
-- Secure local persistence or offline customer summaries.
+- A second native implementation of CRM screens.
+- Local offline customer summaries or duplicated CRM storage.
 - Push notifications, background sync, TestFlight, or App Store release.
-- Real customer, lead, staff, document, or communication detail data.
