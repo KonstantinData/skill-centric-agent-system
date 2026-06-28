@@ -156,6 +156,18 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
     assert "DKHSupplierConfirmationControls" in native_app
 
 
+def test_dkh_ios_uses_requested_app_background_color() -> None:
+    native_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
+
+    assert "DKHTheme" in native_app
+    assert 'static let appBackgroundHex = "#76b726"' in native_app
+    assert "Double(0x76) / 255.0" in native_app
+    assert "Double(0xb7) / 255.0" in native_app
+    assert "Double(0x26) / 255.0" in native_app
+    assert "DKHTheme.applyGlobalAppearance()" in native_app
+    assert "DKHTheme.appBackground.ignoresSafeArea()" in native_app
+
+
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
     combined = ios_text().lower()
 
