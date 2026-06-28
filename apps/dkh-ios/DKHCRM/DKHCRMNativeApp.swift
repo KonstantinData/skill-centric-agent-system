@@ -2,6 +2,7 @@ import AuthenticationServices
 import Foundation
 import Security
 import SwiftUI
+import UIKit
 
 enum DKHMobileAPI {
     static let baseURL = URL(string: "https://app.es-daskuechenhaus.de/api/mobile")!
@@ -46,14 +47,20 @@ struct DKHStoredSession: Codable {
 }
 
 enum DKHSessionError: LocalizedError {
+    case deviceGrantCanceled
     case missingIdentityToken
+    case mobileAPINotReachable
     case serverMessage(String)
     case unauthorized(String)
 
     var errorDescription: String? {
         switch self {
+        case .deviceGrantCanceled:
+            return "Die iPhone-Freigabe wurde abgebrochen."
         case .missingIdentityToken:
             return "Apple hat keinen Identity Token geliefert."
+        case .mobileAPINotReachable:
+            return "Die DKH Mobile-API ist noch nicht erreichbar. Bitte pruefe die Produktionsfreigabe fuer app.es-daskuechenhaus.de."
         case .serverMessage(let message):
             return message
         case .unauthorized(let status):
@@ -93,7 +100,11 @@ final class DKHSessionStore: ObservableObject {
                 await grantDevice(identityToken: identityToken)
             }
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            if let authorizationError = error as? ASAuthorizationError, authorizationError.code == .canceled {
+                errorMessage = DKHSessionError.deviceGrantCanceled.localizedDescription
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -130,7 +141,13 @@ struct DKHMobileSessionClient {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.httpBody = try JSONEncoder().encode(["identity_token": identityToken])
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let error as URLError where error.code == .cannotFindHost {
+            throw DKHSessionError.mobileAPINotReachable
+        }
         guard let http = response as? HTTPURLResponse else {
             throw DKHSessionError.serverMessage("Ungueltige Serverantwort.")
         }
@@ -185,6 +202,35 @@ struct DKHKeychainStore {
     }
 }
 
+final class DKHDeviceAuthorizationController: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private var completion: ((Result<ASAuthorization, Error>) -> Void)?
+
+    func start(completion: @escaping (Result<ASAuthorization, Error>) -> Void) {
+        self.completion = completion
+
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.email, .fullName]
+
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        completion?(.success(authorization))
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        completion?(.failure(error))
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+}
+
 struct DKHCRMRootView: View {
     @StateObject private var session = DKHSessionStore()
 
@@ -201,6 +247,8 @@ struct DKHCRMRootView: View {
 
 struct DKHDeviceGrantView: View {
     @ObservedObject var session: DKHSessionStore
+    @StateObject private var deviceAuthorization = DKHDeviceAuthorizationController()
+    @State private var didRequestDeviceGrant = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -221,29 +269,39 @@ struct DKHDeviceGrantView: View {
             }
             .font(.body.weight(.medium))
 
-            SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.email, .fullName]
-            } onCompletion: { result in
-                session.handleDeviceAuthorization(result)
-            }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 52)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .disabled(session.isGrantingDevice)
-
             if session.isGrantingDevice {
                 ProgressView("iPhone-Freigabe wird geprueft")
+            } else if session.errorMessage == nil {
+                ProgressView("iPhone-Freigabe wird gestartet")
             }
 
             if let errorMessage = session.errorMessage {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+
+                    Button("iPhone-Freigabe erneut starten") {
+                        requestDeviceGrant()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
 
             Spacer()
         }
         .padding(24)
+        .onAppear {
+            guard !didRequestDeviceGrant else { return }
+            requestDeviceGrant()
+        }
+    }
+
+    private func requestDeviceGrant() {
+        didRequestDeviceGrant = true
+        deviceAuthorization.start { result in
+            session.handleDeviceAuthorization(result)
+        }
     }
 }
 

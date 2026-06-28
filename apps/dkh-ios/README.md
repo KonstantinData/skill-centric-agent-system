@@ -16,6 +16,8 @@ one-time Apple device authorization against the dedicated mobile API at
 - No standalone app login area: after first device approval, unlocking the
   iPhone is enough for normal app entry.
 - One-time iPhone device approval through Apple's native authorization sheet.
+- No visible Apple login button is rendered in the app surface; a new device
+  gets the native iOS authorization dialog automatically.
 - Apple `identityToken` exchange through the DKH mobile API.
 - Server-side Apple subject mapping to a DKH CRM user.
 - The server-side Apple subject mapping is the durable access check after the
@@ -23,6 +25,7 @@ one-time Apple device authorization against the dedicated mobile API at
 - Keychain storage for the short-lived DKH mobile session token.
 - Keychain storage for the trusted-device user snapshot so the app opens
   directly after the iPhone is unlocked.
+- User-facing network errors do not expose raw DNS/URLSession wording.
 - No `SFSafariViewController`, no `WKWebView`, and no browser website startup.
 - No Cloudflare Access verification in the iOS app path. Cloudflare Access
   remains unchanged for the browser hosts.
