@@ -1323,6 +1323,117 @@ def selected_roles(data: dict[str, Any]) -> list[str]:
     return roles
 
 
+def mobile_apple_session(data: dict[str, Any]) -> dict[str, Any]:
+    apple_subject = str(data.get("apple_subject", "")).strip()
+    apple_email = str(data.get("apple_email", "")).strip().lower()
+    email_verified = normalize_bool(data.get("email_verified")) == "true"
+    if not apple_subject:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "apple_subject_required")
+    if apple_email and "@" not in apple_email:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "apple_email_invalid")
+
+    payload = {
+        "apple_subject": apple_subject,
+        "apple_email": apple_email if email_verified else "",
+        "email_verified": email_verified,
+    }
+    sql = """
+    WITH payload AS (SELECT :'payload'::jsonb AS data),
+    active_subject AS (
+      UPDATE app.mobile_app_identities identity
+      SET last_login_at = now()
+      FROM payload
+      WHERE identity.apple_subject = data->>'apple_subject'
+        AND identity.status = 'active'
+      RETURNING identity.*
+    ),
+    claimed_invite AS (
+      UPDATE app.mobile_app_identities identity
+      SET
+        apple_subject = data->>'apple_subject',
+        status = 'active',
+        first_seen_at = COALESCE(identity.first_seen_at, now()),
+        last_login_at = now(),
+        linked_at = COALESCE(identity.linked_at, now())
+      FROM payload
+      WHERE NOT EXISTS (SELECT 1 FROM active_subject)
+        AND identity.status = 'pending'
+        AND identity.apple_subject IS NULL
+        AND identity.expected_apple_email = data->>'apple_email'
+        AND (data->>'email_verified')::boolean = TRUE
+      RETURNING identity.*
+    ),
+    requested_identity AS (
+      INSERT INTO app.mobile_app_identities (
+        apple_subject,
+        expected_apple_email,
+        status,
+        first_seen_at,
+        last_login_at
+      )
+      SELECT
+        data->>'apple_subject',
+        NULLIF(data->>'apple_email', ''),
+        'requested',
+        now(),
+        now()
+      FROM payload
+      WHERE NOT EXISTS (SELECT 1 FROM active_subject)
+        AND NOT EXISTS (SELECT 1 FROM claimed_invite)
+        AND NOT EXISTS (
+          SELECT 1
+          FROM app.mobile_app_identities existing
+          WHERE existing.apple_subject = data->>'apple_subject'
+        )
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    ),
+    selected_identity AS (
+      SELECT *
+      FROM (
+        SELECT 1 AS priority, active_subject.* FROM active_subject
+        UNION ALL
+        SELECT 2 AS priority, claimed_invite.* FROM claimed_invite
+        UNION ALL
+        SELECT 3 AS priority, requested_identity.* FROM requested_identity
+        UNION ALL
+        SELECT 4 AS priority, existing.*
+        FROM app.mobile_app_identities existing, payload
+        WHERE existing.apple_subject = data->>'apple_subject'
+      ) candidates
+      ORDER BY priority
+      LIMIT 1
+    ),
+    selected_user AS (
+      SELECT u.*
+      FROM selected_identity identity
+      JOIN app.users u ON u.id = identity.user_id
+      WHERE identity.status = 'active'
+        AND u.is_active = TRUE
+    )
+    SELECT jsonb_build_object(
+      'authorized', EXISTS (SELECT 1 FROM selected_user),
+      'status', COALESCE((SELECT status FROM selected_identity), 'requested'),
+      'user', (
+        SELECT jsonb_build_object(
+          'id', u.id,
+          'displayName', concat_ws(' ', u.first_name, u.last_name),
+          'email', u.email,
+          'roles', COALESCE((
+            SELECT jsonb_agg(r.code ORDER BY r.code)
+            FROM app.user_roles ur
+            JOIN app.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = u.id
+          ), '[]'::jsonb)
+        )
+        FROM selected_user u
+        LIMIT 1
+      )
+    )::text;
+    """
+    return psql_json(sql, {"payload": json.dumps(payload)})
+
+
 def upsert_user(data: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     payload = {
         "first_name": str(data.get("first_name", "")).strip(),
@@ -6926,6 +7037,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.command == "POST":
                 data, files = request_payload(self)
                 access_email = self.headers.get("x-access-user-email", "").strip().lower()
+                if parts == ["mobile", "apple-session"]:
+                    self.write_json(mobile_apple_session(data))
+                    return
                 if parts == ["admin", "users"]:
                     self.write_json(upsert_user(data))
                     return
@@ -7092,6 +7206,8 @@ class Handler(BaseHTTPRequestHandler):
             supplied = authorization.removeprefix("Bearer ").strip()
         if not supplied or supplied != expected:
             raise ApiError(HTTPStatus.UNAUTHORIZED, "unauthorized")
+        if urlparse(self.path).path == "/mobile/apple-session":
+            return
         email = self.headers.get("x-access-user-email", "").strip().lower()
         if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
             raise ApiError(HTTPStatus.FORBIDDEN, "forbidden")

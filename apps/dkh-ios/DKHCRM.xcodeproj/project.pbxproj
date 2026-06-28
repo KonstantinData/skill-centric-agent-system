@@ -8,12 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		2B0001012B00000100000001 /* DKHCRMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002012B00000100000001 /* DKHCRMApp.swift */; };
-		2B0001022B00000100000001 /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002022B00000100000001 /* WebAppView.swift */; };
+		2B0001022B00000100000001 /* DKHCRMNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0002022B00000100000001 /* DKHCRMNativeApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2B0002012B00000100000001 /* DKHCRMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DKHCRMApp.swift; sourceTree = "<group>"; };
-		2B0002022B00000100000001 /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
+		2B0002022B00000100000001 /* DKHCRMNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DKHCRMNativeApp.swift; sourceTree = "<group>"; };
+		2B0002032B00000100000001 /* DKHCRM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DKHCRM.entitlements; sourceTree = "<group>"; };
 		2B0002062B00000100000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2B0002072B00000100000001 /* DKHCRM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DKHCRM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,7 +42,8 @@
 			isa = PBXGroup;
 			children = (
 				2B0002012B00000100000001 /* DKHCRMApp.swift */,
-				2B0002022B00000100000001 /* WebAppView.swift */,
+				2B0002022B00000100000001 /* DKHCRMNativeApp.swift */,
+				2B0002032B00000100000001 /* DKHCRM.entitlements */,
 				2B0002062B00000100000001 /* Assets.xcassets */,
 			);
 			path = DKHCRM;
@@ -125,7 +127,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2B0001012B00000100000001 /* DKHCRMApp.swift in Sources */,
-				2B0001022B00000100000001 /* WebAppView.swift in Sources */,
+				2B0001022B00000100000001 /* DKHCRMNativeApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,7 +255,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = DKHCRM/DKHCRM.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 27L5L573T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "DKH CRM";
@@ -269,7 +273,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.daskuechenhaus.crm";
+				PRODUCT_BUNDLE_IDENTIFIER = de.daskuechenhaus.crm;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
@@ -281,7 +285,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = DKHCRM/DKHCRM.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 27L5L573T5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "DKH CRM";
@@ -297,7 +303,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.daskuechenhaus.crm";
+				PRODUCT_BUNDLE_IDENTIFIER = de.daskuechenhaus.crm;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;

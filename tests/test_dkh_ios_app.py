@@ -24,36 +24,45 @@ def ios_text() -> str:
 def test_dkh_ios_app_exists_alongside_web_crm() -> None:
     assert (IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj").exists()
     assert (IOS_ROOT / "DKHCRM" / "DKHCRMApp.swift").exists()
-    assert (IOS_ROOT / "DKHCRM" / "WebAppView.swift").exists()
+    assert (IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift").exists()
+    assert (IOS_ROOT / "DKHCRM" / "DKHCRM.entitlements").exists()
     assert (WEB_ROOT / "README.md").exists()
     assert (WEB_ROOT / "src" / "app" / "page.tsx").exists()
 
     readme = read(IOS_ROOT / "README.md")
-    assert "Safari-based in-app browser" in readme
-    assert "same pages, content, design" in readme
+    assert "native SwiftUI screens" in readme
+    assert "does not start either website" in readme
     assert "apps/dkh-crm/" in readme
 
 
 def test_dkh_ios_scope_matches_dkh_tenant_boundary() -> None:
-    webview = read(IOS_ROOT / "DKHCRM" / "WebAppView.swift")
+    native_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
     project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
 
-    assert '"https://es-daskuechenhaus.de"' in webview
+    assert '"https://app.es-daskuechenhaus.de/api/mobile"' in native_app
     assert "PRODUCT_BUNDLE_IDENTIFIER = de.daskuechenhaus.crm;" in project.replace('"', "")
+    assert "CODE_SIGN_ENTITLEMENTS = DKHCRM/DKHCRM.entitlements;" in project
+    assert "com.apple.developer.applesignin" in read(IOS_ROOT / "DKHCRM" / "DKHCRM.entitlements")
 
 
-def test_dkh_ios_runs_the_productive_web_app_in_safari_services() -> None:
+def test_dkh_ios_is_native_and_does_not_start_websites() -> None:
     app = read(IOS_ROOT / "DKHCRM" / "DKHCRMApp.swift")
-    webview = read(IOS_ROOT / "DKHCRM" / "WebAppView.swift")
+    native_app = read(IOS_ROOT / "DKHCRM" / "DKHCRMNativeApp.swift")
     project = read(IOS_ROOT / "DKHCRM.xcodeproj" / "project.pbxproj")
 
-    assert "WebAppView(startURL: DKHWebApp.productionURL)" in app
-    assert "import SafariServices" in webview
-    assert "SFSafariViewController" in webview
-    assert "UIViewControllerRepresentable" in webview
-    assert "WKWebView" not in webview
-    assert "import WebKit" not in webview
-    assert "WebAppView.swift in Sources" in project
+    assert "DKHCRMRootView()" in app
+    assert "import AuthenticationServices" in native_app
+    assert "SignInWithAppleButton" in native_app
+    assert "ASAuthorizationAppleIDCredential" in native_app
+    assert "DKHKeychainStore" in native_app
+    assert "SFSafariViewController" not in native_app
+    assert "WKWebView" not in native_app
+    assert "import SafariServices" not in native_app
+    assert "import WebKit" not in native_app
+    assert "https://es-daskuechenhaus.de" not in native_app
+    assert "https://www.es-daskuechenhaus.de" not in native_app
+    assert "DKHCRMNativeApp.swift in Sources" in project
+    assert "WebAppView.swift in Sources" not in project
     assert "DashboardView.swift in Sources" not in project
     assert "DKHWorkspaceSnapshot.swift in Sources" not in project
 
@@ -80,9 +89,10 @@ def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
     for expected in (
         "no CRM data export",
         "no demo customer database",
-        "does not store tokens in app",
-        "not embed copied customer records",
-        "Live data remains behind the existing Web App",
+        "does not store long-lived secrets in app code",
+        "No embedded Apple tokens",
+        "customer records",
+        "server-side Apple subject mapping",
     ):
         assert expected in combined
 
@@ -93,28 +103,27 @@ def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
     assert "Handelsregister" not in combined
 
 
-def test_dkh_ios_readme_promises_browser_equivalent_functionality() -> None:
+def test_dkh_ios_readme_documents_native_apple_login() -> None:
     readme = read(IOS_ROOT / "README.md")
 
     for label in (
-        "No app-owned authentication screen",
-        "credential prompt",
-        "user/session",
-        "management",
-        "No `WKWebView` startup",
-        "invalid login-session behavior",
-        "same Web App",
-        "customer",
-        "purchase",
+        "Sign in with Apple",
+        "Apple `identityToken`",
+        "Keychain storage",
+        "No `SFSafariViewController`",
+        "no `WKWebView`",
+        "no browser website startup",
+        "No Cloudflare Access verification",
+        "customers",
+        "purchase contract",
         "invoice",
         "admin",
-        "No duplicate static CRM snapshot",
-        "no native demo dashboard",
+        "mobile_api_host: app.es-daskuechenhaus.de",
     ):
         assert label in readme
 
-    assert ("Access" + " flow") not in readme
-    assert ("Cloudflare Access" + " login") not in readme
+    assert "loads that same Web App" not in readme
+    assert "Safari-based in-app browser" not in readme
 
 
 def test_dkh_ios_readme_documents_local_xcode_validation() -> None:
