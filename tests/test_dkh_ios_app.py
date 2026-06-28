@@ -53,8 +53,14 @@ def test_dkh_ios_is_native_and_does_not_start_websites() -> None:
     assert "DKHCRMRootView()" in app
     assert "import AuthenticationServices" in native_app
     assert "SignInWithAppleButton" in native_app
+    assert "SignInWithAppleButton(.continue)" in native_app
     assert "ASAuthorizationAppleIDCredential" in native_app
     assert "DKHKeychainStore" in native_app
+    assert "DKHDeviceGrantView" in native_app
+    assert "DKHAppleLoginView" not in native_app
+    assert "signOut" not in native_app
+    assert "Abmelden" not in native_app
+    assert "signed_out" not in native_app
     assert "SFSafariViewController" not in native_app
     assert "WKWebView" not in native_app
     assert "import SafariServices" not in native_app
@@ -103,13 +109,17 @@ def test_dkh_ios_keeps_privacy_and_runtime_boundaries() -> None:
     assert "Handelsregister" not in combined
 
 
-def test_dkh_ios_readme_documents_native_apple_login() -> None:
+def test_dkh_ios_readme_documents_native_device_authorization() -> None:
     readme = read(IOS_ROOT / "README.md")
 
     for label in (
-        "Sign in with Apple",
+        "No standalone app login area",
+        "unlocking the",
+        "iPhone is enough",
+        "One-time iPhone device approval",
         "Apple `identityToken`",
         "Keychain storage",
+        "trusted-device user snapshot",
         "No `SFSafariViewController`",
         "no `WKWebView`",
         "no browser website startup",
@@ -124,6 +134,7 @@ def test_dkh_ios_readme_documents_native_apple_login() -> None:
 
     assert "loads that same Web App" not in readme
     assert "Safari-based in-app browser" not in readme
+    assert "app-login entrypoint" not in readme
 
 
 def test_dkh_ios_readme_documents_local_xcode_validation() -> None:

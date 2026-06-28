@@ -39,6 +39,12 @@ struct DKHSessionResponse: Codable {
     let user: DKHCRMUser?
 }
 
+struct DKHStoredSession: Codable {
+    let sessionToken: String
+    let user: DKHCRMUser
+    let storedAt: Date
+}
+
 enum DKHSessionError: LocalizedError {
     case missingIdentityToken
     case serverMessage(String)
@@ -59,13 +65,20 @@ enum DKHSessionError: LocalizedError {
 @MainActor
 final class DKHSessionStore: ObservableObject {
     @Published private(set) var user: DKHCRMUser?
-    @Published private(set) var status: String = "signed_out"
+    @Published private(set) var status: String = "device_not_granted"
     @Published var errorMessage: String?
-    @Published var isSigningIn = false
+    @Published var isGrantingDevice = false
 
     private let keychain = DKHKeychainStore()
 
-    func handleAuthorization(_ result: Result<ASAuthorization, Error>) {
+    init() {
+        if let storedSession = keychain.loadStoredSession() {
+            user = storedSession.user
+            status = "trusted_device"
+        }
+    }
+
+    func handleDeviceAuthorization(_ result: Result<ASAuthorization, Error>) {
         switch result {
         case .success(let authorization):
             guard
@@ -77,24 +90,24 @@ final class DKHSessionStore: ObservableObject {
                 return
             }
             Task {
-                await exchange(identityToken: identityToken)
+                await grantDevice(identityToken: identityToken)
             }
         case .failure(let error):
             errorMessage = error.localizedDescription
         }
     }
 
-    func signOut() {
-        keychain.deleteSessionToken()
+    func resetDeviceGrant() {
+        keychain.deleteStoredSession()
         user = nil
-        status = "signed_out"
+        status = "device_not_granted"
         errorMessage = nil
     }
 
-    private func exchange(identityToken: String) async {
-        isSigningIn = true
+    private func grantDevice(identityToken: String) async {
+        isGrantingDevice = true
         errorMessage = nil
-        defer { isSigningIn = false }
+        defer { isGrantingDevice = false }
 
         do {
             let response = try await DKHMobileSessionClient().createSession(identityToken: identityToken)
@@ -102,7 +115,7 @@ final class DKHSessionStore: ObservableObject {
             guard response.status == "active", let sessionToken = response.sessionToken, let user = response.user else {
                 throw DKHSessionError.unauthorized(response.status)
             }
-            keychain.saveSessionToken(sessionToken)
+            keychain.saveStoredSession(DKHStoredSession(sessionToken: sessionToken, user: user, storedAt: Date()))
             self.user = user
         } catch {
             errorMessage = error.localizedDescription
@@ -130,12 +143,12 @@ struct DKHMobileSessionClient {
 }
 
 struct DKHKeychainStore {
-    private let service = "de.daskuechenhaus.crm.mobile-session"
-    private let account = "dkh-crm-session"
+    private let service = "de.daskuechenhaus.crm.device-grant"
+    private let account = "dkh-crm-trusted-device"
 
-    func saveSessionToken(_ token: String) {
-        deleteSessionToken()
-        guard let data = token.data(using: .utf8) else { return }
+    func saveStoredSession(_ session: DKHStoredSession) {
+        deleteStoredSession()
+        guard let data = try? JSONEncoder().encode(session) else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -146,7 +159,23 @@ struct DKHKeychainStore {
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    func deleteSessionToken() {
+    func loadStoredSession() -> DKHStoredSession? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            return nil
+        }
+        return try? JSONDecoder().decode(DKHStoredSession.self, from: data)
+    }
+
+    func deleteStoredSession() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -162,15 +191,15 @@ struct DKHCRMRootView: View {
     var body: some View {
         Group {
             if let user = session.user {
-                DKHCRMDashboardView(user: user, signOut: session.signOut)
+                DKHCRMDashboardView(user: user)
             } else {
-                DKHAppleLoginView(session: session)
+                DKHDeviceGrantView(session: session)
             }
         }
     }
 }
 
-struct DKHAppleLoginView: View {
+struct DKHDeviceGrantView: View {
     @ObservedObject var session: DKHSessionStore
 
     var body: some View {
@@ -186,24 +215,24 @@ struct DKHAppleLoginView: View {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Label("Kein Webseitenstart", systemImage: "iphone")
-                Label("Keine Cloudflare-Verifikation", systemImage: "checkmark.shield")
-                Label("Freischaltung ueber Apple-Account", systemImage: "person.crop.circle.badge.checkmark")
+                Label("Dieses iPhone wird einmalig freigegeben", systemImage: "iphone")
+                Label("Danach reicht das entsperrte iPhone", systemImage: "lock.open")
+                Label("Berechtigungen kommen vom DKH Server", systemImage: "checkmark.shield")
             }
             .font(.body.weight(.medium))
 
-            SignInWithAppleButton(.signIn) { request in
+            SignInWithAppleButton(.continue) { request in
                 request.requestedScopes = [.email, .fullName]
             } onCompletion: { result in
-                session.handleAuthorization(result)
+                session.handleDeviceAuthorization(result)
             }
             .signInWithAppleButtonStyle(.black)
             .frame(height: 52)
             .clipShape(RoundedRectangle(cornerRadius: 8))
-            .disabled(session.isSigningIn)
+            .disabled(session.isGrantingDevice)
 
-            if session.isSigningIn {
-                ProgressView("Zugang wird geprueft")
+            if session.isGrantingDevice {
+                ProgressView("iPhone-Freigabe wird geprueft")
             }
 
             if let errorMessage = session.errorMessage {
@@ -220,7 +249,6 @@ struct DKHAppleLoginView: View {
 
 struct DKHCRMDashboardView: View {
     let user: DKHCRMUser
-    let signOut: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -256,9 +284,6 @@ struct DKHCRMDashboardView: View {
                 }
             }
             .navigationTitle("DKH CRM")
-            .toolbar {
-                Button("Abmelden", action: signOut)
-            }
         }
     }
 }
