@@ -14,6 +14,14 @@ MOBILE_MIGRATION = (
     / "daskuechenhaus"
     / "0015_mobile_app_identities.sql"
 )
+MOBILE_KONSTANTIN_ACTIVATION_MIGRATION = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0016_mobile_app_konstantin_activation.sql"
+)
 CRM_DEPLOY = REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-crm-deploy.yml"
 ADMIN_DEPLOY = REPO_ROOT / ".github" / "workflows" / "es-daskuechenhaus-admin-api-deploy.yml"
 RUNBOOK = REPO_ROOT / "docs" / "runbooks" / "es-daskuechenhaus-protected-site.md"
@@ -61,6 +69,7 @@ def test_mobile_auth_uses_apple_identity_tokens_not_cloudflare_access() -> None:
 
 def test_mobile_identity_mapping_is_server_side_and_seeded_as_pending_invite() -> None:
     migration = read(MOBILE_MIGRATION)
+    activation_migration = read(MOBILE_KONSTANTIN_ACTIVATION_MIGRATION)
     admin_api = read(ADMIN_API)
 
     assert "CREATE TABLE IF NOT EXISTS app.mobile_app_identities" in migration
@@ -74,6 +83,11 @@ def test_mobile_identity_mapping_is_server_side_and_seeded_as_pending_invite() -
     assert "identity.status = 'pending'" in admin_api
     assert "identity.status = 'active'" in admin_api
     assert 'urlparse(self.path).path == "/mobile/apple-session"' in admin_api
+    assert "'konstantin@milonas.email'" in activation_migration
+    assert "'k.milonas@schober-daskuechenhaus.de'" in activation_migration
+    assert "identity.status = 'requested'" in activation_migration
+    assert "identity.status = 'active'" in activation_migration
+    assert "identity.apple_subject IS NOT NULL" in activation_migration
 
 
 def test_mobile_api_deploy_keeps_browser_access_separate() -> None:
@@ -88,5 +102,6 @@ def test_mobile_api_deploy_keeps_browser_access_separate() -> None:
     assert "Verify mobile API bypasses Cloudflare Access" in deploy
     assert "DKH_MOBILE_SESSION_SECRET" in deploy
     assert "0015_mobile_app_identities.sql" in admin_deploy
+    assert "0016_mobile_app_konstantin_activation.sql" in admin_deploy
     assert "Cloudflare Access does not protect `app.es-daskuechenhaus.de`" in runbook
     assert "Cloudflare Access remains unchanged for the browser hosts" in ios_readme
