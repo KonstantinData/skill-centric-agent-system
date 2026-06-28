@@ -1,8 +1,7 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 
-const STRIP_HEADERS = [
-  "authorization",
+const ACCESS_CONTEXT_HEADERS = [
   "cf-access-authenticated-user-email",
   "cf-access-client-id",
   "cf-access-client-secret",
@@ -11,6 +10,8 @@ const STRIP_HEADERS = [
   "x-access-user-email",
   "x-dkh-user-email",
 ];
+
+const BROWSER_STRIP_HEADERS = ["authorization", ...ACCESS_CONTEXT_HEADERS];
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
@@ -63,16 +64,20 @@ async function resolveAccessEmail(request: NextRequest): Promise<string> {
 
 export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
-  for (const header of STRIP_HEADERS) {
-    requestHeaders.delete(header);
-  }
 
   if (request.nextUrl.pathname.startsWith("/api/mobile/")) {
+    for (const header of ACCESS_CONTEXT_HEADERS) {
+      requestHeaders.delete(header);
+    }
     return NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     });
+  }
+
+  for (const header of BROWSER_STRIP_HEADERS) {
+    requestHeaders.delete(header);
   }
 
   const email = await resolveAccessEmail(request);
