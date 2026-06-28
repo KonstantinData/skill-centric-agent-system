@@ -17,6 +17,20 @@ Browser
   -> PostgreSQL tenant schema
 ```
 
+## Native iOS Companion
+
+`apps/dkh-ios/` is a separate native SwiftUI companion app for the
+`daskuechenhaus` tenant. It does not replace this protected browser CRM path
+and does not change Cloudflare Access, Hetzner routing, object-storage, or
+PostgreSQL production authority.
+
+The current iOS scope is read-only and uses only sanitized DKH CRM workflow
+structure. It must not store customer master data, private contact details,
+documents, raw e-mails, API responses, Cloudflare Access tokens, Hetzner Admin
+API secrets, or runtime traces. Live mobile authentication, secure storage,
+offline summaries, push, write intents, TestFlight, and App Store release work
+need separate evidence before activation.
+
 ## Required Cloudflare State
 
 - DNS keeps `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` proxied.
