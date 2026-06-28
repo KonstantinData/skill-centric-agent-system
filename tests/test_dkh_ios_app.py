@@ -166,6 +166,11 @@ def test_dkh_ios_uses_requested_app_background_color() -> None:
     assert "Double(0x26) / 255.0" in native_app
     assert "DKHTheme.applyGlobalAppearance()" in native_app
     assert "DKHTheme.appBackground.ignoresSafeArea()" in native_app
+    assert "UITableViewCell.appearance().backgroundColor = .clear" in native_app
+    assert "UICollectionViewCell.appearance().backgroundColor = .clear" in native_app
+    assert "navigationAppearance.backgroundColor = uiAppBackground" in native_app
+    assert "tabAppearance.backgroundColor = uiAppBackground" in native_app
+    assert ".preferredColorScheme(.light)" in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:

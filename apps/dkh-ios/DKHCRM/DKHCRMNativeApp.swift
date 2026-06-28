@@ -26,8 +26,25 @@ enum DKHTheme {
 
     static func applyGlobalAppearance() {
         UITableView.appearance().backgroundColor = uiAppBackground
+        UITableViewCell.appearance().backgroundColor = .clear
+        UITableViewHeaderFooterView.appearance().tintColor = .clear
         UICollectionView.appearance().backgroundColor = uiAppBackground
+        UICollectionViewCell.appearance().backgroundColor = .clear
+        UICollectionReusableView.appearance().backgroundColor = .clear
         UIScrollView.appearance().backgroundColor = uiAppBackground
+
+        let navigationAppearance = UINavigationBarAppearance()
+        navigationAppearance.configureWithOpaqueBackground()
+        navigationAppearance.backgroundColor = uiAppBackground
+        UINavigationBar.appearance().standardAppearance = navigationAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navigationAppearance
+        UINavigationBar.appearance().compactAppearance = navigationAppearance
+
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = uiAppBackground
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
     }
 }
 
@@ -36,6 +53,11 @@ private struct DKHAppBackgroundModifier: ViewModifier {
         content
             .scrollContentBackground(.hidden)
             .background(DKHTheme.appBackground.ignoresSafeArea())
+            .toolbarBackground(DKHTheme.appBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(DKHTheme.appBackground, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .preferredColorScheme(.light)
     }
 }
 
