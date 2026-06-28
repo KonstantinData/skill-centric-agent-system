@@ -136,7 +136,18 @@ def test_dkh_ios_has_no_demo_crm_workspace_after_device_grant() -> None:
     assert "Leadanlage" in native_app
     assert "Kundenanlage" in native_app
     assert "Vorgang speichern" in native_app
-    assert "Register speichern" in native_app
+    assert "Kundenstammdaten bearbeiten" in native_app
+    assert "DKHCustomerEditSheet" in native_app
+    assert "DKHLeadDetailPage" in native_app
+    assert "Kommunikation speichern" in native_app
+    assert "Register bearbeiten" in native_app
+    assert "DKHCaseSectionEditSheet" in native_app
+    assert "Dokument-Metadaten anlegen" in native_app
+    assert "DKHNewDocumentSheet" in native_app
+    assert "Aufgabe im Vorgang anlegen" in native_app
+    assert "DKHCaratImportControls" in native_app
+    assert "Lieferanten-AB erfassen" in native_app
+    assert "DKHSupplierConfirmationControls" in native_app
 
 
 def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:

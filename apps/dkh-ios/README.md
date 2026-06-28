@@ -15,6 +15,11 @@ authorization against the dedicated mobile API at
 - Native SwiftUI app views for productive DKH overview, customers, appointments,
   tasks, e-mails, cases, and leads loaded from the same server state used by the
   browser CRM.
+- Browser edit parity is required: anything editable in the browser CRM must be
+  editable through native iOS controls against the same DKH server actions.
+- Native write actions cover customer master data, leads and lead notes, case
+  master data, case registers, case notes, tasks, document metadata, CARAT
+  position transfer, supplier confirmations, and supplier exception decisions.
 - No demo workspace, static CRM section database, mock customer list, or local
   placeholder content is allowed in the DKH tenant app.
 - No standalone app login area: after first device approval, unlocking the
@@ -59,8 +64,8 @@ After that first approval, the app uses the mobile session token to request
 productive JSON state from the DKH server. The server maps the token back to the
 same DKH user e-mail used by the browser CRM and calls the existing
 `overview/state` and `customers/state` backend paths. Changes made in the
-browser and changes made through future native write actions therefore share one
-tenant database instead of diverging into a separate app dataset.
+browser and changes made through native write actions therefore share one tenant
+database instead of diverging into a separate app dataset.
 
 ## Privacy And Runtime Limits
 

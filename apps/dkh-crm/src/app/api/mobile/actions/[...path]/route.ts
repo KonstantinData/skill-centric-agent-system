@@ -17,11 +17,18 @@ const ACTION_ALLOWLIST: RegExp[] = [
   /^overview\/emails\/\d+\/delete$/,
   /^customers\/customers$/,
   /^customers\/customers\/\d+$/,
+  /^customers\/customers\/\d+\/sections\/[a-z0-9_/-]+$/,
   /^customers\/leads$/,
+  /^customers\/leads\/\d+\/notes$/,
   /^customers\/cases$/,
   /^customers\/cases\/\d+$/,
   /^customers\/cases\/\d+\/notes$/,
+  /^customers\/cases\/\d+\/documents$/,
+  /^customers\/cases\/\d+\/documents\/\d+\/archive$/,
+  /^customers\/cases\/\d+\/carat-imports\/\d+\/positions$/,
+  /^customers\/cases\/\d+\/confirmations$/,
   /^customers\/cases\/\d+\/sections\/[a-z0-9_/-]+$/,
+  /^customers\/confirmations\/\d+\/exceptions\/\d+\/decide$/,
 ];
 
 function mobileToken(request: NextRequest): string {
