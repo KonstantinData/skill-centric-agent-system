@@ -188,7 +188,7 @@ class ToolGateway:
                 "completed_at": completed_at,
             }
         )
-        self.recorder.record_event(
+        completed_event = self.recorder.record_event(
             run_id=self.run_id,
             step_id=self.step_id,
             event_type="tool_invocation_completed",
@@ -197,6 +197,15 @@ class ToolGateway:
             result={"tool_name": tool_name, "output_uri": output_uri},
             stop_reason=stop_reason,  # type: ignore[arg-type]
             redact_sensitive_data=self.redact_sensitive_data,
+        )
+
+        self._evaluate_runtime_after_tool_hook(
+            tool_name=tool_name,
+            status=status,
+            input_uri=input_uri,
+            output_uri=output_uri,
+            invocation_record=record,
+            completed_event=completed_event,
         )
 
         result = ToolInvocationResult(
@@ -213,6 +222,164 @@ class ToolGateway:
                 details=output,
             )
         return result
+
+    def _evaluate_runtime_after_tool_hook(
+        self,
+        *,
+        tool_name: str,
+        status: str,
+        input_uri: str,
+        output_uri: str,
+        invocation_record: Mapping[str, Any],
+        completed_event: Mapping[str, Any],
+    ) -> None:
+        violations: list[str] = []
+        evidence: dict[str, Any] = {
+            "hook_id": "runtime-after-tool",
+            "tool_id": tool_name,
+            "tool_invocation_id": invocation_record.get("id"),
+            "tool_invocation_status": status,
+            "artifact_reference": output_uri,
+            "audit_event_id": completed_event.get("id"),
+            "redaction_status": "applied" if self.redact_sensitive_data else "not_required",
+            "checks": {},
+        }
+
+        input_payload = self._read_hook_artifact(input_uri, "input", violations, evidence)
+        output_payload = self._read_hook_artifact(output_uri, "output", violations, evidence)
+        execution_payload = self._read_hook_artifact(
+            completed_event.get("execution_uri"),
+            "completed_event_execution",
+            violations,
+            evidence,
+        )
+        result_payload = self._read_hook_artifact(
+            completed_event.get("result_uri"),
+            "completed_event_result",
+            violations,
+            evidence,
+        )
+
+        _check_mapping_field(
+            input_payload,
+            "tool_name",
+            tool_name,
+            "input_artifact_tool_mismatch",
+            violations,
+        )
+        _check_mapping_field(
+            output_payload,
+            "tool_name",
+            tool_name,
+            "output_artifact_tool_mismatch",
+            violations,
+        )
+        _check_mapping_field(
+            output_payload,
+            "status",
+            status,
+            "output_artifact_status_mismatch",
+            violations,
+        )
+        if isinstance(output_payload, Mapping) and "output" not in output_payload:
+            violations.append("output_artifact_payload_missing")
+
+        expected_invocation = {
+            "run_id": self.run_id,
+            "step_id": self.step_id,
+            "tool_name": tool_name,
+            "status": status,
+            "input_uri": input_uri,
+            "output_uri": output_uri,
+        }
+        for field, expected in expected_invocation.items():
+            if invocation_record.get(field) != expected:
+                violations.append(f"tool_invocation_{field}_mismatch")
+
+        if completed_event.get("event_type") != "tool_invocation_completed":
+            violations.append("audit_event_type_mismatch")
+        if completed_event.get("actor_role") != "executor":
+            violations.append("audit_event_actor_mismatch")
+        if completed_event.get("step_id") != self.step_id:
+            violations.append("audit_event_step_mismatch")
+        _check_mapping_field(
+            execution_payload,
+            "tool_invocation_id",
+            invocation_record.get("id"),
+            "audit_event_invocation_mismatch",
+            violations,
+        )
+        _check_mapping_field(
+            execution_payload,
+            "status",
+            status,
+            "audit_event_status_mismatch",
+            violations,
+        )
+        _check_mapping_field(
+            result_payload,
+            "tool_name",
+            tool_name,
+            "audit_event_tool_mismatch",
+            violations,
+        )
+        _check_mapping_field(
+            result_payload,
+            "output_uri",
+            output_uri,
+            "audit_event_output_uri_mismatch",
+            violations,
+        )
+
+        evidence["checks"] = {
+            "input_artifact_readable": isinstance(input_payload, Mapping),
+            "output_artifact_readable": isinstance(output_payload, Mapping),
+            "tool_invocation_persisted": not any(
+                violation.startswith("tool_invocation_") for violation in violations
+            ),
+            "audit_event_persisted": not any(
+                violation.startswith("audit_event_") for violation in violations
+            ),
+        }
+        evidence["status"] = "failed" if violations else "passed"
+        evidence["violations"] = violations
+        self.recorder.record_event(
+            run_id=self.run_id,
+            step_id=self.step_id,
+            event_type="runtime_after_tool_hook_evaluated",
+            actor_role="policy_engine",
+            execution={
+                "hook_id": "runtime-after-tool",
+                "tool_invocation_id": invocation_record.get("id"),
+            },
+            result=evidence,
+            stop_reason="policy_denied" if violations else None,
+            redact_sensitive_data=self.redact_sensitive_data,
+        )
+        if violations:
+            raise ToolExecutionError(
+                "runtime-after-tool hook failed: " + ", ".join(violations),
+                code="runtime_after_tool_hook_failed",
+                stop_reason="policy_denied",
+                details=evidence,
+            )
+
+    def _read_hook_artifact(
+        self,
+        uri: Any,
+        label: str,
+        violations: list[str],
+        evidence: dict[str, Any],
+    ) -> Any:
+        if not isinstance(uri, str) or not uri:
+            violations.append(f"{label}_artifact_missing")
+            return None
+        try:
+            return self.recorder.artifacts.read_json(uri)
+        except Exception as error:
+            violations.append(f"{label}_artifact_unreadable")
+            evidence[f"{label}_artifact_error"] = type(error).__name__
+            return None
 
     def _record_denied_access(
         self,
@@ -246,3 +413,16 @@ class ToolGateway:
             stop_reason=error.stop_reason,
             redact_sensitive_data=self.redact_sensitive_data,
         )
+
+
+def _check_mapping_field(
+    payload: Any,
+    field: str,
+    expected: Any,
+    violation: str,
+    violations: list[str],
+) -> None:
+    if not isinstance(payload, Mapping):
+        return
+    if payload.get(field) != expected:
+        violations.append(violation)

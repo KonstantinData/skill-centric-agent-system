@@ -62,6 +62,19 @@ Controlled recomposition is the only allowed way to change available runtime
 capabilities after execution starts. Recomposition must stop the current run
 and produce a new version-pinned profile through the Composer.
 
+## Implemented Runtime Guard
+
+`runtime-after-tool` is implemented in the Tool Gateway as a fixed guard, not a
+dynamic plugin layer. After each tool invocation writes its input artifact,
+output artifact, tool invocation record, and `tool_invocation_completed` event,
+the guard verifies that the persisted evidence is readable and internally
+consistent.
+
+The guard records a `runtime_after_tool_hook_evaluated` event with the
+`runtime-after-tool` hook evidence. If required evidence is missing or
+inconsistent, the gateway fails closed with `policy_denied` and does not accept
+the tool result as a successful runtime action.
+
 ## CI Gate
 
 `CI / Contract tests` must include:

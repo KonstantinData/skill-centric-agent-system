@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from skill_centric_agent_system.runtime import (
     InMemoryRuntimeStore,
     JsonArtifactStore,
     ToolDeniedError,
+    ToolExecutionError,
     ToolGateway,
 )
 from skill_centric_agent_system.runtime.tool_gateway import (
@@ -52,6 +54,19 @@ def load_json(path: Path) -> dict[str, Any]:
 def load_artifact(root: Path, uri: str) -> dict[str, Any]:
     artifact_path = root / Path(uri.removeprefix("hetzner://runtime/"))
     return load_json(artifact_path)
+
+
+class ConstantAdapter:
+    def invoke(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return {"content": "adapter output", "token": "raw-token-value"}
+
+
+class MissingOutputReadArtifactStore(JsonArtifactStore):
+    def read_json(self, uri: str) -> Any:
+        if "/tool-outputs/" in uri and uri.endswith("-output.json"):
+            raise FileNotFoundError(uri)
+        return super().read_json(uri)
+
 
 def test_tool_gateway_denies_tools_not_in_runtime_profile(tmp_path: Path) -> None:
     store = InMemoryRuntimeStore()
@@ -174,9 +189,62 @@ def test_tool_gateway_records_allowed_tool_invocation(tmp_path: Path) -> None:
         "access_attempted",
         "tool_invocation_started",
         "tool_invocation_completed",
+        "runtime_after_tool_hook_evaluated",
     ]
     result_payload = load_artifact(tmp_path, str(store.runtime_events[0]["result_uri"]))
     assert result_payload["effect"] == "allow"
+    hook_payload = load_artifact(tmp_path, str(store.runtime_events[3]["result_uri"]))
+    assert hook_payload["hook_id"] == "runtime-after-tool"
+    assert hook_payload["status"] == "passed"
+    assert hook_payload["tool_id"] == "filesystem-read"
+    assert hook_payload["artifact_reference"] == result.output_uri
+    assert hook_payload["audit_event_id"] == store.runtime_events[2]["id"]
+    assert hook_payload["redaction_status"] == "applied"
+    assert hook_payload["checks"] == {
+        "input_artifact_readable": True,
+        "output_artifact_readable": True,
+        "tool_invocation_persisted": True,
+        "audit_event_persisted": True,
+    }
+    assert hook_payload["violations"] == []
+
+
+def test_tool_gateway_runtime_after_tool_hook_fails_closed_on_missing_output_artifact(
+    tmp_path: Path,
+) -> None:
+    store = InMemoryRuntimeStore()
+    recorder = FlightRecorder(store, MissingOutputReadArtifactStore(tmp_path))
+    profile = load_json(PROFILE_EXAMPLE_PATH)
+    run = recorder.start_run(task_id="task-code-review-latest-commit", profile=profile)
+    step = recorder.start_step(run_id=str(run["id"]), step_index=0, kind="executor")
+    gateway = ToolGateway(
+        profile=profile,
+        run_id=str(run["id"]),
+        step_id=str(step["id"]),
+        recorder=recorder,
+        repository_root=REPO_ROOT,
+        adapters={"filesystem-read": ConstantAdapter()},
+    )
+
+    with pytest.raises(ToolExecutionError) as exc_info:
+        gateway.invoke("filesystem-read", {"path": "README.md"})
+
+    assert exc_info.value.code == "runtime_after_tool_hook_failed"
+    assert exc_info.value.stop_reason == "policy_denied"
+    assert "output_artifact_unreadable" in exc_info.value.details["violations"]
+    assert store.tool_invocations[0]["status"] == "succeeded"
+    assert [event["event_type"] for event in store.runtime_events] == [
+        "access_attempted",
+        "tool_invocation_started",
+        "tool_invocation_completed",
+        "runtime_after_tool_hook_evaluated",
+    ]
+    hook_event = store.runtime_events[-1]
+    assert hook_event["stop_reason"] == "policy_denied"
+    hook_payload = load_artifact(tmp_path, str(hook_event["result_uri"]))
+    assert hook_payload["status"] == "failed"
+    assert hook_payload["checks"]["output_artifact_readable"] is False
+    assert hook_payload["redaction_status"] == "applied"
 
 
 def test_filesystem_read_adapter_clamps_output_bytes(tmp_path: Path) -> None:
