@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -72,6 +72,12 @@ class RuntimeLoopError(RuntimeError):
         self.recomposition_request = recomposition_request
 
 
+class RuntimeCancellationError(RuntimeError):
+    """Raised when a cooperative runtime cancellation checkpoint trips."""
+
+    stop_reason = "cancelled"
+
+
 class MinimalRuntimeLoop:
     """First executable single-agent runtime loop."""
 
@@ -85,6 +91,7 @@ class MinimalRuntimeLoop:
         skill_handlers: SkillHandlerRegistry | None = None,
         enable_llm_error_judge: bool = False,
         llm_error_judge: ErrorClassificationJudge | None = None,
+        cancellation_checker: Callable[[str], bool] | None = None,
     ) -> None:
         self.store = store
         self.artifacts = artifacts
@@ -93,6 +100,7 @@ class MinimalRuntimeLoop:
         self.skill_handlers = skill_handlers or BUILTIN_SKILL_HANDLER_REGISTRY
         self.enable_llm_error_judge = enable_llm_error_judge
         self.llm_error_judge = llm_error_judge
+        self.cancellation_checker = cancellation_checker
         self.recorder = FlightRecorder(store, artifacts)
 
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
@@ -104,9 +112,13 @@ class MinimalRuntimeLoop:
 
         try:
             enforcer.validate_profile_for_runtime()
+            self._raise_if_cancelled(run_id)
             context = self._context_step(run_id, profile, redact_sensitive_data, enforcer)
+            self._raise_if_cancelled(run_id)
             plan = self._planner_step(run_id, profile, context, redact_sensitive_data, enforcer)
+            self._raise_if_cancelled(run_id)
             execution = self._executor_step(run_id, profile, plan, redact_sensitive_data, enforcer)
+            self._raise_if_cancelled(run_id)
             response = self._validator_step(
                 run_id,
                 task_id,
@@ -116,6 +128,19 @@ class MinimalRuntimeLoop:
                 execution,
                 redact_sensitive_data,
                 enforcer,
+            )
+        except RuntimeCancellationError:
+            response = self._cancel_run(
+                run_id=run_id,
+                enforcer=enforcer,
+                redact_sensitive_data=redact_sensitive_data,
+            )
+            return RuntimeLoopResult(
+                run_id=run_id,
+                status="cancelled",
+                stop_reason="cancelled",
+                response=response,
+                attempt_run_ids=(run_id,),
             )
         except (
             ProfileEnforcementError,
@@ -181,6 +206,41 @@ class MinimalRuntimeLoop:
             response=response,
             attempt_run_ids=(run_id,),
         )
+
+    def _raise_if_cancelled(self, run_id: str) -> None:
+        run = self.store.get_runtime_run(run_id)
+        if run is not None and run.get("status") == "cancelled":
+            raise RuntimeCancellationError("Runtime run was cancelled.")
+        if self.cancellation_checker is not None and self.cancellation_checker(run_id):
+            raise RuntimeCancellationError("Runtime run was cancelled.")
+
+    def _cancel_run(
+        self,
+        *,
+        run_id: str,
+        enforcer: RuntimeProfileEnforcer,
+        redact_sensitive_data: bool,
+    ) -> Mapping[str, Any]:
+        response = {
+            "run_id": run_id,
+            "status": "cancelled",
+            "stop_reason": "cancelled",
+        }
+        self.recorder.record_event(
+            run_id=run_id,
+            event_type="runtime_cancelled",
+            actor_role="runtime",
+            result=response,
+            stop_reason="cancelled",
+            redact_sensitive_data=redact_sensitive_data,
+        )
+        self.recorder.complete_run(
+            run_id=run_id,
+            status="cancelled",
+            stop_reason="cancelled",
+            tokens_used_total=enforcer.tokens_used,
+        )
+        return response
 
     def run_with_recomposition(
         self,
@@ -335,6 +395,7 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
         enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        self._raise_if_cancelled(run_id)
         enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=0, kind="context")
         self.recorder.record_event(
@@ -380,6 +441,7 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
         enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        self._raise_if_cancelled(run_id)
         enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=1, kind="planner")
         self.recorder.record_event(
@@ -426,6 +488,7 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
         enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        self._raise_if_cancelled(run_id)
         enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=2, kind="executor")
         self.recorder.record_event(
@@ -448,6 +511,7 @@ class MinimalRuntimeLoop:
         tool_results = []
         try:
             for action in plan.get("actions", []):
+                self._raise_if_cancelled(run_id)
                 if not isinstance(action, Mapping):
                     continue
                 tool_name = str(action["tool"])
@@ -518,6 +582,7 @@ class MinimalRuntimeLoop:
         redact_sensitive_data: bool,
         enforcer: RuntimeProfileEnforcer,
     ) -> Mapping[str, Any]:
+        self._raise_if_cancelled(run_id)
         enforcer.check_duration()
         step = self.recorder.start_step(run_id=run_id, step_index=3, kind="validator")
         self.recorder.record_event(

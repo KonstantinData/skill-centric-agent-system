@@ -2,6 +2,11 @@
   "contract_version": "0.2.0",
   "environment": "dev",
   "records": {
+    "runtime_queue_items": [],
+    "runtime_run_attempts": [],
+    "runtime_run_claims": [],
+    "runtime_dead_letters": [],
+    "runtime_quota_reservations": [],
     "runtime_runs": [
       {
         "id": "run-storage-contract-fixture",
@@ -14,7 +19,11 @@
         "artifact_root_uri": "hetzner://runtime/artifacts/run-storage-contract-fixture",
         "token_budget_total": 60000,
         "tokens_used_total": 3100,
-        "stop_reason": "completed"
+        "stop_reason": "completed",
+        "profile_artifact_uri": "hetzner://runtime/profiles/profile-storage-contract-fixture/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json",
+        "profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "profile_generation": 1,
+        "parent_profile_id": null
       }
     ],
     "runtime_steps": [

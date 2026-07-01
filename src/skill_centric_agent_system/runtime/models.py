@@ -7,6 +7,16 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 RuntimeStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
+RuntimeQueueStatus = Literal[
+    "queued",
+    "claiming",
+    "running",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "retry_scheduled",
+    "dead_lettered",
+]
 RuntimeStepKind = Literal["context", "planner", "executor", "validator"]
 StopReason = Literal[
     "completed",
@@ -38,6 +48,10 @@ RuntimeEventType = Literal[
     "validator_executed",
     "runtime_completed",
     "runtime_failed",
+    "runtime_cancelled",
+    "tenant_throttled",
+    "quota_reserved",
+    "quota_exhausted",
     "step_started",
     "step_completed",
     "tool_invocation_started",
@@ -52,6 +66,8 @@ RuntimeActorRole = Literal[
     "executor",
     "validator",
     "policy_engine",
+    "quota_manager",
+    "runtime",
     "composer",
 ]
 RuntimePhase = Literal[
@@ -73,6 +89,7 @@ RecompositionReason = Literal[
 ]
 
 RUNTIME_STATUSES = frozenset(RuntimeStatus.__args__)  # type: ignore[attr-defined]
+RUNTIME_QUEUE_STATUSES = frozenset(RuntimeQueueStatus.__args__)  # type: ignore[attr-defined]
 RUNTIME_STEP_KINDS = frozenset(RuntimeStepKind.__args__)  # type: ignore[attr-defined]
 STOP_REASONS = frozenset(StopReason.__args__)  # type: ignore[attr-defined]
 RUNTIME_EVENT_TYPES = frozenset(RuntimeEventType.__args__)  # type: ignore[attr-defined]

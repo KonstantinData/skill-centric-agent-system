@@ -46,6 +46,10 @@ class FlightRecorder:
         profile: dict[str, Any] | Any,
         run_id: str | None = None,
         status: RuntimeStatus = "running",
+        profile_artifact_uri: str | None = None,
+        profile_sha256: str | None = None,
+        profile_generation: int | None = None,
+        parent_profile_id: str | None = None,
     ) -> dict[str, Any] | Any:
         require_choice(status, RUNTIME_STATUSES, "status")
         run_identifier = run_id or slug_id(task_id.removeprefix("task-"), prefix="run")
@@ -65,6 +69,10 @@ class FlightRecorder:
             "token_budget_total": token_budget_total,
             "tokens_used_total": 0,
             "stop_reason": None,
+            "profile_artifact_uri": profile_artifact_uri,
+            "profile_sha256": profile_sha256,
+            "profile_generation": profile_generation,
+            "parent_profile_id": parent_profile_id,
         }
         return self.store.insert_runtime_run(record)
 

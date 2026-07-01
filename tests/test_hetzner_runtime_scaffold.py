@@ -36,6 +36,11 @@ def test_hetzner_runtime_migration_creates_required_tables() -> None:
         "runtime.runtime_steps",
         "runtime.runtime_events",
         "runtime.runtime_checkpoints",
+        "runtime.runtime_queue_items",
+        "runtime.runtime_run_attempts",
+        "runtime.runtime_run_claims",
+        "runtime.runtime_dead_letters",
+        "runtime.runtime_quota_reservations",
         "runtime.tool_invocations",
         "runtime.validation_results",
         "runtime.memory_candidates",
@@ -53,9 +58,12 @@ def test_hetzner_runtime_migration_enforces_runtime_contract_constraints() -> No
     assert "event_type IN (" in migration
     assert "'task_intake_normalized'" in migration
     assert "'runtime_completed'" in migration
+    assert "'runtime_cancelled'" in migration
+    assert "'quota_exhausted'" in migration
     assert "actor_role IN (" in migration
     assert "'context_manager'" in migration
     assert "'policy_engine'" in migration
+    assert "'quota_manager'" in migration
     assert "stop_reason IN (" in migration
     assert "'max_tokens'" in migration
     assert "'policy_denied'" in migration
@@ -109,6 +117,10 @@ def test_hetzner_runtime_migration_adds_lookup_indexes() -> None:
         "idx_memory_candidates_scope_status",
         "idx_memory_candidates_validation_status",
         "idx_memory_candidates_class_status",
+        "idx_runtime_queue_claimable",
+        "idx_runtime_queue_claimed_until",
+        "idx_runtime_dead_letters_tenant_created",
+        "idx_runtime_quota_reservations_tenant_window",
     }
 
     for index in required_indexes:
