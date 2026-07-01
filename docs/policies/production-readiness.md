@@ -54,6 +54,18 @@ is satisfied for the target environment.
 | Human-review quality | Ambiguous analyzer output produces review-required profiles with explicit ambiguity evidence and no selected specialized capabilities before approval. |
 | Release decision | The release evidence records commit, target environment, gate results, unresolved risks, waivers, owner, timestamp, and final decision. |
 
+## RPEH Audit Closure Boundary
+
+`docs/reference/runtime-parallel-execution-hardening-audit-closure-dod.md`
+defines the local RPEH-2026 audit-closure gate. Passing that gate proves the
+runtime queue, worker, tenant isolation, profile sealing, quota-reservation, and
+local observability surfaces are ready for repository-level closure.
+
+It does not certify staging or production. Broader quota dimensions such as
+data-read, memory-operation, duration, tag, and longer rolling-window policies,
+and target-environment dashboards or alerts, require the production-readiness
+evidence in this policy before any production-ready claim can be made.
+
 ## Evidence Rules
 
 - Evidence must be reproducible from committed commands, scripts, workflows, or

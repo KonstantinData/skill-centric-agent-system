@@ -76,6 +76,9 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/reference/architecture.md`
 - `docs/reference/memory-architecture.md`
 - `docs/reference/runtime-api.md`
+- `docs/reference/runtime-run-queue-contract.md`
+- `docs/reference/runtime-parallel-execution-hardening-dod.md`
+- `docs/reference/runtime-parallel-execution-hardening-audit-closure-dod.md`
 - `docs/reference/registries.md`
 - `docs/reference/repository-roadmap.md`
 - `docs/reference/cloudflare/control-api.md`

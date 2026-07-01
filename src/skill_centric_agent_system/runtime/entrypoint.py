@@ -25,6 +25,7 @@ from skill_centric_agent_system.runtime.storage import (
     RuntimeStore,
     profile_summary,
 )
+from skill_centric_agent_system.runtime.tenant_status import assert_runtime_tenant_is_startable
 
 
 class RuntimeEntryPointError(RuntimeError):
@@ -89,6 +90,7 @@ class RuntimeEntryPoint:
         context_response = composition_context_response or self._fetch_composition_context(
             context_request
         )
+        assert_runtime_tenant_is_startable(task, context_response)
         profile = self.composer.compose(
             analyzed_task,
             context_response,

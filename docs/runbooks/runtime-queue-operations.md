@@ -30,9 +30,15 @@ scas-runtime queue worker-loop \
 
 ## Stop Workers
 
-Use normal process supervision shutdown. A worker must release claims by
-finalizing the run, marking it cancelled, or letting stale-claim recovery move
-expired work back to `retry_scheduled`.
+Use normal process supervision shutdown. The long-lived CLI worker installs
+`SIGINT` and `SIGTERM` handlers and stops polling cooperatively after the
+current iteration. A worker must release claims by finalizing the run, marking
+it cancelled, or letting stale-claim recovery move expired work back to
+`retry_scheduled`.
+
+For PostgreSQL storage, the long-lived worker commits each successful
+poll/execute iteration and rolls back unhandled failures. Operators should treat
+an uncommitted long-lived claim transaction as a blocking worker defect.
 
 ## Stuck Claims
 
@@ -40,7 +46,8 @@ expired work back to `retry_scheduled`.
 2. Check `claimed_until` and `heartbeat_at`.
 3. Run stale-claim recovery through the runtime queue manager or the equivalent
    operator command.
-4. Confirm recovered work moved to `retry_scheduled`.
+4. Confirm recovered work moved to `retry_scheduled` and the active
+   `runtime_run_claims` row has `release_reason = 'stale_recovered'`.
 
 ## Tenant Pause
 
@@ -52,7 +59,8 @@ Add the tenant to the worker disabled-tenant configuration:
 
 Disabled tenants cannot be claimed by workers configured with that denylist.
 Control Plane tenant status must also block new starts for disabled or archived
-tenants.
+tenants. Runtime starts with a server-authoritative `tenant_authority.status`
+outside `setup` or `active` must fail closed.
 
 ## DLQ Triage
 
@@ -72,6 +80,31 @@ Adjust worker flags for tenant limits:
 
 Production quota changes require release evidence because they alter tenant
 isolation behavior.
+
+Reserved and finalized quota reservations count against the active minute
+window. Refunded reservations do not. A quota breach emits a Flight Recorder
+`quota_exhausted` event and the queue item retries or dead-letters according to
+its attempt budget.
+
+RPEH audit closure currently covers tenant token and tool-call quota. Data-read,
+memory-operation, duration, tag, and longer rolling-window quota policies require
+production-readiness work once the runtime exposes authoritative counters for
+those dimensions.
+
+## Metrics Snapshot
+
+Print a bounded aggregate metrics snapshot:
+
+```bash
+scas-runtime queue metrics \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
+The JSON includes queue depth by tenant/status, active claims, DLQ counts, retry
+count, quota exhaustion count, policy denial count, claim latency, and run
+duration distributions.
 
 ## Cross-Tenant Suspicion
 

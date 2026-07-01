@@ -140,7 +140,8 @@ class RuntimeApiService:
             "kind": "run_result_response",
             "run": status,
             "result": {
-                "response": None,
+                "response": self._response_payload_for_run(run_id),
+                "response_uri": self._response_uri_for_run(run_id),
                 "validation_result_uris": [],
                 "event_count": len(self.store.events_for_run(run_id)),
                 "checkpoint_count": len(self.store.checkpoints_for_run(run_id)),
@@ -255,7 +256,42 @@ class RuntimeApiService:
                     and item.get("area_id") == principal.area_id
                 ):
                     return
+        run = self.store.get_runtime_run(run_id)
+        if run is not None:
+            profile_artifact_uri = run.get("profile_artifact_uri")
+            if isinstance(profile_artifact_uri, str):
+                profile = self.artifacts.read_json(profile_artifact_uri)
+                if isinstance(profile, Mapping):
+                    tenant_context = profile.get("tenant_context")
+                    if (
+                        isinstance(tenant_context, Mapping)
+                        and tenant_context.get("tenant_id") == principal.tenant_id
+                        and tenant_context.get("area_id") == principal.area_id
+                    ):
+                        return
         raise RuntimeApiError("Runtime API read was denied by tenant scope.")
+
+    def _response_uri_for_run(self, run_id: str) -> str | None:
+        validator_checkpoints = [
+            checkpoint
+            for checkpoint in self.store.checkpoints_for_run(run_id)
+            if checkpoint.get("phase") == "validator"
+        ]
+        if not validator_checkpoints:
+            return None
+        latest = max(
+            validator_checkpoints,
+            key=lambda checkpoint: int(checkpoint.get("checkpoint_index", 0)),
+        )
+        state_uri = latest.get("state_uri")
+        return str(state_uri) if isinstance(state_uri, str) else None
+
+    def _response_payload_for_run(self, run_id: str) -> Mapping[str, Any] | None:
+        response_uri = self._response_uri_for_run(run_id)
+        if response_uri is None:
+            return None
+        payload = self.artifacts.read_json(response_uri)
+        return payload if isinstance(payload, Mapping) else None
 
     @staticmethod
     def _assert_queue_tenant(

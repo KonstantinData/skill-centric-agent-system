@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
+
+from skill_centric_agent_system.runtime.models import slug_id
 
 
 class PostgresRuntimeStore:
@@ -86,7 +88,29 @@ class PostgresRuntimeStore:
         row = cursor.fetchone()
         return row if row is not None else params
 
-    def claim_next_runtime_queue_item(
+    def heartbeat_runtime_queue_item(
+        self,
+        queue_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        updated = self.update_runtime_queue_item(queue_id, fields)
+        self.connection.execute(
+            """
+            UPDATE runtime.runtime_run_claims
+            SET heartbeat_at = %(heartbeat_at)s,
+                claimed_until = %(claimed_until)s
+            WHERE queue_id = %(queue_id)s
+              AND released_at IS NULL
+            """,
+            {
+                "queue_id": queue_id,
+                "heartbeat_at": fields.get("heartbeat_at"),
+                "claimed_until": fields.get("claimed_until"),
+            },
+        )
+        return updated
+
+    def claim_next_runtime_queue_attempt(
         self,
         *,
         worker_id: str,
@@ -99,11 +123,6 @@ class PostgresRuntimeStore:
         environment: str | None = None,
         queue_name: str | None = None,
     ) -> Mapping[str, Any] | None:
-        if (
-            global_running_limit is not None
-            and self._global_running_count() >= global_running_limit
-        ):
-            return None
         cursor = self.connection.execute(
             """
             SELECT id, task_id, tenant_id, area_id, environment, queue_name, status,
@@ -124,7 +143,6 @@ class PostgresRuntimeStore:
               )
             ORDER BY priority DESC, scheduled_at ASC, created_at ASC, id ASC
             FOR UPDATE SKIP LOCKED
-            LIMIT 20
             """,
             {
                 "claimed_at": claimed_at,
@@ -138,17 +156,44 @@ class PostgresRuntimeStore:
         limits = dict(tenant_running_limits or {})
         for candidate in candidates:
             tenant_id = str(candidate["tenant_id"])
+            if global_running_limit is not None:
+                self.connection.execute(
+                    """
+                    SELECT pg_advisory_xact_lock(hashtext(%(lock_key)s))
+                    """,
+                    {"lock_key": "runtime.runtime_queue_items:global_running_limit"},
+                )
+                if self._global_running_count() >= global_running_limit:
+                    return None
             limit = limits.get(tenant_id)
-            if limit is not None and self._tenant_running_count(tenant_id) >= limit:
-                continue
+            if limit is not None:
+                self.connection.execute(
+                    """
+                    SELECT pg_advisory_xact_lock(hashtext(%(lock_key)s))
+                    """,
+                    {
+                        "lock_key": (
+                            "runtime.runtime_queue_items:"
+                            f"tenant_running_limit:{tenant_id}"
+                        )
+                    },
+                )
+                if self._tenant_running_count(tenant_id) >= limit:
+                    continue
+            attempts = int(candidate["attempts"]) + 1
+            run_id = slug_id(f"{candidate['task_id']}-attempt-{attempts}", prefix="run")
+            attempt_id = slug_id(f"{candidate['id']}-attempt-{attempts}", prefix="attempt")
+            claim_id = slug_id(f"{candidate['id']}-{worker_id}-{attempts}", prefix="claim")
             params = {
                 "id": candidate["id"],
                 "worker_id": worker_id,
                 "claimed_at": claimed_at,
                 "lease_expires_at": lease_expires_at,
-                "attempts": int(candidate["attempts"]) + 1,
+                "attempts": attempts,
+                "attempt_id": attempt_id,
+                "run_id": run_id,
             }
-            self.connection.execute(
+            update_cursor = self.connection.execute(
                 """
                 UPDATE runtime.runtime_queue_items
                 SET status = 'claiming',
@@ -158,23 +203,84 @@ class PostgresRuntimeStore:
                     claimed_until = %(lease_expires_at)s,
                     lease_expires_at = %(lease_expires_at)s,
                     heartbeat_at = %(claimed_at)s,
+                    attempt_id = %(attempt_id)s,
+                    run_id = %(run_id)s,
                     updated_at = %(claimed_at)s
                 WHERE id = %(id)s
+                  AND status IN ('queued', 'retry_scheduled')
+                RETURNING id, task_id, tenant_id, area_id, environment, queue_name, status,
+                          priority, scheduled_at, attempts, max_attempts, claimed_by,
+                          claimed_at, claimed_until, lease_expires_at, heartbeat_at,
+                          attempt_id, task_payload_uri, composition_context_uri, run_id,
+                          last_error, idempotency_key, created_at, updated_at
                 """,
                 params,
             )
+            queue_item = update_cursor.fetchone()
+            if queue_item is None:
+                continue
+            attempt = self.insert_runtime_run_attempt(
+                {
+                    "id": attempt_id,
+                    "queue_id": str(candidate["id"]),
+                    "run_id": run_id,
+                    "tenant_id": tenant_id,
+                    "attempt_number": attempts,
+                    "status": "running",
+                    "started_at": claimed_at,
+                    "completed_at": None,
+                    "stop_reason": None,
+                    "profile_id": None,
+                    "profile_sha256": None,
+                }
+            )
+            claim = self.insert_runtime_run_claim(
+                {
+                    "id": claim_id,
+                    "queue_id": str(candidate["id"]),
+                    "worker_id": worker_id,
+                    "tenant_id": tenant_id,
+                    "claimed_at": claimed_at,
+                    "claimed_until": lease_expires_at,
+                    "heartbeat_at": claimed_at,
+                    "released_at": None,
+                    "release_reason": None,
+                }
+            )
             return {
-                **dict(candidate),
-                "status": "claiming",
-                "attempts": params["attempts"],
-                "claimed_by": worker_id,
-                "claimed_at": claimed_at,
-                "claimed_until": lease_expires_at,
-                "lease_expires_at": lease_expires_at,
-                "heartbeat_at": claimed_at,
-                "updated_at": claimed_at,
+                "queue_item": queue_item,
+                "attempt": attempt,
+                "claim": claim,
             }
         return None
+
+    def claim_next_runtime_queue_item(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        lease_expires_at: str,
+        tenant_running_limits: Mapping[str, int] | None = None,
+        global_running_limit: int | None = None,
+        allowed_tenant_ids: tuple[str, ...] = (),
+        disabled_tenant_ids: tuple[str, ...] = (),
+        environment: str | None = None,
+        queue_name: str | None = None,
+    ) -> Mapping[str, Any] | None:
+        claim = self.claim_next_runtime_queue_attempt(
+            worker_id=worker_id,
+            claimed_at=claimed_at,
+            lease_expires_at=lease_expires_at,
+            tenant_running_limits=tenant_running_limits,
+            global_running_limit=global_running_limit,
+            allowed_tenant_ids=allowed_tenant_ids,
+            disabled_tenant_ids=disabled_tenant_ids,
+            environment=environment,
+            queue_name=queue_name,
+        )
+        if claim is None:
+            return None
+        return cast(Mapping[str, Any], claim["queue_item"])
 
     def recover_stale_runtime_queue_items(self, *, now: str) -> tuple[Mapping[str, Any], ...]:
         cursor = self.connection.execute(
@@ -199,7 +305,19 @@ class PostgresRuntimeStore:
             """,
             {"now": now},
         )
-        return tuple(cursor.fetchall())
+        recovered = tuple(cursor.fetchall())
+        if recovered:
+            self.connection.execute(
+                """
+                UPDATE runtime.runtime_run_claims
+                SET released_at = %(now)s,
+                    release_reason = 'stale_recovered'
+                WHERE queue_id = ANY(%(queue_ids)s)
+                  AND released_at IS NULL
+                """,
+                {"now": now, "queue_ids": [row["id"] for row in recovered]},
+            )
+        return recovered
 
     def insert_runtime_run(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         self.connection.execute(
@@ -307,6 +425,31 @@ class PostgresRuntimeStore:
             params,
         )
         return params
+
+    def release_runtime_queue_claims(
+        self,
+        queue_id: str,
+        *,
+        released_at: str,
+        release_reason: str,
+    ) -> tuple[Mapping[str, Any], ...]:
+        cursor = self.connection.execute(
+            """
+            UPDATE runtime.runtime_run_claims
+            SET released_at = %(released_at)s,
+                release_reason = %(release_reason)s
+            WHERE queue_id = %(queue_id)s
+              AND released_at IS NULL
+            RETURNING id, queue_id, worker_id, tenant_id, claimed_at, claimed_until,
+                      heartbeat_at, released_at, release_reason
+            """,
+            {
+                "queue_id": queue_id,
+                "released_at": released_at,
+                "release_reason": release_reason,
+            },
+        )
+        return tuple(cursor.fetchall())
 
     def insert_runtime_dead_letter(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         self.connection.execute(
