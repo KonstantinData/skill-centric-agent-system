@@ -4,6 +4,8 @@ from collections.abc import Mapping
 from threading import Lock
 from typing import Any, cast
 
+from skill_centric_agent_system.runtime.models import slug_id
+
 
 class InMemoryRuntimeStore:
     """Runtime store used by tests and local entrypoint dry-runs."""
@@ -50,7 +52,25 @@ class InMemoryRuntimeStore:
             stored.update(fields)
             return stored
 
-    def claim_next_runtime_queue_item(
+    def heartbeat_runtime_queue_item(
+        self,
+        queue_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        with self._lock:
+            stored = self.runtime_queue_items[queue_id]
+            stored.update(fields)
+            claim = self._active_claim_for_queue(queue_id)
+            if claim is not None:
+                claim.update(
+                    {
+                        "heartbeat_at": fields.get("heartbeat_at", claim.get("heartbeat_at")),
+                        "claimed_until": fields.get("claimed_until", claim.get("claimed_until")),
+                    }
+                )
+            return stored
+
+    def claim_next_runtime_queue_attempt(
         self,
         *,
         worker_id: str,
@@ -95,20 +115,81 @@ class InMemoryRuntimeStore:
                 limit = limits.get(tenant_id)
                 if limit is not None and self._tenant_running_count(tenant_id) >= limit:
                     continue
+
+                attempts = int(item["attempts"]) + 1
+                run_id = slug_id(f"{item['task_id']}-attempt-{attempts}", prefix="run")
+                attempt_id = slug_id(f"{item['id']}-attempt-{attempts}", prefix="attempt")
+                claim_id = slug_id(f"{item['id']}-{worker_id}-{attempts}", prefix="claim")
                 item.update(
                     {
                         "status": "claiming",
-                        "attempts": int(item["attempts"]) + 1,
+                        "attempts": attempts,
                         "claimed_by": worker_id,
                         "claimed_at": claimed_at,
                         "lease_expires_at": lease_expires_at,
                         "claimed_until": lease_expires_at,
                         "heartbeat_at": claimed_at,
+                        "attempt_id": attempt_id,
+                        "run_id": run_id,
                         "updated_at": claimed_at,
                     }
                 )
-                return dict(item)
+                attempt = {
+                    "id": attempt_id,
+                    "queue_id": str(item["id"]),
+                    "run_id": run_id,
+                    "tenant_id": tenant_id,
+                    "attempt_number": attempts,
+                    "status": "running",
+                    "started_at": claimed_at,
+                    "completed_at": None,
+                    "stop_reason": None,
+                    "profile_id": None,
+                    "profile_sha256": None,
+                }
+                claim = {
+                    "id": claim_id,
+                    "queue_id": str(item["id"]),
+                    "worker_id": worker_id,
+                    "tenant_id": tenant_id,
+                    "claimed_at": claimed_at,
+                    "claimed_until": lease_expires_at,
+                    "heartbeat_at": claimed_at,
+                    "released_at": None,
+                    "release_reason": None,
+                }
+                self.runtime_run_attempts[attempt_id] = attempt
+                self.runtime_run_claims[claim_id] = claim
+                return {"queue_item": dict(item), "attempt": dict(attempt), "claim": dict(claim)}
         return None
+
+    def claim_next_runtime_queue_item(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        lease_expires_at: str,
+        tenant_running_limits: Mapping[str, int] | None = None,
+        global_running_limit: int | None = None,
+        allowed_tenant_ids: tuple[str, ...] = (),
+        disabled_tenant_ids: tuple[str, ...] = (),
+        environment: str | None = None,
+        queue_name: str | None = None,
+    ) -> Mapping[str, Any] | None:
+        claim = self.claim_next_runtime_queue_attempt(
+            worker_id=worker_id,
+            claimed_at=claimed_at,
+            lease_expires_at=lease_expires_at,
+            tenant_running_limits=tenant_running_limits,
+            global_running_limit=global_running_limit,
+            allowed_tenant_ids=allowed_tenant_ids,
+            disabled_tenant_ids=disabled_tenant_ids,
+            environment=environment,
+            queue_name=queue_name,
+        )
+        if claim is None:
+            return None
+        return cast(Mapping[str, Any], claim["queue_item"])
 
     def recover_stale_runtime_queue_items(self, *, now: str) -> tuple[Mapping[str, Any], ...]:
         recovered: list[Mapping[str, Any]] = []
@@ -131,6 +212,14 @@ class InMemoryRuntimeStore:
                         "last_error": "Stale runtime queue claim recovered.",
                     }
                 )
+                claim = self._active_claim_for_queue(str(item["id"]))
+                if claim is not None:
+                    claim.update(
+                        {
+                            "released_at": now,
+                            "release_reason": "stale_recovered",
+                        }
+                    )
                 recovered.append(dict(item))
         return tuple(recovered)
 
@@ -161,6 +250,27 @@ class InMemoryRuntimeStore:
         stored = self.runtime_run_claims[claim_id]
         stored.update(fields)
         return stored
+
+    def release_runtime_queue_claims(
+        self,
+        queue_id: str,
+        *,
+        released_at: str,
+        release_reason: str,
+    ) -> tuple[Mapping[str, Any], ...]:
+        released: list[Mapping[str, Any]] = []
+        with self._lock:
+            for claim in self.runtime_run_claims.values():
+                if claim.get("queue_id") != queue_id or claim.get("released_at") is not None:
+                    continue
+                claim.update(
+                    {
+                        "released_at": released_at,
+                        "release_reason": release_reason,
+                    }
+                )
+                released.append(dict(claim))
+        return tuple(released)
 
     def insert_runtime_dead_letter(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         stored = dict(record)
@@ -351,6 +461,12 @@ class InMemoryRuntimeStore:
         for record in records:
             if record["run_id"] == run_id and record[index_field] == index:
                 return cast(Mapping[str, Any], record)
+        return None
+
+    def _active_claim_for_queue(self, queue_id: str) -> dict[str, Any] | None:
+        for claim in self.runtime_run_claims.values():
+            if claim.get("queue_id") == queue_id and claim.get("released_at") is None:
+                return claim
         return None
 
     def _tenant_running_count(self, tenant_id: str) -> int:

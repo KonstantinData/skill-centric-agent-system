@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from skill_centric_agent_system.runtime import (
     RuntimeRetentionPolicy,
     open_runtime_store_session,
     retention_plan_to_json,
+    runtime_queue_metrics,
 )
 
 
@@ -187,6 +189,9 @@ def _queue_main(argv: list[str]) -> int:
     retry_parser.add_argument("--idempotency-key")
     retry_parser.add_argument("--max-attempts", type=int)
 
+    metrics_parser = subparsers.add_parser("metrics", help="Print runtime queue metrics.")
+    _add_queue_storage_args(metrics_parser)
+
     args = parser.parse_args(argv)
 
     artifacts = JsonArtifactStore(args.artifact_root)
@@ -245,7 +250,11 @@ def _queue_main(argv: list[str]) -> int:
                 ),
             )
             if args.command == "worker-loop":
-                worker.run_forever(poll_interval_seconds=args.poll_interval_seconds)
+                worker.run_forever(
+                    poll_interval_seconds=args.poll_interval_seconds,
+                    stop_requested=_queue_worker_stop_requested(),
+                    after_iteration=_queue_worker_iteration_boundary(storage),
+                )
                 return 0
             result = worker.process_one()
             print(
@@ -270,6 +279,16 @@ def _queue_main(argv: list[str]) -> int:
                 max_attempts=args.max_attempts,
             )
             print(json.dumps({"queue_item": queue_item}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "metrics":
+            print(
+                json.dumps(
+                    runtime_queue_metrics(storage.store.as_runtime_plane_recordset()),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
             return 0
 
     raise RuntimeEntryPointError(f"Unsupported queue command: {args.command}.")
@@ -452,6 +471,41 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _env_bool(name: str) -> bool:
     value = os.getenv(name, "").strip().casefold()
     return value in {"1", "true", "yes", "on"}
+
+
+def _queue_worker_stop_requested() -> Callable[[], bool]:
+    stop_state = {"requested": False}
+
+    def request_stop(signum: int, frame: object | None) -> None:
+        del signum, frame
+        stop_state["requested"] = True
+
+    for signal_name in ("SIGINT", "SIGTERM"):
+        signum = getattr(signal, signal_name, None)
+        if signum is None:
+            continue
+        try:
+            signal.signal(signum, request_stop)
+        except (OSError, RuntimeError, ValueError):
+            continue
+
+    return lambda: stop_state["requested"]
+
+
+def _queue_worker_iteration_boundary(storage: Any) -> Callable[[BaseException | None], None]:
+    connection = getattr(storage, "connection", None)
+
+    def complete_iteration(error: BaseException | None) -> None:
+        if connection is None:
+            return
+        if error is None:
+            if hasattr(connection, "commit"):
+                connection.commit()
+            return
+        if hasattr(connection, "rollback"):
+            connection.rollback()
+
+    return complete_iteration
 
 
 def _parse_tenant_running_limits(raw_limits: list[str]) -> dict[str, int]:

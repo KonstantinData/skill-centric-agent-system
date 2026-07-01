@@ -72,7 +72,7 @@ class RuntimeQuotaManager:
             stop_reason="max_tool_calls",
         )
         reservation_id = slug_id(f"{queue_id}-{run_id}-{quota_window}", prefix="quota")
-        return self.store.insert_runtime_quota_reservation(
+        reservation = self.store.insert_runtime_quota_reservation(
             {
                 "id": reservation_id,
                 "queue_id": queue_id,
@@ -86,6 +86,19 @@ class RuntimeQuotaManager:
                 "finalized_at": None,
             }
         )
+        FlightRecorder(self.store, self.artifacts, clock=self.clock).record_event(
+            run_id=run_id,
+            event_type="quota_reserved",
+            actor_role="quota_manager",
+            result={
+                "tenant_id": tenant_id,
+                "quota_window": quota_window,
+                "reserved_tokens": reserved_tokens,
+                "reserved_tool_calls": reserved_tool_calls,
+            },
+            stop_reason=None,
+        )
+        return reservation
 
     def finalize(self, reservation_id: str) -> Mapping[str, Any]:
         return self.store.update_runtime_quota_reservation(
@@ -128,7 +141,7 @@ class RuntimeQuotaManager:
                 if isinstance(reservation, Mapping)
                 and reservation.get("tenant_id") == tenant_id
                 and reservation.get("quota_window") == quota_window
-                and reservation.get("status") == "reserved"
+                and reservation.get("status") in {"reserved", "finalized"}
             )
         if used + requested <= limit:
             return

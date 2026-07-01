@@ -15,6 +15,26 @@ class RuntimeStore(Protocol):
         fields: Mapping[str, Any],
     ) -> Mapping[str, Any]: ...
 
+    def heartbeat_runtime_queue_item(
+        self,
+        queue_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def claim_next_runtime_queue_attempt(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        lease_expires_at: str,
+        tenant_running_limits: Mapping[str, int] | None = None,
+        global_running_limit: int | None = None,
+        allowed_tenant_ids: tuple[str, ...] = (),
+        disabled_tenant_ids: tuple[str, ...] = (),
+        environment: str | None = None,
+        queue_name: str | None = None,
+    ) -> Mapping[str, Any] | None: ...
+
     def claim_next_runtime_queue_item(
         self,
         *,
@@ -46,6 +66,14 @@ class RuntimeStore(Protocol):
         claim_id: str,
         fields: Mapping[str, Any],
     ) -> Mapping[str, Any]: ...
+
+    def release_runtime_queue_claims(
+        self,
+        queue_id: str,
+        *,
+        released_at: str,
+        release_reason: str,
+    ) -> tuple[Mapping[str, Any], ...]: ...
 
     def insert_runtime_dead_letter(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 

@@ -167,6 +167,12 @@ surfaces are:
   controlled writes, validators, skill handler coverage, and runtime contracts.
 - `docs/reference/runtime-api.md`: runtime CLI/API, PostgreSQL mode,
   recomposition, result payloads, and retention commands.
+- `docs/reference/runtime-run-queue-contract.md`: durable queue states,
+  transitions, claims, retries, cancellation, quota, and profile-sealing rules.
+- `docs/reference/runtime-parallel-execution-hardening-dod.md`: RPEH-2026
+  closure criteria and required verification gates.
+- `docs/reference/runtime-parallel-execution-hardening-audit-closure-dod.md`:
+  strict audit-closure criteria for the RPEH-2026 follow-up findings.
 - `docs/reference/cloudflare/control-api.md`: Cloudflare endpoints, D1 seed
   generation, Worker deployment, retrieval, ingestion, AI Gateway, and live
   smoke commands.
@@ -218,6 +224,9 @@ retention cleanup, AI Gateway smoke tests, and production certification commands
 live in:
 
 - `docs/reference/runtime-api.md`
+- `docs/reference/runtime-run-queue-contract.md`
+- `docs/reference/runtime-parallel-execution-hardening-dod.md`
+- `docs/reference/runtime-parallel-execution-hardening-audit-closure-dod.md`
 - `docs/runbooks/runtime-live-dev-e2e.md`
 - `docs/runbooks/operations-runbook.md`
 - `docs/reference/cloudflare/control-api.md`

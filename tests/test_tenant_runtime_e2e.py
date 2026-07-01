@@ -16,6 +16,7 @@ from skill_centric_agent_system.runtime import (
     RuntimeEntryPoint,
     RuntimeLoopError,
 )
+from skill_centric_agent_system.runtime.tenant_status import RuntimeTenantStatusError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TENANT_RESEARCH_CONTEXT_PATH = (
@@ -176,7 +177,7 @@ def test_tenant_scoped_runtime_e2e_denies_cross_tenant_authority_before_run_star
         control_plane_client=control_plane,
     )
 
-    with pytest.raises(CompositionError, match="does not match the analyzed tenant"):
+    with pytest.raises(RuntimeTenantStatusError, match="does not match the runtime task tenant"):
         entrypoint.start(tenant_research_task())
 
     assert store.runtime_runs == {}

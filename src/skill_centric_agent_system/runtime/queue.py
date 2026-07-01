@@ -26,6 +26,10 @@ from skill_centric_agent_system.runtime.quotas import (
     RuntimeQuotaManager,
 )
 from skill_centric_agent_system.runtime.storage_protocol import RuntimeStore
+from skill_centric_agent_system.runtime.tenant_status import (
+    RuntimeTenantStatusError,
+    assert_runtime_tenant_is_startable,
+)
 
 
 class RuntimeQueueError(RuntimeError):
@@ -95,6 +99,11 @@ class RuntimeQueueManager:
             raise RuntimeQueueError("Runtime queue items require an explicit tenant_id.")
         if analyzed.auth_claims.tenant_id in disabled_tenant_ids:
             raise RuntimeQueueError("Disabled or archived tenants cannot enqueue runtime work.")
+        if (
+            composition_context_response is not None
+            and composition_context_response.get("tenant_authority") is not None
+        ):
+            assert_runtime_tenant_is_startable(task, composition_context_response)
         queued_limit = dict(tenant_queued_limits or {}).get(analyzed.auth_claims.tenant_id)
         if (
             queued_limit is not None
@@ -167,10 +176,30 @@ class RuntimeQueueManager:
             queue_name=config.queue_name,
         )
 
+    def claim_next_attempt(
+        self,
+        *,
+        worker_id: str,
+        config: RuntimeQueueConfig,
+    ) -> Mapping[str, Any] | None:
+        claimed_at = self.clock()
+        lease_until = claimed_at + timedelta(seconds=config.lease_seconds)
+        return self.store.claim_next_runtime_queue_attempt(
+            worker_id=worker_id,
+            claimed_at=iso_timestamp(claimed_at),
+            lease_expires_at=iso_timestamp(lease_until),
+            tenant_running_limits=config.tenant_running_limits,
+            global_running_limit=config.global_running_limit,
+            allowed_tenant_ids=config.allowed_tenant_ids,
+            disabled_tenant_ids=config.disabled_tenant_ids,
+            environment=config.environment,
+            queue_name=config.queue_name,
+        )
+
     def heartbeat(self, queue_id: str, *, config: RuntimeQueueConfig) -> Mapping[str, Any]:
         now = self.clock()
         claimed_until = now + timedelta(seconds=config.lease_seconds)
-        return self.store.update_runtime_queue_item(
+        return self.store.heartbeat_runtime_queue_item(
             queue_id,
             {
                 "heartbeat_at": iso_timestamp(now),
@@ -203,7 +232,13 @@ class RuntimeQueueManager:
             return item
         if item["status"] in {"succeeded", "failed", "dead_lettered"}:
             raise RuntimeQueueError("Terminal runtime queue items cannot be cancelled.")
-        stored = self._update_status(queue_id, "cancelled", run_id=run_id)
+        completed_at = iso_timestamp(self.clock())
+        stored = self._update_status(queue_id, "cancelled", run_id=run_id, clear_claim=True)
+        self.store.release_runtime_queue_claims(
+            queue_id,
+            released_at=completed_at,
+            release_reason="cancelled",
+        )
         effective_run_id = run_id or item.get("run_id")
         if effective_run_id is not None:
             run = self.store.get_runtime_run(str(effective_run_id))
@@ -217,7 +252,7 @@ class RuntimeQueueManager:
                     {
                         "status": "cancelled",
                         "stop_reason": "cancelled",
-                        "completed_at": iso_timestamp(self.clock()),
+                        "completed_at": completed_at,
                     },
                 )
         return stored
@@ -389,52 +424,19 @@ class RuntimeQueueWorker:
         self.manager = RuntimeQueueManager(store=store, artifacts=artifacts, clock=clock)
 
     def process_one(self) -> RuntimeQueueProcessResult | None:
-        queue_item = self.manager.claim_next(worker_id=self.worker_id, config=self.config)
-        if queue_item is None:
+        claim_bundle = self.manager.claim_next_attempt(
+            worker_id=self.worker_id,
+            config=self.config,
+        )
+        if claim_bundle is None:
             return None
 
-        claim_id = slug_id(
-            f"{queue_item['id']}-{self.worker_id}-{queue_item['attempts']}",
-            prefix="claim",
-        )
-        self.store.insert_runtime_run_claim(
-            {
-                "id": claim_id,
-                "queue_id": str(queue_item["id"]),
-                "worker_id": self.worker_id,
-                "tenant_id": str(queue_item["tenant_id"]),
-                "claimed_at": str(queue_item["claimed_at"]),
-                "claimed_until": str(
-                    queue_item.get("claimed_until") or queue_item.get("lease_expires_at")
-                ),
-                "heartbeat_at": str(queue_item.get("heartbeat_at") or queue_item["claimed_at"]),
-                "released_at": None,
-                "release_reason": None,
-            }
-        )
-        run_id = slug_id(
-            f"{queue_item['task_id']}-attempt-{queue_item['attempts']}",
-            prefix="run",
-        )
-        attempt_id = slug_id(
-            f"{queue_item['id']}-attempt-{queue_item['attempts']}",
-            prefix="attempt",
-        )
-        self.store.insert_runtime_run_attempt(
-            {
-                "id": attempt_id,
-                "queue_id": str(queue_item["id"]),
-                "run_id": run_id,
-                "tenant_id": str(queue_item["tenant_id"]),
-                "attempt_number": int(queue_item["attempts"]),
-                "status": "running",
-                "started_at": iso_timestamp(self.manager.clock()),
-                "completed_at": None,
-                "stop_reason": None,
-                "profile_id": None,
-                "profile_sha256": None,
-            }
-        )
+        queue_item = claim_bundle["queue_item"]
+        attempt = claim_bundle["attempt"]
+        claim = claim_bundle["claim"]
+        run_id = str(attempt["run_id"])
+        attempt_id = str(attempt["id"])
+        claim_id = str(claim["id"])
         try:
             task = self.manager.load_task(queue_item)
             composition_context = self.manager.load_composition_context(queue_item)
@@ -488,7 +490,13 @@ class RuntimeQueueWorker:
                     str(queue_item["id"])
                 ),
             ).run(start_result)
-        except (CompositionError, RuntimeLoopError, RuntimeQueueError, RuntimeQuotaError) as error:
+        except (
+            CompositionError,
+            RuntimeLoopError,
+            RuntimeQueueError,
+            RuntimeQuotaError,
+            RuntimeTenantStatusError,
+        ) as error:
             run = self.store.get_runtime_run(run_id)
             if run is not None and run.get("status") not in {"failed", "cancelled", "succeeded"}:
                 self.store.update_runtime_run(
@@ -595,10 +603,26 @@ class RuntimeQueueWorker:
             attempt_id=attempt_id,
         )
 
-    def run_forever(self, *, poll_interval_seconds: float = 1.0) -> None:
-        while True:
-            result = self.process_one()
+    def run_forever(
+        self,
+        *,
+        poll_interval_seconds: float = 1.0,
+        stop_requested: Callable[[], bool] | None = None,
+        after_iteration: Callable[[BaseException | None], None] | None = None,
+    ) -> None:
+        should_stop = stop_requested or (lambda: False)
+        while not should_stop():
+            try:
+                result = self.process_one()
+            except BaseException as error:
+                if after_iteration is not None:
+                    after_iteration(error)
+                raise
+            if after_iteration is not None:
+                after_iteration(None)
             if result is None:
+                if should_stop():
+                    break
                 sleep(poll_interval_seconds)
 
     def _queue_item_is_cancelled(self, queue_id: str) -> bool:

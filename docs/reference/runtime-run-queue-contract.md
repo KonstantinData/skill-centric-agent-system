@@ -72,16 +72,28 @@ data.
 
 Workers claim with PostgreSQL `FOR UPDATE SKIP LOCKED`. A claim moves a queue
 item to `claiming`, increments attempts, sets `claimed_by`, `claimed_at`,
-`claimed_until`, and `heartbeat_at`, and writes a `runtime_run_claims` row.
+`claimed_until`, `heartbeat_at`, `attempt_id`, and `run_id`, and writes the
+matching `runtime_run_attempts` and `runtime_run_claims` rows in the same claim
+operation.
 
 Workers may claim only items matching their configured environment, queue name,
 tenant allowlist, and disabled-tenant denylist.
+
+Long-lived worker loops must commit successful PostgreSQL work and roll back
+unhandled failures after each poll/execute iteration. A worker process must not
+hold one uncommitted claim transaction for its entire lifetime.
+
+Global and tenant running limits are evaluated under database advisory
+transaction locks before the queue row is updated. Claim selection must not use
+a fixed candidate cap that can starve eligible tenants behind ineligible locked
+or saturated tenants.
 
 ## Heartbeat And Recovery
 
 Workers refresh `heartbeat_at` and `claimed_until`. Stale `claiming` or
 `running` items whose `claimed_until` is in the past are recovered to
-`retry_scheduled` and their claim fields are cleared.
+`retry_scheduled`, their queue claim fields are cleared, and any active
+`runtime_run_claims` row is released with reason `stale_recovered`.
 
 ## Retry And DLQ
 
@@ -95,14 +107,21 @@ new queue item. It never mutates a terminal run or attempt.
 Queued or claiming work is cancelled by queue state. Running work uses
 cooperative cancellation checkpoints before every runtime phase and before each
 planned tool action. Cancellation completes the run with status and stop reason
-`cancelled`.
+`cancelled`. Cancel operations clear queue claim fields and release active
+claim audit rows with reason `cancelled`.
 
 ## Quotas
 
 Before execution, the worker reserves tenant quota in
 `runtime_quota_reservations`. Token and tool-call quota breaches emit
 Flight Recorder `quota_exhausted` events and fail closed with the matching hard
-stop reason.
+stop reason. Reserved and finalized reservations both count against the current
+quota window; refunded reservations do not.
+
+Data-read, memory-operation, duration, tag, and longer rolling-window quota
+dimensions require authoritative runtime counters before they can be claimed as
+implemented. They are production-readiness extensions unless backed by
+migrations, counters, tests, and release evidence.
 
 ## Profile Sealing
 
@@ -115,6 +134,8 @@ Every runtime run stores:
 
 Workers must execute the sealed profile emitted by the composer. Profile fields,
 limits, tools, scopes, policies, and validators must not be mutated in place.
+The runtime loop re-hashes the stored profile artifact before executing any
+runtime phase and fails closed on mismatch.
 
 ## Observability
 
@@ -124,3 +145,9 @@ calls, and Flight Recorder events. Production telemetry must expose aggregate
 signals for queue depth, claim latency, run duration, tenant saturation, retry
 rate, DLQ rate, quota exhaustion, and policy denials. Logs must not contain raw
 tool outputs, secrets, provider payloads, or raw customer data.
+
+The local operator surface exposes the same aggregate signal shape through:
+
+```bash
+scas-runtime queue metrics --storage-mode postgres --database-url "$SCAS_RUNTIME_DATABASE_URL"
+```

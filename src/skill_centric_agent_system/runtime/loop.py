@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,6 +106,7 @@ class MinimalRuntimeLoop:
         self.recorder = FlightRecorder(store, artifacts)
 
     def run(self, start_result: RuntimeStartResult) -> RuntimeLoopResult:
+        self._assert_profile_seal(start_result)
         profile = start_result.profile
         run_id = start_result.run_id
         task_id = start_result.analyzed_task.task_id
@@ -387,6 +390,20 @@ class MinimalRuntimeLoop:
             tokens_used_total=enforcer.tokens_used,
         )
         return stop_reason
+
+    def _assert_profile_seal(self, start_result: RuntimeStartResult) -> None:
+        artifact_profile = self.artifacts.read_json(start_result.profile_artifact_uri)
+        if not isinstance(artifact_profile, Mapping):
+            raise RuntimeLoopError(
+                "Runtime profile artifact is not a JSON object.",
+                stop_reason="profile_integrity_failure",
+            )
+        artifact_sha256 = _profile_sha256(artifact_profile)
+        if artifact_sha256 != start_result.profile_sha256:
+            raise RuntimeLoopError(
+                "Runtime profile artifact seal does not match the recorded SHA-256.",
+                stop_reason="profile_integrity_failure",
+            )
 
     def _context_step(
         self,
@@ -674,6 +691,11 @@ class MinimalRuntimeLoop:
             stop_reason="completed",
         )
         return response
+
+
+def _profile_sha256(profile: Mapping[str, Any]) -> str:
+    canonical = json.dumps(profile, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _profile_allows_recomposition(profile: Mapping[str, Any], error: Exception) -> bool:

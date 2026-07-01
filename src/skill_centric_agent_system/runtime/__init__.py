@@ -52,6 +52,7 @@ from skill_centric_agent_system.runtime.memory_invariants import (
     PostPlanningMemoryInvariantResult,
     PostPlanningMemoryInvariantValidator,
 )
+from skill_centric_agent_system.runtime.metrics import runtime_queue_metrics
 from skill_centric_agent_system.runtime.models import RecompositionRequest
 from skill_centric_agent_system.runtime.planner_memory import (
     LessonConflictSet,
@@ -190,6 +191,7 @@ __all__ = [
     "RuntimeQueueManager",
     "RuntimeQueueProcessResult",
     "RuntimeQueueWorker",
+    "runtime_queue_metrics",
     "RuntimeQuotaConfig",
     "RuntimeQuotaError",
     "RuntimeQuotaManager",
