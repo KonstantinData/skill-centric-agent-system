@@ -295,6 +295,8 @@ def test_live_runtime_gates_workflow_is_manual_only() -> None:
     assert "live_task_file:" in workflow
     assert "- tenant" in workflow
     assert "- liquisto" in workflow
+    assert "- daskuechenhaus" in workflow
+    assert "- kinderhaus" in workflow
     assert "- single" in workflow
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "inputs.run_live_dev_e2e == true" in workflow
@@ -313,8 +315,6 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert "secrets.SCAS_DEV_CONTROL_API_TOKEN" in workflow
     assert "secrets.SCAS_STAGING_CONTROL_API_TOKEN" in workflow
     assert "secrets.SCAS_PROD_CONTROL_API_TOKEN" in workflow
-    assert "secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
-    assert "secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
     assert "secrets.SCAS_DEV_HETZNER_SSH_KEY" in workflow
     assert "secrets.SCAS_STAGING_HETZNER_SSH_KEY" in workflow
     assert "secrets.SCAS_PROD_HETZNER_SSH_KEY" in workflow
@@ -322,14 +322,10 @@ def test_live_runtime_gates_workflow_runs_e2e_on_hetzner() -> None:
     assert 'CONTROL_API_TOKEN="$(resolve_env_secret' in workflow
     assert 'HETZNER_SSH_KEY="$(resolve_env_secret' in workflow
     assert "SCAS_OPENAI_API_KEY_B64" in workflow
-    assert "SCAS_LIQUISTO_OWNER_PRINCIPAL_ID_B64" in workflow
     assert "SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID" in workflow
-    assert "SCAS_${TARGET_ENVIRONMENT^^}_LIQUISTO_OWNER_PRINCIPAL_ID" in workflow
-    assert "live_task_suite=liquisto is supported only for staging and prod" in workflow
-    assert "liquisto-live-task.json" in workflow
-    assert '"tenant_hostname": "liquisto.cloud"' in workflow
-    assert '"membership_id": "tm-liquisto-initial-owner"' in workflow
-    assert "SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID=\"${liquisto_owner_principal_id}\"" in workflow
+    assert "SCAS_LIQUISTO_OWNER_PRINCIPAL_ID_B64" not in workflow
+    assert "SCAS_${TARGET_ENVIRONMENT^^}_LIQUISTO_OWNER_PRINCIPAL_ID" not in workflow
+    assert "liquisto-live-task.json" not in workflow
     assert "export OPENAI_API_KEY" in workflow
     assert "HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__" in workflow
     assert "control_api_url is required for ${TARGET_ENVIRONMENT}" in workflow

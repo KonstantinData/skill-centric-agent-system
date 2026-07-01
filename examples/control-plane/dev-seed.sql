@@ -106,6 +106,10 @@ INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assigna
 VALUES ('tenant_kinderhaus-owner', 'tenant_kinderhaus', 'Tenant Owner', 'system', 1, '["document-synthesis","task-execution-planning"]', '["deadline-review","development-planning","leadership-cockpit","tenant-admin"]', '["filesystem-list","filesystem-read"]', '["data-minimization-required","no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["admin-action-validator","data-minimization-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","tenant-profile-validator","user-permission-validator"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
 
+INSERT INTO tenant_role_bundles (id, tenant_id, display_name, role_type, assignable_to_users, derived_skills_json, derived_workflows_json, derived_tools_json, derived_policies_json, derived_validators_json)
+VALUES ('tenant_kinderhaus-public-researcher', 'tenant_kinderhaus', 'Public Website Researcher', 'tenant-custom', 1, '["research-context-synthesis"]', '["research-intake"]', '[]', '["data-minimization-required","no-cross-area-access","no-cross-tenant-access","no-destructive-commands","strict-tenant-isolation"]', '["data-minimization-validator","knowledge-scope-validator","no-cross-area-scope-validator","no-cross-tenant-scope-validator","research-output-contract","tenant-profile-validator"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, display_name = excluded.display_name, role_type = excluded.role_type, assignable_to_users = excluded.assignable_to_users, derived_skills_json = excluded.derived_skills_json, derived_workflows_json = excluded.derived_workflows_json, derived_tools_json = excluded.derived_tools_json, derived_policies_json = excluded.derived_policies_json, derived_validators_json = excluded.derived_validators_json;
+
 INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
 VALUES ('tm-daskuechenhaus-repository-maintainer', 'daskuechenhaus', 'repository-maintainer', 'active', '["daskuechenhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
@@ -123,7 +127,7 @@ VALUES ('tm-liquisto-repository-maintainer', 'liquisto', 'repository-maintainer'
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO tenant_memberships (id, tenant_id, principal_id, status, role_ids_json, created_at, updated_at)
-VALUES ('tm-tenant_kinderhaus-repository-maintainer', 'tenant_kinderhaus', 'repository-maintainer', 'active', '["tenant_kinderhaus-owner"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
+VALUES ('tm-tenant_kinderhaus-repository-maintainer', 'tenant_kinderhaus', 'repository-maintainer', 'active', '["tenant_kinderhaus-public-researcher"]', '2026-05-22T00:00:00Z', '2026-05-22T00:00:00Z')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, principal_id = excluded.principal_id, status = excluded.status, role_ids_json = excluded.role_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at;
 
 INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
@@ -210,6 +214,10 @@ INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capabi
 VALUES ('trcg-tenant_kinderhaus-owner-tenant-admin', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'tenant-admin')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
 
+INSERT INTO tenant_role_capability_grants (id, tenant_id, role_bundle_id, capability_id)
+VALUES ('trcg-tenant_kinderhaus-public-researcher-research', 'tenant_kinderhaus', 'tenant_kinderhaus-public-researcher', 'research')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, capability_id = excluded.capability_id;
+
 INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
 VALUES ('trdsg-daskuechenhaus-owner-daskuechenhaus-website', 'daskuechenhaus', 'daskuechenhaus-owner', 'daskuechenhaus-website', '["read"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
@@ -248,6 +256,10 @@ ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = e
 
 INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
 VALUES ('trdsg-tenant_kinderhaus-owner-kinderhaus-public-website', 'tenant_kinderhaus', 'tenant_kinderhaus-owner', 'kinderhaus-public-website', '["read"]')
+ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
+
+INSERT INTO tenant_role_data_source_grants (id, tenant_id, role_bundle_id, data_source_id, access_modes_json)
+VALUES ('trdsg-tenant_kinderhaus-public-researcher-kinderhaus-public-website', 'tenant_kinderhaus', 'tenant_kinderhaus-public-researcher', 'kinderhaus-public-website', '["read"]')
 ON CONFLICT(id) DO UPDATE SET tenant_id = excluded.tenant_id, role_bundle_id = excluded.role_bundle_id, data_source_id = excluded.data_source_id, access_modes_json = excluded.access_modes_json;
 
 INSERT INTO modules (id, name, kind, status, current_version_id, created_at, updated_at)

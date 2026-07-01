@@ -197,6 +197,48 @@
           "data-minimization-validator"
         ]
       }
+    },
+    {
+      "id": "tenant_kinderhaus-public-researcher",
+      "tenant_id": "tenant_kinderhaus",
+      "display_name": "Public Website Researcher",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "kinderhaus-public-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake"
+        ],
+        "tools": [],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access",
+          "data-minimization-required"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator",
+          "research-output-contract",
+          "data-minimization-validator"
+        ]
+      }
     }
   ],
   "policy_bundle": [

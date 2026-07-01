@@ -1148,6 +1148,47 @@ describe("control API worker", () => {
     });
   });
 
+  it("accepts underscore tenant ids in composition context validation", async () => {
+    const response = await fetchJson("/composition/context", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...tenantCompositionRequest,
+        principal: {
+          kind: "role",
+          id: "repository-maintainer",
+        },
+        tenant_context: {
+          tenant_id: "tenant_kinderhaus",
+          area_id: "kinderhaus-heuschrecken",
+          hostname: "kinderhaus-heuschrecken.cloud",
+          membership_id: "tm-tenant_kinderhaus-repository-maintainer",
+        },
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.composition_status).toBe("denied");
+    expect(body.error).toBeUndefined();
+  });
+
+  it("routes underscore tenant ids through tenant admin endpoints", async () => {
+    const response = await fetchJson("/tenant-admin/tenants/tenant_kinderhaus", {
+      method: "GET",
+      headers: {
+        "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
+        "x-scas-tenant-hostname": "kinderhaus-heuschrecken.cloud",
+      },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error.code).toBe("tenant_not_found");
+  });
+
   it("returns D1-backed tenant admin context for the resolved tenant hostname", async () => {
     const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
       method: "GET",
