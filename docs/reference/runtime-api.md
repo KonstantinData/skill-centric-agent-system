@@ -21,8 +21,23 @@ cancel run
 retry run
 ```
 
-The existing `scas-runtime-start` command remains a compatibility alias for
-`start run` until a grouped CLI is introduced.
+The direct `scas-runtime-start` command remains a compatibility alias for
+immediate fixture-backed `start run`. Queue-backed production operation uses the
+grouped runtime CLI.
+
+The transport-neutral service implementation is
+`src/skill_centric_agent_system/runtime/api.py`. HTTP deployments must expose
+the same semantics:
+
+- `POST /runtime/runs`
+- `GET /runtime/runs/{id}`
+- `GET /runtime/runs/{id}/result`
+- `POST /runtime/runs/{id}/cancel`
+- `POST /runtime/runs/{id}/retry`
+
+Every read and write is tenant-scoped. Tenant context is derived from the
+authenticated API principal and checked against the task or queue record; prompt
+text and client-provided body fields cannot widen tenant authority.
 
 ## Start Run
 
@@ -69,6 +84,36 @@ Output:
 
 The command must fail before execution when no Control Plane client or explicit
 composition context response is available.
+
+For production use, `start run` may enqueue a runtime queue item instead of
+executing immediately. When `run_immediately=false`, the response identifies the
+queue item and the initial status is `queued`; a worker later claims the item
+and creates the concrete runtime run attempt. Queue payloads are artifact
+references in the Hetzner Runtime Plane and must not inline secrets or raw
+provider credentials.
+
+CLI:
+
+```bash
+scas-runtime queue enqueue \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --task-file task.json \
+  --idempotency-key tenant-task-2026-07-01
+```
+
+Workers process queued execution with tenant limits:
+
+```bash
+scas-runtime queue worker-once \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --repository-root /srv/scas/workspaces/runtime \
+  --worker-id runtime-worker-1 \
+  --tenant-running-limit daskuechenhaus=2
+```
 
 When the minimal loop is enabled, the runtime dispatches a deterministic
 strategy from `profile.task_type`. The supported first-slice strategies are
@@ -132,7 +177,21 @@ Output:
 - stop reason `cancelled`,
 - event reference for the cancellation.
 
-Cancellation is allowed only for `queued` or `running` runs.
+Cancellation is allowed only for queued, claiming, or running work. Queue
+cancellation marks a non-terminal queue item `cancelled`; when a runtime run
+already exists, the run is also completed with status and stop reason
+`cancelled`. Running execution checks cooperative cancellation before each
+runtime phase and before each planned tool action.
+
+CLI:
+
+```bash
+scas-runtime queue cancel \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --queue-id queue-example
+```
 
 ## Retry Run
 
@@ -147,7 +206,21 @@ Output:
 - new run request metadata,
 - parent traceability reference.
 
-Retry creates a new run. It must not reopen or mutate a terminal source run.
+Retry creates new queued work or a new run. It must not reopen or mutate a
+terminal source run. Automatic queue retry moves failed work to
+`retry_scheduled` until `max_attempts` is exhausted, then to `dead_lettered`.
+Manual replay of cancelled, failed, or dead-lettered work creates a new queue
+item from the original task payload and composition context artifacts.
+
+CLI:
+
+```bash
+scas-runtime queue retry \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --queue-id queue-example
+```
 
 ## Error Response
 

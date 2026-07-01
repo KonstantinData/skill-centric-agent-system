@@ -1,5 +1,10 @@
 """Runtime entrypoint, storage, and Flight Recorder helpers."""
 
+from skill_centric_agent_system.runtime.api import (
+    RuntimeApiError,
+    RuntimeApiPrincipal,
+    RuntimeApiService,
+)
 from skill_centric_agent_system.runtime.artifacts import JsonArtifactStore, redact_sensitive_data
 from skill_centric_agent_system.runtime.capability_gaps import (
     CapabilityGapCandidateError,
@@ -27,6 +32,7 @@ from skill_centric_agent_system.runtime.knowledge_proposals import (
 )
 from skill_centric_agent_system.runtime.loop import (
     MinimalRuntimeLoop,
+    RuntimeCancellationError,
     RuntimeLoopError,
     RuntimeLoopResult,
 )
@@ -69,6 +75,18 @@ from skill_centric_agent_system.runtime.policy_denials import (
     ScopePolicyClosure,
     build_policy_denial_record,
     validate_policy_denial_record,
+)
+from skill_centric_agent_system.runtime.queue import (
+    RuntimeQueueConfig,
+    RuntimeQueueError,
+    RuntimeQueueManager,
+    RuntimeQueueProcessResult,
+    RuntimeQueueWorker,
+)
+from skill_centric_agent_system.runtime.quotas import (
+    RuntimeQuotaConfig,
+    RuntimeQuotaError,
+    RuntimeQuotaManager,
 )
 from skill_centric_agent_system.runtime.retention import (
     ResolvedArtifactUri,
@@ -152,6 +170,9 @@ __all__ = [
     "RuntimeRetentionError",
     "RuntimeRetentionExecutor",
     "RuntimeProfileEnforcer",
+    "RuntimeApiError",
+    "RuntimeApiPrincipal",
+    "RuntimeApiService",
     "ErrorClassification",
     "RuntimeSkillPlan",
     "SafetyCompiler",
@@ -162,7 +183,16 @@ __all__ = [
     "ScopePolicyClosure",
     "RecompositionRequest",
     "RuntimeLoopError",
+    "RuntimeCancellationError",
     "RuntimeLoopResult",
+    "RuntimeQueueConfig",
+    "RuntimeQueueError",
+    "RuntimeQueueManager",
+    "RuntimeQueueProcessResult",
+    "RuntimeQueueWorker",
+    "RuntimeQuotaConfig",
+    "RuntimeQuotaError",
+    "RuntimeQuotaManager",
     "RuntimeEntryPoint",
     "RuntimeEntryPointError",
     "RuntimeStorageError",

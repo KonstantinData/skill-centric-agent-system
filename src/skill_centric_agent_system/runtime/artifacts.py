@@ -101,6 +101,18 @@ class JsonArtifactStore:
         )
         return self.uri_for(relative)
 
+    def read_json(self, uri: str) -> Any:
+        """Read a JSON artifact by a URI previously returned by this store."""
+        prefix = f"{self.uri_prefix}/"
+        if not uri.startswith(prefix):
+            raise ValueError("Artifact URI is outside this store.")
+        relative = Path(uri.removeprefix(prefix))
+        target = (self.root / relative).resolve()
+        root = self.root.resolve()
+        if root not in (target, *target.parents):
+            raise ValueError("Artifact URI escapes the artifact root.")
+        return json.loads(target.read_text(encoding="utf-8"))
+
     def uri_for(self, relative_path: str | Path | Sequence[str]) -> str:
         relative = _relative_path(relative_path).as_posix()
         if not relative:

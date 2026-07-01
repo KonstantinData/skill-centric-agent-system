@@ -90,6 +90,10 @@ CREATE TABLE IF NOT EXISTS runtime.runtime_events (
             'validator_executed',
             'runtime_completed',
             'runtime_failed',
+            'runtime_cancelled',
+            'tenant_throttled',
+            'quota_reserved',
+            'quota_exhausted',
             'step_started',
             'step_completed',
             'tool_invocation_started',
@@ -106,6 +110,8 @@ CREATE TABLE IF NOT EXISTS runtime.runtime_events (
             'executor',
             'validator',
             'policy_engine',
+            'quota_manager',
+            'runtime',
             'composer'
         )
     ),

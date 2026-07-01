@@ -16,6 +16,7 @@
       "type": "string",
       "enum": [
         "start_run_request",
+        "start_run_response",
         "run_status_response",
         "run_result_response",
         "cancel_run_response",
@@ -35,6 +36,18 @@
       },
       "then": {
         "$ref": "#/$defs/startRunRequest"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "start_run_response"
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/startRunResponse"
       }
     },
     {
@@ -156,6 +169,63 @@
         }
       }
     },
+    "startRunResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "kind",
+        "response_mode",
+        "status",
+        "queue_item",
+        "run"
+      ],
+      "properties": {
+        "contract_version": {
+          "$ref": "#/properties/contract_version"
+        },
+        "kind": {
+          "const": "start_run_response"
+        },
+        "response_mode": {
+          "type": "string",
+          "enum": [
+            "immediate",
+            "queued"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "queue_item": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/runtimeQueueItemSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/runSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "runStatusResponse": {
       "type": "object",
       "additionalProperties": false,
@@ -271,8 +341,19 @@
       "required": [
         "contract_version",
         "kind",
-        "source_run_id",
         "reason"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "source_run_id"
+          ]
+        },
+        {
+          "required": [
+            "source_queue_id"
+          ]
+        }
       ],
       "properties": {
         "contract_version": {
@@ -285,8 +366,67 @@
           "type": "string",
           "minLength": 1
         },
+        "source_queue_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "reason": {
           "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtimeQueueItemSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "tenant_id",
+        "area_id",
+        "status",
+        "scheduled_at",
+        "attempts",
+        "max_attempts",
+        "run_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "area_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeQueueStatus"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1
         }
       }
@@ -484,6 +624,19 @@
         "succeeded",
         "failed",
         "cancelled"
+      ]
+    },
+    "runtimeQueueStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "claiming",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "retry_scheduled",
+        "dead_lettered"
       ]
     },
     "stringArray": {

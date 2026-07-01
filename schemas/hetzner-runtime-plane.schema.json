@@ -21,6 +21,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "runtime_queue_items",
+        "runtime_run_attempts",
+        "runtime_run_claims",
+        "runtime_dead_letters",
+        "runtime_quota_reservations",
         "runtime_runs",
         "runtime_steps",
         "runtime_events",
@@ -30,6 +35,36 @@
         "memory_candidates"
       ],
       "properties": {
+        "runtime_queue_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeQueueItem"
+          }
+        },
+        "runtime_run_attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeRunAttempt"
+          }
+        },
+        "runtime_run_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeRunClaim"
+          }
+        },
+        "runtime_dead_letters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeDeadLetter"
+          }
+        },
+        "runtime_quota_reservations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeQuotaReservation"
+          }
+        },
         "runtime_runs": {
           "type": "array",
           "items": {
@@ -127,6 +162,13 @@
       ],
       "pattern": "^[a-z][a-z0-9-]*$"
     },
+    "nullableSha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "nonNegativeInteger": {
       "type": "integer",
       "minimum": 0
@@ -169,6 +211,19 @@
         "succeeded",
         "failed",
         "cancelled"
+      ]
+    },
+    "runtimeQueueStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "claiming",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "retry_scheduled",
+        "dead_lettered"
       ]
     },
     "stopReason": {
@@ -216,6 +271,10 @@
         "validator_executed",
         "runtime_completed",
         "runtime_failed",
+        "runtime_cancelled",
+        "tenant_throttled",
+        "quota_reserved",
+        "quota_exhausted",
         "step_started",
         "step_completed",
         "tool_invocation_started",
@@ -233,8 +292,303 @@
         "executor",
         "validator",
         "policy_engine",
+        "quota_manager",
+        "runtime",
         "composer"
       ]
+    },
+    "runtimeQueueItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "tenant_id",
+        "area_id",
+        "environment",
+        "queue_name",
+        "status",
+        "priority",
+        "scheduled_at",
+        "attempts",
+        "max_attempts",
+        "claimed_by",
+        "claimed_at",
+        "claimed_until",
+        "lease_expires_at",
+        "heartbeat_at",
+        "attempt_id",
+        "task_payload_uri",
+        "composition_context_uri",
+        "run_id",
+        "last_error",
+        "idempotency_key",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "task_id": {
+          "$ref": "#/$defs/id"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "area_id": {
+          "$ref": "#/$defs/id"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        },
+        "queue_name": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeQueueStatus"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "scheduled_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "attempts": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "max_attempts": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "claimed_by": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "claimed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "claimed_until": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "lease_expires_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "heartbeat_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "attempt_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "task_payload_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "composition_context_uri": {
+          "$ref": "#/$defs/nullableUri"
+        },
+        "run_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "last_error": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/uri"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "runtimeRunAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "queue_id",
+        "run_id",
+        "tenant_id",
+        "attempt_number",
+        "status",
+        "started_at",
+        "completed_at",
+        "stop_reason",
+        "profile_id",
+        "profile_sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "queue_id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "attempt_number": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "status": {
+          "$ref": "#/$defs/runtimeQueueStatus"
+        },
+        "started_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "profile_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        }
+      }
+    },
+    "runtimeRunClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "queue_id",
+        "worker_id",
+        "tenant_id",
+        "claimed_at",
+        "claimed_until",
+        "heartbeat_at",
+        "released_at",
+        "release_reason"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "queue_id": {
+          "$ref": "#/$defs/id"
+        },
+        "worker_id": {
+          "$ref": "#/$defs/uri"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "claimed_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "claimed_until": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "heartbeat_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "released_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "release_reason": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "runtimeDeadLetter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "queue_id",
+        "run_id",
+        "attempt_id",
+        "tenant_id",
+        "error_type",
+        "error_message",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "queue_id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "attempt_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "error_type": {
+          "$ref": "#/$defs/uri"
+        },
+        "error_message": {
+          "$ref": "#/$defs/uri"
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "runtimeQuotaReservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "queue_id",
+        "run_id",
+        "tenant_id",
+        "quota_window",
+        "reserved_tokens",
+        "reserved_tool_calls",
+        "status",
+        "created_at",
+        "finalized_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "queue_id": {
+          "$ref": "#/$defs/id"
+        },
+        "run_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "quota_window": {
+          "$ref": "#/$defs/uri"
+        },
+        "reserved_tokens": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "reserved_tool_calls": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "reserved",
+            "finalized",
+            "refunded"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "finalized_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        }
+      }
     },
     "runtimePhase": {
       "type": "string",
@@ -263,7 +617,11 @@
         "artifact_root_uri",
         "token_budget_total",
         "tokens_used_total",
-        "stop_reason"
+        "stop_reason",
+        "profile_artifact_uri",
+        "profile_sha256",
+        "profile_generation",
+        "parent_profile_id"
       ],
       "properties": {
         "id": {
@@ -298,6 +656,18 @@
         },
         "stop_reason": {
           "$ref": "#/$defs/nullableStopReason"
+        },
+        "profile_artifact_uri": {
+          "$ref": "#/$defs/nullableUri"
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "profile_generation": {
+          "$ref": "#/$defs/nullableNonNegativeInteger"
+        },
+        "parent_profile_id": {
+          "$ref": "#/$defs/nullableId"
         }
       }
     },

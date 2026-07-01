@@ -54,6 +54,31 @@ def test_runtime_api_contract_documents_required_commands() -> None:
         "retry run",
     ):
         assert command in contract
+    for endpoint in (
+        "POST /runtime/runs",
+        "GET /runtime/runs/{id}",
+        "GET /runtime/runs/{id}/result",
+        "POST /runtime/runs/{id}/cancel",
+        "POST /runtime/runs/{id}/retry",
+    ):
+        assert endpoint in contract
+
+
+def test_runtime_queue_contract_documents_hardening_surfaces() -> None:
+    contract = (REPO_ROOT / "docs" / "reference" / "runtime-run-queue-contract.md").read_text(
+        encoding="utf-8"
+    )
+    for required_term in (
+        "runtime_run_attempts",
+        "runtime_run_claims",
+        "runtime_dead_letters",
+        "runtime_quota_reservations",
+        "FOR UPDATE SKIP LOCKED",
+        "claimed_until",
+        "profile_sha256",
+        "quota_exhausted",
+    ):
+        assert required_term in contract
 
 
 def test_runtime_contract_keeps_recomposition_controlled() -> None:

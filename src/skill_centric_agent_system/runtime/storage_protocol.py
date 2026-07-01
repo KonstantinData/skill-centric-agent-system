@@ -5,6 +5,58 @@ from typing import Any, Protocol
 
 
 class RuntimeStore(Protocol):
+    def insert_runtime_queue_item(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def get_runtime_queue_item(self, queue_id: str) -> Mapping[str, Any] | None: ...
+
+    def update_runtime_queue_item(
+        self,
+        queue_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def claim_next_runtime_queue_item(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        lease_expires_at: str,
+        tenant_running_limits: Mapping[str, int] | None = None,
+        global_running_limit: int | None = None,
+        allowed_tenant_ids: tuple[str, ...] = (),
+        disabled_tenant_ids: tuple[str, ...] = (),
+        environment: str | None = None,
+        queue_name: str | None = None,
+    ) -> Mapping[str, Any] | None: ...
+
+    def recover_stale_runtime_queue_items(self, *, now: str) -> tuple[Mapping[str, Any], ...]: ...
+
+    def insert_runtime_run_attempt(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def update_runtime_run_attempt(
+        self,
+        attempt_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def insert_runtime_run_claim(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def update_runtime_run_claim(
+        self,
+        claim_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def insert_runtime_dead_letter(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def insert_runtime_quota_reservation(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
+
+    def update_runtime_quota_reservation(
+        self,
+        reservation_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
     def insert_runtime_run(self, record: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
     def update_runtime_run(self, run_id: str, fields: Mapping[str, Any]) -> Mapping[str, Any]: ...

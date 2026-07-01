@@ -380,7 +380,72 @@ only. Every edge and graph output must keep `authority_delta=[]` and
 policies, validators, budgets, memory scopes, profile fields, or failure
 behavior.
 
+## Runtime Queue Contract
+
+The normative queue contract lives in
+`docs/reference/runtime-run-queue-contract.md`. This section summarizes the
+runtime lifecycle requirements that the generic runtime must enforce.
+
 ## Run Lifecycle
+
+Runtime queue items are the durable scheduling envelope for production runtime
+execution. A queue item is not a runtime profile and does not grant authority.
+It stores tenant, area, environment, queue name, priority, schedule, attempts,
+lease, heartbeat, idempotency, task payload URI, optional composition context
+URI, attempt ID, and the resulting run ID when an attempt starts.
+
+Runtime queue statuses are:
+
+- `queued`
+- `claiming`
+- `running`
+- `succeeded`
+- `failed`
+- `cancelled`
+- `retry_scheduled`
+- `dead_lettered`
+
+Allowed queue transitions:
+
+```text
+queued -> claiming
+retry_scheduled -> claiming
+claiming -> running
+claiming -> retry_scheduled
+claiming -> dead_lettered
+claiming -> cancelled
+running -> succeeded
+running -> retry_scheduled
+running -> dead_lettered
+running -> cancelled
+```
+
+Workers must claim queue items through the Runtime Store. PostgreSQL-backed
+claiming uses row locking with `FOR UPDATE SKIP LOCKED` so parallel workers do
+not claim the same item. Claiming must check global and tenant running limits
+before moving an item to `claiming`. A worker may execute only the task payload
+referenced by the claimed queue item and must create a fresh runtime run attempt
+for that execution.
+
+Operator-facing queue operations are part of the Runtime API contract:
+
+- enqueue creates a durable queue item and artifact-backed payload references,
+- worker-once claims at most one eligible item and executes it through the
+  normal Runtime EntryPoint and MinimalRuntimeLoop,
+- cancel marks queued, claiming, or running work as `cancelled` and cancels the
+  linked run when one exists,
+- retry creates a new queue item from the original task payload and composition
+  context artifacts for failed, cancelled, or dead-lettered work.
+
+Workers must also write `runtime_run_attempts`, `runtime_run_claims`,
+`runtime_dead_letters`, and `runtime_quota_reservations` records where
+applicable. Stale claims are recovered by comparing `claimed_until` with the
+current Runtime Plane clock and rescheduling eligible work.
+
+Queue payloads and optional composition context payloads are stored as Hetzner
+runtime artifacts, not inline database JSON. Queue payloads must not contain
+secrets, live tokens, raw provider credentials, or raw tenant customer data
+beyond the task-local input required for execution.
 
 Runtime run statuses are:
 
@@ -403,6 +468,25 @@ running -> queued      # retry creates a new run; the original remains terminal
 
 Retry must create a new run ID and preserve parent run traceability in the
 runtime result or retry metadata. It must not reopen a terminal run in place.
+Queue-level retries move the queue item to `retry_scheduled` until the maximum
+attempt count is exhausted. Exhausted queue items move to `dead_lettered` and
+must be triaged or replayed through an explicit operator action.
+
+Running cancellation is cooperative. The runtime loop must check cancellation
+before every phase and before every planned tool action. When a cancellation
+checkpoint trips, the run completes as `cancelled` with stop reason
+`cancelled`, emits a `runtime_cancelled` event, and the owning queue item must
+not be marked `succeeded`.
+
+Before runtime execution starts, tenant quota must be reserved. Token and
+tool-call quota exhaustion emit `quota_exhausted` and stop with `max_tokens` or
+`max_tool_calls`. Budget exhaustion may trigger recomposition only when the
+sealed profile failure policy allows it.
+
+The runtime run must reference the exact sealed runtime profile artifact through
+`profile_artifact_uri` and `profile_sha256`. Recomposition creates a new profile
+generation with parent traceability; it must never update profile limits, tools,
+scopes, policies, or validators in place.
 
 ## Step Lifecycle
 

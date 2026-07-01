@@ -117,6 +117,7 @@ storage. The default server bootstrap target is:
 
 Postgres tables:
 
+- `runtime_queue_items`
 - `runtime_runs`
 - `runtime_steps`
 - `runtime_events`
@@ -182,6 +183,16 @@ tenant product schema migration.
 
 Runtime events follow the Flight Recorder pattern:
 
+- Runtime task execution queueing is stored in `runtime_queue_items` on the
+  Hetzner Runtime Plane. Runtime workers claim queue rows through the runtime
+  store, not through Cloudflare Queues, because task execution may reference raw
+  runtime traces, tool outputs, and tenant operational data that must remain on
+  Hetzner. Queue attempts, worker claims, dead letters, and quota reservations
+  are stored in `runtime_run_attempts`, `runtime_run_claims`,
+  `runtime_dead_letters`, and `runtime_quota_reservations`.
+- The PostgreSQL runtime queue claim path uses row locking with
+  `FOR UPDATE SKIP LOCKED` and tenant running-limit checks before a worker may
+  move a queue item to `claiming`.
 - `runtime_events` is append-only per run and deduplicated by idempotency key.
 - Runtime event indexes are allocated through the runtime store, not by
   counting currently visible events. The PostgreSQL adapter locks the

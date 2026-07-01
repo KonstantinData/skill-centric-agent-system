@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -36,6 +38,8 @@ class RuntimeStartResult:
     composition_context_request: dict[str, Any]
     composition_context_response: Mapping[str, Any]
     profile: dict[str, Any]
+    profile_artifact_uri: str
+    profile_sha256: str
 
 
 class RuntimeEntryPoint:
@@ -92,11 +96,16 @@ class RuntimeEntryPoint:
             parent_profile_id=parent_profile_id,
             recomposition_reason=recomposition_reason,
         )
+        profile_artifact_uri, profile_sha256 = self._seal_profile(profile)
         redact_sensitive_data = profile_redacts_sensitive_data(profile)
         run = self.flight_recorder.start_run(
             task_id=analyzed_task.task_id,
             profile=profile,
             run_id=run_id or _default_run_id(analyzed_task.task_id, profile_generation),
+            profile_artifact_uri=profile_artifact_uri,
+            profile_sha256=profile_sha256,
+            profile_generation=int(profile["profile_generation"]),
+            parent_profile_id=profile.get("parent_profile_id"),
         )
         run_identifier = str(run["id"])
 
@@ -155,6 +164,8 @@ class RuntimeEntryPoint:
                 "run_id": run_identifier,
                 "profile_id": profile["id"],
                 "profile_version": profile["profile_version"],
+                "profile_artifact_uri": profile_artifact_uri,
+                "profile_sha256": profile_sha256,
             },
             redact_sensitive_data=redact_sensitive_data,
         )
@@ -165,7 +176,19 @@ class RuntimeEntryPoint:
             composition_context_request=context_request,
             composition_context_response=context_response,
             profile=profile,
+            profile_artifact_uri=profile_artifact_uri,
+            profile_sha256=profile_sha256,
         )
+
+    def _seal_profile(self, profile: Mapping[str, Any]) -> tuple[str, str]:
+        canonical = json.dumps(profile, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        profile_sha256 = hashlib.sha256(canonical).hexdigest()
+        uri = self.artifacts.write_json(
+            ("profiles", str(profile["id"]), profile_sha256),
+            dict(profile),
+            redact=False,
+        )
+        return uri, profile_sha256
 
     def continue_recomposition(
         self,

@@ -15,6 +15,9 @@ from skill_centric_agent_system.runtime import (
     RuntimeArtifactUriResolver,
     RuntimeEntryPoint,
     RuntimeEntryPointError,
+    RuntimeQueueConfig,
+    RuntimeQueueManager,
+    RuntimeQueueWorker,
     RuntimeRetentionExecutor,
     RuntimeRetentionPlanner,
     RuntimeRetentionPolicy,
@@ -27,6 +30,8 @@ def main(argv: list[str] | None = None) -> int:
     raw_argv = list(argv) if argv is not None else sys.argv[1:]
     if raw_argv[:1] == ["retention"]:
         return _retention_main(raw_argv[1:])
+    if raw_argv[:1] == ["queue"]:
+        return _queue_main(raw_argv[1:])
 
     parser = argparse.ArgumentParser(description="Start a SCAS runtime run.")
     parser.add_argument("--task-file", required=True, help="Path to task intake JSON.")
@@ -148,6 +153,128 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _queue_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Operate the SCAS runtime queue.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    enqueue_parser = subparsers.add_parser("enqueue", help="Enqueue a runtime task.")
+    _add_queue_storage_args(enqueue_parser)
+    enqueue_parser.add_argument("--task-file", required=True, help="Path to task intake JSON.")
+    enqueue_parser.add_argument(
+        "--composition-context-file",
+        help="Path to a composition context response JSON fixture.",
+    )
+    enqueue_parser.add_argument("--priority", type=int, default=0)
+    enqueue_parser.add_argument("--scheduled-at")
+    enqueue_parser.add_argument("--max-attempts", type=int, default=3)
+    enqueue_parser.add_argument("--idempotency-key")
+
+    worker_parser = subparsers.add_parser("worker-once", help="Claim and process one item.")
+    _add_queue_worker_args(worker_parser)
+
+    loop_parser = subparsers.add_parser("worker-loop", help="Run a long-lived queue worker.")
+    _add_queue_worker_args(loop_parser)
+    loop_parser.add_argument("--poll-interval-seconds", type=float, default=1.0)
+
+    cancel_parser = subparsers.add_parser("cancel", help="Cancel a queued or running item.")
+    _add_queue_storage_args(cancel_parser)
+    cancel_parser.add_argument("--queue-id", required=True)
+
+    retry_parser = subparsers.add_parser("retry", help="Retry a terminal queue item.")
+    _add_queue_storage_args(retry_parser)
+    retry_parser.add_argument("--queue-id", required=True)
+    retry_parser.add_argument("--scheduled-at")
+    retry_parser.add_argument("--idempotency-key")
+    retry_parser.add_argument("--max-attempts", type=int)
+
+    args = parser.parse_args(argv)
+
+    artifacts = JsonArtifactStore(args.artifact_root)
+    with open_runtime_store_session(
+        mode=args.storage_mode,
+        database_url=args.database_url,
+    ) as storage:
+        manager = RuntimeQueueManager(store=storage.store, artifacts=artifacts)
+
+        if args.command == "enqueue":
+            context_response = (
+                _load_json(Path(args.composition_context_file))
+                if args.composition_context_file
+                else None
+            )
+            queue_item = manager.enqueue(
+                _load_json(Path(args.task_file)),
+                composition_context_response=context_response,
+                priority=args.priority,
+                scheduled_at=args.scheduled_at,
+                max_attempts=args.max_attempts,
+                idempotency_key=args.idempotency_key,
+            )
+            print(json.dumps({"queue_item": queue_item}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command in {"worker-once", "worker-loop"}:
+            control_plane_client = (
+                ControlPlaneClient(args.control_plane_url, api_token=args.control_plane_token)
+                if args.control_plane_url
+                else None
+            )
+            worker = RuntimeQueueWorker(
+                worker_id=args.worker_id,
+                store=storage.store,
+                artifacts=artifacts,
+                repository_root=args.repository_root,
+                control_plane_client=control_plane_client,
+                config=RuntimeQueueConfig(
+                    lease_seconds=args.lease_seconds,
+                    max_attempts=args.max_attempts,
+                    retry_delay_seconds=args.retry_delay_seconds,
+                    global_running_limit=args.global_running_limit,
+                    tenant_running_limits=_parse_tenant_running_limits(
+                        args.tenant_running_limit
+                    ),
+                    tenant_token_limits_per_minute=_parse_tenant_running_limits(
+                        args.tenant_token_limit_per_minute
+                    ),
+                    tenant_tool_call_limits_per_minute=_parse_tenant_running_limits(
+                        args.tenant_tool_call_limit_per_minute
+                    ),
+                    allowed_tenant_ids=tuple(args.allowed_tenant_id),
+                    disabled_tenant_ids=tuple(args.disabled_tenant_id),
+                    queue_name=args.queue_name,
+                ),
+            )
+            if args.command == "worker-loop":
+                worker.run_forever(poll_interval_seconds=args.poll_interval_seconds)
+                return 0
+            result = worker.process_one()
+            print(
+                json.dumps(
+                    {"processed": result.__dict__ if result is not None else None},
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+
+        if args.command == "cancel":
+            queue_item = manager.mark_cancelled(args.queue_id)
+            print(json.dumps({"queue_item": queue_item}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "retry":
+            queue_item = manager.retry(
+                args.queue_id,
+                scheduled_at=args.scheduled_at,
+                idempotency_key=args.idempotency_key,
+                max_attempts=args.max_attempts,
+            )
+            print(json.dumps({"queue_item": queue_item}, indent=2, sort_keys=True))
+            return 0
+
+    raise RuntimeEntryPointError(f"Unsupported queue command: {args.command}.")
+
+
 def _retention_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Plan or apply SCAS runtime retention.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -238,6 +365,72 @@ def _add_retention_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cleanup-report-artifact-days", type=int, default=180)
 
 
+def _add_queue_storage_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--artifact-root",
+        default=".scas-runtime",
+        help="Artifact root for queued payloads and runtime traces.",
+    )
+    parser.add_argument(
+        "--storage-mode",
+        default="memory",
+        choices=("memory", "postgres"),
+        help="Runtime storage backend. Use postgres for the Hetzner Runtime Plane.",
+    )
+    parser.add_argument(
+        "--database-url",
+        help=(
+            "PostgreSQL connection URL for --storage-mode postgres. "
+            "Defaults to SCAS_RUNTIME_DATABASE_URL."
+        ),
+    )
+
+
+def _add_queue_worker_args(parser: argparse.ArgumentParser) -> None:
+    _add_queue_storage_args(parser)
+    parser.add_argument(
+        "--repository-root",
+        default=".",
+        help="Repository root used by profile-scoped read tools.",
+    )
+    parser.add_argument(
+        "--control-plane-url",
+        help="Control Plane base URL. Used when queued items have no composition fixture.",
+    )
+    parser.add_argument(
+        "--control-plane-token",
+        default=os.getenv("SCAS_CONTROL_API_TOKEN"),
+        help="Bearer token for Control Plane requests. Defaults to SCAS_CONTROL_API_TOKEN.",
+    )
+    parser.add_argument("--worker-id", required=True)
+    parser.add_argument("--lease-seconds", type=int, default=300)
+    parser.add_argument("--max-attempts", type=int, default=3)
+    parser.add_argument("--retry-delay-seconds", type=int, default=30)
+    parser.add_argument("--global-running-limit", type=int)
+    parser.add_argument(
+        "--tenant-running-limit",
+        action="append",
+        default=[],
+        metavar="TENANT_ID=LIMIT",
+        help="Per-tenant concurrent claiming/running limit. Can be supplied multiple times.",
+    )
+    parser.add_argument(
+        "--tenant-token-limit-per-minute",
+        action="append",
+        default=[],
+        metavar="TENANT_ID=LIMIT",
+    )
+    parser.add_argument(
+        "--tenant-tool-call-limit-per-minute",
+        action="append",
+        default=[],
+        metavar="TENANT_ID=LIMIT",
+    )
+    parser.add_argument("--allowed-tenant-id", action="append", default=[])
+    parser.add_argument("--disabled-tenant-id", action="append", default=[])
+    parser.add_argument("--queue-name", default="default")
+
+
 def _load_runtime_recordset(args: argparse.Namespace) -> Mapping[str, Any]:
     if args.recordset_file:
         return _load_json(Path(args.recordset_file))
@@ -259,6 +452,18 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _env_bool(name: str) -> bool:
     value = os.getenv(name, "").strip().casefold()
     return value in {"1", "true", "yes", "on"}
+
+
+def _parse_tenant_running_limits(raw_limits: list[str]) -> dict[str, int]:
+    parsed: dict[str, int] = {}
+    for raw_limit in raw_limits:
+        tenant_id, separator, limit = raw_limit.partition("=")
+        if not separator or not tenant_id or not limit:
+            raise ValueError(
+                "--tenant-running-limit must use TENANT_ID=LIMIT syntax."
+            )
+        parsed[tenant_id] = int(limit)
+    return parsed
 
 
 if __name__ == "__main__":

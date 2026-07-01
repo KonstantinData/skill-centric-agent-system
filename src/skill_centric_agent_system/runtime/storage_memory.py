@@ -10,6 +10,11 @@ class InMemoryRuntimeStore:
 
     def __init__(self) -> None:
         self.runtime_runs: dict[str, dict[str, Any]] = {}
+        self.runtime_queue_items: dict[str, dict[str, Any]] = {}
+        self.runtime_run_attempts: dict[str, dict[str, Any]] = {}
+        self.runtime_run_claims: dict[str, dict[str, Any]] = {}
+        self.runtime_dead_letters: dict[str, dict[str, Any]] = {}
+        self.runtime_quota_reservations: dict[str, dict[str, Any]] = {}
         self.runtime_steps: dict[str, dict[str, Any]] = {}
         self.runtime_events: list[dict[str, Any]] = []
         self.runtime_checkpoints: list[dict[str, Any]] = []
@@ -19,6 +24,162 @@ class InMemoryRuntimeStore:
         self._lock = Lock()
         self._event_indices: dict[str, int] = {}
         self._checkpoint_indices: dict[str, int] = {}
+
+    def insert_runtime_queue_item(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        with self._lock:
+            idempotency_key = record.get("idempotency_key")
+            if idempotency_key is not None:
+                for existing in self.runtime_queue_items.values():
+                    if existing.get("idempotency_key") == idempotency_key:
+                        return existing
+
+            stored = dict(record)
+            self.runtime_queue_items[stored["id"]] = stored
+            return stored
+
+    def get_runtime_queue_item(self, queue_id: str) -> Mapping[str, Any] | None:
+        return self.runtime_queue_items.get(queue_id)
+
+    def update_runtime_queue_item(
+        self,
+        queue_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        with self._lock:
+            stored = self.runtime_queue_items[queue_id]
+            stored.update(fields)
+            return stored
+
+    def claim_next_runtime_queue_item(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        lease_expires_at: str,
+        tenant_running_limits: Mapping[str, int] | None = None,
+        global_running_limit: int | None = None,
+        allowed_tenant_ids: tuple[str, ...] = (),
+        disabled_tenant_ids: tuple[str, ...] = (),
+        environment: str | None = None,
+        queue_name: str | None = None,
+    ) -> Mapping[str, Any] | None:
+        limits = dict(tenant_running_limits or {})
+        allowed = set(allowed_tenant_ids)
+        disabled = set(disabled_tenant_ids)
+        with self._lock:
+            if (
+                global_running_limit is not None
+                and self._global_running_count() >= global_running_limit
+            ):
+                return None
+            candidates = sorted(
+                (
+                    item
+                    for item in self.runtime_queue_items.values()
+                    if item["status"] in {"queued", "retry_scheduled"}
+                    and str(item["scheduled_at"]) <= claimed_at
+                    and (not allowed or item["tenant_id"] in allowed)
+                    and item["tenant_id"] not in disabled
+                    and (environment is None or item.get("environment") == environment)
+                    and (queue_name is None or item.get("queue_name") == queue_name)
+                ),
+                key=lambda item: (
+                    -int(item["priority"]),
+                    str(item["scheduled_at"]),
+                    str(item["created_at"]),
+                    str(item["id"]),
+                ),
+            )
+            for item in candidates:
+                tenant_id = str(item["tenant_id"])
+                limit = limits.get(tenant_id)
+                if limit is not None and self._tenant_running_count(tenant_id) >= limit:
+                    continue
+                item.update(
+                    {
+                        "status": "claiming",
+                        "attempts": int(item["attempts"]) + 1,
+                        "claimed_by": worker_id,
+                        "claimed_at": claimed_at,
+                        "lease_expires_at": lease_expires_at,
+                        "claimed_until": lease_expires_at,
+                        "heartbeat_at": claimed_at,
+                        "updated_at": claimed_at,
+                    }
+                )
+                return dict(item)
+        return None
+
+    def recover_stale_runtime_queue_items(self, *, now: str) -> tuple[Mapping[str, Any], ...]:
+        recovered: list[Mapping[str, Any]] = []
+        with self._lock:
+            for item in self.runtime_queue_items.values():
+                claimed_until = item.get("claimed_until") or item.get("lease_expires_at")
+                if item["status"] not in {"claiming", "running"} or claimed_until is None:
+                    continue
+                if str(claimed_until) > now:
+                    continue
+                item.update(
+                    {
+                        "status": "retry_scheduled",
+                        "claimed_by": None,
+                        "claimed_at": None,
+                        "claimed_until": None,
+                        "lease_expires_at": None,
+                        "heartbeat_at": None,
+                        "updated_at": now,
+                        "last_error": "Stale runtime queue claim recovered.",
+                    }
+                )
+                recovered.append(dict(item))
+        return tuple(recovered)
+
+    def insert_runtime_run_attempt(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.runtime_run_attempts[stored["id"]] = stored
+        return stored
+
+    def update_runtime_run_attempt(
+        self,
+        attempt_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        stored = self.runtime_run_attempts[attempt_id]
+        stored.update(fields)
+        return stored
+
+    def insert_runtime_run_claim(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.runtime_run_claims[stored["id"]] = stored
+        return stored
+
+    def update_runtime_run_claim(
+        self,
+        claim_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        stored = self.runtime_run_claims[claim_id]
+        stored.update(fields)
+        return stored
+
+    def insert_runtime_dead_letter(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.runtime_dead_letters[stored["id"]] = stored
+        return stored
+
+    def insert_runtime_quota_reservation(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
+        stored = dict(record)
+        self.runtime_quota_reservations[stored["id"]] = stored
+        return stored
+
+    def update_runtime_quota_reservation(
+        self,
+        reservation_id: str,
+        fields: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        stored = self.runtime_quota_reservations[reservation_id]
+        stored.update(fields)
+        return stored
 
     def insert_runtime_run(self, record: Mapping[str, Any]) -> Mapping[str, Any]:
         stored = dict(record)
@@ -154,6 +315,11 @@ class InMemoryRuntimeStore:
             "contract_version": contract_version,
             "environment": environment,
             "records": {
+                "runtime_queue_items": list(self.runtime_queue_items.values()),
+                "runtime_run_attempts": list(self.runtime_run_attempts.values()),
+                "runtime_run_claims": list(self.runtime_run_claims.values()),
+                "runtime_dead_letters": list(self.runtime_dead_letters.values()),
+                "runtime_quota_reservations": list(self.runtime_quota_reservations.values()),
                 "runtime_runs": list(self.runtime_runs.values()),
                 "runtime_steps": list(self.runtime_steps.values()),
                 "runtime_events": list(self.runtime_events),
@@ -186,4 +352,18 @@ class InMemoryRuntimeStore:
             if record["run_id"] == run_id and record[index_field] == index:
                 return cast(Mapping[str, Any], record)
         return None
+
+    def _tenant_running_count(self, tenant_id: str) -> int:
+        return sum(
+            1
+            for item in self.runtime_queue_items.values()
+            if item["tenant_id"] == tenant_id and item["status"] in {"claiming", "running"}
+        )
+
+    def _global_running_count(self) -> int:
+        return sum(
+            1
+            for item in self.runtime_queue_items.values()
+            if item["status"] in {"claiming", "running"}
+        )
 
