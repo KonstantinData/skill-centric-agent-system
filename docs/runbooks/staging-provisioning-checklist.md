@@ -330,6 +330,21 @@ The workflow uploads the repository PostgreSQL migrations to
 the staging database, owner, and artifact root, and verifies the runtime table
 is queryable.
 
+The same workflow can migrate the production runtime schema, but only through
+the protected `production` GitHub environment and only with explicit
+confirmation:
+
+```bash
+gh workflow run staging-runtime-bootstrap.yml \
+  -f target_environment=prod \
+  -f confirm_production=true
+```
+
+Do not use this workflow for production Control Plane seeding. It only packages
+`scripts/hetzner/bootstrap_runtime_plane.sh` and
+`migrations/hetzner/postgres/*.sql`, uploads them to the selected Hetzner
+runtime host, and applies the runtime-plane PostgreSQL migrations.
+
 For direct host access, upload or make the repository migrations available on
 the staging host. Then run:
 

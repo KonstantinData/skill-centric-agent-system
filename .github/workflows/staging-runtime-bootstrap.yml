@@ -1,4 +1,4 @@
-name: Staging Runtime Bootstrap
+name: Runtime Bootstrap
 
 on:
   workflow_dispatch:
@@ -9,13 +9,19 @@ on:
         type: choice
         options:
           - staging
+          - prod
         default: staging
+      confirm_production:
+        description: Required true for target_environment=prod
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: staging-runtime-bootstrap-${{ github.ref }}
+  group: runtime-bootstrap-${{ inputs.target_environment }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -23,16 +29,21 @@ jobs:
     name: Bootstrap Hetzner runtime storage
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging'
+    environment:
+      name: ${{ inputs.target_environment == 'prod' && 'production' || inputs.target_environment }}
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && (inputs.target_environment == 'staging' || inputs.target_environment == 'prod')
 
     env:
       TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
-      HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
-      HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
-      HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
-      SCAS_RUNTIME_DB: scas_runtime_staging
-      SCAS_RUNTIME_DB_OWNER: scas_runtime_staging_app
-      SCAS_RUNTIME_ROOT: /opt/scas/runtime/staging
+      CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+      SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}
+      SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}
+      SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
+      SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
+      SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}
+      SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
       SCAS_REMOTE_MIGRATIONS_DIR: /opt/scas/migrations/hetzner/postgres
 
     steps:
@@ -43,6 +54,44 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          case "${TARGET_ENVIRONMENT}" in
+            staging)
+              HETZNER_HOST="${SCAS_STAGING_HETZNER_HOST:-}"
+              HETZNER_SSH_KEY="${SCAS_STAGING_HETZNER_SSH_KEY:-}"
+              HETZNER_USER="${SCAS_STAGING_HETZNER_USER:-}"
+              SCAS_RUNTIME_DB="scas_runtime_staging"
+              SCAS_RUNTIME_DB_OWNER="scas_runtime_staging_app"
+              SCAS_RUNTIME_ROOT="/opt/scas/runtime/staging"
+              ;;
+            prod)
+              if [ "${CONFIRM_PRODUCTION}" != "true" ]; then
+                echo "::error::confirm_production must be true for production runtime bootstrap."
+                exit 1
+              fi
+              HETZNER_HOST="${SCAS_PROD_HETZNER_HOST:-}"
+              HETZNER_SSH_KEY="${SCAS_PROD_HETZNER_SSH_KEY:-}"
+              HETZNER_USER="${SCAS_PROD_HETZNER_USER:-}"
+              SCAS_RUNTIME_DB="scas_runtime_prod"
+              SCAS_RUNTIME_DB_OWNER="scas_runtime_prod_app"
+              SCAS_RUNTIME_ROOT="/opt/scas/runtime/prod"
+              ;;
+            *)
+              echo "::error::Unsupported target_environment: ${TARGET_ENVIRONMENT}"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "HETZNER_HOST=${HETZNER_HOST}"
+            echo "HETZNER_USER=${HETZNER_USER}"
+            echo "SCAS_RUNTIME_DB=${SCAS_RUNTIME_DB}"
+            echo "SCAS_RUNTIME_DB_OWNER=${SCAS_RUNTIME_DB_OWNER}"
+            echo "SCAS_RUNTIME_ROOT=${SCAS_RUNTIME_ROOT}"
+            echo 'HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
+            printf '%s\n' "${HETZNER_SSH_KEY}"
+            echo '__SCAS_HETZNER_SSH_KEY__'
+          } >> "${GITHUB_ENV}"
 
           missing=0
           for name in HETZNER_HOST HETZNER_SSH_KEY HETZNER_USER
