@@ -18,6 +18,11 @@ on:
         required: true
         type: string
         default: es-daskuechenhaus.de www.es-daskuechenhaus.de
+      mobile_api_hostnames:
+        description: Space-separated public mobile API hostnames not protected by Cloudflare Access
+        required: true
+        type: string
+        default: app.es-daskuechenhaus.de
       local_port:
         description: Local Hetzner port used by the Next.js CRM service
         required: true
@@ -47,6 +52,7 @@ jobs:
       APPLY_DEPLOY: ${{ inputs.apply_deploy }}
       CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
       DKH_HOSTNAMES: ${{ inputs.hostnames }}
+      DKH_MOBILE_API_HOSTNAMES: ${{ inputs.mobile_api_hostnames }}
       DKH_LOCAL_PORT: ${{ inputs.local_port }}
       DKH_ORIGIN_IPV4_INPUT: ${{ inputs.origin_ipv4 }}
       DKH_ADMIN_API_BASE_URL: http://127.0.0.1:8715
@@ -62,6 +68,8 @@ jobs:
       DKH_CLOUDFLARE_API_TOKEN: ${{ secrets.DKH_CLOUDFLARE_API_TOKEN }}
       DKH_CF_ACCESS_TEAM_DOMAIN: ${{ secrets.DKH_CF_ACCESS_TEAM_DOMAIN }}
       DKH_CF_ACCESS_AUD: ${{ secrets.DKH_CF_ACCESS_AUD }}
+      DKH_IOS_APP_BUNDLE_ID: de.daskuechenhaus.crm
+      DKH_MOBILE_SESSION_SECRET: ${{ secrets.DKH_MOBILE_SESSION_SECRET }}
 
     steps:
       - name: Check out repository
@@ -90,6 +98,13 @@ jobs:
               missing=1
             fi
           done
+          for hostname in ${DKH_MOBILE_API_HOSTNAMES}
+          do
+            if [[ ! "${hostname}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+              echo "::error::Unsupported mobile_api_hostnames value."
+              missing=1
+            fi
+          done
 
           target_host="${SCAS_PROD_HETZNER_HOST:-${HETZNER_HOST:-}}"
           target_user="${SCAS_PROD_HETZNER_USER:-${HETZNER_USER:-}}"
@@ -100,7 +115,8 @@ jobs:
             "TARGET_HETZNER_SSH_KEY:${target_key}" \
             "DKH_CLOUDFLARE_ACCOUNT_ID:${DKH_CLOUDFLARE_ACCOUNT_ID}" \
             "DKH_CLOUDFLARE_ZONE_ID:${DKH_CLOUDFLARE_ZONE_ID}" \
-            "DKH_CLOUDFLARE_API_TOKEN:${DKH_CLOUDFLARE_API_TOKEN}"
+            "DKH_CLOUDFLARE_API_TOKEN:${DKH_CLOUDFLARE_API_TOKEN}" \
+            "DKH_MOBILE_SESSION_SECRET:${DKH_MOBILE_SESSION_SECRET}"
           do
             name="${pair%%:*}"
             value="${pair#*:}"
@@ -135,6 +151,8 @@ jobs:
           admin_api_base_url_b64="$(printf '%s' "${DKH_ADMIN_API_BASE_URL}" | base64 -w0)"
           cf_access_team_domain_b64="$(printf '%s' "${DKH_CF_ACCESS_TEAM_DOMAIN}" | base64 -w0)"
           cf_access_aud_b64="$(printf '%s' "${DKH_CF_ACCESS_AUD}" | base64 -w0)"
+          ios_app_bundle_id_b64="$(printf '%s' "${DKH_IOS_APP_BUNDLE_ID}" | base64 -w0)"
+          mobile_session_secret_b64="$(printf '%s' "${DKH_MOBILE_SESSION_SECRET}" | base64 -w0)"
 
           {
             printf 'TARGET_HETZNER_HOST=%s\n' "${target_host}"
@@ -143,6 +161,8 @@ jobs:
             printf 'DKH_ADMIN_API_BASE_URL_B64=%s\n' "${admin_api_base_url_b64}"
             printf 'DKH_CF_ACCESS_TEAM_DOMAIN_B64=%s\n' "${cf_access_team_domain_b64}"
             printf 'DKH_CF_ACCESS_AUD_B64=%s\n' "${cf_access_aud_b64}"
+            printf 'DKH_IOS_APP_BUNDLE_ID_B64=%s\n' "${ios_app_bundle_id_b64}"
+            printf 'DKH_MOBILE_SESSION_SECRET_B64=%s\n' "${mobile_session_secret_b64}"
             echo 'TARGET_HETZNER_SSH_KEY<<__SCAS_HETZNER_SSH_KEY__'
             printf '%s\n' "${target_key}"
             echo '__SCAS_HETZNER_SSH_KEY__'
@@ -207,7 +227,7 @@ jobs:
           mkdir -p dkh-crm-origin-cert
           primary_hostname="$(printf '%s\n' ${DKH_HOSTNAMES} | head -n 1)"
           san="$(
-            for hostname in ${DKH_HOSTNAMES}
+            for hostname in ${DKH_HOSTNAMES} ${DKH_MOBILE_API_HOSTNAMES}
             do
               printf 'DNS:%s,' "${hostname}"
             done
@@ -231,7 +251,10 @@ jobs:
           from pathlib import Path
 
           token = os.environ["CLOUDFLARE_API_TOKEN"]
-          hostnames = os.environ["DKH_HOSTNAMES"].split()
+          hostnames = (
+              os.environ["DKH_HOSTNAMES"].split()
+              + os.environ["DKH_MOBILE_API_HOSTNAMES"].split()
+          )
           csr = Path("dkh-crm-origin-cert/origin.csr").read_text(encoding="utf-8")
           payload = {
               "csr": csr,
@@ -363,7 +386,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${TARGET_HETZNER_USER}@${TARGET_HETZNER_HOST}" \
-            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' REMOTE_ORIGIN_CERT='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_CRM_RELEASE_RETENTION='${DKH_CRM_RELEASE_RETENTION}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
+            "REMOTE_ARCHIVE='/tmp/dkh-crm-${GITHUB_RUN_ID}.tar.gz' REMOTE_ORIGIN_CERT='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.pem' REMOTE_ORIGIN_KEY='/tmp/dkh-crm-origin-${GITHUB_RUN_ID}.key' RELEASE_SUFFIX='${GITHUB_SHA}-${GITHUB_RUN_ID}' DKH_HOSTNAMES='${DKH_HOSTNAMES}' DKH_MOBILE_API_HOSTNAMES='${DKH_MOBILE_API_HOSTNAMES}' DKH_LOCAL_PORT='${DKH_LOCAL_PORT}' DKH_CRM_RELEASE_RETENTION='${DKH_CRM_RELEASE_RETENTION}' DKH_ADMIN_API_BASE_URL_B64='${DKH_ADMIN_API_BASE_URL_B64}' DKH_CF_ACCESS_TEAM_DOMAIN_B64='${DKH_CF_ACCESS_TEAM_DOMAIN_B64}' DKH_CF_ACCESS_AUD_B64='${DKH_CF_ACCESS_AUD_B64}' DKH_IOS_APP_BUNDLE_ID_B64='${DKH_IOS_APP_BUNDLE_ID_B64}' DKH_MOBILE_SESSION_SECRET_B64='${DKH_MOBILE_SESSION_SECRET_B64}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -402,6 +425,8 @@ jobs:
           admin_api_base_url="$(printf '%s' "${DKH_ADMIN_API_BASE_URL_B64}" | base64 -d)"
           cf_access_team_domain="$(printf '%s' "${DKH_CF_ACCESS_TEAM_DOMAIN_B64}" | base64 -d)"
           cf_access_aud="$(printf '%s' "${DKH_CF_ACCESS_AUD_B64}" | base64 -d)"
+          ios_app_bundle_id="$(printf '%s' "${DKH_IOS_APP_BUNDLE_ID_B64}" | base64 -d)"
+          mobile_session_secret="$(printf '%s' "${DKH_MOBILE_SESSION_SECRET_B64}" | base64 -d)"
           admin_api_token="$(sudo_if_needed cat /etc/daskuechenhaus/admin-api-token)"
 
           {
@@ -410,6 +435,8 @@ jobs:
             printf 'PORT=%s\n' "${DKH_LOCAL_PORT}"
             printf 'DKH_ADMIN_API_BASE_URL=%s\n' "${admin_api_base_url}"
             printf 'DKH_ADMIN_API_TOKEN=%s\n' "${admin_api_token}"
+            printf 'DKH_IOS_APP_BUNDLE_ID=%s\n' "${ios_app_bundle_id}"
+            printf 'DKH_MOBILE_SESSION_SECRET=%s\n' "${mobile_session_secret}"
             if [ -n "${cf_access_team_domain}" ]; then
               printf 'CF_ACCESS_TEAM_DOMAIN=%s\n' "${cf_access_team_domain}"
             fi
@@ -507,14 +534,14 @@ jobs:
           cat > "${evidence_dir}/nginx-site.conf" <<EOF
           server {
               listen 80;
-              server_name ${DKH_HOSTNAMES};
+              server_name ${DKH_HOSTNAMES} ${DKH_MOBILE_API_HOSTNAMES};
 
               return 301 https://\$host\$request_uri;
           }
 
           server {
               listen 443 ssl http2;
-              server_name ${DKH_HOSTNAMES};
+              server_name ${DKH_HOSTNAMES} ${DKH_MOBILE_API_HOSTNAMES};
 
               ssl_certificate ${cert_file};
               ssl_certificate_key ${key_file};
@@ -551,7 +578,7 @@ jobs:
           fi
           sudo_if_needed systemctl reload nginx
 
-          for hostname in ${DKH_HOSTNAMES}
+          for hostname in ${DKH_HOSTNAMES} ${DKH_MOBILE_API_HOSTNAMES}
           do
             curl -kfsS \
               --resolve "${hostname}:443:127.0.0.1" \
@@ -562,7 +589,8 @@ jobs:
           {
             printf '# es-daskuechenhaus.de CRM Deployment Evidence\n\n'
             printf -- '- Release: `%s`\n' "${RELEASE_SUFFIX}"
-            printf -- '- Hostnames: `%s`\n' "${DKH_HOSTNAMES}"
+            printf -- '- Browser hostnames: `%s`\n' "${DKH_HOSTNAMES}"
+            printf -- '- Mobile API hostnames: `%s`\n' "${DKH_MOBILE_API_HOSTNAMES}"
             printf -- '- Service: `daskuechenhaus-crm.service`\n'
             printf -- '- Nginx site: `%s`\n' "${nginx_site}"
             printf -- '- Origin certificate: `%s`\n' "${cert_file}"
@@ -594,7 +622,9 @@ jobs:
           token = os.environ["CLOUDFLARE_API_TOKEN"]
           zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
           origin_ipv4 = os.environ["DKH_ORIGIN_IPV4"]
-          hostnames = os.environ["DKH_HOSTNAMES"].split()
+          browser_hostnames = os.environ["DKH_HOSTNAMES"].split()
+          mobile_api_hostnames = os.environ["DKH_MOBILE_API_HOSTNAMES"].split()
+          hostnames = browser_hostnames + mobile_api_hostnames
           base = "https://api.cloudflare.com/client/v4"
 
           def request(method: str, path: str, payload: dict | None = None) -> dict:
@@ -666,7 +696,8 @@ jobs:
           with open("es-daskuechenhaus-crm-evidence/cloudflare.md", "w", encoding="utf-8") as handle:
               handle.write("# es-daskuechenhaus.de Cloudflare Cutover Evidence\n\n")
               handle.write(f"- Origin IPv4: `{origin_ipv4}`\n")
-              handle.write(f"- Hostnames: `{', '.join(hostnames)}`\n")
+              handle.write(f"- Browser hostnames: `{', '.join(browser_hostnames)}`\n")
+              handle.write(f"- Mobile API hostnames: `{', '.join(mobile_api_hostnames)}`\n")
               handle.write(f"- Worker routes deleted: `{len(deleted_routes)}`\n")
               handle.write("- DNS changes:\n")
               for change in dns_changes:
@@ -700,6 +731,33 @@ jobs:
               printf -- '- `%s`: HTTP `%s`, Access redirect `present`\n' "${hostname}" "${status}"
             done
           } > es-daskuechenhaus-crm-evidence/public-access-smoke.md
+
+      - name: Verify mobile API bypasses Cloudflare Access
+        if: inputs.apply_deploy == true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p es-daskuechenhaus-crm-evidence
+          {
+            printf '# es-daskuechenhaus.de Mobile API Smoke\n\n'
+            for hostname in ${DKH_MOBILE_API_HOSTNAMES}
+            do
+              headers_file="$(mktemp)"
+              status="$(curl -sS -o /dev/null -D "${headers_file}" -w '%{http_code}' --max-time 30 "https://${hostname}/api/mobile/session")"
+              location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, "", $0); print substr($0, 11); exit}' "${headers_file}")"
+              rm -f "${headers_file}"
+              if [[ "${location}" == *"cloudflareaccess.com"* || "${location}" == *"/cdn-cgi/access/login/"* ]]; then
+                echo "::error::Mobile API hostname ${hostname} still redirects to Cloudflare Access."
+                exit 1
+              fi
+              if [ "${status}" = "302" ] || [ "${status}" = "301" ]; then
+                echo "::error::Mobile API hostname ${hostname} returned redirect HTTP ${status}."
+                exit 1
+              fi
+              printf -- '- `%s`: HTTP `%s`, Access redirect `absent`\n' "${hostname}" "${status}"
+            done
+          } > es-daskuechenhaus-crm-evidence/mobile-api-smoke.md
 
       - name: Download Hetzner deployment evidence
         if: inputs.apply_deploy == true

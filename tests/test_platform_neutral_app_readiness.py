@@ -179,7 +179,7 @@ def test_native_proof_shell_uses_same_khh_contracts_and_native_runtime_policy() 
     assert '"main": "expo-router/entry"' in package_json
     assert '"expo": "~56.0.0"' in package_json
     assert '"expo-router": "56.2.11"' in package_json
-    assert '"react-native": "0.85.0"' in package_json
+    assert '"react-native": "0.86.0"' in package_json
     assert "export { default } from \"./app/index\"" in app
     assert "Stack" in router_layout
     assert "createKhhWorkbenchClient" in router_index

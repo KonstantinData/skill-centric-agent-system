@@ -847,10 +847,15 @@ def test_es_daskuechenhaus_admin_api_deploy_runs_preflight_and_smoke() -> None:
     assert "0011_customer_document_object_storage.sql" in workflow
     assert "0012_carat_prjz_imports.sql" in workflow
     assert "0013_supplier_order_confirmations.sql" in workflow
+    assert "0014_lead_intake.sql" in workflow
+    assert "0015_mobile_app_identities.sql" in workflow
+    assert "0016_mobile_app_konstantin_activation.sql" in workflow
     assert "REMOTE_DOCUMENT_MIGRATION" in workflow
     assert "REMOTE_OBJECT_STORAGE_MIGRATION" in workflow
     assert "REMOTE_CARAT_IMPORT_MIGRATION" in workflow
     assert "REMOTE_SUPPLIER_CONFIRMATION_MIGRATION" in workflow
+    assert "REMOTE_MOBILE_APP_IDENTITIES_MIGRATION" in workflow
+    assert "REMOTE_MOBILE_KONSTANTIN_ACTIVATION_MIGRATION" in workflow
     assert "daskuechenhaus_admin_api.py" in workflow
     assert "daskuechenhaus-admin-api.service" in workflow
     assert (

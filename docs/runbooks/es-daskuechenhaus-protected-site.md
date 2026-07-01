@@ -17,6 +17,27 @@ Browser
   -> PostgreSQL tenant schema
 ```
 
+## Native iOS App
+
+`apps/dkh-ios/` is a native SwiftUI iOS app for the DKH CRM. It must not start
+`https://es-daskuechenhaus.de`, `https://www.es-daskuechenhaus.de`, or any other
+browser website inside the app. The browser CRM remains protected by Cloudflare
+Access. The iOS app uses Sign in with Apple and the dedicated mobile API host
+`https://app.es-daskuechenhaus.de/api/mobile`.
+
+The iOS app must not use `SFSafariViewController`, `WKWebView`, Cloudflare
+Access verification, or embedded Cloudflare Access service tokens. The app sends
+Apple's signed identity token to the mobile API. The Next.js CRM verifies that
+token against Apple, then the Hetzner Admin API resolves the stable Apple user
+subject through `app.mobile_app_identities` to an active DKH CRM user. Browser
+authorization remains Cloudflare Access email allow-listing.
+
+The iOS repository code must not store customer master data, private contact
+details, documents, raw e-mails, API responses, access tokens,
+Hetzner Admin API secrets, or runtime traces. Offline summaries, push,
+background sync, TestFlight, and App Store release work need separate evidence
+before activation.
+
 ## Required Cloudflare State
 
 - DNS keeps `es-daskuechenhaus.de` and `www.es-daskuechenhaus.de` proxied.
@@ -39,6 +60,20 @@ Browser
 - No Cloudflare Worker route should exist for either hostname.
 - The Access application must pass the authenticated user email to the origin
   through the Access JWT/header flow.
+
+## Required Mobile API State
+
+- DNS keeps `app.es-daskuechenhaus.de` proxied to the same Next.js CRM origin.
+- Cloudflare Access does not protect `app.es-daskuechenhaus.de`; the mobile API
+  is protected by Apple identity-token verification and server-side DKH user
+  mapping.
+- `DKH_IOS_APP_BUNDLE_ID` is set to `de.daskuechenhaus.crm`.
+- `DKH_MOBILE_SESSION_SECRET` is set outside Git and written only to the
+  Hetzner runtime env file.
+- `app.mobile_app_identities` stores approved Apple subject mappings. The
+  initial pending invitation maps the provided Apple login e-mail to the
+  existing DKH admin user; after first Apple login, the stable Apple subject is
+  stored and future access is subject-based.
 
 ## Required Hetzner State
 
@@ -137,6 +172,22 @@ name, login header/footer text, per-hostname application names, Access allow
 policy, MFA-disabled policy state, deny message, cookie scope, and host-specific
 Access app split reproducible. Do not leave legacy labels such as unrelated
 chatbot names on the Access login page.
+
+Deploy the browser CRM plus mobile API host through:
+
+```powershell
+gh workflow run "es-daskuechenhaus.de CRM Deploy" `
+  --repo KonstantinData/skill-centric-agent-system `
+  --ref main `
+  -f apply_deploy=true `
+  -f confirm_production=true `
+  -f "hostnames=es-daskuechenhaus.de www.es-daskuechenhaus.de" `
+  -f "mobile_api_hostnames=app.es-daskuechenhaus.de"
+```
+
+The deploy keeps the Cloudflare Access public smoke on the browser hosts and
+adds a separate smoke that fails if the mobile API host redirects to Cloudflare
+Access.
 
 ## Validation
 
