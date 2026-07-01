@@ -56,6 +56,7 @@ RuntimeEventType = Literal[
     "step_completed",
     "tool_invocation_started",
     "tool_invocation_completed",
+    "runtime_after_tool_hook_evaluated",
     "budget_exhausted",
     "checkpoint_created",
     "recomposition_requested",
