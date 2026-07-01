@@ -115,6 +115,34 @@ scas-runtime queue worker-once \
   --tenant-running-limit daskuechenhaus=2
 ```
 
+Long-lived workers use the same worker arguments and poll until process
+supervision sends a shutdown signal:
+
+```bash
+scas-runtime queue worker-loop \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime \
+  --repository-root /srv/scas/workspaces/runtime \
+  --worker-id runtime-worker-1 \
+  --poll-interval-seconds 1
+```
+
+In PostgreSQL mode, each long-lived worker-loop iteration commits successful
+work and rolls back unhandled failures. The process must not hold one
+uncommitted claim transaction across multiple polling iterations.
+
+Operators can print a bounded local metrics snapshot for queue depth, active
+claims, retry, dead-letter, quota exhaustion, policy denial, claim latency, and
+run duration signals:
+
+```bash
+scas-runtime queue metrics \
+  --storage-mode postgres \
+  --database-url "$SCAS_RUNTIME_DATABASE_URL" \
+  --artifact-root /opt/scas/runtime
+```
+
 When the minimal loop is enabled, the runtime dispatches a deterministic
 strategy from `profile.task_type`. The supported first-slice strategies are
 `code-review`, `research`, `task-execution`, and `general-task`. The response

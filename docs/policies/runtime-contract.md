@@ -423,24 +423,34 @@ running -> cancelled
 Workers must claim queue items through the Runtime Store. PostgreSQL-backed
 claiming uses row locking with `FOR UPDATE SKIP LOCKED` so parallel workers do
 not claim the same item. Claiming must check global and tenant running limits
-before moving an item to `claiming`. A worker may execute only the task payload
-referenced by the claimed queue item and must create a fresh runtime run attempt
-for that execution.
+under database advisory transaction locks before moving an item to `claiming`.
+The claim operation must update the queue item and create the matching
+`runtime_run_attempts` and `runtime_run_claims` rows in one store operation. A
+worker may execute only the task payload referenced by the claimed queue item
+and must create a fresh runtime run attempt for that execution.
 
 Operator-facing queue operations are part of the Runtime API contract:
 
 - enqueue creates a durable queue item and artifact-backed payload references,
 - worker-once claims at most one eligible item and executes it through the
   normal Runtime EntryPoint and MinimalRuntimeLoop,
+- worker-loop repeatedly polls with the same claim and execution contract,
+  commits successful PostgreSQL iterations, rolls back unhandled failures, and
+  stops cooperatively on process shutdown,
 - cancel marks queued, claiming, or running work as `cancelled` and cancels the
   linked run when one exists,
 - retry creates a new queue item from the original task payload and composition
-  context artifacts for failed, cancelled, or dead-lettered work.
+  context artifacts for failed, cancelled, or dead-lettered work,
+- metrics exposes bounded aggregate queue depth, active claim, retry,
+  dead-letter, quota exhaustion, policy denial, claim latency, and run duration
+  signals without raw task payloads or tool outputs.
 
 Workers must also write `runtime_run_attempts`, `runtime_run_claims`,
 `runtime_dead_letters`, and `runtime_quota_reservations` records where
 applicable. Stale claims are recovered by comparing `claimed_until` with the
-current Runtime Plane clock and rescheduling eligible work.
+current Runtime Plane clock, rescheduling eligible work, clearing queue claim
+fields, and releasing active claim audit rows with `stale_recovered`. Cancelled
+queue work must release active claim audit rows with `cancelled`.
 
 Queue payloads and optional composition context payloads are stored as Hetzner
 runtime artifacts, not inline database JSON. Queue payloads must not contain
@@ -486,7 +496,9 @@ sealed profile failure policy allows it.
 The runtime run must reference the exact sealed runtime profile artifact through
 `profile_artifact_uri` and `profile_sha256`. Recomposition creates a new profile
 generation with parent traceability; it must never update profile limits, tools,
-scopes, policies, or validators in place.
+scopes, policies, or validators in place. Before executing runtime phases, the
+runtime loop must re-hash the sealed profile artifact and fail closed if the
+stored `profile_sha256` no longer matches.
 
 ## Step Lifecycle
 
