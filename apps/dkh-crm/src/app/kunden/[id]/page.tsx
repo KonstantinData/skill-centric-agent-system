@@ -9,7 +9,9 @@ import {
   Mail,
   MessageSquareText,
   Phone,
+  RotateCcw,
   Search,
+  Archive,
   Upload,
   X,
 } from "lucide-react";
@@ -461,6 +463,8 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
   const cases = state.customer_cases.filter(
     (item) => item.customer_id === customer.id,
   );
+  const activeCases = cases.filter((item) => item.case_status !== "archived");
+  const archivedCases = cases.filter((item) => item.case_status === "archived");
   const selectedCase = selectedCaseId
     ? cases.find((item) => String(item.id) === selectedCaseId)
     : undefined;
@@ -595,40 +599,163 @@ export default async function CustomerFilePage({ params, searchParams }: PagePro
           <Panel>
             <div className="flex items-center justify-between gap-3">
               <h2 className="section-title">Vorgangsregal</h2>
-              <span className="badge">{cases.length} Vorgänge</span>
+              <span className="badge">{activeCases.length} aktiv</span>
             </div>
             <div className="mt-4 grid gap-2">
-              {cases.map((item) => {
+              {activeCases.map((item) => {
                 const isSelected = selectedCase?.id === item.id;
                 return (
-                  <a
+                  <div
                     key={item.id}
-                    href={`/kunden/${customer.id}?case=${item.id}`}
                     className={`rounded-lg border p-3 transition ${
                       isSelected
                         ? "border-[var(--accent)] bg-[var(--surface-soft)]"
                         : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
                     }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <FolderOpen size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
-                      <div className="min-w-0">
-                        <p className="font-bold">{caseLabel(item)}</p>
-                        <p className="text-sm text-[var(--muted)]">
-                          {item.case_title || "Küchenprojekt"}
-                        </p>
-                        <p className="text-xs text-[var(--muted)]">
-                          {item.status_phase_name || item.case_status}
-                        </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <a
+                        href={`/kunden/${customer.id}?case=${item.id}`}
+                        className="min-w-0 flex-1"
+                        aria-label={`Vorgang ${caseLabel(item)} öffnen`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <FolderOpen size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="font-bold">{caseLabel(item)}</p>
+                            <p className="text-sm text-[var(--muted)]">
+                              {item.case_title || "Küchenprojekt"}
+                            </p>
+                            <p className="text-xs text-[var(--muted)]">
+                              {item.status_phase_name || item.case_status}
+                            </p>
+                          </div>
+                        </div>
+                      </a>
+                      <button
+                        type="button"
+                        className="icon-btn h-9 w-9 shrink-0"
+                        data-case-archive-open
+                        data-case-archive-target={`case-archive-modal-${item.id}`}
+                        aria-label={`Vorgang ${caseLabel(item)} archivieren`}
+                        title="Archivieren"
+                      >
+                        <Archive size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div
+                      className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+                      data-case-archive-modal={`case-archive-modal-${item.id}`}
+                      hidden
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby={`case-archive-title-${item.id}`}
+                    >
+                      <button
+                        type="button"
+                        className="absolute inset-0 cursor-default"
+                        data-case-archive-close
+                        aria-label="Archivieren abbrechen"
+                      />
+                      <div className="relative w-full max-w-lg rounded-lg border border-[var(--border)] bg-white p-5 shadow-xl">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 id={`case-archive-title-${item.id}`} className="section-title">
+                              Archivieren bestätigen
+                            </h3>
+                            <p className="mt-1 text-sm text-[var(--muted)]">
+                              {caseLabel(item)} wird aus dem aktiven Vorgangsregal entfernt.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary aspect-square p-2"
+                            data-case-archive-close
+                            aria-label="Archivieren abbrechen"
+                          >
+                            <X size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <form
+                          className="mt-4 grid gap-3"
+                          action={`/api/kunden/cases/${item.id}/archive?return_to=/kunden/${customer.id}`}
+                          method="post"
+                        >
+                          <Label label="Notiz">
+                            <Textarea
+                              name="archive_note"
+                              placeholder="Optionaler Archivhinweis"
+                            />
+                          </Label>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              data-case-archive-close
+                            >
+                              Abbrechen
+                            </button>
+                            <Button type="submit" variant="danger">
+                              <Archive size={16} aria-hidden="true" />
+                              Archivieren
+                            </Button>
+                          </div>
+                        </form>
                       </div>
                     </div>
-                  </a>
+                  </div>
                 );
               })}
-              {cases.length === 0 ? (
+              {activeCases.length === 0 ? (
                 <p className="text-sm text-[var(--muted)]">Keine Vorgänge zu diesem Kunden.</p>
               ) : null}
             </div>
+            <details className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3">
+              <summary className="cursor-pointer text-sm font-bold">
+                Archiv ({archivedCases.length})
+              </summary>
+              <div className="mt-3 grid gap-2">
+                {archivedCases.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <a
+                        href={`/kunden/${customer.id}?case=${item.id}`}
+                        className="min-w-0 flex-1"
+                        aria-label={`Archivierten Vorgang ${caseLabel(item)} öffnen`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Archive size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="font-bold">{caseLabel(item)}</p>
+                            <p className="text-sm text-[var(--muted)]">
+                              {item.case_title || "Küchenprojekt"}
+                            </p>
+                            <p className="text-xs text-[var(--muted)]">
+                              Archiviert{item.archived_at ? ` · ${formatDateTime(item.archived_at)}` : ""}
+                            </p>
+                            {item.archive_note ? (
+                              <p className="mt-1 text-xs text-[var(--muted)]">{item.archive_note}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </a>
+                      <form
+                        action={`/api/kunden/cases/${item.id}/restore?return_to=/kunden/${customer.id}`}
+                        method="post"
+                      >
+                        <Button type="submit" variant="secondary">
+                          <RotateCcw size={16} aria-hidden="true" />
+                          Wiederherstellen
+                        </Button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+                {archivedCases.length === 0 ? (
+                  <p className="text-sm text-[var(--muted)]">Keine archivierten Vorgänge.</p>
+                ) : null}
+              </div>
+            </details>
             <details className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3" open={cases.length === 0}>
               <summary className="cursor-pointer text-sm font-bold">Neuen Vorgang anlegen</summary>
               <form

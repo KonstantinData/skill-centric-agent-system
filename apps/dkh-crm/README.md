@@ -127,6 +127,15 @@ for quick phone, email, address, and ownership access. The customer's case shelf
 is placed below that snapshot; selecting a case opens the case folder on the
 large right-hand desktop area.
 
+The case shelf separates active and archived cases. Active case cards expose an
+archive icon that opens a confirmation dialog with an optional archive note.
+Archiving keeps the case visible in the customer file archive, stores
+`case_status = archived`, `archived_at`, `archived_by_user_id`, and
+`archive_note`, and removes the case from normal active counts/search surfaces.
+Archived cases can be opened from the shelf archive and restored through
+`POST /customers/cases/{id}/restore`, which clears the archive metadata and
+returns the case to active shelf handling.
+
 If a requested customer ID is not present in the visible customer state, the
 route stays inside the CRM shell and offers a return to `/kunden` instead of
 rendering the generic Next.js 404 page.

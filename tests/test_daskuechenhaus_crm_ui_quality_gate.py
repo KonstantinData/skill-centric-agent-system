@@ -484,6 +484,16 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert "data-document-upload-modal" in search_js
     assert "openDocumentUploadModal" in search_js
     assert "closeDocumentUploadModal" in search_js
+    assert "data-case-archive-open" in source
+    assert "data-case-archive-modal" in source
+    assert "Archivieren bestätigen" in source
+    assert 'name="archive_note"' in source
+    assert "/archive?return_to=/kunden/${customer.id}" in source
+    assert "/restore?return_to=/kunden/${customer.id}" in source
+    assert "Wiederherstellen" in source
+    assert "caseArchiveModals" in search_js
+    assert "openCaseArchiveModal" in search_js
+    assert "closeCaseArchiveModals" in search_js
     assert "Neuen Vorgang anlegen" in source
     assert 'action={`/api/kunden/cases?return_to=/kunden/${customer.id}`}' in source
     assert 'name="customer_id"' in source
@@ -687,6 +697,8 @@ def test_dkh_crm_customer_file_uses_desktop_and_case_shelf() -> None:
     assert r"^leads$" in proxy
     assert r"^leads\/\d+\/notes$" in proxy
     assert r"^cases\/\d+$" in proxy
+    assert r"^cases\/\d+\/archive$" in proxy
+    assert r"^cases\/\d+\/restore$" in proxy
     assert r"^cases\/\d+\/documents$" in proxy
     assert r"^cases\/\d+\/documents\/\d+\/archive$" in proxy
     assert r"^cases\/\d+\/sections\/[a-z0-9_-]+$" in proxy
