@@ -26,7 +26,7 @@
     "khh-workbench:check": "npm run khh-workbench:lint && npm run khh-workbench:build && npm run khh-mobile-proof:check"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.18",
+    "@cloudflare/vitest-pool-workers": "^0.17.0",
     "@cloudflare/workers-types": "4.20260630.1",
     "@types/node": "^26.0.1",
     "typescript": "^6.0.3",
