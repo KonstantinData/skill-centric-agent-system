@@ -728,6 +728,7 @@ def overview_state(access_email: str) -> dict[str, Any]:
             FROM app.customer_cases cc
             LEFT JOIN app.customers c ON c.id = cc.customer_id
             WHERE cc.is_active = TRUE
+              AND cc.case_status <> 'archived'
               AND (
                 (SELECT (data->>'is_admin')::boolean FROM context)
                 OR cc.owner_user_id IN (SELECT id FROM scope_users)
@@ -1776,6 +1777,7 @@ def customers_state(access_email: str) -> dict[str, Any]:
                   FROM app.customer_cases cc
                   WHERE cc.customer_id = c.id
                     AND cc.is_active = TRUE
+                    AND cc.case_status <> 'archived'
                 ),
                 'address', (
                   SELECT jsonb_build_object(
@@ -1862,6 +1864,19 @@ def customers_state(access_email: str) -> dict[str, Any]:
                 'carat_order_number', cc.carat_order_number,
                 'case_title', cc.case_title,
                 'case_status', cc.case_status,
+                'archived_at',
+                  CASE
+                    WHEN cc.archived_at IS NULL THEN NULL
+                    ELSE to_char(
+                      cc.archived_at AT TIME ZONE 'Europe/Berlin',
+                      'YYYY-MM-DD HH24:MI'
+                    )
+                  END,
+                'archived_by', COALESCE(
+                  archive_user.first_name || ' ' || archive_user.last_name,
+                  archive_user.email
+                ),
+                'archive_note', cc.archive_note,
                 'customer_display_name', cc.customer_display_name,
                 'customer_number', c.customer_number,
                 'customer_email', c.primary_email,
@@ -2187,6 +2202,7 @@ def customers_state(access_email: str) -> dict[str, Any]:
             JOIN visible_customers c ON c.id = cc.customer_id
             LEFT JOIN app.customer_case_status_phases csp
               ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
+            LEFT JOIN app.users archive_user ON archive_user.id = cc.archived_by_user_id
             WHERE cc.is_active = TRUE
           ), '[]'::jsonb)
         )::text;
@@ -2283,6 +2299,7 @@ def search_customers(
             FROM app.customer_cases cc
             WHERE cc.customer_id = c.id
               AND cc.is_active = TRUE
+              AND cc.case_status <> 'archived'
             ORDER BY
               CASE
                 WHEN lower(COALESCE(cc.case_number, '')) = lower(:'search_value') THEN 0
@@ -2316,6 +2333,7 @@ def search_customers(
                 FROM app.customer_cases cc
                 WHERE cc.customer_id = c.id
                   AND cc.is_active = TRUE
+                  AND cc.case_status <> 'archived'
                   AND (
                     COALESCE(cc.case_number, '') ILIKE '%' || :'search_value' || '%'
                     OR COALESCE(cc.carat_order_number, '') ILIKE '%' || :'search_value' || '%'
@@ -2333,6 +2351,7 @@ def search_customers(
                     ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
                   WHERE cc.customer_id = c.id
                     AND cc.is_active = TRUE
+                    AND cc.case_status <> 'archived'
                     AND COALESCE(csp.is_terminal, FALSE) = TRUE
                 )
               )
@@ -2346,6 +2365,7 @@ def search_customers(
                       ON csp.phase = COALESCE(cc.status_phase_id, cc.status_phase)
                     WHERE cc.customer_id = c.id
                       AND cc.is_active = TRUE
+                      AND cc.case_status <> 'archived'
                       AND COALESCE(csp.is_terminal, FALSE) = FALSE
                   )
                   OR NOT EXISTS (
@@ -2353,6 +2373,7 @@ def search_customers(
                     FROM app.customer_cases cc
                     WHERE cc.customer_id = c.id
                       AND cc.is_active = TRUE
+                      AND cc.case_status <> 'archived'
                   )
                 )
               )
@@ -2479,6 +2500,7 @@ def customer_duplicate_matches(
               FROM app.customer_cases cc
               WHERE cc.customer_id = c.id
                 AND cc.is_active = TRUE
+                AND cc.case_status <> 'archived'
             ) AS active_case_count,
             CASE
               WHEN NULLIF(data->>'primary_email', '') IS NOT NULL
@@ -4186,6 +4208,98 @@ def create_customer_case(data: dict[str, Any], access_email: str) -> dict[str, A
     )
     if not result.get("case_id"):
         raise ApiError(HTTPStatus.NOT_FOUND, "customer_not_found")
+    return result
+
+
+def set_customer_case_archive_state(
+    case_id: str,
+    archived: bool,
+    data: dict[str, Any],
+    access_email: str,
+) -> dict[str, Any]:
+    context = require_primary_user(access_email)
+    payload = {
+        "case_id": case_id,
+        "archive_note": str(data.get("archive_note", "")).strip(),
+        "actor_user_id": context["primary_user_id"],
+        "context": context,
+    }
+    result = psql_json(
+        """
+        WITH payload AS (SELECT :'payload'::jsonb AS data),
+        context AS (SELECT data->'context' AS data FROM payload),
+        scope_users AS (
+          SELECT jsonb_array_elements_text(data->'scope_user_ids')::bigint AS id
+          FROM context
+        ),
+        visible_case AS (
+          SELECT cc.id
+          FROM app.customer_cases cc
+          LEFT JOIN app.customers c ON c.id = cc.customer_id
+          WHERE cc.id = NULLIF((SELECT data->>'case_id' FROM payload), '')::bigint
+            AND cc.is_active = TRUE
+            AND (
+              (SELECT (data->>'is_admin')::boolean FROM context)
+              OR cc.owner_user_id IN (SELECT id FROM scope_users)
+              OR cc.responsible_user_id IN (SELECT id FROM scope_users)
+              OR c.owner_user_id IN (SELECT id FROM scope_users)
+            )
+          LIMIT 1
+        ),
+        updated AS (
+          UPDATE app.customer_cases cc
+          SET
+            case_status = :'case_status',
+            archived_at = CASE WHEN :'case_status' = 'archived' THEN now() ELSE NULL END,
+            archived_by_user_id = CASE
+              WHEN :'case_status' = 'archived'
+                THEN NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+              ELSE NULL
+            END,
+            archive_note = CASE
+              WHEN :'case_status' = 'archived'
+                THEN NULLIF((SELECT data->>'archive_note' FROM payload), '')
+              ELSE NULL
+            END,
+            updated_at = now()
+          WHERE cc.id = (SELECT id FROM visible_case)
+          RETURNING cc.id
+        ),
+        event AS (
+          INSERT INTO app.communication_events (
+            event_type,
+            customer_case_id,
+            title,
+            body,
+            occurred_at,
+            actor_user_id
+          )
+          SELECT
+            CASE WHEN :'case_status' = 'archived' THEN 'case_archived' ELSE 'case_restored' END,
+            updated.id,
+            CASE
+              WHEN :'case_status' = 'archived' THEN 'Vorgang archiviert'
+              ELSE 'Vorgang wiederhergestellt'
+            END,
+            NULLIF((SELECT data->>'archive_note' FROM payload), ''),
+            now(),
+            NULLIF((SELECT data->>'actor_user_id' FROM payload), '')::bigint
+          FROM updated
+          RETURNING id
+        )
+        SELECT jsonb_build_object(
+          'ok', TRUE,
+          'case_id', (SELECT id FROM updated),
+          'event_id', (SELECT id FROM event)
+        )::text;
+        """,
+        {
+            "payload": json.dumps(payload),
+            "case_status": "archived" if archived else "active",
+        },
+    )
+    if not result.get("case_id"):
+        raise ApiError(HTTPStatus.NOT_FOUND, "customer_case_not_found")
     return result
 
 
@@ -6968,6 +7082,24 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if len(parts) == 3 and parts[:2] == ["customers", "cases"]:
                     self.write_json(save_customer_case(parts[2], data, access_email))
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "archive"
+                ):
+                    self.write_json(
+                        set_customer_case_archive_state(parts[2], True, data, access_email)
+                    )
+                    return
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["customers", "cases"]
+                    and parts[3] == "restore"
+                ):
+                    self.write_json(
+                        set_customer_case_archive_state(parts[2], False, data, access_email)
+                    )
                     return
                 if (
                     len(parts) == 5

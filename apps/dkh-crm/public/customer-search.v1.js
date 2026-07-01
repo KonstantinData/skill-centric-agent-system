@@ -152,6 +152,7 @@
   const customerMasterModal = document.querySelector("[data-customer-master-modal]");
   const customerMasterTypeSelect = document.querySelector("[data-customer-master-type-select]");
   const documentUploadModal = document.querySelector("[data-document-upload-modal]");
+  const caseArchiveModals = document.querySelectorAll("[data-case-archive-modal]");
   const customerCustomVat = document.querySelector("[data-customer-custom-vat]");
   const customerCustomVatFlag = document.querySelector("[data-customer-custom-vat-flag]");
   const customerCustomVatRate = document.querySelector("[data-customer-custom-vat-rate]");
@@ -321,6 +322,22 @@
 
   const closeDocumentUploadModal = () => {
     if (documentUploadModal) documentUploadModal.hidden = true;
+  };
+
+  const openCaseArchiveModal = (target) => {
+    const modal = Array.from(caseArchiveModals).find(
+      (candidate) => candidate.getAttribute("data-case-archive-modal") === target,
+    );
+    if (!modal) return;
+    modal.hidden = false;
+    const firstField = modal.querySelector("textarea, button");
+    if (firstField instanceof HTMLElement) firstField.focus();
+  };
+
+  const closeCaseArchiveModals = () => {
+    for (const modal of caseArchiveModals) {
+      modal.hidden = true;
+    }
   };
 
   const syncCustomerMasterTypeSections = () => {
@@ -553,6 +570,26 @@
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeDocumentUploadModal();
+    });
+  }
+
+  if (caseArchiveModals.length > 0) {
+    document.addEventListener("click", (event) => {
+      const openButton = event.target instanceof Element
+        ? event.target.closest("[data-case-archive-open]")
+        : null;
+      if (openButton) {
+        const target = openButton.getAttribute("data-case-archive-target");
+        if (target) openCaseArchiveModal(target);
+        return;
+      }
+      const closeButton = event.target instanceof Element
+        ? event.target.closest("[data-case-archive-close]")
+        : null;
+      if (closeButton) closeCaseArchiveModals();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCaseArchiveModals();
     });
   }
 

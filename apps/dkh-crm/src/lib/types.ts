@@ -448,6 +448,9 @@ export type CustomerCaseRecord = {
   carat_order_number: string | null;
   case_title: string | null;
   case_status: string;
+  archived_at: string | null;
+  archived_by: string | null;
+  archive_note: string | null;
   customer_display_name: string;
   customer_number: string | null;
   customer_email: string | null;

@@ -43,6 +43,14 @@ SUPPLIER_CONFIRMATION_MIGRATION_PATH = (
     / "daskuechenhaus"
     / "0013_supplier_order_confirmations.sql"
 )
+CUSTOMER_CASE_ARCHIVE_MIGRATION_PATH = (
+    REPO_ROOT
+    / "migrations"
+    / "hetzner"
+    / "tenants"
+    / "daskuechenhaus"
+    / "0015_customer_case_archive.sql"
+)
 
 
 def load_migration() -> str:
@@ -55,6 +63,7 @@ def test_customer_database_migration_exists() -> None:
     assert CUSTOMER_FILE_DESKTOP_MIGRATION_PATH.exists()
     assert CARAT_IMPORT_MIGRATION_PATH.exists()
     assert SUPPLIER_CONFIRMATION_MIGRATION_PATH.exists()
+    assert CUSTOMER_CASE_ARCHIVE_MIGRATION_PATH.exists()
 
 
 def test_customer_database_creates_expected_tables() -> None:
@@ -139,6 +148,20 @@ def test_customer_file_desktop_migration_seeds_eleven_status_phases() -> None:
         "CONSTRAINT customer_case_status_phases_range CHECK (phase BETWEEN 1 AND 11)"
         in migration
     )
+
+
+def test_customer_case_archive_migration_adds_restore_metadata() -> None:
+    migration = CUSTOMER_CASE_ARCHIVE_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert "ALTER TABLE app.customer_cases" in migration
+    assert "ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ" in migration
+    assert (
+        "ADD COLUMN IF NOT EXISTS archived_by_user_id BIGINT REFERENCES app.users (id)"
+        in migration
+    )
+    assert "ADD COLUMN IF NOT EXISTS archive_note TEXT" in migration
+    assert "customer_cases_archive_idx" in migration
+    assert "WHERE is_active = TRUE" in migration
 
 
 def test_customer_file_desktop_migration_adds_flexible_sections() -> None:

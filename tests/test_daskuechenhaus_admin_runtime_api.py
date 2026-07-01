@@ -252,6 +252,13 @@ def test_daskuechenhaus_admin_api_exposes_required_customer_routes() -> None:
     assert "carat_order_number_invalid" in source
     assert "'customer_cases', COALESCE((" in source
     assert "'carat_order_number', cc.carat_order_number" in source
+    assert "'archived_at'" in source
+    assert "'archive_note', cc.archive_note" in source
+    assert "set_customer_case_archive_state" in source
+    assert "case_archived" in source
+    assert "case_restored" in source
+    assert 'parts[3] == "archive"' in source
+    assert 'parts[3] == "restore"' in source
     assert "customer_number = NULLIF(data->>'customer_number', '')" not in source
 
 

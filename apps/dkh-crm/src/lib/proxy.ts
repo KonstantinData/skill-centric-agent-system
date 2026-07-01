@@ -31,6 +31,8 @@ const ALLOWED_WRITE_PATHS: Record<ProxyKind, RegExp[]> = {
     /^customers\/\d+$/,
     /^customers\/\d+\/sections\/[a-z0-9_-]+$/i,
     /^cases\/\d+$/,
+    /^cases\/\d+\/archive$/,
+    /^cases\/\d+\/restore$/,
     /^cases\/\d+\/documents$/,
     /^cases\/\d+\/documents\/\d+\/archive$/,
     /^cases\/\d+\/carat-imports\/\d+\/positions$/,
