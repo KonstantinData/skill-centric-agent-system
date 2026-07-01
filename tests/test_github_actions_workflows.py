@@ -397,12 +397,23 @@ def test_staging_runtime_bootstrap_workflow_uses_staging_hetzner_secrets() -> No
     assert "workflow_dispatch:" in workflow
     assert "options:" in workflow
     assert "- staging" in workflow
-    assert "secrets.SCAS_STAGING_HETZNER_HOST" in workflow
-    assert "secrets.SCAS_STAGING_HETZNER_SSH_KEY" in workflow
-    assert "secrets.SCAS_STAGING_HETZNER_USER" in workflow
-    assert "SCAS_RUNTIME_DB: scas_runtime_staging" in workflow
-    assert "SCAS_RUNTIME_DB_OWNER: scas_runtime_staging_app" in workflow
-    assert "SCAS_RUNTIME_ROOT: /opt/scas/runtime/staging" in workflow
+    assert "- prod" in workflow
+    assert "confirm_production:" in workflow
+    assert "inputs.target_environment == 'prod' && 'production'" in workflow
+    assert "CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}" in workflow
+    assert "confirm_production must be true for production runtime bootstrap." in workflow
+    assert "SCAS_STAGING_HETZNER_HOST: ${{ secrets.SCAS_STAGING_HETZNER_HOST }}" in workflow
+    assert "SCAS_STAGING_HETZNER_SSH_KEY: ${{ secrets.SCAS_STAGING_HETZNER_SSH_KEY }}" in workflow
+    assert "SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}" in workflow
+    assert "SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}" in workflow
+    assert "SCAS_PROD_HETZNER_SSH_KEY: ${{ secrets.SCAS_PROD_HETZNER_SSH_KEY }}" in workflow
+    assert "SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}" in workflow
+    assert 'SCAS_RUNTIME_DB="scas_runtime_staging"' in workflow
+    assert 'SCAS_RUNTIME_DB_OWNER="scas_runtime_staging_app"' in workflow
+    assert 'SCAS_RUNTIME_ROOT="/opt/scas/runtime/staging"' in workflow
+    assert 'SCAS_RUNTIME_DB="scas_runtime_prod"' in workflow
+    assert 'SCAS_RUNTIME_DB_OWNER="scas_runtime_prod_app"' in workflow
+    assert 'SCAS_RUNTIME_ROOT="/opt/scas/runtime/prod"' in workflow
     assert "SCAS_REMOTE_MIGRATIONS_DIR: /opt/scas/migrations/hetzner/postgres" in workflow
     assert "scripts/hetzner/bootstrap_runtime_plane.sh" in workflow
     assert "--migrations-dir \"${SCAS_REMOTE_MIGRATIONS_DIR}\"" in workflow
