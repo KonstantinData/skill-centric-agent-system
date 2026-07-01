@@ -528,7 +528,7 @@ class RuntimeQueueWorker:
                 ).refund(str(quota_reservation["id"]))
             return RuntimeQueueProcessResult(
                 queue_id=str(queue_item["id"]),
-                status=stored["status"],  # type: ignore[arg-type]
+                status=stored["status"],
                 run_id=run_id,
                 stop_reason=getattr(error, "stop_reason", "runtime_error"),
                 attempt_id=attempt_id,
@@ -559,7 +559,7 @@ class RuntimeQueueWorker:
                 ).refund(str(quota_reservation["id"]))
             return RuntimeQueueProcessResult(
                 queue_id=str(queue_item["id"]),
-                status=stored["status"],  # type: ignore[arg-type]
+                status=stored["status"],
                 run_id=result.run_id,
                 stop_reason=result.stop_reason,
                 attempt_id=attempt_id,
@@ -589,7 +589,7 @@ class RuntimeQueueWorker:
         )
         return RuntimeQueueProcessResult(
             queue_id=str(queue_item["id"]),
-            status=stored["status"],  # type: ignore[arg-type]
+            status=stored["status"],
             run_id=result.run_id,
             stop_reason=result.stop_reason,
             attempt_id=attempt_id,
