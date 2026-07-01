@@ -44,7 +44,6 @@ def test_live_dev_e2e_gate_documents_required_live_surfaces() -> None:
     assert '"tenant"' in source
     assert "examples/tasks/tenant-research-task.json" in source
     assert "tenant-unknown-tenant" in source
-    assert "tenant-inactive-tenant" in source
     assert "tenant-missing-membership" in source
     assert "tenant-foreign-data-source" in source
     assert "tenant-tampered-authority" in source

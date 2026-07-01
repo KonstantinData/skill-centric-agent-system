@@ -90,6 +90,14 @@ REPOSITORY_GATE_RESULTS = (
         ),
     ),
     (
+        "Tenant runtime evidence",
+        (
+            "schemas/tenant-runtime-evidence.schema.json; "
+            "examples/runtime-evidence/*.json; "
+            "python -m pytest tests/test_tenant_runtime_evidence.py"
+        ),
+    ),
+    (
         "Memory taxonomy operations evidence",
         (
             "python -m pytest tests/test_memory_operations_evidence.py; "

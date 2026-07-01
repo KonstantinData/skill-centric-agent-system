@@ -70,12 +70,10 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
         "task-execution-output-contract",
         "task-execution-planning",
         "test-runner",
-        "demo-tenant-website-read",
-        "inactive-demo-tenant-website-read",
+        "tenant-under-test-website-read",
         "liquisto-website-read",
         "daskuechenhaus-website-read",
-        "knowledge-demo-tenant-docs",
-        "knowledge-inactive-demo-tenant-docs",
+        "knowledge-tenant-under-test-docs",
         "knowledge-liquisto-docs",
         "knowledge-daskuechenhaus-docs",
         "kinderhaus-public-website-read",
@@ -87,13 +85,13 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.module_selection_metadata) == len(seed.modules)
     assert len(seed.module_dependencies) == 37
     assert len(seed.policy_bindings) == 8
-    assert len(seed.scope_bindings) == 16
-    assert len(seed.tenants) == 5
-    assert len(seed.tenant_memberships) == 5
-    assert len(seed.tenant_role_bundles) == 11
-    assert len(seed.tenant_data_sources) == 6
-    assert len(seed.tenant_role_capability_grants) == 22
-    assert len(seed.tenant_role_data_source_grants) == 11
+    assert len(seed.scope_bindings) == 14
+    assert len(seed.tenants) == 4
+    assert len(seed.tenant_memberships) == 4
+    assert len(seed.tenant_role_bundles) == 10
+    assert len(seed.tenant_data_sources) == 5
+    assert len(seed.tenant_role_capability_grants) == 20
+    assert len(seed.tenant_role_data_source_grants) == 10
     kinderhaus_membership = next(
         membership
         for membership in seed.tenant_memberships
@@ -211,17 +209,17 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
             """
         ).fetchone()[0]
 
-    assert module_count == 32
-    assert version_count == 32
-    assert metadata_count == 32
+    assert module_count == 30
+    assert version_count == 30
+    assert metadata_count == 30
     assert dependency_count == 37
     assert policy_binding_count == 8
-    assert scope_binding_count == 16
-    assert tenant_count == 5
-    assert tenant_membership_count == 5
-    assert tenant_role_count == 11
-    assert tenant_data_source_count == 6
-    assert tenant_capability_grant_count == 22
-    assert tenant_data_source_grant_count == 11
+    assert scope_binding_count == 14
+    assert tenant_count == 4
+    assert tenant_membership_count == 4
+    assert tenant_role_count == 10
+    assert tenant_data_source_count == 5
+    assert tenant_capability_grant_count == 20
+    assert tenant_data_source_grant_count == 10
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

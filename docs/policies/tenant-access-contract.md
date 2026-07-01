@@ -162,7 +162,7 @@ tenant.
 Role bundles may include:
 
 - capability grants, such as `research` or `tenant-admin`,
-- data-source grants, such as read access to `demo-tenant-website`,
+- data-source grants, such as read access to `tenant-under-test-website`,
 - derived runtime modules:
   - skills,
   - workflows,

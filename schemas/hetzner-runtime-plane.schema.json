@@ -113,7 +113,7 @@
   "$defs": {
     "id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9_-]*$"
     },
     "semver": {
       "type": "string",
@@ -160,7 +160,7 @@
         "string",
         "null"
       ],
-      "pattern": "^[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9_-]*$"
     },
     "nullableSha256": {
       "type": [

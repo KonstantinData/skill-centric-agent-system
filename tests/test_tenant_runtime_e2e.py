@@ -30,19 +30,19 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def tenant_research_task() -> dict[str, Any]:
     return {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
                 "control_plane_principal_kind": "user",
                 "control_plane_principal_id": "tenant-user",
-                "role_data_sources": ["demo-tenant-website"],
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -78,12 +78,12 @@ class TenantE2EControlPlaneClient:
                 {
                     "record_kind": "knowledge_record",
                     "context_kind": "factual_knowledge",
-                    "id": "chunk-demo-tenant-knowledge-0",
-                    "document_id": "knowledge-doc-demo-tenant",
-                    "scope_id": "mod-knowledge-demo-tenant-docs",
-                    "vector_id": "vec-demo-tenant-knowledge-0",
+                    "id": "chunk-tenant-under-test-knowledge-0",
+                    "document_id": "knowledge-doc-tenant-under-test",
+                    "scope_id": "mod-knowledge-tenant-under-test-docs",
+                    "vector_id": "vec-tenant-under-test-knowledge-0",
                     "content_uri": (
-                        "hetzner://runtime/tenant-e2e/demo-tenant/knowledge/chunk-0.json"
+                        "hetzner://runtime/tenant-e2e/tenant-under-test/knowledge/chunk-0.json"
                     ),
                 }
             ],
@@ -119,20 +119,20 @@ def test_tenant_scoped_runtime_e2e_starts_and_completes_with_control_plane_clien
         "id": "tenant-user",
     }
     assert start_result.composition_context_request["tenant_context"] == {
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
-        "hostname": "demo-tenant.example.invalid",
-        "membership_id": "demo-tenant-membership-user",
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
+        "hostname": "tenant-under-test.example.invalid",
+        "membership_id": "tenant-under-test-membership-user",
     }
     assert control_plane.composition_requests == [start_result.composition_context_request]
     assert control_plane.retrieval_requests
     assert control_plane.retrieval_requests[0]["knowledge_scope_ids"] == [
-        "mod-knowledge-demo-tenant-docs"
+        "mod-knowledge-tenant-under-test-docs"
     ]
     assert control_plane.retrieval_requests[0]["memory_scope_ids"] == []
-    assert start_result.profile["tenant_context"]["tenant_id"] == "demo-tenant"
+    assert start_result.profile["tenant_context"]["tenant_id"] == "tenant-under-test"
     assert start_result.profile["tenant_authority"]["membership"]["id"] == (
-        "demo-tenant-membership-user"
+        "tenant-under-test-membership-user"
     )
     assert result.response["runtime_output"]["task_type"] == "research"
     assert result.response["runtime_output"]["details"]["key_points"] == [

@@ -154,7 +154,7 @@ Initial tenant database names:
 - `tenant_condata`
 - `tenant_mein_kuechenexperte`
 - `tenant_daskuechenhaus`
-- `tenant_kinderhaus`
+- `kinderhaus`
 - `tenant_elternkindwelt`
 
 Cloudflare D1 remains the Control Plane authority store. It stores tenant

@@ -18,7 +18,7 @@ def test_khh_workbench_exists_as_product_facing_app() -> None:
 
     assert '"name": "khh-workbench"' in package_json
     assert "kinderhaus-heuschrecken.cloud" in readme
-    assert "tenant_kinderhaus" in readme
+    assert "kinderhaus" in readme
     assert "must not become a master-data" in readme
     assert "Users must not see or infer that other tenants exist" in readme
 

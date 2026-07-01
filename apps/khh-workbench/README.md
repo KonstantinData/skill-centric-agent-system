@@ -4,7 +4,7 @@ Next.js workbench for the Kinderhaus Heuschrecken tenant on
 `kinderhaus-heuschrecken.cloud`.
 
 The app exposes a Leitung-, Fristen-, Risiko-, Aufgaben- und
-Entwicklungs-Cockpit for `tenant_kinderhaus`. It must not become a master-data
+Entwicklungs-Cockpit for `kinderhaus`. It must not become a master-data
 system for children, parents, or staff.
 
 ## Product Boundary

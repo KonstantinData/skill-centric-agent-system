@@ -28,11 +28,11 @@ def load_tenant(name: str) -> dict[str, Any]:
 def test_tenant_hostname_resolver_returns_single_configured_authority() -> None:
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 
-    authority = resolver.resolve("Demo-Tenant.Example.Invalid.")
+    authority = resolver.resolve("Tenant-Under-Test.Example.Invalid.")
 
-    assert authority.tenant_id == "demo-tenant"
-    assert authority.area_id == "demo-tenant"
-    assert authority.hostname == "demo-tenant.example.invalid"
+    assert authority.tenant_id == "tenant-under-test"
+    assert authority.area_id == "tenant-under-test"
+    assert authority.hostname == "tenant-under-test.example.invalid"
     assert authority.purpose == "primary-ui"
     assert authority.status == "setup"
     assert authority.expected_origin == "192.0.2.10"
@@ -89,28 +89,30 @@ def test_tenant_hostname_resolver_rejects_unknown_hostname() -> None:
 
 
 def test_tenant_hostname_resolver_rejects_inactive_tenant_hostname() -> None:
-    resolver = TenantHostnameResolver.from_paths(tenant_paths())
+    tenant = load_tenant("tenant-under-test.json")
+    tenant["status"] = "disabled"
+    resolver = TenantHostnameResolver([tenant])
 
     with pytest.raises(TenantHostnameResolutionError, match="not active"):
-        resolver.resolve("inactive-demo-tenant.example.invalid")
+        resolver.resolve("tenant-under-test.example.invalid")
 
 
 def test_tenant_hostname_resolver_rejects_duplicate_hostname_configuration() -> None:
-    demo = load_tenant("demo-tenant.json")
-    duplicate = deepcopy(demo)
-    duplicate["tenant_id"] = "duplicate-demo-tenant"
-    duplicate["area_id"] = "duplicate-demo-tenant"
+    tenant = load_tenant("tenant-under-test.json")
+    duplicate = deepcopy(tenant)
+    duplicate["tenant_id"] = "duplicate-tenant-under-test"
+    duplicate["area_id"] = "duplicate-tenant-under-test"
 
     with pytest.raises(TenantHostnameResolutionError, match="Duplicate tenant hostname"):
-        TenantHostnameResolver([demo, duplicate])
+        TenantHostnameResolver([tenant, duplicate])
 
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("DEMO-TENANT.EXAMPLE.INVALID", "demo-tenant.example.invalid"),
-        ("demo-tenant.example.invalid.", "demo-tenant.example.invalid"),
-        ("demo-tenant.example.invalid:443", "demo-tenant.example.invalid"),
+        ("TENANT-UNDER-TEST.EXAMPLE.INVALID", "tenant-under-test.example.invalid"),
+        ("tenant-under-test.example.invalid.", "tenant-under-test.example.invalid"),
+        ("tenant-under-test.example.invalid:443", "tenant-under-test.example.invalid"),
     ],
 )
 def test_normalize_hostname_accepts_hostname_variants(raw: str, expected: str) -> None:
@@ -120,10 +122,10 @@ def test_normalize_hostname_accepts_hostname_variants(raw: str, expected: str) -
 @pytest.mark.parametrize(
     "raw",
     [
-        "https://demo-tenant.example.invalid",
-        "demo-tenant.example.invalid/path",
+        "https://tenant-under-test.example.invalid",
+        "tenant-under-test.example.invalid/path",
         "",
-        "demo-tenant.example.invalid:http",
+        "tenant-under-test.example.invalid:http",
     ],
 )
 def test_normalize_hostname_rejects_non_hostname_inputs(raw: str) -> None:

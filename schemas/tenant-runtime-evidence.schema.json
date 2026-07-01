@@ -1,0 +1,512 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scas:schema:tenant-runtime-evidence:0.1.0",
+  "title": "Tenant Runtime Evidence",
+  "description": "Sanitized per-tenant runtime-readiness evidence for queue, worker, quota, DLQ, and stale-claim recovery signals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "evidence_id",
+    "tenant_id",
+    "area_id",
+    "environment",
+    "evidence_scope",
+    "certification_level",
+    "status",
+    "captured_at",
+    "capture_window",
+    "source_recordset_uri",
+    "source_artifact_uris",
+    "signals",
+    "validation",
+    "sanitization",
+    "limitations"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "evidence_id": {
+      "$ref": "#/$defs/id"
+    },
+    "tenant_id": {
+      "$ref": "#/$defs/id"
+    },
+    "area_id": {
+      "$ref": "#/$defs/id"
+    },
+    "environment": {
+      "$ref": "#/$defs/environment"
+    },
+    "evidence_scope": {
+      "type": "string",
+      "enum": [
+        "fixture",
+        "target-environment"
+      ]
+    },
+    "certification_level": {
+      "type": "string",
+      "enum": [
+        "dev-fixture",
+        "target-environment"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "warning",
+        "failed"
+      ]
+    },
+    "captured_at": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "capture_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_at",
+        "ended_at"
+      ],
+      "properties": {
+        "started_at": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "source_recordset_uri": {
+      "$ref": "#/$defs/uri"
+    },
+    "source_artifact_uris": {
+      "$ref": "#/$defs/nonEmptyUriArray"
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "queue",
+        "worker",
+        "quota",
+        "dlq",
+        "stale_claim_recovery"
+      ],
+      "properties": {
+        "queue": {
+          "$ref": "#/$defs/queueSignal"
+        },
+        "worker": {
+          "$ref": "#/$defs/workerSignal"
+        },
+        "quota": {
+          "$ref": "#/$defs/quotaSignal"
+        },
+        "dlq": {
+          "$ref": "#/$defs/dlqSignal"
+        },
+        "stale_claim_recovery": {
+          "$ref": "#/$defs/staleClaimSignal"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_registry_match",
+        "runtime_profile_schema",
+        "runtime_api_queue_summary_schema",
+        "hetzner_runtime_plane_schema",
+        "cross_tenant_contamination",
+        "sensitive_data_scan"
+      ],
+      "properties": {
+        "tenant_registry_match": {
+          "type": "string",
+          "const": "passed"
+        },
+        "runtime_profile_schema": {
+          "type": "string",
+          "const": "passed"
+        },
+        "runtime_api_queue_summary_schema": {
+          "type": "string",
+          "const": "passed"
+        },
+        "hetzner_runtime_plane_schema": {
+          "type": "string",
+          "const": "passed"
+        },
+        "cross_tenant_contamination": {
+          "type": "string",
+          "const": "none-detected"
+        },
+        "sensitive_data_scan": {
+          "type": "string",
+          "const": "passed"
+        }
+      }
+    },
+    "sanitization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_traces_included",
+        "raw_tool_outputs_included",
+        "secrets_included",
+        "personal_data_included",
+        "redaction_status",
+        "retention_plane"
+      ],
+      "properties": {
+        "raw_traces_included": {
+          "type": "boolean",
+          "const": false
+        },
+        "raw_tool_outputs_included": {
+          "type": "boolean",
+          "const": false
+        },
+        "secrets_included": {
+          "type": "boolean",
+          "const": false
+        },
+        "personal_data_included": {
+          "type": "boolean",
+          "const": false
+        },
+        "redaction_status": {
+          "type": "string",
+          "const": "passed"
+        },
+        "retention_plane": {
+          "type": "string",
+          "const": "hetzner-runtime-plane"
+        }
+      }
+    },
+    "limitations": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "environment": {
+            "enum": [
+              "staging",
+              "prod"
+            ]
+          }
+        },
+        "required": [
+          "environment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "evidence_scope": {
+            "const": "target-environment"
+          },
+          "certification_level": {
+            "const": "target-environment"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ]
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nullableDateTime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonEmptyUriArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/uri"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "signalBase": {
+      "type": "object",
+      "required": [
+        "observed",
+        "status",
+        "evidence_uri"
+      ],
+      "properties": {
+        "observed": {
+          "type": "boolean",
+          "const": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "warning",
+            "failed"
+          ]
+        },
+        "evidence_uri": {
+          "$ref": "#/$defs/uri"
+        }
+      }
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "queueSignal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/signalBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed",
+            "status",
+            "evidence_uri",
+            "queue_items_total",
+            "queued",
+            "claiming",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "retry_scheduled",
+            "dead_lettered",
+            "max_scheduled_age_seconds"
+          ],
+          "properties": {
+            "observed": true,
+            "status": true,
+            "evidence_uri": true,
+            "queue_items_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "queued": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "claiming": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "running": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "succeeded": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "failed": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "cancelled": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "retry_scheduled": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "dead_lettered": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "max_scheduled_age_seconds": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            }
+          }
+        }
+      ]
+    },
+    "workerSignal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/signalBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed",
+            "status",
+            "evidence_uri",
+            "claims_total",
+            "active_claims",
+            "released_claims",
+            "stale_recovered_claims",
+            "heartbeat_lag_max_seconds"
+          ],
+          "properties": {
+            "observed": true,
+            "status": true,
+            "evidence_uri": true,
+            "claims_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "active_claims": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "released_claims": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "stale_recovered_claims": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "heartbeat_lag_max_seconds": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            }
+          }
+        }
+      ]
+    },
+    "quotaSignal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/signalBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed",
+            "status",
+            "evidence_uri",
+            "reservations_total",
+            "reserved_tokens_total",
+            "reserved_tool_calls_total",
+            "quota_exhaustion_events"
+          ],
+          "properties": {
+            "observed": true,
+            "status": true,
+            "evidence_uri": true,
+            "reservations_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "reserved_tokens_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "reserved_tool_calls_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "quota_exhaustion_events": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            }
+          }
+        }
+      ]
+    },
+    "dlqSignal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/signalBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed",
+            "status",
+            "evidence_uri",
+            "dead_letters_total",
+            "retryable_dead_letters",
+            "non_retryable_dead_letters",
+            "latest_dead_letter_at"
+          ],
+          "properties": {
+            "observed": true,
+            "status": true,
+            "evidence_uri": true,
+            "dead_letters_total": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "retryable_dead_letters": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "non_retryable_dead_letters": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "latest_dead_letter_at": {
+              "$ref": "#/$defs/nullableDateTime"
+            }
+          }
+        }
+      ]
+    },
+    "staleClaimSignal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/signalBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed",
+            "status",
+            "evidence_uri",
+            "stale_claims_detected",
+            "recovered_claims",
+            "unrecovered_claims",
+            "latest_recovery_at"
+          ],
+          "properties": {
+            "observed": true,
+            "status": true,
+            "evidence_uri": true,
+            "stale_claims_detected": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "recovered_claims": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "unrecovered_claims": {
+              "$ref": "#/$defs/nonNegativeInteger"
+            },
+            "latest_recovery_at": {
+              "$ref": "#/$defs/nullableDateTime"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

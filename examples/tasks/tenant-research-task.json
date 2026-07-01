@@ -1,6 +1,6 @@
 {
-  "id": "task-demo-tenant-research",
-  "request": "Research the demo tenant website and summarize the current public context.",
+  "id": "task-tenant-under-test-research",
+  "request": "Research the tenant-under-test tenant website and summarize the current public context.",
   "constraints": {
     "write_access": false,
     "destructive_actions": false
@@ -10,19 +10,19 @@
       "principal_id": "repository-maintainer",
       "principal_type": "user",
       "roles": [
-        "demo-tenant-owner"
+        "tenant-under-test-owner"
       ],
       "authorization_policies": [
         "submitter-can-request-research"
       ],
       "control_plane_principal_kind": "role",
       "control_plane_principal_id": "repository-maintainer",
-      "tenant_id": "demo-tenant",
-      "area_id": "demo-tenant",
-      "tenant_hostname": "demo-tenant.example.invalid",
-      "membership_id": "tm-demo-tenant-repository-maintainer",
+      "tenant_id": "tenant-under-test",
+      "area_id": "tenant-under-test",
+      "tenant_hostname": "tenant-under-test.example.invalid",
+      "membership_id": "tm-tenant-under-test-repository-maintainer",
       "role_data_sources": [
-        "demo-tenant-website"
+        "tenant-under-test-website"
       ],
       "role_capabilities": [
         "research"

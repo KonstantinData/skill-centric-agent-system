@@ -6,8 +6,8 @@
   "queue_item": {
     "id": "queue-tenant-task-2026-07-01",
     "task_id": "task-code-review-latest-commit",
-    "tenant_id": "demo-tenant",
-    "area_id": "demo-tenant",
+    "tenant_id": "tenant-under-test",
+    "area_id": "tenant-under-test",
     "status": "queued",
     "scheduled_at": "2026-07-01T09:00:00Z",
     "attempts": 0,

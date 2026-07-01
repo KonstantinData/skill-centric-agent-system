@@ -21,7 +21,7 @@ Before starting each queue item:
 ## Next Start Point
 
 Start `Platform-Neutral App Readiness M1: Native-Ready Architecture Contract`
-for KHH before adding further `tenant_kinderhaus` feature depth. Use ADR-0012
+for KHH before adding further `kinderhaus` feature depth. Use ADR-0012
 and `docs/roadmap/platform-neutral-app-readiness.md` as the governing scope.
 
 ## Queue Order

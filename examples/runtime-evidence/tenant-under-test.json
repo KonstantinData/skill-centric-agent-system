@@ -1,0 +1,96 @@
+{
+  "contract_version": "0.1.0",
+  "evidence_id": "tenant-runtime-evidence-dev-tenant-under-test",
+  "tenant_id": "tenant-under-test",
+  "area_id": "tenant-under-test",
+  "environment": "dev",
+  "evidence_scope": "fixture",
+  "certification_level": "dev-fixture",
+  "status": "passed",
+  "captured_at": "2026-07-01T18:50:00Z",
+  "capture_window": {
+    "started_at": "2026-07-01T18:45:00Z",
+    "ended_at": "2026-07-01T18:50:00Z"
+  },
+  "source_recordset_uri": "hetzner://runtime/dev/evidence/tenant-under-test/runtime-plane-recordset.json",
+  "source_artifact_uris": [
+    "hetzner://runtime/dev/evidence/tenant-under-test/queue-summary.json",
+    "hetzner://runtime/dev/evidence/tenant-under-test/worker-claims.json",
+    "hetzner://runtime/dev/evidence/tenant-under-test/quota-summary.json",
+    "hetzner://runtime/dev/evidence/tenant-under-test/dlq-summary.json",
+    "hetzner://runtime/dev/evidence/tenant-under-test/stale-claim-recovery.json"
+  ],
+  "signals": {
+    "queue": {
+      "observed": true,
+      "status": "passed",
+      "evidence_uri": "hetzner://runtime/dev/evidence/tenant-under-test/queue-summary.json",
+      "queue_items_total": 1,
+      "queued": 0,
+      "claiming": 0,
+      "running": 0,
+      "succeeded": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "retry_scheduled": 0,
+      "dead_lettered": 0,
+      "max_scheduled_age_seconds": 0
+    },
+    "worker": {
+      "observed": true,
+      "status": "passed",
+      "evidence_uri": "hetzner://runtime/dev/evidence/tenant-under-test/worker-claims.json",
+      "claims_total": 1,
+      "active_claims": 0,
+      "released_claims": 1,
+      "stale_recovered_claims": 0,
+      "heartbeat_lag_max_seconds": 0
+    },
+    "quota": {
+      "observed": true,
+      "status": "passed",
+      "evidence_uri": "hetzner://runtime/dev/evidence/tenant-under-test/quota-summary.json",
+      "reservations_total": 1,
+      "reserved_tokens_total": 1000,
+      "reserved_tool_calls_total": 3,
+      "quota_exhaustion_events": 0
+    },
+    "dlq": {
+      "observed": true,
+      "status": "passed",
+      "evidence_uri": "hetzner://runtime/dev/evidence/tenant-under-test/dlq-summary.json",
+      "dead_letters_total": 0,
+      "retryable_dead_letters": 0,
+      "non_retryable_dead_letters": 0,
+      "latest_dead_letter_at": null
+    },
+    "stale_claim_recovery": {
+      "observed": true,
+      "status": "passed",
+      "evidence_uri": "hetzner://runtime/dev/evidence/tenant-under-test/stale-claim-recovery.json",
+      "stale_claims_detected": 0,
+      "recovered_claims": 0,
+      "unrecovered_claims": 0,
+      "latest_recovery_at": null
+    }
+  },
+  "validation": {
+    "tenant_registry_match": "passed",
+    "runtime_profile_schema": "passed",
+    "runtime_api_queue_summary_schema": "passed",
+    "hetzner_runtime_plane_schema": "passed",
+    "cross_tenant_contamination": "none-detected",
+    "sensitive_data_scan": "passed"
+  },
+  "sanitization": {
+    "raw_traces_included": false,
+    "raw_tool_outputs_included": false,
+    "secrets_included": false,
+    "personal_data_included": false,
+    "redaction_status": "passed",
+    "retention_plane": "hetzner-runtime-plane"
+  },
+  "limitations": [
+    "Dev fixture evidence validates contract coverage only; staging or production readiness requires target-environment evidence."
+  ]
+}

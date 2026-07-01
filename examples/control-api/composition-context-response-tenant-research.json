@@ -41,8 +41,8 @@
   ],
   "allowed_knowledge_scopes": [
     {
-      "id": "mod-knowledge-demo-tenant-docs",
-      "name": "knowledge-demo-tenant-docs",
+      "id": "mod-knowledge-tenant-under-test-docs",
+      "name": "knowledge-tenant-under-test-docs",
       "kind": "knowledge_scope",
       "version": "0.1.0",
       "score": 0.5,
@@ -51,8 +51,8 @@
   ],
   "allowed_data_scopes": [
     {
-      "id": "mod-demo-tenant-website-read",
-      "name": "demo-tenant-website-read",
+      "id": "mod-tenant-under-test-website-read",
+      "name": "tenant-under-test-website-read",
       "kind": "data_scope",
       "version": "0.1.0",
       "score": 0.5,
@@ -114,14 +114,14 @@
     "errors": [],
     "reachable_modules": [
       {
-        "id": "mod-knowledge-demo-tenant-docs",
-        "name": "knowledge-demo-tenant-docs",
+        "id": "mod-knowledge-tenant-under-test-docs",
+        "name": "knowledge-tenant-under-test-docs",
         "kind": "knowledge_scope",
         "version": "0.1.0"
       },
       {
-        "id": "mod-demo-tenant-website-read",
-        "name": "demo-tenant-website-read",
+        "id": "mod-tenant-under-test-website-read",
+        "name": "tenant-under-test-website-read",
         "kind": "data_scope",
         "version": "0.1.0"
       },
@@ -177,11 +177,11 @@
     ]
   },
   "tenant_authority": {
-    "tenant_id": "demo-tenant",
-    "area_id": "demo-tenant",
+    "tenant_id": "tenant-under-test",
+    "area_id": "tenant-under-test",
     "hostname": {
-      "tenant_id": "demo-tenant",
-      "hostname": "demo-tenant.example.invalid",
+      "tenant_id": "tenant-under-test",
+      "hostname": "tenant-under-test.example.invalid",
       "purpose": "primary-ui",
       "expected_origin": "192.0.2.10",
       "cloudflare_proxy_expected": true
@@ -189,24 +189,24 @@
     "status": "active",
     "direct_user_grants_allowed": false,
     "membership": {
-      "id": "demo-tenant-membership-user",
-      "tenant_id": "demo-tenant",
+      "id": "tenant-under-test-membership-user",
+      "tenant_id": "tenant-under-test",
       "principal_id": "tenant-user",
       "status": "active",
       "role_ids": [
-        "demo-tenant-researcher"
+        "tenant-under-test-researcher"
       ]
     },
     "role_bundles": [
       {
-        "id": "demo-tenant-researcher",
-        "tenant_id": "demo-tenant",
+        "id": "tenant-under-test-researcher",
+        "tenant_id": "tenant-under-test",
         "capability_grants": [
           "research"
         ],
         "data_source_grants": [
           {
-            "data_source_id": "demo-tenant-website",
+            "data_source_id": "tenant-under-test-website",
             "access_modes": [
               "read"
             ]
@@ -236,16 +236,16 @@
     ],
     "data_sources": [
       {
-        "id": "demo-tenant-website",
-        "tenant_id": "demo-tenant",
+        "id": "tenant-under-test-website",
+        "tenant_id": "tenant-under-test",
         "status": "active"
       }
     ],
     "allowed_knowledge_scopes": [
-      "knowledge-demo-tenant-docs"
+      "knowledge-tenant-under-test-docs"
     ],
     "allowed_data_scopes": [
-      "demo-tenant-website-read"
+      "tenant-under-test-website-read"
     ],
     "allowed_memory_scopes": []
   }

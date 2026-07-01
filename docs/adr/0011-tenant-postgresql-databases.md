@@ -35,7 +35,7 @@ Initial production tenant databases are:
 - `tenant_condata`
 - `tenant_mein_kuechenexperte`
 - `tenant_daskuechenhaus`
-- `tenant_kinderhaus`
+- `kinderhaus`
 - `tenant_elternkindwelt`
 
 Cloudflare D1 remains the Control Plane database for metadata and authority.

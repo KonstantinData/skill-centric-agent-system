@@ -39,7 +39,7 @@ The local dry run proves:
 
 - `liquisto.cloud` resolves to exactly one setup-state tenant authority,
 - disabled tenant hostnames fail closed,
-- Liquisto and demo tenant scope modules remain disjoint,
+- Liquisto and Liquisto tenant scope modules remain disjoint,
 - memberships and data-source grants do not cross tenant boundaries,
 - the Runtime Profile Composer and Runtime Enforcer reject invalid tenant
   authority before execution,

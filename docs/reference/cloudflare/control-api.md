@@ -335,9 +335,9 @@ matches the task signals.
 Smoke-test tenant admin context:
 
 ```bash
-curl -s https://scas-control-api-dev.still-butterfly-bbff.workers.dev/tenant-admin/tenants/demo-tenant \
+curl -s https://scas-control-api-dev.still-butterfly-bbff.workers.dev/tenant-admin/tenants/tenant-under-test \
   -H "authorization: Bearer $SCAS_CONTROL_API_TOKEN" \
-  -H "x-scas-tenant-hostname: demo-tenant.example.invalid"
+  -H "x-scas-tenant-hostname: tenant-under-test.example.invalid"
 ```
 
 The response must include only D1-derived tenant admin data: the resolved

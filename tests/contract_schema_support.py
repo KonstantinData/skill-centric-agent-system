@@ -14,9 +14,13 @@ MODULE_SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 PROFILE_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-profile.schema.json"
 CONTROL_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "cloudflare-control-plane.schema.json"
 RUNTIME_PLANE_SCHEMA_PATH = REPO_ROOT / "schemas" / "hetzner-runtime-plane.schema.json"
+RUNTIME_API_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-api.schema.json"
 COMPOSITION_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "composition-context.schema.json"
 RETRIEVAL_CONTEXT_SCHEMA_PATH = REPO_ROOT / "schemas" / "retrieval-context.schema.json"
 RUNTIME_OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "runtime-output.schema.json"
+TENANT_RUNTIME_EVIDENCE_SCHEMA_PATH = (
+    REPO_ROOT / "schemas" / "tenant-runtime-evidence.schema.json"
+)
 TENANT_REGISTRY_SCHEMA_PATH = REPO_ROOT / "schemas" / "tenant-registry.schema.json"
 CRM_SKILL_PACK_SCHEMA_PATH = REPO_ROOT / "schemas" / "crm-skill-pack.schema.json"
 CRM_SKILL_PACK_EXAMPLE_PATH = (
@@ -50,7 +54,7 @@ RETRIEVAL_CONTEXT_REQUEST_EXAMPLE_PATH = (
 RETRIEVAL_CONTEXT_RESPONSE_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "control-api" / "retrieval-context-response.json"
 )
-TENANT_REGISTRY_EXAMPLE_PATH = REPO_ROOT / "examples" / "tenants" / "demo-tenant.json"
+TENANT_REGISTRY_EXAMPLE_PATH = REPO_ROOT / "examples" / "tenants" / "tenant-under-test.json"
 D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
 D1_MIGRATION_PATHS = tuple(sorted(D1_MIGRATION_DIR.glob("*.sql")))
 
@@ -92,6 +96,13 @@ def runtime_plane_schema() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
+def runtime_api_schema() -> dict[str, Any]:
+    schema = load_json(RUNTIME_API_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
+@pytest.fixture(scope="module")
 def composition_context_schema() -> dict[str, Any]:
     schema = load_json(COMPOSITION_CONTEXT_SCHEMA_PATH)
     Draft202012Validator.check_schema(schema)
@@ -108,6 +119,13 @@ def retrieval_context_schema() -> dict[str, Any]:
 @pytest.fixture(scope="module")
 def runtime_output_schema() -> dict[str, Any]:
     schema = load_json(RUNTIME_OUTPUT_SCHEMA_PATH)
+    Draft202012Validator.check_schema(schema)
+    return schema
+
+
+@pytest.fixture(scope="module")
+def tenant_runtime_evidence_schema() -> dict[str, Any]:
+    schema = load_json(TENANT_RUNTIME_EVIDENCE_SCHEMA_PATH)
     Draft202012Validator.check_schema(schema)
     return schema
 
