@@ -55,6 +55,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "deploy/liquisto-workbench/Dockerfile",
     "examples/control-plane/dev-seed.sql",
     "examples/crm-skill-packs/liquisto-research-assistance.json",
+    "examples/runtime-evidence/liquisto.json",
     "examples/tenants/liquisto.json",
     "package.json",
     "tests/test_github_actions_workflows.py",

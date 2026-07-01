@@ -213,8 +213,11 @@ def test_tenant_runtime_evidence_rejects_secret_inclusion(
 def test_tenant_runtime_evidence_detects_cross_tenant_artifact_uri() -> None:
     tenants = active_or_setup_tenants()
     evidence = deepcopy(tenant_runtime_evidence_examples()["tenant-under-test"])
+    foreign_tenant_id = next(
+        tenant_id for tenant_id in sorted(tenants) if tenant_id != "tenant-under-test"
+    )
     evidence["source_artifact_uris"][0] = (
-        "hetzner://runtime/dev/evidence/liquisto/queue-summary.json"
+        f"hetzner://runtime/dev/evidence/{foreign_tenant_id}/queue-summary.json"
     )
 
     with pytest.raises(AssertionError):
