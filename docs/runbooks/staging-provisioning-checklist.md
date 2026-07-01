@@ -368,6 +368,19 @@ SCAS_REPOSITORY_ROOT=<uploaded repository path on the staging host>
 
 ## Live Gates
 
+Deploy the staging Control API Worker from the reviewed commit before claiming
+target-environment evidence. The live runtime workflow can apply migrations and
+seed D1 for staging, but it only auto-deploys the dev Worker.
+
+```bash
+gh workflow run ci.yml \
+  -f target_environment=staging \
+  -f deploy_control_api_dev=true \
+  -f run_ai_gateway_live_smoke=false \
+  -f run_infra_smoke=false \
+  -f confirm_production=false
+```
+
 Run the staging live runtime gate through GitHub Actions:
 
 ```bash
@@ -379,6 +392,40 @@ gh workflow run live-runtime-gates.yml \
   -f run_live_retrieval_vectorize_smoke=false \
   -f seed_control_plane_dev=true \
   -f live_task_suite=generic
+```
+
+Then run target-environment tenant suites for each tenant option exposed by
+`live_task_suite`. The first run can keep `seed_control_plane_dev=true` if
+staging D1 has not yet been seeded from the same commit; later runs should use
+`false`.
+
+```bash
+gh workflow run live-runtime-gates.yml \
+  -f target_environment=staging \
+  -f control_api_url=https://<staging-worker-url> \
+  -f run_live_dev_e2e=true \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=false \
+  -f seed_control_plane_dev=true \
+  -f live_task_suite=<first-target-tenant-suite>
+
+gh workflow run live-runtime-gates.yml \
+  -f target_environment=staging \
+  -f control_api_url=https://<staging-worker-url> \
+  -f run_live_dev_e2e=true \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=false \
+  -f seed_control_plane_dev=false \
+  -f live_task_suite=daskuechenhaus
+
+gh workflow run live-runtime-gates.yml \
+  -f target_environment=staging \
+  -f control_api_url=https://<staging-worker-url> \
+  -f run_live_dev_e2e=true \
+  -f run_postgres_concurrency_smoke=false \
+  -f run_live_retrieval_vectorize_smoke=false \
+  -f seed_control_plane_dev=false \
+  -f live_task_suite=kinderhaus
 ```
 
 Then run Postgres concurrency smoke:

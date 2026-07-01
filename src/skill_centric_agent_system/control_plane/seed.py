@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -493,13 +494,14 @@ def _tenant_seed_records(
             )
 
         if not tenant_memberships and include_default_tenant_memberships:
+            default_role_id = _default_runtime_membership_role_id(tenant)
             tenant_memberships.append(
                 {
                     "id": _tenant_membership_id(tenant_id, default_principal_id),
                     "tenant_id": tenant_id,
                     "principal_id": default_principal_id,
                     "status": "active",
-                    "role_ids_json": _json_array([tenant["role_bundles"][0]["id"]]),
+                    "role_ids_json": _json_array([default_role_id]),
                     "created_at": created_at,
                     "updated_at": created_at,
                 }
@@ -808,6 +810,13 @@ def _tenant_hostname_id(tenant_id: str, hostname: str) -> str:
 
 def _tenant_membership_id(tenant_id: str, principal_id: str) -> str:
     return f"tm-{tenant_id}-{principal_id}"
+
+
+def _default_runtime_membership_role_id(tenant: Mapping[str, Any]) -> str:
+    for role in tenant["role_bundles"]:
+        if "research" in role["capability_grants"]:
+            return str(role["id"])
+    return str(tenant["role_bundles"][0]["id"])
 
 
 def _tenant_capability_grant_id(role_id: str, capability_id: str) -> str:

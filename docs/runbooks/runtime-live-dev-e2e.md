@@ -113,6 +113,14 @@ summary. Use `--task-suite single --task-file ...` to run one task fixture.
 Use `--task-suite generic` to run the non-tenant task classes. Use
 `--task-suite tenant` to run the neutral demo-tenant positive case and
 fail-closed tenant isolation cases without real company data.
+Use the workflow's target-tenant suite choices to run a single
+target-environment tenant positive case against the tenant authority seeded for
+non-production gates. These target tenant suites use the seeded
+`repository-maintainer` role principal and the tenant-local default membership;
+they do not generate private task files or require tenant owner principal
+secrets. The `tenant_kinderhaus` suite uses only the
+`tenant_kinderhaus-public-researcher` role, which grants read access to the
+public website data source and does not include minimal-operations data.
 For every case, the summary includes the planner checkpoint URI and sanitized
 `skill_handlers` bindings (`name`, `version`, and `handler_id`) so release
 evidence can prove which executable handler ran without copying raw traces.
@@ -148,6 +156,10 @@ failing before tenant-boundary execution:
 - `tenant-missing-membership`
 - `tenant-foreign-data-source`
 - `tenant-tampered-authority`
+
+For target-tenant suites, the single positive case must satisfy the same
+runtime criteria with `task_suite` equal to the selected suite and
+`case_count: 1`.
 
 Any failed composition, retrieval scope expansion, profile enforcement denial,
 tool failure, validator failure, or PostgreSQL persistence error fails the gate.

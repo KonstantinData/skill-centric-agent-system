@@ -5,9 +5,12 @@ from pathlib import Path
 import pytest
 
 from scripts.runtime.live_dev_e2e import (
+    FIRST_TARGET_TENANT_SUITE,
     REDACTED_PRINCIPAL_ID,
+    TARGET_TENANT_SUITES,
     _composition_request_summary,
     _run_denied_start_case,
+    _tenant_task_variant,
     handler_binding_evidence_from_checkpoints,
 )
 from scripts.runtime.live_dev_e2e import (
@@ -46,6 +49,33 @@ def test_live_dev_e2e_gate_documents_required_live_surfaces() -> None:
     assert "tenant-foreign-data-source" in source
     assert "tenant-tampered-authority" in source
     assert "SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID" in source
+    assert FIRST_TARGET_TENANT_SUITE in TARGET_TENANT_SUITES
+    assert "daskuechenhaus" in TARGET_TENANT_SUITES
+    assert "kinderhaus" in TARGET_TENANT_SUITES
+
+
+def test_live_dev_e2e_target_tenant_suite_preserves_area_id_with_underscore() -> None:
+    task = _tenant_task_variant(
+        {
+            "context": {
+                "auth": {
+                    "tenant_id": "demo-tenant",
+                    "area_id": "demo-tenant",
+                }
+            }
+        },
+        tenant_id="tenant_kinderhaus",
+        area_id="kinderhaus-heuschrecken",
+        role_id="tenant_kinderhaus-public-researcher",
+        membership_id="tm-tenant_kinderhaus-repository-maintainer",
+        hostname="kinderhaus-heuschrecken.cloud",
+        role_data_sources=("kinderhaus-public-website",),
+    )
+
+    auth = task["context"]["auth"]
+    assert auth["tenant_id"] == "tenant_kinderhaus"
+    assert auth["area_id"] == "kinderhaus-heuschrecken"
+    assert auth["roles"] == ["tenant_kinderhaus-public-researcher"]
 
 
 def test_live_dev_e2e_redacts_configured_secret_principal(

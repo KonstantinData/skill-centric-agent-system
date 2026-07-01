@@ -45,6 +45,8 @@ on:
           - generic
           - tenant
           - liquisto
+          - daskuechenhaus
+          - kinderhaus
           - single
         default: generic
       live_task_file:
@@ -95,7 +97,6 @@ jobs:
       SCAS_STAGING_HETZNER_USER: ${{ secrets.SCAS_STAGING_HETZNER_USER }}
       SCAS_STAGING_OPENAI_API_KEY: ${{ secrets.SCAS_STAGING_OPENAI_API_KEY }}
       SCAS_STAGING_CONTROL_API_TOKEN: ${{ secrets.SCAS_STAGING_CONTROL_API_TOKEN }}
-      SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID }}
       SCAS_PROD_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.SCAS_PROD_CLOUDFLARE_ACCOUNT_ID }}
       SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN: ${{ secrets.SCAS_PROD_CLOUDFLARE_DEPLOY_TOKEN }}
       SCAS_PROD_HETZNER_HOST: ${{ secrets.SCAS_PROD_HETZNER_HOST }}
@@ -103,7 +104,6 @@ jobs:
       SCAS_PROD_HETZNER_USER: ${{ secrets.SCAS_PROD_HETZNER_USER }}
       SCAS_PROD_OPENAI_API_KEY: ${{ secrets.SCAS_PROD_OPENAI_API_KEY }}
       SCAS_PROD_CONTROL_API_TOKEN: ${{ secrets.SCAS_PROD_CONTROL_API_TOKEN }}
-      SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID: ${{ secrets.SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID }}
       HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       HETZNER_USER: ${{ secrets.HETZNER_USER }}
@@ -140,7 +140,6 @@ jobs:
                   HETZNER_USER) value="${SCAS_DEV_HETZNER_USER:-${HETZNER_USER:-}}" ;;
                   OPENAI_API_KEY) value="${SCAS_DEV_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}" ;;
                   CONTROL_API_TOKEN) value="${SCAS_DEV_CONTROL_API_TOKEN:-${CONTROL_API_TOKEN:-}}" ;;
-                  LIQUISTO_OWNER_PRINCIPAL_ID) value="" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -153,7 +152,6 @@ jobs:
                   HETZNER_USER) value="${SCAS_STAGING_HETZNER_USER:-}" ;;
                   OPENAI_API_KEY) value="${SCAS_STAGING_OPENAI_API_KEY:-}" ;;
                   CONTROL_API_TOKEN) value="${SCAS_STAGING_CONTROL_API_TOKEN:-}" ;;
-                  LIQUISTO_OWNER_PRINCIPAL_ID) value="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -166,7 +164,6 @@ jobs:
                   HETZNER_USER) value="${SCAS_PROD_HETZNER_USER:-}" ;;
                   OPENAI_API_KEY) value="${SCAS_PROD_OPENAI_API_KEY:-}" ;;
                   CONTROL_API_TOKEN) value="${SCAS_PROD_CONTROL_API_TOKEN:-}" ;;
-                  LIQUISTO_OWNER_PRINCIPAL_ID) value="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID:-}" ;;
                   *) echo "::error::Unknown secret mapping for ${logical_name}" ; exit 1 ;;
                 esac
                 ;;
@@ -185,15 +182,6 @@ jobs:
           OPENAI_API_KEY="$(resolve_env_secret "${TARGET_ENVIRONMENT}" OPENAI_API_KEY)"
           CLOUDFLARE_ACCOUNT_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_ACCOUNT_ID)"
           CLOUDFLARE_API_TOKEN="$(resolve_env_secret "${TARGET_ENVIRONMENT}" CLOUDFLARE_API_TOKEN)"
-          LIQUISTO_OWNER_PRINCIPAL_ID=""
-          if [ "${LIVE_TASK_SUITE}" = "liquisto" ]; then
-            LIQUISTO_OWNER_PRINCIPAL_ID="$(resolve_env_secret "${TARGET_ENVIRONMENT}" LIQUISTO_OWNER_PRINCIPAL_ID)"
-            if ! [[ "${LIQUISTO_OWNER_PRINCIPAL_ID}" =~ ^[a-z][a-z0-9-]*$ ]]; then
-              echo "::error::SCAS_${TARGET_ENVIRONMENT^^}_LIQUISTO_OWNER_PRINCIPAL_ID must be a non-secret stable id matching ^[a-z][a-z0-9-]*$."
-              exit 1
-            fi
-          fi
-
           if [ "${TARGET_ENVIRONMENT}" = "prod" ] && [ "${CONFIRM_PRODUCTION}" != "true" ]; then
             echo "::error::confirm_production must be true for production live runtime gates."
             exit 1
@@ -235,11 +223,6 @@ jobs:
               missing=1
             fi
           done
-
-          if [ "${LIVE_TASK_SUITE}" = "liquisto" ] && [ -z "${LIQUISTO_OWNER_PRINCIPAL_ID}" ]; then
-            echo "::error::Missing required secret for ${TARGET_ENVIRONMENT}: LIQUISTO_OWNER_PRINCIPAL_ID"
-            missing=1
-          fi
 
           if [ "${SEED_CONTROL_PLANE_DEV}" = "true" ]; then
             for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
@@ -364,25 +347,12 @@ jobs:
 
           token_b64="$(printf '%s' "${CONTROL_API_TOKEN}" | base64 -w0)"
           openai_key_b64="$(printf '%s' "${OPENAI_API_KEY}" | base64 -w0)"
-          liquisto_owner_principal_id=""
-          if [ "${LIVE_TASK_SUITE}" = "liquisto" ]; then
-            case "${TARGET_ENVIRONMENT}" in
-              staging) liquisto_owner_principal_id="${SCAS_STAGING_LIQUISTO_OWNER_PRINCIPAL_ID}" ;;
-              prod) liquisto_owner_principal_id="${SCAS_PROD_LIQUISTO_OWNER_PRINCIPAL_ID}" ;;
-              *)
-                echo "::error::live_task_suite=liquisto is supported only for staging and prod."
-                exit 1
-                ;;
-            esac
-          fi
-          liquisto_owner_principal_id_b64="$(printf '%s' "${liquisto_owner_principal_id}" | base64 -w0)"
-
           ssh \
             -i "${HOME}/.ssh/hetzner_key" \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             "${HETZNER_USER}@${HETZNER_HOST}" \
-            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_OPENAI_API_KEY_B64='${openai_key_b64}' SCAS_LIQUISTO_OWNER_PRINCIPAL_ID_B64='${liquisto_owner_principal_id_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' LIVE_TASK_FILE='${LIVE_TASK_FILE}' bash -s" <<'REMOTE'
+            "TARGET_ENVIRONMENT='${TARGET_ENVIRONMENT}' SCAS_CONTROL_API_TOKEN_B64='${token_b64}' SCAS_OPENAI_API_KEY_B64='${openai_key_b64}' SCAS_CONTROL_API_URL='${SCAS_CONTROL_API_URL}' GITHUB_RUN_ID='${GITHUB_RUN_ID}' RUN_LIVE_DEV_E2E='${RUN_LIVE_DEV_E2E}' RUN_POSTGRES_CONCURRENCY_SMOKE='${RUN_POSTGRES_CONCURRENCY_SMOKE}' RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE='${RUN_LIVE_RETRIEVAL_VECTORIZE_SMOKE}' LIVE_TASK_SUITE='${LIVE_TASK_SUITE}' LIVE_TASK_FILE='${LIVE_TASK_FILE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           sudo_if_needed() {
@@ -446,7 +416,6 @@ jobs:
 
           control_token="$(printf '%s' "${SCAS_CONTROL_API_TOKEN_B64}" | base64 -d)"
           openai_key="$(printf '%s' "${SCAS_OPENAI_API_KEY_B64}" | base64 -d)"
-          liquisto_owner_principal_id="$(printf '%s' "${SCAS_LIQUISTO_OWNER_PRINCIPAL_ID_B64}" | base64 -d)"
 
           cd "${workdir}"
           install -d -m 755 live-runtime-evidence
@@ -457,61 +426,6 @@ jobs:
           export SCAS_RUNTIME_ARTIFACT_ROOT="${artifact_root}"
           export SCAS_REPOSITORY_ROOT="${workdir}"
           export SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID=""
-
-          if [ "${LIVE_TASK_SUITE}" = "liquisto" ]; then
-            if [ -z "${liquisto_owner_principal_id}" ]; then
-              echo "Liquisto owner principal id is required for live_task_suite=liquisto." >&2
-              exit 1
-            fi
-
-            private_task_dir="${workdir}/live-runtime-private"
-            install -d -m 750 "${private_task_dir}"
-            live_task_file="${private_task_dir}/liquisto-live-task.json"
-            LIQUISTO_OWNER_PRINCIPAL_ID="${liquisto_owner_principal_id}" \
-            LIQUISTO_LIVE_TASK_FILE="${live_task_file}" \
-            "${workdir}/.venv/bin/python" - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          principal_id = os.environ["LIQUISTO_OWNER_PRINCIPAL_ID"]
-          output_path = Path(os.environ["LIQUISTO_LIVE_TASK_FILE"])
-          task = {
-              "id": "task-liquisto-production-research",
-              "request": "Research the Liquisto tenant website and summarize the current public context.",
-              "constraints": {
-                  "write_access": False,
-                  "destructive_actions": False,
-                  "target_environment": os.environ["TARGET_ENVIRONMENT"],
-                  "production_data": False,
-                  "secret_access": False,
-              },
-              "context": {
-                  "auth": {
-                      "principal_id": principal_id,
-                      "principal_type": "user",
-                      "control_plane_principal_kind": "user",
-                      "control_plane_principal_id": principal_id,
-                      "roles": ["liquisto-owner"],
-                      "authorization_policies": ["submitter-can-request-research"],
-                      "tenant_id": "liquisto",
-                      "area_id": "liquisto",
-                      "tenant_hostname": "liquisto.cloud",
-                      "membership_id": "tm-liquisto-initial-owner",
-                      "role_data_sources": ["liquisto-website"],
-                      "role_capabilities": ["research"],
-                  }
-              },
-          }
-          output_path.write_text(json.dumps(task, indent=2, sort_keys=True), encoding="utf-8")
-          PY
-            sudo_if_needed chgrp postgres "${private_task_dir}" "${live_task_file}"
-            chmod 750 "${private_task_dir}"
-            chmod 640 "${live_task_file}"
-            export LIVE_TASK_SUITE="single"
-            export LIVE_TASK_FILE="${live_task_file}"
-            export SCAS_LIVE_E2E_REDACT_PRINCIPAL_ID="${liquisto_owner_principal_id}"
-          fi
 
           if [ "${RUN_LIVE_DEV_E2E}" = "true" ]; then
             as_postgres_with_runtime_env \

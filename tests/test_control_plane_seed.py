@@ -90,10 +90,18 @@ def test_seed_records_include_module_dependencies_and_policy_scopes() -> None:
     assert len(seed.scope_bindings) == 16
     assert len(seed.tenants) == 5
     assert len(seed.tenant_memberships) == 5
-    assert len(seed.tenant_role_bundles) == 10
+    assert len(seed.tenant_role_bundles) == 11
     assert len(seed.tenant_data_sources) == 6
-    assert len(seed.tenant_role_capability_grants) == 21
-    assert len(seed.tenant_role_data_source_grants) == 10
+    assert len(seed.tenant_role_capability_grants) == 22
+    assert len(seed.tenant_role_data_source_grants) == 11
+    kinderhaus_membership = next(
+        membership
+        for membership in seed.tenant_memberships
+        if membership["id"] == "tm-tenant_kinderhaus-repository-maintainer"
+    )
+    assert json.loads(kinderhaus_membership["role_ids_json"]) == [
+        "tenant_kinderhaus-public-researcher"
+    ]
 
 
 def test_seed_records_can_omit_default_authority_for_prod() -> None:
@@ -211,9 +219,9 @@ def test_generated_seed_sql_is_valid_and_idempotent_d1_data() -> None:
     assert scope_binding_count == 16
     assert tenant_count == 5
     assert tenant_membership_count == 5
-    assert tenant_role_count == 10
+    assert tenant_role_count == 11
     assert tenant_data_source_count == 6
-    assert tenant_capability_grant_count == 21
-    assert tenant_data_source_grant_count == 10
+    assert tenant_capability_grant_count == 22
+    assert tenant_data_source_grant_count == 11
     assert missing_current_versions == 0
     assert wrong_dependency_kinds == 0

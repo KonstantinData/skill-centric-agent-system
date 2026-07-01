@@ -628,7 +628,7 @@ function isObject(value: unknown): value is JsonObject {
 }
 
 function isId(value: unknown): value is string {
-  return typeof value === "string" && /^[a-z][a-z0-9-]*$/.test(value);
+  return typeof value === "string" && /^[a-z][a-z0-9_-]*$/.test(value);
 }
 
 function normalizeTenantHostname(value: string): string {
@@ -2630,7 +2630,7 @@ async function handleTenantAdminContext(request: Request, env: Env): Promise<Res
 
   const url = new URL(request.url);
   const match = url.pathname.match(
-    /^\/tenant-admin\/tenants\/(?<tenantId>[a-z][a-z0-9-]*)(?<subpath>\/[a-z-]+)?$/,
+    /^\/tenant-admin\/tenants\/(?<tenantId>[a-z][a-z0-9_-]*)(?<subpath>\/[a-z-]+)?$/,
   );
   const tenantId = match?.groups?.tenantId;
   const subpath = match?.groups?.subpath ?? "";

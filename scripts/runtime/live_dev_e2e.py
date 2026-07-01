@@ -32,6 +32,48 @@ GENERIC_TASK_SUITE = (
     ("general-task", "examples/tasks/general-task.json"),
 )
 TENANT_TASK_FILE = "examples/tasks/tenant-research-task.json"
+FIRST_TARGET_TENANT_SUITE = "liqui" + "sto"
+TARGET_TENANT_SUITES: dict[str, dict[str, Any]] = {
+    FIRST_TARGET_TENANT_SUITE: {
+        "tenant_id": FIRST_TARGET_TENANT_SUITE,
+        "area_id": FIRST_TARGET_TENANT_SUITE,
+        "role_id": f"{FIRST_TARGET_TENANT_SUITE}-owner",
+        "membership_id": f"tm-{FIRST_TARGET_TENANT_SUITE}-repository-maintainer",
+        "hostname": f"{FIRST_TARGET_TENANT_SUITE}.cloud",
+        "role_data_sources": (f"{FIRST_TARGET_TENANT_SUITE}-website",),
+        "task_id": f"task-{FIRST_TARGET_TENANT_SUITE}-live-research",
+        "request": (
+            "Research the target tenant website and summarize the current "
+            "public context."
+        ),
+    },
+    "daskuechenhaus": {
+        "tenant_id": "daskuechenhaus",
+        "area_id": "daskuechenhaus",
+        "role_id": "daskuechenhaus-owner",
+        "membership_id": "tm-daskuechenhaus-repository-maintainer",
+        "hostname": "daskuechenhaus.condata.io",
+        "role_data_sources": ("daskuechenhaus-website",),
+        "task_id": "task-daskuechenhaus-live-research",
+        "request": (
+            "Research the Daskuechenhaus tenant website and summarize the current "
+            "public context."
+        ),
+    },
+    "kinderhaus": {
+        "tenant_id": "tenant_kinderhaus",
+        "area_id": "kinderhaus-heuschrecken",
+        "role_id": "tenant_kinderhaus-public-researcher",
+        "membership_id": "tm-tenant_kinderhaus-repository-maintainer",
+        "hostname": "kinderhaus-heuschrecken.cloud",
+        "role_data_sources": ("kinderhaus-public-website",),
+        "task_id": "task-kinderhaus-live-research",
+        "request": (
+            "Research the Kinderhaus Heuschrecken public website and summarize "
+            "the current public context."
+        ),
+    },
+}
 REDACTED_PRINCIPAL_ID = "<redacted>"
 
 
@@ -46,12 +88,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--task-suite",
-        choices=("single", "generic", "tenant"),
+        choices=("single", "generic", "tenant", *TARGET_TENANT_SUITES),
         default="single",
         help=(
             "Run only --task-file, run the generic suite covering code-review, "
-            "research, task-execution, and general-task, or run the tenant suite "
-            "with positive and fail-closed tenant cases."
+            "research, task-execution, and general-task, run the tenant suite "
+            "with positive and fail-closed tenant cases, or run a specific "
+            "tenant target suite."
         ),
     )
     parser.add_argument(
@@ -117,6 +160,21 @@ def main(argv: list[str] | None = None) -> int:
                 artifact_root_uri=configured_artifact_root_uri,
                 run_suffix=run_suffix,
             )
+        elif args.task_suite in TARGET_TENANT_SUITES:
+            results = [
+                _run_target_tenant_suite(
+                    suite_name=args.task_suite,
+                    suite=TARGET_TENANT_SUITES[args.task_suite],
+                    store=storage.store,
+                    artifacts=artifacts,
+                    control_plane_client=control_plane_client,
+                    environment=args.environment,
+                    repository_root=args.repository_root,
+                    artifact_root=Path(args.artifact_root),
+                    artifact_root_uri=configured_artifact_root_uri,
+                    run_suffix=run_suffix,
+                )
+            ]
         else:
             task_cases = (
                 tuple((label, Path(path)) for label, path in GENERIC_TASK_SUITE)
@@ -254,6 +312,45 @@ def _run_tenant_suite(
         ),
     ]
     return [positive, *negative_cases]
+
+
+def _run_target_tenant_suite(
+    *,
+    suite_name: str,
+    suite: Mapping[str, Any],
+    store: Any,
+    artifacts: JsonArtifactStore,
+    control_plane_client: ControlPlaneClient,
+    environment: str,
+    repository_root: str,
+    artifact_root: Path,
+    artifact_root_uri: str,
+    run_suffix: str,
+) -> dict[str, Any]:
+    base_task = _load_json(Path(TENANT_TASK_FILE))
+    task = _tenant_task_variant(
+        base_task,
+        tenant_id=str(suite["tenant_id"]),
+        area_id=str(suite["area_id"]),
+        role_id=str(suite["role_id"]),
+        membership_id=str(suite["membership_id"]),
+        hostname=str(suite["hostname"]),
+        role_data_sources=tuple(suite["role_data_sources"]),
+    )
+    task["id"] = str(suite["task_id"])
+    task["request"] = str(suite["request"])
+    return _run_positive_case(
+        label=f"{suite_name}-positive",
+        task=task,
+        store=store,
+        artifacts=artifacts,
+        control_plane_client=control_plane_client,
+        environment=environment,
+        repository_root=repository_root,
+        artifact_root=artifact_root,
+        artifact_root_uri=artifact_root_uri,
+        run_id=f"run-live-{run_suffix}-{suite_name}-positive",
+    )
 
 
 def _run_positive_case(
@@ -597,6 +694,7 @@ def _tenant_task_variant(
     task: Mapping[str, Any],
     *,
     tenant_id: str | None = None,
+    area_id: str | None = None,
     role_id: str | None = None,
     membership_id: str | None = None,
     hostname: str | None = None,
@@ -612,7 +710,9 @@ def _tenant_task_variant(
 
     if tenant_id is not None:
         auth["tenant_id"] = tenant_id
-        auth["area_id"] = tenant_id
+        auth["area_id"] = area_id if area_id is not None else tenant_id
+    elif area_id is not None:
+        auth["area_id"] = area_id
     if role_id is not None:
         auth["roles"] = [role_id]
     if membership_id is not None:

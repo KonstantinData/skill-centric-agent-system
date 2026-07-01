@@ -471,17 +471,17 @@ def _control_plane_risk_level(risk_level: RiskLevel) -> Literal["low", "medium",
 
 
 def _is_id(value: str) -> bool:
-    return re.fullmatch(r"[a-z][a-z0-9-]*", value) is not None
+    return re.fullmatch(r"[a-z][a-z0-9_-]*", value) is not None
 
 
 def _slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+    slug = re.sub(r"[^a-z0-9_-]+", "-", value.casefold()).strip("-_")
     slug = re.sub(r"-+", "-", slug)
     if not slug:
         return "task"
     if not slug[0].isalpha():
         slug = "id-" + slug
-    return slug[:80].strip("-")
+    return slug[:80].strip("-_")
 
 
 def _dedupe(values: Any) -> tuple[str, ...]:
