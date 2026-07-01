@@ -44,10 +44,10 @@ const tenantCompositionRequest = {
     id: "tenant-user",
   },
   tenant_context: {
-    tenant_id: "demo-tenant",
-    area_id: "demo-tenant",
-    hostname: "demo-tenant.example.invalid",
-    membership_id: "demo-tenant-membership-user",
+    tenant_id: "tenant-under-test",
+    area_id: "tenant-under-test",
+    hostname: "tenant-under-test.example.invalid",
+    membership_id: "tenant-under-test-membership-user",
   },
 };
 
@@ -673,14 +673,14 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, ?, 'active', 'de-DE', ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?)
       `,
     ).bind(
-      "demo-tenant",
-      "demo-tenant",
-      "Demo Tenant",
-      "Demo Tenant GmbH",
+      "tenant-under-test",
+      "tenant-under-test",
+      "Tenant Under Test",
+      "Tenant Under Test GmbH",
       "admin@example.invalid",
       "https://example.invalid",
-      "brain-area-demo-tenant",
-      "knowledge-demo-tenant",
+      "brain-area-tenant-under-test",
+      "knowledge-tenant-under-test",
       JSON.stringify(["strict-tenant-isolation", "no-cross-tenant-access"]),
       JSON.stringify(["tenant-profile-validator"]),
       "2026-05-22T00:00:00Z",
@@ -699,9 +699,9 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, 'primary-ui', ?, 1)
       `,
     ).bind(
-      "th-demo-tenant-demo-tenant-example-invalid",
-      "demo-tenant",
-      "demo-tenant.example.invalid",
+      "th-tenant-under-test-tenant-under-test-example-invalid",
+      "tenant-under-test",
+      "tenant-under-test.example.invalid",
       "192.0.2.10",
     ),
     db.prepare(
@@ -718,10 +718,10 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, 'active', ?, ?, ?)
       `,
     ).bind(
-      "demo-tenant-membership-user",
-      "demo-tenant",
+      "tenant-under-test-membership-user",
+      "tenant-under-test",
       "tenant-user",
-      JSON.stringify(["demo-tenant-reviewer"]),
+      JSON.stringify(["tenant-under-test-reviewer"]),
       "2026-05-22T00:00:00Z",
       "2026-05-22T00:00:00Z",
     ),
@@ -742,9 +742,9 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, 'tenant-custom', 1, ?, ?, ?, ?, ?)
       `,
     ).bind(
-      "demo-tenant-reviewer",
-      "demo-tenant",
-      "Demo Tenant Reviewer",
+      "tenant-under-test-reviewer",
+      "tenant-under-test",
+      "Tenant Under Test Reviewer",
       JSON.stringify(["git-diff-analysis"]),
       JSON.stringify(["code-review"]),
       JSON.stringify([]),
@@ -765,9 +765,9 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, 'website', ?, ?, 'active', 'public')
       `,
     ).bind(
-      "demo-tenant-website",
-      "demo-tenant",
-      "Demo Tenant Website",
+      "tenant-under-test-website",
+      "tenant-under-test",
+      "Tenant Under Test Website",
       JSON.stringify(["read"]),
     ),
     db.prepare(
@@ -781,9 +781,9 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, ?)
       `,
     ).bind(
-      "trcg-demo-tenant-reviewer-code-review",
-      "demo-tenant",
-      "demo-tenant-reviewer",
+      "trcg-tenant-under-test-reviewer-code-review",
+      "tenant-under-test",
+      "tenant-under-test-reviewer",
       "code-review",
     ),
     db.prepare(
@@ -798,10 +798,10 @@ async function seedControlPlane(): Promise<void> {
       VALUES (?, ?, ?, ?, ?)
       `,
     ).bind(
-      "trdsg-demo-tenant-reviewer-demo-tenant-website",
-      "demo-tenant",
-      "demo-tenant-reviewer",
-      "demo-tenant-website",
+      "trdsg-tenant-under-test-reviewer-tenant-under-test-website",
+      "tenant-under-test",
+      "tenant-under-test-reviewer",
+      "tenant-under-test-website",
       JSON.stringify(["read"]),
     ),
   ]);
@@ -1097,11 +1097,11 @@ describe("control API worker", () => {
     expect(response.status).toBe(200);
     expect(body.composition_status).toBe("ready");
     expect(body.tenant_authority).toEqual({
-      tenant_id: "demo-tenant",
-      area_id: "demo-tenant",
+      tenant_id: "tenant-under-test",
+      area_id: "tenant-under-test",
       hostname: {
-        tenant_id: "demo-tenant",
-        hostname: "demo-tenant.example.invalid",
+        tenant_id: "tenant-under-test",
+        hostname: "tenant-under-test.example.invalid",
         purpose: "primary-ui",
         expected_origin: "192.0.2.10",
         cloudflare_proxy_expected: true,
@@ -1109,20 +1109,20 @@ describe("control API worker", () => {
       status: "active",
       direct_user_grants_allowed: false,
       membership: {
-        id: "demo-tenant-membership-user",
-        tenant_id: "demo-tenant",
+        id: "tenant-under-test-membership-user",
+        tenant_id: "tenant-under-test",
         principal_id: "tenant-user",
         status: "active",
-        role_ids: ["demo-tenant-reviewer"],
+        role_ids: ["tenant-under-test-reviewer"],
       },
       role_bundles: [
         {
-          id: "demo-tenant-reviewer",
-          tenant_id: "demo-tenant",
+          id: "tenant-under-test-reviewer",
+          tenant_id: "tenant-under-test",
           capability_grants: ["code-review"],
           data_source_grants: [
             {
-              data_source_id: "demo-tenant-website",
+              data_source_id: "tenant-under-test-website",
               access_modes: ["read"],
             },
           ],
@@ -1137,8 +1137,8 @@ describe("control API worker", () => {
       ],
       data_sources: [
         {
-          id: "demo-tenant-website",
-          tenant_id: "demo-tenant",
+          id: "tenant-under-test-website",
+          tenant_id: "tenant-under-test",
           status: "active",
         },
       ],
@@ -1190,11 +1190,11 @@ describe("control API worker", () => {
   });
 
   it("returns D1-backed tenant admin context for the resolved tenant hostname", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test", {
       method: "GET",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
     });
     const body = await response.json();
@@ -1203,16 +1203,16 @@ describe("control API worker", () => {
     expect(body).toEqual({
       contract_version: "0.1.0",
       tenant: {
-        tenant_id: "demo-tenant",
-        area_id: "demo-tenant",
-        display_name: "Demo Tenant",
+        tenant_id: "tenant-under-test",
+        area_id: "tenant-under-test",
+        display_name: "Tenant Under Test",
         status: "active",
         default_locale: "de-DE",
         contact_email: "admin@example.invalid",
         contact_website: "https://example.invalid",
         hostname: {
-          tenant_id: "demo-tenant",
-          hostname: "demo-tenant.example.invalid",
+          tenant_id: "tenant-under-test",
+          hostname: "tenant-under-test.example.invalid",
           purpose: "primary-ui",
           expected_origin: "192.0.2.10",
           cloudflare_proxy_expected: true,
@@ -1225,24 +1225,24 @@ describe("control API worker", () => {
       },
       users: [
         {
-          membership_id: "demo-tenant-membership-user",
-          tenant_id: "demo-tenant",
+          membership_id: "tenant-under-test-membership-user",
+          tenant_id: "tenant-under-test",
           principal_id: "tenant-user",
           status: "active",
-          role_ids: ["demo-tenant-reviewer"],
+          role_ids: ["tenant-under-test-reviewer"],
         },
       ],
       roles: [
         {
-          id: "demo-tenant-reviewer",
-          tenant_id: "demo-tenant",
-          display_name: "Demo Tenant Reviewer",
+          id: "tenant-under-test-reviewer",
+          tenant_id: "tenant-under-test",
+          display_name: "Tenant Under Test Reviewer",
           role_type: "tenant-custom",
           assignable_to_users: true,
           capability_grants: ["code-review"],
           data_source_grants: [
             {
-              data_source_id: "demo-tenant-website",
+              data_source_id: "tenant-under-test-website",
               access_modes: ["read"],
             },
           ],
@@ -1257,19 +1257,19 @@ describe("control API worker", () => {
       ],
       data_sources: [
         {
-          id: "demo-tenant-website",
-          tenant_id: "demo-tenant",
+          id: "tenant-under-test-website",
+          tenant_id: "tenant-under-test",
           source_type: "website",
-          display_name: "Demo Tenant Website",
+          display_name: "Tenant Under Test Website",
           access_modes: ["read"],
           status: "active",
           sensitivity: "public",
         },
       ],
       settings: {
-        memory_area_brain_id: "brain-area-demo-tenant",
+        memory_area_brain_id: "brain-area-tenant-under-test",
         shared_promotion_allowed: false,
-        knowledge_scope_id: "knowledge-demo-tenant",
+        knowledge_scope_id: "knowledge-tenant-under-test",
         policy_bundle: ["strict-tenant-isolation", "no-cross-tenant-access"],
         validators: ["tenant-profile-validator"],
       },
@@ -1278,17 +1278,17 @@ describe("control API worker", () => {
     const audit = await env.SCAS_CONTROL_DB.prepare(
       "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
     )
-      .bind("tenant_admin_context_read", "demo-tenant")
+      .bind("tenant_admin_context_read", "tenant-under-test")
       .first();
     expect(audit).toEqual({
       event_type: "tenant_admin_context_read",
       target_kind: "tenant",
-      target_id: "demo-tenant",
+      target_id: "tenant-under-test",
     });
   });
 
   it("denies tenant admin context when the hostname does not belong to the tenant", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test", {
       method: "GET",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
@@ -1303,21 +1303,21 @@ describe("control API worker", () => {
     const audit = await env.SCAS_CONTROL_DB.prepare(
       "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
     )
-      .bind("tenant_admin_hostname_denied", "demo-tenant")
+      .bind("tenant_admin_hostname_denied", "tenant-under-test")
       .first();
     expect(audit).toEqual({
       event_type: "tenant_admin_hostname_denied",
       target_kind: "tenant",
-      target_id: "demo-tenant",
+      target_id: "tenant-under-test",
     });
   });
 
   it("requires tenant-admin scoped bearer authorization for tenant admin context", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test", {
       method: "GET",
       headers: {
         "authorization": `Bearer ${COMPOSITION_TOKEN}`,
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
     });
     const body = await response.json();
@@ -1327,22 +1327,22 @@ describe("control API worker", () => {
   });
 
   it("creates tenant admin roles through role-derived capability and data-source grants", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/roles", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test/roles", {
       method: "POST",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
         "content-type": "application/json",
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
       body: JSON.stringify({
-        id: "demo-tenant-researcher",
-        display_name: "Demo Tenant Researcher",
+        id: "tenant-under-test-researcher",
+        display_name: "Tenant Under Test Researcher",
         role_type: "tenant-custom",
         assignable_to_users: true,
         capability_grants: ["research"],
         data_source_grants: [
           {
-            data_source_id: "demo-tenant-website",
+            data_source_id: "tenant-under-test-website",
             access_modes: ["read"],
           },
         ],
@@ -1360,7 +1360,7 @@ describe("control API worker", () => {
     expect(response.status).toBe(201);
     expect(body).toEqual({
       status: "succeeded",
-      role_id: "demo-tenant-researcher",
+      role_id: "tenant-under-test-researcher",
     });
 
     const role = await env.SCAS_CONTROL_DB.prepare(
@@ -1370,35 +1370,35 @@ describe("control API worker", () => {
       WHERE id = ?
       `,
     )
-      .bind("demo-tenant-researcher")
+      .bind("tenant-under-test-researcher")
       .first();
     expect(role).toEqual({
-      id: "demo-tenant-researcher",
-      tenant_id: "demo-tenant",
-      display_name: "Demo Tenant Researcher",
+      id: "tenant-under-test-researcher",
+      tenant_id: "tenant-under-test",
+      display_name: "Tenant Under Test Researcher",
     });
     const audit = await env.SCAS_CONTROL_DB.prepare(
       "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
     )
-      .bind("tenant_admin_role_created", "demo-tenant-researcher")
+      .bind("tenant_admin_role_created", "tenant-under-test-researcher")
       .first();
     expect(audit).toEqual({
       event_type: "tenant_admin_role_created",
       target_kind: "tenant_role",
-      target_id: "demo-tenant-researcher",
+      target_id: "tenant-under-test-researcher",
     });
   });
 
   it("denies tenant admin roles that reference foreign data sources", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/roles", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test/roles", {
       method: "POST",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
         "content-type": "application/json",
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
       body: JSON.stringify({
-        id: "demo-tenant-foreign-source-role",
+        id: "tenant-under-test-foreign-source-role",
         display_name: "Foreign Source Role",
         role_type: "tenant-custom",
         assignable_to_users: true,
@@ -1425,18 +1425,18 @@ describe("control API worker", () => {
   });
 
   it("upserts tenant memberships only with assignable roles", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/memberships", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test/memberships", {
       method: "POST",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
         "content-type": "application/json",
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
       body: JSON.stringify({
-        id: "demo-tenant-membership-new-user",
+        id: "tenant-under-test-membership-new-user",
         principal_id: "tenant-new-user",
         status: "invited",
-        role_ids: ["demo-tenant-reviewer"],
+        role_ids: ["tenant-under-test-reviewer"],
       }),
     });
     const body = await response.json();
@@ -1444,7 +1444,7 @@ describe("control API worker", () => {
     expect(response.status).toBe(201);
     expect(body).toEqual({
       status: "succeeded",
-      membership_id: "demo-tenant-membership-new-user",
+      membership_id: "tenant-under-test-membership-new-user",
     });
 
     const membership = await env.SCAS_CONTROL_DB.prepare(
@@ -1454,42 +1454,42 @@ describe("control API worker", () => {
       WHERE id = ?
       `,
     )
-      .bind("demo-tenant-membership-new-user")
+      .bind("tenant-under-test-membership-new-user")
       .first<{ role_ids_json: string }>();
     expect({
       ...membership,
       role_ids_json: JSON.parse(membership?.role_ids_json ?? "[]"),
     }).toEqual({
-      id: "demo-tenant-membership-new-user",
-      tenant_id: "demo-tenant",
+      id: "tenant-under-test-membership-new-user",
+      tenant_id: "tenant-under-test",
       principal_id: "tenant-new-user",
       status: "invited",
-      role_ids_json: ["demo-tenant-reviewer"],
+      role_ids_json: ["tenant-under-test-reviewer"],
     });
     const audit = await env.SCAS_CONTROL_DB.prepare(
       "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
     )
-      .bind("tenant_admin_membership_upserted", "demo-tenant-membership-new-user")
+      .bind("tenant_admin_membership_upserted", "tenant-under-test-membership-new-user")
       .first();
     expect(audit).toEqual({
       event_type: "tenant_admin_membership_upserted",
       target_kind: "tenant_membership",
-      target_id: "demo-tenant-membership-new-user",
+      target_id: "tenant-under-test-membership-new-user",
     });
   });
 
   it("registers tenant data sources through the tenant admin API", async () => {
-    const response = await fetchJson("/tenant-admin/tenants/demo-tenant/data-sources", {
+    const response = await fetchJson("/tenant-admin/tenants/tenant-under-test/data-sources", {
       method: "POST",
       headers: {
         "authorization": `Bearer ${TENANT_ADMIN_TOKEN}`,
         "content-type": "application/json",
-        "x-scas-tenant-hostname": "demo-tenant.example.invalid",
+        "x-scas-tenant-hostname": "tenant-under-test.example.invalid",
       },
       body: JSON.stringify({
-        id: "demo-tenant-docs",
+        id: "tenant-under-test-docs",
         source_type: "notion_page_tree",
-        display_name: "Demo Tenant Docs",
+        display_name: "Tenant Under Test Docs",
         access_modes: ["read"],
         status: "planned",
         sensitivity: "internal",
@@ -1500,7 +1500,7 @@ describe("control API worker", () => {
     expect(response.status).toBe(201);
     expect(body).toEqual({
       status: "succeeded",
-      data_source_id: "demo-tenant-docs",
+      data_source_id: "tenant-under-test-docs",
     });
 
     const dataSource = await env.SCAS_CONTROL_DB.prepare(
@@ -1510,25 +1510,25 @@ describe("control API worker", () => {
       WHERE id = ?
       `,
     )
-      .bind("demo-tenant-docs")
+      .bind("tenant-under-test-docs")
       .first();
     expect(dataSource).toEqual({
-      id: "demo-tenant-docs",
-      tenant_id: "demo-tenant",
+      id: "tenant-under-test-docs",
+      tenant_id: "tenant-under-test",
       source_type: "notion_page_tree",
-      display_name: "Demo Tenant Docs",
+      display_name: "Tenant Under Test Docs",
       status: "planned",
       sensitivity: "internal",
     });
     const audit = await env.SCAS_CONTROL_DB.prepare(
       "SELECT event_type, target_kind, target_id FROM audit_events WHERE event_type = ? AND target_id = ?",
     )
-      .bind("tenant_admin_data_source_registered", "demo-tenant-docs")
+      .bind("tenant_admin_data_source_registered", "tenant-under-test-docs")
       .first();
     expect(audit).toEqual({
       event_type: "tenant_admin_data_source_registered",
       target_kind: "tenant_data_source",
-      target_id: "demo-tenant-docs",
+      target_id: "tenant-under-test-docs",
     });
   });
 

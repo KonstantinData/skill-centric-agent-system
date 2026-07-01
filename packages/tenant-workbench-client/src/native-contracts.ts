@@ -213,7 +213,7 @@ export const readOnlySummaryOfflinePolicy: TenantOfflineCachePolicy = {
 
 export const khhNativePushPolicy: TenantPushPolicy = {
   optInRequired: true,
-  tenantScopedTopics: ["tenant_kinderhaus:leadership-summary"],
+  tenantScopedTopics: ["kinderhaus:leadership-summary"],
   sensitivePayloadsAllowed: false,
 };
 

@@ -112,13 +112,225 @@ def test_runtime_output_schema_is_valid(runtime_output_schema: dict[str, Any]) -
     assert runtime_output_schema["$id"] == "urn:scas:schema:runtime-output:0.1.0"
 
 
-def test_demo_tenant_registry_example_matches_schema(
+def active_or_setup_tenant_examples() -> list[dict[str, Any]]:
+    tenants = [
+        load_json(path)
+        for path in sorted((REPO_ROOT / "examples" / "tenants").glob("*.json"))
+    ]
+    return [tenant for tenant in tenants if tenant["status"] in {"active", "setup"}]
+
+
+def runtime_profile_contract_fixture(tenant: dict[str, Any]) -> dict[str, Any]:
+    tenant_id = tenant["tenant_id"]
+    area_id = tenant["area_id"]
+    role = tenant["role_bundles"][0]
+    hostname = tenant["hostnames"][0]
+    membership_id = f"membership-{tenant_id}"
+    allowed_data_sources = [
+        grant["data_source_id"] for grant in role["data_source_grants"]
+    ]
+    allowed_capabilities = role["capability_grants"]
+
+    return {
+        "id": f"profile-{tenant_id}-runtime-contract",
+        "profile_version": "0.1.0",
+        "profile_generation": 1,
+        "parent_profile_id": None,
+        "recomposition_reason": None,
+        "task_type": "tenant-contract-validation",
+        "objective": "Validate tenant runtime contract compatibility.",
+        "risk_level": "low",
+        "auth_context": {
+            "principal": {"id": "contract-validator", "type": "system"},
+            "roles": [],
+            "authorization_policies": ["tenant-profile-validator"],
+        },
+        "tenant_context": {
+            "tenant_id": tenant_id,
+            "area_id": area_id,
+            "hostname": hostname["hostname"],
+            "membership_id": membership_id,
+            "role_ids": [role["id"]],
+            "role_derivation": {
+                "grant_source": "tenant-role-bundles",
+                "direct_user_grants_allowed": False,
+                "capabilities_derive_from_roles": True,
+                "data_sources_derive_from_roles": True,
+            },
+            "allowed_role_data_sources": allowed_data_sources,
+            "allowed_role_capabilities": allowed_capabilities,
+        },
+        "tenant_authority": {
+            "tenant_id": tenant_id,
+            "area_id": area_id,
+            "hostname": {
+                "tenant_id": tenant_id,
+                "hostname": hostname["hostname"],
+                "purpose": hostname["purpose"],
+                "expected_origin": hostname["expected_origin"] or "not-configured",
+                "cloudflare_proxy_expected": hostname["cloudflare_proxy_expected"],
+            },
+            "status": tenant["status"],
+            "direct_user_grants_allowed": False,
+            "membership": {
+                "id": membership_id,
+                "tenant_id": tenant_id,
+                "principal_id": "contract-validator",
+                "status": "active",
+                "role_ids": [role["id"]],
+            },
+            "role_bundles": [
+                {
+                    "id": role["id"],
+                    "tenant_id": tenant_id,
+                    "capability_grants": allowed_capabilities,
+                    "data_source_grants": role["data_source_grants"],
+                    "derived_runtime_modules": role["derived_runtime_modules"],
+                }
+            ],
+            "data_sources": [
+                {
+                    "id": data_source["id"],
+                    "tenant_id": data_source["tenant_id"],
+                    "status": data_source["status"],
+                }
+                for data_source in tenant["data_sources"]
+            ],
+            "allowed_knowledge_scopes": tenant["knowledge"]["indexes"],
+            "allowed_data_scopes": allowed_data_sources,
+            "allowed_memory_scopes": [tenant["memory"]["area_brain_id"]],
+        },
+        "human_review": {
+            "required": False,
+            "status": "not_required",
+            "reason": "Contract fixture only.",
+            "ambiguous_task_types": [],
+            "classification_confidence": "high",
+            "classification_reasons": ["Tenant fixture compatibility validation."],
+            "allowed_before_approval": [],
+        },
+        "instructions": ["tenant-contract-validation"],
+        "skills": [],
+        "skill_execution_roles": {
+            "runtime_skills": [],
+            "non_runtime_skills": [],
+            "shared_skills": [],
+        },
+        "tools": [],
+        "knowledge_scopes": [],
+        "data_scopes": [],
+        "memory_scopes": [],
+        "policies": ["strict-tenant-isolation"],
+        "validators": ["tenant-profile-validator"],
+        "module_versions": {
+            "tenant-contract-validation": "0.1.0",
+            "strict-tenant-isolation": "0.1.0",
+            "tenant-profile-validator": "0.1.0",
+        },
+        "limits": {
+            "max_tool_calls": 0,
+            "max_tokens": 0,
+            "max_duration_seconds": 0,
+            "max_data_reads": 0,
+            "max_memory_ops": 0,
+            "max_recompositions": 0,
+        },
+        "failure_policy": {
+            "on_composer_failure": "fail_closed",
+            "on_validator_failure": "fail_closed",
+            "on_policy_denial": "fail_closed",
+            "on_budget_exhausted": "fail_closed",
+        },
+        "observability": {
+            "trace_id": f"trace-{tenant_id}-runtime-contract",
+            "log_level": "info",
+            "capture_events": ["profile_validated"],
+            "redact_sensitive_data": True,
+        },
+    }
+
+
+def runtime_queue_summary_contract_fixture(tenant: dict[str, Any]) -> dict[str, Any]:
+    tenant_id = tenant["tenant_id"]
+    return {
+        "id": f"queue-{tenant_id}-runtime-contract",
+        "task_id": f"task-{tenant_id}-runtime-contract",
+        "tenant_id": tenant_id,
+        "area_id": tenant["area_id"],
+        "status": "queued",
+        "scheduled_at": "2026-05-22T00:00:00Z",
+        "attempts": 0,
+        "max_attempts": 3,
+        "run_id": None,
+    }
+
+
+def runtime_plane_contract_fixture(tenant: dict[str, Any]) -> dict[str, Any]:
+    tenant_id = tenant["tenant_id"]
+    queue_item = {
+        **runtime_queue_summary_contract_fixture(tenant),
+        "environment": "dev",
+        "queue_name": "default",
+        "priority": 0,
+        "claimed_by": None,
+        "claimed_at": None,
+        "claimed_until": None,
+        "lease_expires_at": None,
+        "heartbeat_at": None,
+        "attempt_id": None,
+        "task_payload_uri": f"artifact://tenant-contract/{tenant_id}/task.json",
+        "composition_context_uri": None,
+        "last_error": None,
+        "idempotency_key": f"tenant-contract:{tenant_id}",
+        "created_at": "2026-05-22T00:00:00Z",
+        "updated_at": "2026-05-22T00:00:00Z",
+    }
+    return {
+        "contract_version": "0.2.0",
+        "environment": "dev",
+        "records": {
+            "runtime_queue_items": [queue_item],
+            "runtime_run_attempts": [],
+            "runtime_run_claims": [],
+            "runtime_dead_letters": [],
+            "runtime_quota_reservations": [],
+            "runtime_runs": [],
+            "runtime_steps": [],
+            "runtime_events": [],
+            "runtime_checkpoints": [],
+            "tool_invocations": [],
+            "validation_results": [],
+            "memory_candidates": [],
+        },
+    }
+
+
+def test_active_or_setup_tenant_ids_pass_runtime_contract_schemas(
+    profile_schema: dict[str, Any],
+    runtime_api_schema: dict[str, Any],
+    runtime_plane_schema: dict[str, Any],
+) -> None:
+    runtime_queue_summary_schema = schema_ref(
+        runtime_api_schema,
+        "#/$defs/runtimeQueueItemSummary",
+    )
+
+    for tenant in active_or_setup_tenant_examples():
+        assert_valid(profile_schema, runtime_profile_contract_fixture(tenant))
+        assert_valid(
+            runtime_queue_summary_schema,
+            runtime_queue_summary_contract_fixture(tenant),
+        )
+        assert_valid(runtime_plane_schema, runtime_plane_contract_fixture(tenant))
+
+
+def test_neutral_tenant_registry_example_matches_schema(
     tenant_registry_schema: dict[str, Any],
     tenant_registry_example: dict[str, Any],
 ) -> None:
     assert_valid(tenant_registry_schema, tenant_registry_example)
     assert_tenant_registry_references_are_valid(tenant_registry_example)
-    assert tenant_registry_example["tenant_id"] == "demo-tenant"
+    assert tenant_registry_example["tenant_id"] == "tenant-under-test"
     assert tenant_registry_example["admin_model"]["assignment_model"] == (
         "users-receive-roles-only"
     )

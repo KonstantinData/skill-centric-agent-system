@@ -37,7 +37,7 @@ is satisfied for the target environment.
 | Environment separation | Cloudflare and Hetzner resources are separated for `staging` and `prod`; secrets, databases, artifact roots, queues, indexes, and roles do not share mutable production state with `dev`. |
 | Control Plane readiness | Cloudflare Worker, D1, R2, Vectorize, Queues, KV, AI Gateway, bearer auth, endpoint-scoped tokens, migrations, seed state, and rollback path are verified. |
 | Runtime Plane readiness | Hetzner PostgreSQL, runtime roles, migrations, artifact root, Flight Recorder writes, retention planning, backup, restore, and disable paths are verified. |
-| Runtime queue readiness | `docs/reference/runtime-run-queue-contract.md` is current; queue migrations are applied; queue worker smoke, concurrency smoke, tenant isolation queue tests, cancellation, retry/DLQ, quota exhaustion, stale-claim recovery, and profile-sealing evidence pass. |
+| Runtime queue readiness | `docs/reference/runtime-run-queue-contract.md` is current; queue migrations are applied; queue worker smoke, concurrency smoke, tenant isolation queue tests, cancellation, retry/DLQ, quota exhaustion, stale-claim recovery, profile-sealing evidence, and per-tenant Tenant Runtime Evidence pass. |
 | Live runtime gates | Generic E2E, retrieval and Vectorize smoke, AI Gateway live smoke, Postgres concurrency smoke, and retention dry-run/apply evidence pass for the target environment. |
 | Pre-canary safety gate | Invariant replay and shadow regression thresholds pass together with explicit remediation output on failure. |
 | Automatic rollback rules | Failed pre-canary gate requires rollback to signed and verified last-known-good descriptor/policy versions. |
@@ -72,6 +72,11 @@ evidence in this policy before any production-ready claim can be made.
   runbooks.
 - Evidence must not include secret values, raw runtime artifacts, raw tool
   outputs, private keys, bearer tokens, or provider credentials.
+- Tenant Runtime Evidence must follow
+  `schemas/tenant-runtime-evidence.schema.json`. Dev fixtures may use
+  `certification_level = "dev-fixture"`; staging and production readiness
+  require `certification_level = "target-environment"` with target-environment
+  Hetzner Runtime Plane artifact references.
 - A failed gate cannot be replaced by a narrative statement.
 - A waiver must name the gate, risk, owner, expiry condition, and compensating
   control.
@@ -176,6 +181,9 @@ The evidence artifact uses contract version `0.5.0` and includes:
   `filesystem-write` slice,
 - scheduled runtime retention cleanup as a passed repository gate once the
   workflow and workflow tests are present,
+- tenant runtime evidence as a passed repository gate once every `setup` or
+  `active` tenant has sanitized queue, worker, quota, DLQ, and stale-claim
+  coverage,
 - production telemetry and alerting as a passed repository gate once the
   aggregate policy, snapshot, evaluator, and tests are present,
 - security hardening and threat-model closure as a passed repository gate once

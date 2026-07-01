@@ -16,7 +16,7 @@ neutral from the start so that later native iOS/Android delivery does not
 require a second product implementation or a full UI rewrite.
 
 This affects all tenant-facing workbench surfaces, starting with
-`tenant_kinderhaus` on `kinderhaus-heuschrecken.cloud`.
+`kinderhaus` on `kinderhaus-heuschrecken.cloud`.
 
 ## Decision
 

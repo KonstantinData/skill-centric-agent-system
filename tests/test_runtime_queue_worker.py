@@ -64,7 +64,13 @@ def mismatched_area_context_response() -> dict[str, Any]:
     return response
 
 
-def tenant_task(task_id: str, *, tenant_id: str = "demo-tenant") -> dict[str, Any]:
+def tenant_hostname(tenant_id: str) -> str:
+    if tenant_id == "tenant-under-test":
+        return "tenant-under-test.example.invalid"
+    return f"{tenant_id}.example.invalid"
+
+
+def tenant_task(task_id: str, *, tenant_id: str = "tenant-under-test") -> dict[str, Any]:
     return {
         "id": task_id,
         "objective": "Research the tenant website and summarize current context.",
@@ -73,7 +79,7 @@ def tenant_task(task_id: str, *, tenant_id: str = "demo-tenant") -> dict[str, An
                 "principal_id": "tenant-user",
                 "tenant_id": tenant_id,
                 "area_id": tenant_id,
-                "tenant_hostname": f"{tenant_id}.example.invalid",
+                "tenant_hostname": tenant_hostname(tenant_id),
                 "membership_id": f"{tenant_id}-membership-user",
                 "roles": [f"{tenant_id}-researcher"],
                 "control_plane_principal_kind": "user",
@@ -86,7 +92,7 @@ def tenant_task(task_id: str, *, tenant_id: str = "demo-tenant") -> dict[str, An
 
 
 def tenant_runtime_task() -> dict[str, Any]:
-    return tenant_task("task-demo-tenant-research")
+    return tenant_task("task-tenant-under-test-research")
 
 
 def test_runtime_queue_worker_processes_queued_run(tmp_path: Path) -> None:
@@ -109,7 +115,7 @@ def test_runtime_queue_worker_processes_queued_run(tmp_path: Path) -> None:
     assert result is not None
     assert result.queue_id == queue_item["id"]
     assert result.status == "succeeded"
-    assert result.run_id == "run-task-demo-tenant-research-attempt-1"
+    assert result.run_id == "run-task-tenant-under-test-research-attempt-1"
     assert store.runtime_queue_items[queue_item["id"]]["status"] == "succeeded"
     assert store.runtime_runs[result.run_id]["status"] == "succeeded"
     assert result.attempt_id is not None
@@ -191,16 +197,16 @@ def test_runtime_queue_enqueue_is_idempotent(tmp_path: Path) -> None:
 def test_runtime_queue_claim_respects_tenant_running_limit(tmp_path: Path) -> None:
     store = InMemoryRuntimeStore()
     manager = RuntimeQueueManager(store=store, artifacts=JsonArtifactStore(tmp_path))
-    first = manager.enqueue(tenant_task("task-demo-tenant-a"), idempotency_key="tenant-a")
-    second = manager.enqueue(tenant_task("task-demo-tenant-b"), idempotency_key="tenant-b")
+    first = manager.enqueue(tenant_task("task-tenant-under-test-a"), idempotency_key="tenant-a")
+    second = manager.enqueue(tenant_task("task-tenant-under-test-b"), idempotency_key="tenant-b")
 
     claimed = manager.claim_next(
         worker_id="worker-a",
-        config=RuntimeQueueConfig(tenant_running_limits={"demo-tenant": 1}),
+        config=RuntimeQueueConfig(tenant_running_limits={"tenant-under-test": 1}),
     )
     blocked = manager.claim_next(
         worker_id="worker-b",
-        config=RuntimeQueueConfig(tenant_running_limits={"demo-tenant": 1}),
+        config=RuntimeQueueConfig(tenant_running_limits={"tenant-under-test": 1}),
     )
 
     assert claimed is not None
@@ -478,8 +484,8 @@ def test_runtime_api_enforces_tenant_scope_for_queue_operations(tmp_path: Path) 
     )
     principal = RuntimeApiPrincipal(
         principal_id="tenant-user",
-        tenant_id="demo-tenant",
-        area_id="demo-tenant",
+        tenant_id="tenant-under-test",
+        area_id="tenant-under-test",
     )
 
     response = service.start_run(
@@ -494,7 +500,7 @@ def test_runtime_api_enforces_tenant_scope_for_queue_operations(tmp_path: Path) 
 
     assert response["kind"] == "start_run_response"
     assert response["response_mode"] == "queued"
-    assert response["queue_item"]["tenant_id"] == "demo-tenant"
+    assert response["queue_item"]["tenant_id"] == "tenant-under-test"
 
 
 def test_runtime_api_returns_result_for_immediate_run(tmp_path: Path) -> None:
@@ -506,8 +512,8 @@ def test_runtime_api_returns_result_for_immediate_run(tmp_path: Path) -> None:
     )
     principal = RuntimeApiPrincipal(
         principal_id="tenant-user",
-        tenant_id="demo-tenant",
-        area_id="demo-tenant",
+        tenant_id="tenant-under-test",
+        area_id="tenant-under-test",
     )
     start_response = service.start_run(
         {
@@ -575,7 +581,7 @@ def test_runtime_queue_worker_enforces_tenant_token_quota(tmp_path: Path) -> Non
         repository_root=str(REPO_ROOT),
         config=RuntimeQueueConfig(
             max_attempts=1,
-            tenant_token_limits_per_minute={"demo-tenant": 1},
+            tenant_token_limits_per_minute={"tenant-under-test": 1},
         ),
     ).process_one()
 
@@ -603,7 +609,7 @@ def test_runtime_queue_counts_finalized_quota_in_same_window(tmp_path: Path) -> 
     )
     config = RuntimeQueueConfig(
         max_attempts=1,
-        tenant_token_limits_per_minute={"demo-tenant": 60_000},
+        tenant_token_limits_per_minute={"tenant-under-test": 60_000},
     )
 
     first_result = RuntimeQueueWorker(
@@ -656,7 +662,7 @@ def test_runtime_queue_metrics_snapshot_covers_operational_signals(tmp_path: Pat
             "queue_id": str(dead_lettered_item["id"]),
             "run_id": None,
             "attempt_id": None,
-            "tenant_id": "demo-tenant",
+            "tenant_id": "tenant-under-test",
             "error_type": "RuntimeQueueError",
             "error_message": "boom",
             "created_at": "2026-07-01T09:00:00Z",
@@ -665,12 +671,12 @@ def test_runtime_queue_metrics_snapshot_covers_operational_signals(tmp_path: Pat
 
     metrics = runtime_queue_metrics(store.as_runtime_plane_recordset())
 
-    assert metrics["queue_depth_by_tenant_status"]["demo-tenant"]["queued"] == 1
-    assert metrics["queue_depth_by_tenant_status"]["demo-tenant"]["claiming"] == 1
-    assert metrics["dead_letters_by_tenant"]["demo-tenant"] == 1
-    assert metrics["active_claims_by_tenant"]["demo-tenant"] == 1
+    assert metrics["queue_depth_by_tenant_status"]["tenant-under-test"]["queued"] == 1
+    assert metrics["queue_depth_by_tenant_status"]["tenant-under-test"]["claiming"] == 1
+    assert metrics["dead_letters_by_tenant"]["tenant-under-test"] == 1
+    assert metrics["active_claims_by_tenant"]["tenant-under-test"] == 1
     assert metrics["claim_latency_seconds"]["count"] == 1
-    assert claimed_item["tenant_id"] == "demo-tenant"
+    assert claimed_item["tenant_id"] == "tenant-under-test"
 
 
 def test_runtime_queue_load_smoke_claims_fairly_across_tenants(tmp_path: Path) -> None:
@@ -772,8 +778,8 @@ def test_postgres_runtime_store_claims_queue_items_with_skip_locked() -> None:
     queued_row = {
         "id": "queue-example",
         "task_id": "task-example",
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
         "environment": "dev",
         "queue_name": "default",
         "status": "queued",
@@ -845,7 +851,7 @@ def test_postgres_runtime_store_claims_queue_items_with_skip_locked() -> None:
         worker_id="worker-a",
         claimed_at="2026-07-01T09:01:00Z",
         lease_expires_at="2026-07-01T09:06:00Z",
-        tenant_running_limits={"demo-tenant": 1},
+        tenant_running_limits={"tenant-under-test": 1},
     )
 
     assert claimed is not None
@@ -862,8 +868,8 @@ def test_postgres_runtime_store_returns_persisted_queue_rows() -> None:
     persisted = {
         "id": "queue-example",
         "task_id": "task-example",
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
         "environment": "dev",
         "queue_name": "default",
         "status": "queued",

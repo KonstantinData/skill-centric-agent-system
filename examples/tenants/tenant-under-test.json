@@ -1,13 +1,13 @@
 {
   "contract_version": "0.1.0",
-  "tenant_id": "inactive-demo-tenant",
-  "area_id": "inactive-demo-tenant",
-  "display_name": "Inactive Demo Tenant",
+  "tenant_id": "tenant-under-test",
+  "area_id": "tenant-under-test",
+  "display_name": "Tenant Under Test",
   "legal_profile": {
-    "legal_name": "Inactive Demo Tenant GmbH",
+    "legal_name": "Tenant Under Test GmbH",
     "registered_address": {
       "street": "Example Street",
-      "street_number": "2",
+      "street_number": "1",
       "postal_code": "10115",
       "city": "Example City",
       "country": "Germany"
@@ -20,28 +20,28 @@
     ],
     "commercial_register": {
       "register_court": "Example Register Court",
-      "registration_number": "HRB 111111"
+      "registration_number": "HRB 000000"
     },
     "tax": {
       "tax_number": null,
-      "vat_id": "DE111111111",
+      "vat_id": "DE000000000",
       "tax_number_sensitivity": "restricted-business-data"
     }
   },
   "contact_profile": {
-    "email": "admin-inactive@example.invalid",
+    "email": "admin@example.invalid",
     "phone": null,
-    "website": "https://inactive.example.invalid"
+    "website": "https://example.invalid"
   },
   "hostnames": [
     {
-      "hostname": "inactive-demo-tenant.example.invalid",
+      "hostname": "tenant-under-test.example.invalid",
       "purpose": "primary-ui",
-      "expected_origin": "192.0.2.11",
+      "expected_origin": "192.0.2.10",
       "cloudflare_proxy_expected": true
     }
   ],
-  "status": "disabled",
+  "status": "setup",
   "default_locale": "de-DE",
   "admin_model": {
     "admin_routes": [
@@ -53,32 +53,32 @@
     "initial_owner": null
   },
   "memory": {
-    "area_brain_id": "brain-area-inactive-demo-tenant",
+    "area_brain_id": "brain-area-tenant-under-test",
     "shared_promotion_allowed": false
   },
   "knowledge": {
-    "scope_id": "knowledge-inactive-demo-tenant",
+    "scope_id": "knowledge-tenant-under-test",
     "indexes": [
-      "knowledge-inactive-demo-tenant-docs"
+      "knowledge-tenant-under-test-docs"
     ]
   },
   "data_sources": [
     {
-      "id": "inactive-demo-tenant-website",
-      "tenant_id": "inactive-demo-tenant",
+      "id": "tenant-under-test-website",
+      "tenant_id": "tenant-under-test",
       "type": "website",
-      "display_name": "Inactive Demo Tenant Website",
+      "display_name": "Tenant Under Test Website",
       "access_modes": [
         "read"
       ],
-      "status": "disabled",
+      "status": "planned",
       "sensitivity": "public"
     }
   ],
   "role_bundles": [
     {
-      "id": "inactive-demo-tenant-owner",
-      "tenant_id": "inactive-demo-tenant",
+      "id": "tenant-under-test-owner",
+      "tenant_id": "tenant-under-test",
       "display_name": "Tenant Owner",
       "role_type": "system",
       "assignable_to_users": true,
@@ -88,7 +88,7 @@
       ],
       "data_source_grants": [
         {
-          "data_source_id": "inactive-demo-tenant-website",
+          "data_source_id": "tenant-under-test-website",
           "access_modes": [
             "read"
           ]
@@ -102,8 +102,12 @@
           "research-intake",
           "tenant-admin"
         ],
-        "tools": [],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
         "policies": [
+          "no-destructive-commands",
           "strict-tenant-isolation",
           "no-cross-area-access",
           "no-cross-tenant-access"
@@ -113,14 +117,59 @@
           "knowledge-scope-validator",
           "no-cross-area-scope-validator",
           "no-cross-tenant-scope-validator",
+          "research-output-contract",
           "tenant-profile-validator",
           "user-permission-validator"
+        ]
+      }
+    },
+    {
+      "id": "tenant-under-test-researcher",
+      "tenant_id": "tenant-under-test",
+      "display_name": "Researcher",
+      "role_type": "tenant-custom",
+      "assignable_to_users": true,
+      "capability_grants": [
+        "research"
+      ],
+      "data_source_grants": [
+        {
+          "data_source_id": "tenant-under-test-website",
+          "access_modes": [
+            "read"
+          ]
+        }
+      ],
+      "derived_runtime_modules": {
+        "skills": [
+          "research-context-synthesis"
+        ],
+        "workflows": [
+          "research-intake"
+        ],
+        "tools": [
+          "filesystem-list",
+          "filesystem-read"
+        ],
+        "policies": [
+          "no-destructive-commands",
+          "strict-tenant-isolation",
+          "no-cross-area-access",
+          "no-cross-tenant-access"
+        ],
+        "validators": [
+          "tenant-profile-validator",
+          "no-cross-tenant-scope-validator",
+          "no-cross-area-scope-validator",
+          "knowledge-scope-validator",
+          "research-output-contract"
         ]
       }
     }
   ],
   "policy_bundle": [
     "strict-tenant-isolation",
+    "no-cross-area-access",
     "no-cross-tenant-access",
     "fail-closed-unknown-scope"
   ],

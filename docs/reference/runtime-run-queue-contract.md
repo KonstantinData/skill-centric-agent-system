@@ -151,3 +151,29 @@ The local operator surface exposes the same aggregate signal shape through:
 ```bash
 scas-runtime queue metrics --storage-mode postgres --database-url "$SCAS_RUNTIME_DATABASE_URL"
 ```
+
+## Tenant Runtime Evidence
+
+Every `setup` or `active` tenant must have a sanitized Tenant Runtime Evidence
+record before tenant runtime readiness can be claimed. The machine-readable
+contract is `schemas/tenant-runtime-evidence.schema.json`; fixture examples
+live in `examples/runtime-evidence/`.
+
+Each record must prove, per tenant:
+
+- queue status coverage,
+- worker claim and release coverage,
+- token/tool-call quota reservation coverage,
+- DLQ coverage, including an explicit zero count when no dead letters exist,
+- stale-claim recovery coverage, including an explicit zero count when no
+  stale claim exists,
+- tenant-registry match and cross-tenant contamination checks,
+- runtime profile, Runtime API queue summary, and Hetzner Runtime Plane schema
+  compatibility,
+- sanitization: no raw traces, raw tool outputs, secrets, or personal data.
+
+Dev fixtures use `evidence_scope = "fixture"` and
+`certification_level = "dev-fixture"`. They prove the repository contract and
+test gate only. Staging and production evidence must use
+`evidence_scope = "target-environment"` and must reference real
+target-environment Hetzner Runtime Plane evidence artifacts.

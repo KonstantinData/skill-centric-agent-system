@@ -207,13 +207,13 @@ def test_dkh_ios_has_no_foreign_tenant_product_content() -> None:
     combined = ios_text().lower()
 
     forbidden_fragments = (
-        "tenant_kinderhaus",
+        "kinderhaus",
         "kinderhaus-heuschrecken",
         "khh workbench",
         "khh-ios",
         "liqui" + "sto",
         "scho" + "ber five-step",
-        "demo-tenant",
+        "tenant-under-test",
     )
     for fragment in forbidden_fragments:
         assert fragment not in combined

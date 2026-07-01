@@ -91,11 +91,11 @@ def test_task_analyzer_emits_tenant_context_for_tenant_scoped_request() -> None:
     task = deepcopy(load_json(TASK_EXAMPLE_PATH))
     task["context"]["auth"] = {
         "principal_id": "tenant-user",
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
-        "tenant_hostname": "demo-tenant.example.invalid",
-        "membership_id": "demo-tenant-membership-user",
-        "roles": ["demo-tenant-reviewer"],
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
+        "tenant_hostname": "tenant-under-test.example.invalid",
+        "membership_id": "tenant-under-test-membership-user",
+        "roles": ["tenant-under-test-reviewer"],
         "control_plane_principal_kind": "user",
         "control_plane_principal_id": "tenant-user",
     }
@@ -110,10 +110,10 @@ def test_task_analyzer_emits_tenant_context_for_tenant_scoped_request() -> None:
         "id": "tenant-user",
     }
     assert request["tenant_context"] == {
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
-        "hostname": "demo-tenant.example.invalid",
-        "membership_id": "demo-tenant-membership-user",
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
+        "hostname": "tenant-under-test.example.invalid",
+        "membership_id": "tenant-under-test-membership-user",
     }
 
 
@@ -211,18 +211,18 @@ def test_profile_composer_emits_runtime_profile_from_control_plane_context() -> 
 
 def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
     task = {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -233,18 +233,18 @@ def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
     profile = RuntimeProfileComposer().compose(analyzed, context_response)
 
     assert profile["tenant_context"] == {
-        "tenant_id": "demo-tenant",
-        "area_id": "demo-tenant",
-        "hostname": "demo-tenant.example.invalid",
-        "membership_id": "demo-tenant-membership-user",
-        "role_ids": ["demo-tenant-researcher"],
+        "tenant_id": "tenant-under-test",
+        "area_id": "tenant-under-test",
+        "hostname": "tenant-under-test.example.invalid",
+        "membership_id": "tenant-under-test-membership-user",
+        "role_ids": ["tenant-under-test-researcher"],
         "role_derivation": {
             "grant_source": "tenant-role-bundles",
             "direct_user_grants_allowed": False,
             "capabilities_derive_from_roles": True,
             "data_sources_derive_from_roles": True,
         },
-        "allowed_role_data_sources": ["demo-tenant-website"],
+        "allowed_role_data_sources": ["tenant-under-test-website"],
         "allowed_role_capabilities": ["research"],
     }
     assert profile["tenant_authority"] == context_response["tenant_authority"]
@@ -252,18 +252,18 @@ def test_profile_composer_derives_tenant_context_from_auth_claims() -> None:
 
 def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None:
     task = {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -273,12 +273,12 @@ def test_profile_composer_enforces_tenant_authority_for_tenant_profile() -> None
     analyzed = TaskAnalyzer().analyze(task)
     profile = RuntimeProfileComposer().compose(analyzed, context_response)
 
-    assert profile["tenant_context"]["tenant_id"] == "demo-tenant"
-    assert profile["tenant_context"]["membership_id"] == "demo-tenant-membership-user"
+    assert profile["tenant_context"]["tenant_id"] == "tenant-under-test"
+    assert profile["tenant_context"]["membership_id"] == "tenant-under-test-membership-user"
     assert profile["skills"] == ["research-context-synthesis"]
-    assert profile["knowledge_scopes"] == ["knowledge-demo-tenant-docs"]
-    assert profile["data_scopes"] == ["demo-tenant-website-read"]
-    assert profile["tenant_context"]["allowed_role_data_sources"] == ["demo-tenant-website"]
+    assert profile["knowledge_scopes"] == ["knowledge-tenant-under-test-docs"]
+    assert profile["data_scopes"] == ["tenant-under-test-website-read"]
+    assert profile["tenant_context"]["allowed_role_data_sources"] == ["tenant-under-test-website"]
     assert profile["tenant_context"]["allowed_role_capabilities"] == ["research"]
     assert profile["tenant_authority"]["membership"]["principal_id"] == "tenant-user"
 
@@ -345,18 +345,18 @@ def test_profile_composer_fails_closed_on_invalid_tenant_authority(
     message_part: str,
 ) -> None:
     task = {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -372,18 +372,18 @@ def test_profile_composer_fails_closed_on_invalid_tenant_authority(
 
 def test_profile_composer_requires_tenant_authority_for_tenant_profile() -> None:
     task = {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },

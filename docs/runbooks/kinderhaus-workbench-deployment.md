@@ -5,7 +5,7 @@ Heuschrecken workbench.
 
 ## Tenant Identity
 
-- Tenant ID: `tenant_kinderhaus`
+- Tenant ID: `kinderhaus`
 - Area ID: `kinderhaus-heuschrecken`
 - Primary hostname: `kinderhaus-heuschrecken.cloud`
 - UI app: `khh-workbench`
@@ -18,10 +18,11 @@ The browser Workbench remains the deployed `kinderhaus-heuschrecken.cloud`
 surface. The native iOS app is built and released through Xcode/TestFlight/App
 Store workflows and must not change this web deployment path.
 
-`tenant_kinderhaus` intentionally uses the system tenant identifier with an
-underscore. Tenant registry and CRM skill pack schemas allow underscores for
-tenant identifiers, while skill, workflow, capability, policy, and validator IDs
-continue to use the existing hyphenated module ID style.
+`kinderhaus` is the canonical tenant identifier. It intentionally omits the
+generic `tenant-` prefix so tenant identity, runtime profile validation, queue
+records, and deployment inputs use the same stable ID. Skill, workflow,
+capability, policy, and validator IDs continue to use the existing hyphenated
+module ID style.
 
 ## Product Boundary
 
@@ -49,7 +50,7 @@ The tenant UI deploy workflow supports KHH through:
 - `SCAS_PROD_TENANT_KINDERHAUS_OWNER_PRINCIPAL_ID`
 
 The workflow allowlist only permits Cloudflare DNS sync for
-`tenant_kinderhaus:kinderhaus-heuschrecken.cloud`. Token values must never be
+`kinderhaus:kinderhaus-heuschrecken.cloud`. Token values must never be
 written to repository files, Notion, logs, or generated evidence.
 
 When `auth_mode=required`, the deploy workflow fails closed even if the
@@ -82,7 +83,7 @@ the previous managed config and the disabled entries before failing.
 
 Use the existing manual `Tenant UI Deploy` GitHub Actions workflow with:
 
-- `tenant_id`: `tenant_kinderhaus`
+- `tenant_id`: `kinderhaus`
 - `hostname`: `kinderhaus-heuschrecken.cloud`
 - `ui_app`: `khh-workbench`
 - `apply_deploy`: `false`
@@ -97,6 +98,7 @@ npm --prefix apps/khh-workbench run lint
 npm --prefix apps/khh-workbench run build
 npm --prefix apps/khh-mobile-proof run check
 python -m pytest tests/test_khh_workbench_ui.py tests/test_tenant_hostname_resolution.py tests/test_tenant_isolation_matrix.py tests/test_contract_schema_examples.py
+python -m pytest tests/test_tenant_runtime_evidence.py
 python -m pytest tests/test_platform_neutral_app_readiness.py
 python -m pytest tests/test_security_governance.py tests/test_github_actions_workflows.py
 python -m ruff check .
@@ -106,6 +108,12 @@ For applied deployments with `auth_mode=required`, the public smoke check must
 observe a Cloudflare Access redirect (`302` or `303`) or `403`. Publicly serving
 the KHH cockpit content is a failed gate unless the workflow is explicitly run
 in a non-required auth mode.
+
+KHH tenant runtime readiness also requires Tenant Runtime Evidence for
+`kinderhaus`. The committed dev fixture in `examples/runtime-evidence/` proves
+schema and gate coverage only. Staging or production readiness requires
+target-environment evidence with queue, worker, quota, DLQ, and stale-claim
+signals captured from the Hetzner Runtime Plane.
 
 ## Cloudflare Access Allow-List
 

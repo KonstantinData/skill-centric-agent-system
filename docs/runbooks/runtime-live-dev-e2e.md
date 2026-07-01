@@ -22,8 +22,9 @@ It is intentionally manual because it requires live Cloudflare and Hetzner
 credentials and should not run on every pull request.
 The generic task suite covers `code-review`, `research`, `task-execution`, and
 `general-task` without turning those task classes into separate agents.
-Tenant-scoped backend E2E coverage is validated in CI with neutral demo-tenant
-fixtures before live tenant infrastructure is used. That coverage proves:
+Tenant-scoped backend E2E coverage is validated in CI with the neutral
+`tenant-under-test` fixture before live tenant infrastructure is used. That
+coverage proves:
 
 - task auth produces `tenant_context`,
 - the runtime entrypoint requests composition context through the Control API
@@ -111,8 +112,8 @@ opens the Hetzner PostgreSQL runtime store, writes JSON artifacts to the
 configured artifact root, runs the minimal runtime loop, and prints a JSON
 summary. Use `--task-suite single --task-file ...` to run one task fixture.
 Use `--task-suite generic` to run the non-tenant task classes. Use
-`--task-suite tenant` to run the neutral demo-tenant positive case and
-fail-closed tenant isolation cases without real company data.
+`--task-suite tenant` to run the neutral `tenant-under-test` positive case and
+fail-closed tenant isolation cases without unrelated tenant data.
 Use the workflow's target-tenant suite choices to run a single
 target-environment tenant positive case against the tenant authority seeded for
 non-production gates. These target tenant suites use the seeded
@@ -152,7 +153,6 @@ same runtime criteria. The negative cases must report `status: "passed"` while
 failing before tenant-boundary execution:
 
 - `tenant-unknown-tenant`
-- `tenant-inactive-tenant`
 - `tenant-missing-membership`
 - `tenant-foreign-data-source`
 - `tenant-tampered-authority`

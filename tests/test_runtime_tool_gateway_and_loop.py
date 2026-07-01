@@ -56,18 +56,18 @@ def load_artifact(root: Path, uri: str) -> dict[str, Any]:
 
 def tenant_research_task() -> dict[str, Any]:
     return {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -103,7 +103,7 @@ def test_profile_enforcer_accepts_tenant_authority_sealed_profile() -> None:
 
     enforcer.validate_profile_for_runtime()
 
-    assert profile["tenant_authority"]["tenant_id"] == "demo-tenant"
+    assert profile["tenant_authority"]["tenant_id"] == "tenant-under-test"
     assert profile["tenant_authority"]["direct_user_grants_allowed"] is False
 
 
@@ -130,7 +130,7 @@ def test_profile_enforcer_accepts_tenant_authority_sealed_profile() -> None:
         ),
         (
             lambda profile: profile["tenant_context"]["role_ids"].append(
-                "demo-tenant-admin",
+                "tenant-under-test-admin",
             ),
             "tenant_role_not_in_membership",
         ),

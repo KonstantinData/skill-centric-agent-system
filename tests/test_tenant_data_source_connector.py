@@ -25,18 +25,18 @@ def load_json(path: Path) -> dict[str, object]:
 
 def tenant_research_profile() -> dict[str, object]:
     task = {
-        "id": "task-demo-tenant-research",
+        "id": "task-tenant-under-test-research",
         "objective": "Research the tenant website and summarize current context.",
         "context": {
             "auth": {
                 "principal_id": "tenant-user",
-                "tenant_id": "demo-tenant",
-                "area_id": "demo-tenant",
-                "tenant_hostname": "demo-tenant.example.invalid",
-                "membership_id": "demo-tenant-membership-user",
-                "roles": ["demo-tenant-researcher"],
-                "control_plane_principal_id": "demo-tenant-researcher",
-                "role_data_sources": ["demo-tenant-website"],
+                "tenant_id": "tenant-under-test",
+                "area_id": "tenant-under-test",
+                "tenant_hostname": "tenant-under-test.example.invalid",
+                "membership_id": "tenant-under-test-membership-user",
+                "roles": ["tenant-under-test-researcher"],
+                "control_plane_principal_id": "tenant-under-test-researcher",
+                "role_data_sources": ["tenant-under-test-website"],
                 "role_capabilities": ["research"],
             }
         },
@@ -48,10 +48,10 @@ def tenant_research_profile() -> dict[str, object]:
 def test_tenant_data_source_connector_returns_role_granted_source() -> None:
     connector = TenantDataSourceConnector(tenant_research_profile())
 
-    handle = connector.connect("demo-tenant-website")
+    handle = connector.connect("tenant-under-test-website")
 
-    assert handle.data_source_id == "demo-tenant-website"
-    assert handle.tenant_id == "demo-tenant"
+    assert handle.data_source_id == "tenant-under-test-website"
+    assert handle.tenant_id == "tenant-under-test"
     assert handle.access_mode == "read"
     assert handle.status == "active"
 
@@ -81,7 +81,7 @@ def test_tenant_data_source_connector_rejects_unavailable_sources(
         mutator(profile)
     connector = TenantDataSourceConnector(profile)
     source_id = "other-tenant-website" if message_part.startswith("not granted") else (
-        "demo-tenant-website"
+        "tenant-under-test-website"
     )
 
     with pytest.raises(TenantDataSourceError, match=message_part):
@@ -92,7 +92,7 @@ def test_tenant_data_source_connector_rejects_ungranted_access_mode() -> None:
     connector = TenantDataSourceConnector(tenant_research_profile())
 
     with pytest.raises(TenantDataSourceError, match="access mode is not granted"):
-        connector.connect("demo-tenant-website", access_mode="write")
+        connector.connect("tenant-under-test-website", access_mode="write")
 
 
 def test_tenant_data_source_connector_rejects_global_profile() -> None:
@@ -103,4 +103,4 @@ def test_tenant_data_source_connector_rejects_global_profile() -> None:
     connector = TenantDataSourceConnector(profile)
 
     with pytest.raises(TenantDataSourceError, match="tenant-scoped profile"):
-        connector.connect("demo-tenant-website")
+        connector.connect("tenant-under-test-website")

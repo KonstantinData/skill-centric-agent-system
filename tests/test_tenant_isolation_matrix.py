@@ -88,7 +88,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
     resolver = TenantHostnameResolver.from_paths(tenant_paths())
 
     expected = {
-        "demo-tenant.example.invalid": "demo-tenant",
+        "tenant-under-test.example.invalid": "tenant-under-test",
         "liquisto.cloud": "liquisto",
         "daskuechenhaus.condata.io": "daskuechenhaus",
         "kinderhaus-heuschrecken.cloud": "tenant_kinderhaus",
@@ -98,8 +98,11 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
         assert authority.tenant_id == tenant_id
         assert authority.hostname == hostname
 
+    disabled_tenant = load_tenant(TENANTS_DIR / "tenant-under-test.json")
+    disabled_tenant["status"] = "disabled"
+    resolver = TenantHostnameResolver([disabled_tenant])
     with pytest.raises(TenantHostnameResolutionError, match="not active"):
-        resolver.resolve("inactive-demo-tenant.example.invalid")
+        resolver.resolve("tenant-under-test.example.invalid")
 
 
 def test_seed_memberships_do_not_cross_tenant_role_boundaries() -> None:
@@ -132,20 +135,18 @@ def test_seeded_tenant_scopes_are_disjoint() -> None:
     seed = build_seed_records(module_paths(), tenant_paths=tenant_paths())
     module_names = {module["name"] for module in seed.modules}
 
+    assert "tenant-under-test-website-read" in module_names
     assert "liquisto-website-read" in module_names
-    assert "demo-tenant-website-read" in module_names
     assert "daskuechenhaus-website-read" in module_names
     assert "kinderhaus-public-website-read" in module_names
+    assert "knowledge-tenant-under-test-docs" in module_names
     assert "knowledge-liquisto-docs" in module_names
-    assert "knowledge-demo-tenant-docs" in module_names
     assert "knowledge-daskuechenhaus-docs" in module_names
     assert "knowledge-tenant_kinderhaus-docs" in module_names
-    assert "liquisto-website-read" != "demo-tenant-website-read"
+    assert "tenant-under-test-website-read" != "liquisto-website-read"
     assert "liquisto-website-read" != "daskuechenhaus-website-read"
-    assert "demo-tenant-website-read" != "daskuechenhaus-website-read"
-    assert "knowledge-liquisto-docs" != "knowledge-demo-tenant-docs"
+    assert "knowledge-tenant-under-test-docs" != "knowledge-liquisto-docs"
     assert "knowledge-liquisto-docs" != "knowledge-daskuechenhaus-docs"
-    assert "knowledge-demo-tenant-docs" != "knowledge-daskuechenhaus-docs"
     assert "knowledge-liquisto-docs" != "knowledge-tenant_kinderhaus-docs"
 
 

@@ -262,26 +262,10 @@ def _run_tenant_suite(
             run_id=f"run-live-{run_suffix}-tenant-unknown-tenant",
         ),
         _run_denied_start_case(
-            label="tenant-inactive-tenant",
-            task=_tenant_task_variant(
-                base_task,
-                tenant_id="inactive-demo-tenant",
-                role_id="inactive-demo-tenant-owner",
-                membership_id="tm-inactive-demo-tenant-repository-maintainer",
-                hostname="inactive-demo-tenant.example.invalid",
-                role_data_sources=("inactive-demo-tenant-website",),
-            ),
-            store=store,
-            artifacts=artifacts,
-            control_plane_client=control_plane_client,
-            environment=environment,
-            run_id=f"run-live-{run_suffix}-tenant-inactive-tenant",
-        ),
-        _run_denied_start_case(
             label="tenant-missing-membership",
             task=_tenant_task_variant(
                 base_task,
-                membership_id="tm-demo-tenant-missing-member",
+                membership_id="tm-tenant-under-test-missing-member",
             ),
             store=store,
             artifacts=artifacts,

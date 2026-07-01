@@ -17,7 +17,7 @@ shell.
 ## Native Contracts
 
 - Auth: Cloudflare Access/OIDC claims enter through a native adapter and must
-  match immutable `tenant_kinderhaus` and `kinderhaus-heuschrecken` scope.
+  match immutable `kinderhaus` and `kinderhaus-heuschrecken` scope.
 - Offline: read-only cached summaries only, with tenant-scoped storage keys and
   purge on logout.
 - Push: opt-in only, tenant-scoped topics, no sensitive payloads.

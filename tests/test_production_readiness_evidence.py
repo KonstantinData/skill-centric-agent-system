@@ -143,6 +143,10 @@ def test_evidence_only_dev_records_initial_productive_core() -> None:
         for result in payload["gate_results"]
     )
     assert any(
+        result["gate"] == "Tenant runtime evidence"
+        for result in payload["gate_results"]
+    )
+    assert any(
         result["gate"] == "Security hardening and threat model closure"
         for result in payload["gate_results"]
     )
