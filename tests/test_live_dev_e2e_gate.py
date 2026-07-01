@@ -7,6 +7,7 @@ import pytest
 from scripts.runtime.live_dev_e2e import (
     REDACTED_PRINCIPAL_ID,
     _composition_request_summary,
+    _run_denied_start_case,
     handler_binding_evidence_from_checkpoints,
 )
 from scripts.runtime.live_dev_e2e import (
@@ -93,6 +94,51 @@ def test_live_dev_e2e_extracts_handler_binding_evidence(tmp_path: Path) -> None:
             "handler_id": "git-diff-analysis@0.1.0",
         }
     ]
+
+
+def test_live_dev_e2e_treats_inactive_tenant_as_expected_denial(
+    tmp_path: Path,
+) -> None:
+    class InactiveTenantControlPlaneClient:
+        def composition_context(self, _request: object) -> dict[str, object]:
+            return {
+                "composition_status": "accepted",
+                "tenant_authority": {
+                    "tenant_id": "tenant-under-test",
+                    "area_id": "tenant-under-test",
+                    "status": "inactive",
+                },
+            }
+
+    result = _run_denied_start_case(
+        label="tenant-inactive",
+        task={
+            "id": "task-tenant-under-test-research",
+            "request": "Research the tenant-under-test website.",
+            "constraints": {"write_access": False, "destructive_actions": False},
+            "context": {
+                "auth": {
+                    "principal_id": "repository-maintainer",
+                    "principal_type": "user",
+                    "tenant_id": "tenant-under-test",
+                    "area_id": "tenant-under-test",
+                    "tenant_hostname": "tenant-under-test.example.invalid",
+                    "membership_id": "tm-tenant-under-test-repository-maintainer",
+                    "role_data_sources": ["tenant-under-test-website"],
+                    "role_capabilities": ["research"],
+                }
+            },
+        },
+        store=object(),
+        artifacts=JsonArtifactStore(tmp_path),
+        control_plane_client=InactiveTenantControlPlaneClient(),
+        environment="staging",
+        run_id="run-live-test-tenant-inactive",
+    )
+
+    assert result["status"] == "passed"
+    assert result["runtime_started"] is False
+    assert result["error_type"] == "RuntimeTenantStatusError"
 
 
 def test_live_dev_e2e_gate_requires_database_url(
