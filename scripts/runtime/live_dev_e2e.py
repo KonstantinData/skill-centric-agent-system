@@ -21,6 +21,7 @@ from skill_centric_agent_system.runtime import (
     RuntimeLoopError,
     open_runtime_store_session,
 )
+from skill_centric_agent_system.runtime.tenant_status import RuntimeTenantStatusError
 
 DEFAULT_CONTROL_API_URL = "https://scas-control-api-dev.still-butterfly-bbff.workers.dev"
 TARGET_ENVIRONMENTS = ("dev", "staging", "prod")
@@ -379,7 +380,7 @@ def _run_denied_start_case(
             composition_context_response=context_response,
             run_id=run_id,
         )
-    except CompositionError as error:
+    except (CompositionError, RuntimeTenantStatusError) as error:
         return {
             "case": label,
             "environment": environment,

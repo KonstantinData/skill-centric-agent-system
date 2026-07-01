@@ -18,17 +18,27 @@ ALTER TABLE runtime.memory_candidates
 ALTER TABLE runtime.memory_candidates
     ALTER COLUMN classification_reason SET NOT NULL;
 
-ALTER TABLE runtime.memory_candidates
-    ADD CONSTRAINT memory_candidates_candidate_class_check
-    CHECK (
-        candidate_class IN (
-            'procedural_lesson',
-            'task_subject_fact',
-            'runtime_evidence',
-            'knowledge_record_proposal',
-            'rejected'
-        )
-    );
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'memory_candidates_candidate_class_check'
+          AND conrelid = 'runtime.memory_candidates'::regclass
+    ) THEN
+        ALTER TABLE runtime.memory_candidates
+            ADD CONSTRAINT memory_candidates_candidate_class_check
+            CHECK (
+                candidate_class IN (
+                    'procedural_lesson',
+                    'task_subject_fact',
+                    'runtime_evidence',
+                    'knowledge_record_proposal',
+                    'rejected'
+                )
+            );
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_memory_candidates_class_status
     ON runtime.memory_candidates (
