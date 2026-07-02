@@ -19,7 +19,7 @@ admin routes: /admin/users, /admin/roles, /admin/settings
 The bootstrap path must create the initial membership through the tenant-admin
 Control API or an approved one-time operational bootstrap with equivalent
 server-side authorization and audit behavior. Do not hardcode the owner in
-`examples/tenants/liquisto.json`.
+`registry/tenants/liquisto/tenant.json`.
 
 The manual `Tenant Admin Bootstrap` workflow
 (`.github/workflows/tenant-admin-bootstrap.yml`) bootstraps staging and

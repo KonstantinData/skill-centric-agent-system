@@ -83,7 +83,8 @@ If the dev host does not yet have Python venv support, the workflow installs
 `python3-venv` and `python3.12-venv` before creating the gate environment.
 With `seed_control_plane_dev=true`, the workflow applies D1 migrations, reseeds
 the dev registry from `registry/modules/**/module.json` and neutral tenant
-fixtures under `examples/tenants/`, and deploys the dev Control API Worker from
+authority records under `registry/tenants/`, legacy fixtures under
+`examples/tenants/`, and deploys the dev Control API Worker from
 the checked-out commit before running the gate. Tenant fixtures generate
 tenant-owned knowledge/data scope modules and scope bindings for the seeded
 principal, so the Control Plane can return tenant-local scopes instead of

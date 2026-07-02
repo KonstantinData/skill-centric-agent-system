@@ -43,7 +43,9 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     ".gitignore",
     "AGENTS.md",
     "docs/README.md",
+    "docs/adr/0014-source-authority-boundaries.md",
     "docs/policies/data-governance.md",
+    "docs/policies/source-authority-boundaries.md",
     "docs/runbooks/daskuechenhaus-tenant-admin-bootstrap.md",
     "docs/runbooks/daskuechenhaus-tenant-onboarding.md",
     "docs/runbooks/liquisto-tenant-admin-bootstrap.md",
@@ -54,9 +56,9 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "docs/runbooks/scas-cloudflare-token-structure.md",
     "deploy/liquisto-workbench/Dockerfile",
     "examples/control-plane/dev-seed.sql",
-    "examples/crm-skill-packs/liquisto-research-assistance.json",
     "examples/runtime-evidence/liquisto.json",
-    "examples/tenants/liquisto.json",
+    "registry/modules/tenants/liquisto/skills/liquisto-research-assistance/skill-pack.json",
+    "registry/tenants/liquisto/tenant.json",
     "package.json",
     "tests/test_github_actions_workflows.py",
     "tests/test_khh_workbench_ui.py",
@@ -66,6 +68,7 @@ ALLOWED_TENANT_ONBOARDING_PATHS = {
     "tests/test_tenant_hostname_resolution.py",
     "tests/test_tenant_isolation_matrix.py",
     "tests/test_repository_neutrality.py",
+    "tests/test_source_authority_boundaries.py",
 }
 
 

@@ -1,0 +1,103 @@
+{
+  "$schema": "../../../../../schemas/module.schema.json",
+  "capability_class": "validation",
+  "data_scopes": [],
+  "description": "Governed validator module for task-execution-output-contract.",
+  "domain_tags": [
+    "software-engineering"
+  ],
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "inputs": [],
+  "kind": "validator",
+  "knowledge_scopes": [],
+  "name": "task-execution-output-contract",
+  "optional_tools": [],
+  "outputs": [
+    "task-execution-output-contract-output"
+  ],
+  "policies": [],
+  "provenance": {
+    "acceptance_criteria": [
+      "task-execution-output-contract declares an explicit selection mode.",
+      "task-execution-output-contract has repository-backed source-of-truth evidence.",
+      "task-execution-output-contract has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "task-execution-output-contract needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "task-execution-output-contract is a support capability that must only enter a profile through graph dependencies from a directly selected module.",
+    "requirement_id": "REQ-SCAS-REGISTRY-TASK_EXECUTION_OUTPUT_CONTRACT",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/common/validators/task-execution-output-contract/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": false,
+    "requires_version_pin": true
+  },
+  "runtime_roles": {
+    "allowed": [
+      "non-runtime"
+    ],
+    "default": "non-runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "mode": "dependency_only",
+    "requires_all_policies": false
+  },
+  "selection_evidence": {
+    "dependency_inclusion": [
+      {
+        "expectation": "included_as_dependency",
+        "fixture": "examples/registry/selection-evidence/task-execution-output-contract.json",
+        "reason": "task-execution-output-contract must be included through a consuming direct module dependency."
+      }
+    ],
+    "no_direct_selection": [
+      {
+        "expectation": "not_directly_selected",
+        "fixture": "examples/registry/selection-evidence/task-execution-output-contract.json",
+        "reason": "task-execution-output-contract must not be selected directly from task signals."
+      }
+    ]
+  },
+  "status": "active",
+  "task_signals": {
+    "domains": [],
+    "negative_phrases": [],
+    "phrases": [],
+    "required_inputs": [],
+    "risk_levels": [],
+    "task_types": []
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/task-execution-output-contract.json"
+    ],
+    "runtime": [
+      "task-execution-output-contract-registry-contract"
+    ]
+  },
+  "triggers": [],
+  "validators": [],
+  "version": "0.1.0"
+}

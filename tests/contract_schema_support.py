@@ -27,7 +27,13 @@ CRM_SKILL_PACK_EXAMPLE_PATH = (
     REPO_ROOT / "examples" / "crm-skill-packs" / "generic-email-assignment.json"
 )
 MODULE_EXAMPLE_PATH = (
-    REPO_ROOT / "registry" / "modules" / "skills" / "git-diff-analysis" / "module.json"
+    REPO_ROOT
+    / "registry"
+    / "modules"
+    / "common"
+    / "skills"
+    / "git-diff-analysis"
+    / "module.json"
 )
 PROFILE_EXAMPLE_PATH = REPO_ROOT / "examples" / "profiles" / "code-review-profile.json"
 HUMAN_REVIEW_PROFILE_EXAMPLE_PATH = (

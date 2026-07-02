@@ -74,9 +74,11 @@ def test_capability_delta_policy_covers_selectable_skill_capability_classes() ->
 
 def test_capability_delta_policy_rejects_unmapped_skill_class(tmp_path: Path) -> None:
     modules_dir = tmp_path / "modules"
-    module_dir = modules_dir / "skills" / "git-diff-analysis"
+    module_dir = modules_dir / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(MODULES_DIR / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(
+        MODULES_DIR / "common" / "skills" / "git-diff-analysis" / "module.json"
+    )
     module["capability_class"] = "unmapped"
     (module_dir / "module.json").write_text(
         json.dumps(module),

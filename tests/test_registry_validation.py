@@ -14,6 +14,7 @@ from scripts.registry.validate_registry import RegistryValidationError, validate
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_ROOT = REPO_ROOT / "registry" / "modules"
+COMMON_SKILLS_ROOT = REGISTRY_ROOT / "common" / "skills"
 SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 ENVIRONMENTS_DIR = REPO_ROOT / "registry" / "environments"
 LOCKFILE_PATH = REPO_ROOT / "registry" / "versions" / "lockfile.json"
@@ -42,9 +43,9 @@ def test_registry_phase_3b_graph_validation_passes() -> None:
 
 
 def test_registry_rejects_runtime_role_default_outside_allowed(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(COMMON_SKILLS_ROOT / "git-diff-analysis" / "module.json")
     module["runtime_roles"]["default"] = "shared"
     (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
     (module_dir / "SKILL.md").write_text(
@@ -62,9 +63,9 @@ def test_registry_rejects_runtime_role_default_outside_allowed(tmp_path: Path) -
 
 
 def test_registry_rejects_missing_provenance_repo_path(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(COMMON_SKILLS_ROOT / "git-diff-analysis" / "module.json")
     module["provenance"]["source_of_truth"][0]["ref"] = "docs/missing-contract.md"
     (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
     (module_dir / "SKILL.md").write_text(
@@ -82,9 +83,9 @@ def test_registry_rejects_missing_provenance_repo_path(tmp_path: Path) -> None:
 
 
 def test_registry_rejects_unlisted_selection_evidence_fixture(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(COMMON_SKILLS_ROOT / "git-diff-analysis" / "module.json")
     module["tests"]["fixtures"] = []
     (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
     (module_dir / "SKILL.md").write_text(
@@ -118,9 +119,9 @@ def test_registry_rejects_dependency_only_direct_scoring(tmp_path: Path) -> None
 
 
 def test_registry_rejects_skill_md_selection_metadata(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(COMMON_SKILLS_ROOT / "git-diff-analysis" / "module.json")
     (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
     (module_dir / "SKILL.md").write_text(
         "---\nname: git-diff-analysis\ndescription: test\n---\n"
@@ -138,8 +139,8 @@ def test_registry_rejects_skill_md_selection_metadata(tmp_path: Path) -> None:
 
 
 def test_registry_rejects_boilerplate_only_skill_specific_entrypoint(tmp_path: Path) -> None:
-    source_dir = REGISTRY_ROOT / "skills" / "git-diff-analysis"
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    source_dir = COMMON_SKILLS_ROOT / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
     module = load_json(source_dir / "module.json")
     module["entrypoint"]["guidance"] = "skill_specific"
@@ -159,9 +160,9 @@ def test_registry_rejects_boilerplate_only_skill_specific_entrypoint(tmp_path: P
 
 
 def test_registry_rejects_missing_reference(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     module_dir.mkdir(parents=True)
-    module = load_json(REGISTRY_ROOT / "skills" / "git-diff-analysis" / "module.json")
+    module = load_json(COMMON_SKILLS_ROOT / "git-diff-analysis" / "module.json")
     module["required_tools"] = ["missing-tool"]
     (module_dir / "module.json").write_text(json.dumps(module), encoding="utf-8")
     (module_dir / "SKILL.md").write_text(
@@ -185,8 +186,8 @@ def test_registry_lockfile_is_current() -> None:
 
 
 def test_registry_lockfile_hash_changes_when_module_changes(tmp_path: Path) -> None:
-    source = REGISTRY_ROOT / "skills" / "git-diff-analysis"
-    target = tmp_path / "modules" / "skills" / "git-diff-analysis"
+    source = COMMON_SKILLS_ROOT / "git-diff-analysis"
+    target = tmp_path / "modules" / "common" / "skills" / "git-diff-analysis"
     target.mkdir(parents=True)
     for path in source.rglob("*"):
         if path.is_file():
@@ -209,8 +210,8 @@ def test_registry_lockfile_hash_changes_when_module_changes(tmp_path: Path) -> N
 
 
 def test_registry_lockfile_hash_normalizes_text_line_endings(tmp_path: Path) -> None:
-    lf_root = tmp_path / "lf" / "modules" / "skills" / "sample"
-    crlf_root = tmp_path / "crlf" / "modules" / "skills" / "sample"
+    lf_root = tmp_path / "lf" / "modules" / "common" / "skills" / "sample"
+    crlf_root = tmp_path / "crlf" / "modules" / "common" / "skills" / "sample"
     lf_root.mkdir(parents=True)
     crlf_root.mkdir(parents=True)
     module = {
@@ -243,7 +244,7 @@ def test_registry_lockfile_hash_normalizes_text_line_endings(tmp_path: Path) -> 
 
 
 def test_registry_lockfile_hash_uses_posix_relative_path_order(tmp_path: Path) -> None:
-    module_dir = tmp_path / "modules" / "skills" / "sample"
+    module_dir = tmp_path / "modules" / "common" / "skills" / "sample"
     module_dir.mkdir(parents=True)
     module = {
         "name": "sample",

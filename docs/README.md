@@ -34,6 +34,7 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/infrastructure-boundary.md`
 - `docs/policies/review-gates.md`
 - `docs/policies/production-readiness.md`
+- `docs/policies/source-authority-boundaries.md`
 - `docs/runbooks/github-governance-drift.md`
 - `docs/policies/threat-model.md`
 - `docs/policies/formal-safety-invariants.md`
@@ -44,6 +45,10 @@ This repository uses `docs/` as an operational documentation surface, not only a
 - `docs/policies/incident-locked-regressions.md`
 - `docs/policies/error-taxonomy.md`
 - `docs/policies/sota-2026-target-profile.md`
+
+## Architecture Decisions
+
+- `docs/adr/0014-source-authority-boundaries.md`
 
 ## Runbooks
 

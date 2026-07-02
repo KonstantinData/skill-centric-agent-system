@@ -13,7 +13,7 @@ not parse `SKILL.md` for selection metadata.
 
 ```json
 {
-  "$schema": "../../../../schemas/module.schema.json",
+  "$schema": "../../../../../schemas/module.schema.json",
   "schema_version": "0.1.0",
   "name": "module-name",
   "version": "0.1.0",
@@ -160,7 +160,7 @@ module capability and `sealed` as a profile artifact state.
 relative to the module folder and must resolve to the local `SKILL.md`.
 `entrypoint.guidance` is either `shared_template` or `skill_specific`.
 `shared_template` means the file contains only common sealed-profile execution
-guidance documented in `registry/modules/skills/README.md`. `skill_specific`
+guidance documented in `registry/modules/common/skills/README.md`. `skill_specific`
 means the file adds concrete post-selection execution behavior beyond the
 shared template. Non-skill modules do not define `entrypoint` in v0.1.0.
 
@@ -508,7 +508,7 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
 
 ```json
 {
-  "$schema": "../../../../schemas/module.schema.json",
+  "$schema": "../../../../../schemas/module.schema.json",
   "schema_version": "0.1.0",
   "name": "git-diff-analysis",
   "version": "0.1.0",
@@ -573,7 +573,7 @@ intentional. Policies are a separate enforcement layer, not an input to scoring.
       },
       {
         "type": "repo_path",
-        "ref": "registry/modules/skills/git-diff-analysis/module.json",
+        "ref": "registry/modules/common/skills/git-diff-analysis/module.json",
         "reason": "Durable machine-readable module definition."
       }
     ],

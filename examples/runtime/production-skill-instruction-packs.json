@@ -24,7 +24,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names dependency-audit as executed handler."
       ],
-      "module_path": "registry/modules/skills/dependency-audit/module.json",
+      "module_path": "registry/modules/common/skills/dependency-audit/module.json",
       "optional_tools": [
         "git-read",
         "test-runner"
@@ -80,7 +80,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names document-synthesis as executed handler."
       ],
-      "module_path": "registry/modules/skills/document-synthesis/module.json",
+      "module_path": "registry/modules/common/skills/document-synthesis/module.json",
       "optional_tools": [],
       "required_policies": [
         "no-destructive-commands"
@@ -130,7 +130,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names general-task-summary as executed handler."
       ],
-      "module_path": "registry/modules/skills/general-task-summary/module.json",
+      "module_path": "registry/modules/common/skills/general-task-summary/module.json",
       "optional_tools": [],
       "required_policies": [
         "no-destructive-commands"
@@ -181,7 +181,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names git-diff-analysis as executed handler."
       ],
-      "module_path": "registry/modules/skills/git-diff-analysis/module.json",
+      "module_path": "registry/modules/common/skills/git-diff-analysis/module.json",
       "optional_tools": [
         "test-runner"
       ],
@@ -239,7 +239,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names research-context-synthesis as executed handler."
       ],
-      "module_path": "registry/modules/skills/research-context-synthesis/module.json",
+      "module_path": "registry/modules/common/skills/research-context-synthesis/module.json",
       "optional_tools": [],
       "required_policies": [
         "no-destructive-commands"
@@ -296,7 +296,7 @@
         "Provide a non-secret live gate run URL proving this handler executed in a production-like runtime flow.",
         "Persist sanitized evidence metadata that references the live run URL and explicitly names task-execution-planning as executed handler."
       ],
-      "module_path": "registry/modules/skills/task-execution-planning/module.json",
+      "module_path": "registry/modules/common/skills/task-execution-planning/module.json",
       "optional_tools": [
         "test-runner"
       ],

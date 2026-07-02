@@ -25,6 +25,8 @@ task analysis
 ```
 
 The contract is encoded in `schemas/crm-skill-pack.schema.json`.
+Tenant-specific CRM skill-pack contract files live under
+`registry/modules/tenants/<tenant-id>/skills/<skill-pack-id>/skill-pack.json`.
 
 ## Required Fields
 

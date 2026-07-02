@@ -8,10 +8,10 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from skill_centric_agent_system.control_plane import build_seed_records, generate_seed_sql
+from tests.tenant_authority_support import tenant_authority_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULES_DIR = REPO_ROOT / "registry" / "modules"
-TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 MODULE_SCHEMA_PATH = REPO_ROOT / "schemas" / "module.schema.json"
 DEV_SEED_SQL_PATH = REPO_ROOT / "examples" / "control-plane" / "dev-seed.sql"
 D1_MIGRATION_DIR = REPO_ROOT / "migrations" / "cloudflare" / "d1"
@@ -34,7 +34,7 @@ def module_paths() -> list[Path]:
 
 
 def tenant_paths() -> list[Path]:
-    return sorted(TENANTS_DIR.glob("*.json"))
+    return tenant_authority_paths()
 
 
 def test_seed_source_modules_match_module_schema() -> None:

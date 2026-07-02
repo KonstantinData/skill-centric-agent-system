@@ -12,17 +12,17 @@ from skill_centric_agent_system.control_plane import (
     TenantHostnameResolver,
     normalize_hostname,
 )
+from tests.tenant_authority_support import LEGACY_TENANTS_DIR, tenant_authority_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 
 
 def tenant_paths() -> list[Path]:
-    return sorted(TENANTS_DIR.glob("*.json"))
+    return tenant_authority_paths()
 
 
 def load_tenant(name: str) -> dict[str, Any]:
-    return json.loads((TENANTS_DIR / name).read_text(encoding="utf-8"))
+    return json.loads((LEGACY_TENANTS_DIR / name).read_text(encoding="utf-8"))
 
 
 def test_tenant_hostname_resolver_returns_single_configured_authority() -> None:
