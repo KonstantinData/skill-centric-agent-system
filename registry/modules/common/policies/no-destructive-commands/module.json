@@ -1,0 +1,103 @@
+{
+  "$schema": "../../../../../schemas/module.schema.json",
+  "capability_class": "policy",
+  "data_scopes": [],
+  "description": "Governed policy module for no-destructive-commands.",
+  "domain_tags": [
+    "software-engineering"
+  ],
+  "environments": [
+    "dev",
+    "staging",
+    "prod"
+  ],
+  "inputs": [],
+  "kind": "policy",
+  "knowledge_scopes": [],
+  "name": "no-destructive-commands",
+  "optional_tools": [],
+  "outputs": [
+    "no-destructive-commands-output"
+  ],
+  "policies": [],
+  "provenance": {
+    "acceptance_criteria": [
+      "no-destructive-commands declares an explicit selection mode.",
+      "no-destructive-commands has repository-backed source-of-truth evidence.",
+      "no-destructive-commands has fixture evidence that proves its intended selection boundary."
+    ],
+    "owner": {
+      "name": "Konstantin Milonas",
+      "type": "person"
+    },
+    "problem_statement": "no-destructive-commands needs explicit registry ownership, source evidence, and selection evidence before it can participate in sealed SCAS composition.",
+    "rationale": "no-destructive-commands is a support capability that must only enter a profile through graph dependencies from a directly selected module.",
+    "requirement_id": "REQ-SCAS-REGISTRY-NO_DESTRUCTIVE_COMMANDS",
+    "source_of_truth": [
+      {
+        "reason": "Defines the governed module provenance, selection-mode, and evidence contract.",
+        "ref": "docs/policies/module-contracts.md",
+        "type": "repo_path"
+      },
+      {
+        "reason": "Durable machine-readable module definition.",
+        "ref": "registry/modules/common/policies/no-destructive-commands/module.json",
+        "type": "repo_path"
+      }
+    ]
+  },
+  "required_tools": [],
+  "runtime_contract": {
+    "profile_sealable": true,
+    "requires_handler_binding": false,
+    "requires_version_pin": true
+  },
+  "runtime_roles": {
+    "allowed": [
+      "non-runtime"
+    ],
+    "default": "non-runtime"
+  },
+  "schema_version": "0.1.0",
+  "selection": {
+    "mode": "dependency_only",
+    "requires_all_policies": false
+  },
+  "selection_evidence": {
+    "dependency_inclusion": [
+      {
+        "expectation": "included_as_dependency",
+        "fixture": "examples/registry/selection-evidence/no-destructive-commands.json",
+        "reason": "no-destructive-commands must be included through a consuming direct module dependency."
+      }
+    ],
+    "no_direct_selection": [
+      {
+        "expectation": "not_directly_selected",
+        "fixture": "examples/registry/selection-evidence/no-destructive-commands.json",
+        "reason": "no-destructive-commands must not be selected directly from task signals."
+      }
+    ]
+  },
+  "status": "active",
+  "task_signals": {
+    "domains": [],
+    "negative_phrases": [],
+    "phrases": [],
+    "required_inputs": [],
+    "risk_levels": [],
+    "task_types": []
+  },
+  "tests": {
+    "contract": [],
+    "fixtures": [
+      "examples/registry/selection-evidence/no-destructive-commands.json"
+    ],
+    "runtime": [
+      "no-destructive-commands-registry-contract"
+    ]
+  },
+  "triggers": [],
+  "validators": [],
+  "version": "0.1.0"
+}

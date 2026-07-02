@@ -1,6 +1,6 @@
 {
   "environment": "dev",
-  "generated_at": "2026-06-26T21:27:21+00:00",
+  "generated_at": "2026-07-02T00:06:10+00:00",
   "lockfile_version": "0.1.0",
   "module_count": 20,
   "modules": [
@@ -43,72 +43,72 @@
     {
       "kind": "policy",
       "name": "no-destructive-commands",
-      "path": "registry/modules/policies/no-destructive-commands",
+      "path": "registry/modules/common/policies/no-destructive-commands",
       "schema_version": "0.1.0",
-      "sha256": "ecf4dc82df8d11aa69ff031daed0bf5ef0d5940d4099cc37a94355f39bd5a1e4",
+      "sha256": "4187ecdc4d9e6a0fe237207ca2130855e9dfc0700df966dd4b0cc01c16ce226f",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "policy",
       "name": "require-file-references",
-      "path": "registry/modules/policies/require-file-references",
+      "path": "registry/modules/common/policies/require-file-references",
       "schema_version": "0.1.0",
-      "sha256": "31fc5220e92467f7e2a3a797c9b4bc9d6ddec39bff014b31a7b2265287819fda",
+      "sha256": "90e978e28b851bcd8acc0f879ae61761b49602683ea4b83862ddfb2c1b46f04a",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "dependency-audit",
-      "path": "registry/modules/skills/dependency-audit",
+      "path": "registry/modules/common/skills/dependency-audit",
       "schema_version": "0.1.0",
-      "sha256": "02c3974fbeb26974c60dde8af57a96c2eaaa8fb9adeb83a20c89a8e876e0158d",
+      "sha256": "08020384c36520fe6c02f9d51797565749d8d5e819d28e5581efc16c088adb24",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "document-synthesis",
-      "path": "registry/modules/skills/document-synthesis",
+      "path": "registry/modules/common/skills/document-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "4d559be6db27d6144712fd362a31805a67edacde59acd4f448b2cbe6863904eb",
+      "sha256": "c4ce3fcb51d1edf1e21e4e8c2fadf05527be191b6c659edb1389bc9760043d25",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "general-task-summary",
-      "path": "registry/modules/skills/general-task-summary",
+      "path": "registry/modules/common/skills/general-task-summary",
       "schema_version": "0.1.0",
-      "sha256": "bcf67280d96315671a9b9079499064171cce6e43c069bd99493d496d15a3a5e2",
+      "sha256": "8b9c62d6d1bef8d022a5b576a0fb63846c8d5f9ff127d869724ec34b2ea5fee3",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "git-diff-analysis",
-      "path": "registry/modules/skills/git-diff-analysis",
+      "path": "registry/modules/common/skills/git-diff-analysis",
       "schema_version": "0.1.0",
-      "sha256": "43ad9bce35b44608196513b2022d158d2e40ebf0fe9e685b0a458fa99ecee8b0",
+      "sha256": "b05163b38a6ae6c874c8a41d9c851f9e0d58aa31c3a06672c229c1a9284e034d",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "research-context-synthesis",
-      "path": "registry/modules/skills/research-context-synthesis",
+      "path": "registry/modules/common/skills/research-context-synthesis",
       "schema_version": "0.1.0",
-      "sha256": "1ea8cdf9a8ee213ef2e2333aee858cf99885b44630ee3b7134421108b4631efd",
+      "sha256": "bcd2c0a15dbfd81d3ad889d1bdbf291bc5558af04f747bc21855bd135a0a8a17",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "skill",
       "name": "task-execution-planning",
-      "path": "registry/modules/skills/task-execution-planning",
+      "path": "registry/modules/common/skills/task-execution-planning",
       "schema_version": "0.1.0",
-      "sha256": "b73225bfceb7785734faaeed3c2ce73bd611e1b9241ff82ebd2ec78878974675",
+      "sha256": "3a9de5af0ea047cc2477e0033bc036a2dedb07334b43e12ae473db87ddee2db7",
       "status": "active",
       "version": "0.1.0"
     },
@@ -151,36 +151,36 @@
     {
       "kind": "validator",
       "name": "general-output-contract",
-      "path": "registry/modules/validators/general-output-contract",
+      "path": "registry/modules/common/validators/general-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "668178ff3a987f30a47b646686fee7282855a32a70bf2d654da3941a36e4901d",
+      "sha256": "9d246eaa148c3389f8f9c589b2b78bb0e4fdbef676a33852b98395a1eff0933e",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "validator",
       "name": "research-output-contract",
-      "path": "registry/modules/validators/research-output-contract",
+      "path": "registry/modules/common/validators/research-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "e214e46fb7c89d1fce95811e180ab1054b603e92aff88af8d3224edfd8adffde",
+      "sha256": "d8ceb556add6c591cb2f2eb497071d2212584f3f288ace1deddad592716a4061",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "validator",
       "name": "review-findings-contract",
-      "path": "registry/modules/validators/review-findings-contract",
+      "path": "registry/modules/common/validators/review-findings-contract",
       "schema_version": "0.1.0",
-      "sha256": "cd83981c33f1c38392808c0c0b75899a82aa55a862a70ba696ac7531d3c47352",
+      "sha256": "adff0788ab01bacbef0d12e9c04cdfab551f30b3c694b69ef64c4f28be9e6d8d",
       "status": "active",
       "version": "0.1.0"
     },
     {
       "kind": "validator",
       "name": "task-execution-output-contract",
-      "path": "registry/modules/validators/task-execution-output-contract",
+      "path": "registry/modules/common/validators/task-execution-output-contract",
       "schema_version": "0.1.0",
-      "sha256": "fa8bdbe2c2e94dcf37ac2748f3c94b0b4f7285e3e6ca794223a7767ed626b340",
+      "sha256": "c4d0a134485dab9b4354fe3d84a6b1c5f290a17ddf69f8d63aa3a8a2b6b3df2f",
       "status": "active",
       "version": "0.1.0"
     }

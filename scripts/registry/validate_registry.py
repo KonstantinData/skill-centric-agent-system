@@ -75,7 +75,14 @@ def validate_registry(
     if phase in {"3a", "schema", "all"}:
         for module_path, module in modules:
             errors.extend(_schema_errors(validator, module_path, module))
-            errors.extend(_local_invariant_errors(module_path, module, schema_path))
+            errors.extend(
+                _local_invariant_errors(
+                    module_path,
+                    module,
+                    schema_path,
+                    registry_root,
+                )
+            )
 
     if phase in {"3b", "graph", "all"}:
         errors.extend(_graph_errors(modules))
@@ -112,6 +119,7 @@ def _local_invariant_errors(
     module_path: Path,
     module: Mapping[str, Any],
     schema_path: Path,
+    registry_root: Path,
 ) -> list[str]:
     errors: list[str] = []
     module_dir = module_path.parent
@@ -128,9 +136,13 @@ def _local_invariant_errors(
             )
 
     expected_parent = KIND_DIRS.get(str(module.get("kind")))
-    if expected_parent and module_path.parent.parent.name != expected_parent:
+    relative_module_parts = module_path.parent.relative_to(registry_root).parts
+    if expected_parent and (
+        len(relative_module_parts) < 2 or relative_module_parts[-2] != expected_parent
+    ):
         errors.append(
-            f"{_repo_path(module_path)} must live under registry/modules/{expected_parent}/"
+            f"{_repo_path(module_path)} must live under a "
+            f"registry/modules/**/{expected_parent}/ namespace"
         )
 
     runtime_roles = module.get("runtime_roles", {})

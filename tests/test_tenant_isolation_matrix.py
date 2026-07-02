@@ -11,11 +11,16 @@ from skill_centric_agent_system.control_plane import (
     TenantHostnameResolver,
     build_seed_records,
 )
+from tests.tenant_authority_support import (
+    LEGACY_TENANTS_DIR,
+    crm_skill_pack_path,
+    crm_skill_pack_paths,
+    tenant_authority_path,
+    tenant_authority_paths,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 MODULES_DIR = REPO_ROOT / "registry" / "modules"
-CRM_SKILL_PACKS_DIR = REPO_ROOT / "examples" / "crm-skill-packs"
 LIQUISTO_APP_ROOT = REPO_ROOT / "apps" / "liquisto-workbench"
 TENANT_UI_DEPLOY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "tenant-ui-deploy.yml"
 DKH_ACTION_AUDIT_MIGRATION_PATH = (
@@ -47,7 +52,7 @@ KHH_FOREIGN_CONTEXT_MARKERS = (
 
 
 def tenant_paths() -> list[Path]:
-    return sorted(TENANTS_DIR.glob("*.json"))
+    return tenant_authority_paths()
 
 
 def module_paths() -> list[Path]:
@@ -98,7 +103,7 @@ def test_tenant_hostnames_resolve_to_exactly_one_active_or_setup_tenant() -> Non
         assert authority.tenant_id == tenant_id
         assert authority.hostname == hostname
 
-    disabled_tenant = load_tenant(TENANTS_DIR / "tenant-under-test.json")
+    disabled_tenant = load_tenant(LEGACY_TENANTS_DIR / "tenant-under-test.json")
     disabled_tenant["status"] = "disabled"
     resolver = TenantHostnameResolver([disabled_tenant])
     with pytest.raises(TenantHostnameResolutionError, match="not active"):
@@ -174,7 +179,7 @@ def test_tenant_ui_assets_do_not_fallback_across_tenant_directories() -> None:
 def test_tenant_crm_skill_pack_bindings_are_tenant_local() -> None:
     skill_packs = {
         load_json(path)["id"]: load_json(path)
-        for path in sorted(CRM_SKILL_PACKS_DIR.glob("*.json"))
+        for path in crm_skill_pack_paths()
     }
 
     for path in tenant_paths():
@@ -200,8 +205,17 @@ def test_tenant_crm_skill_pack_bindings_are_tenant_local() -> None:
             )
 
 
+def test_liquisto_crm_skill_pack_lives_in_tenant_module_namespace() -> None:
+    path = crm_skill_pack_path("liquisto-research-assistance")
+
+    assert path.relative_to(REPO_ROOT).as_posix() == (
+        "registry/modules/tenants/liquisto/skills/"
+        "liquisto-research-assistance/skill-pack.json"
+    )
+
+
 def test_liquisto_tenant_fixture_excludes_daskuechenhaus_context() -> None:
-    tenant = load_tenant(TENANTS_DIR / "liquisto.json")
+    tenant = load_tenant(tenant_authority_path("liquisto"))
     serialized = json.dumps(tenant, sort_keys=True).lower()
 
     assert tenant["tenant_id"] == "liquisto"

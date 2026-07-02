@@ -5,8 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 from tests.contract_schema_support import *  # noqa: F403
+from tests.tenant_authority_support import tenant_authority_paths
 
-TENANTS_DIR = REPO_ROOT / "examples" / "tenants"
 TENANT_RUNTIME_EVIDENCE_DIR = REPO_ROOT / "examples" / "runtime-evidence"
 REQUIRED_SIGNALS = {
     "queue",
@@ -34,7 +34,7 @@ def tenant_examples() -> dict[str, dict[str, Any]]:
     return {
         tenant["tenant_id"]: tenant
         for tenant in (
-            load_json(path) for path in sorted(TENANTS_DIR.glob("*.json"))
+            load_json(path) for path in tenant_authority_paths()
         )
     }
 

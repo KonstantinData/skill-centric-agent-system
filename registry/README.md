@@ -29,4 +29,25 @@ modules such as tools, scopes, policies, and validators should normally use
 `selection.mode: "dependency_only"` and include dependency-inclusion plus
 no-direct-selection evidence.
 
-Skill entrypoints are governed by `registry/modules/skills/README.md`.
+Skill entrypoints are governed by `registry/modules/common/skills/README.md`.
+
+Common reusable modules live under:
+
+```text
+registry/modules/common/skills/
+registry/modules/common/validators/
+registry/modules/common/policies/
+```
+
+Tenant-specific selectable modules stay in the module registry, grouped by
+tenant namespace rather than under tenant configuration:
+
+```text
+registry/modules/tenants/<tenant-id>/skills/
+registry/modules/tenants/<tenant-id>/validators/
+registry/modules/tenants/<tenant-id>/policies/
+```
+
+Tenant configuration remains under `registry/tenants/`. Tenant-specific CRM
+skill-pack contracts are tenant skill authority and live under
+`registry/modules/tenants/<tenant-id>/skills/<skill-pack-id>/skill-pack.json`.

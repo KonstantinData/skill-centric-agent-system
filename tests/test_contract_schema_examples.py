@@ -3,6 +3,12 @@ from __future__ import annotations
 # ruff: noqa: F403,F405,I001
 
 from tests.contract_schema_support import *  # noqa: F403
+from tests.tenant_authority_support import (
+    crm_skill_pack_path,
+    crm_skill_pack_paths,
+    tenant_authority_path,
+    tenant_authority_paths,
+)
 
 
 def test_module_example_matches_schema(
@@ -28,7 +34,7 @@ def test_crm_skill_pack_example_matches_schema(
 def test_all_crm_skill_pack_examples_match_schema(
     crm_skill_pack_schema: dict[str, Any],
 ) -> None:
-    for skill_pack_path in sorted((REPO_ROOT / "examples" / "crm-skill-packs").glob("*.json")):
+    for skill_pack_path in crm_skill_pack_paths():
         assert_valid(crm_skill_pack_schema, load_json(skill_pack_path))
 
 
@@ -115,7 +121,7 @@ def test_runtime_output_schema_is_valid(runtime_output_schema: dict[str, Any]) -
 def active_or_setup_tenant_examples() -> list[dict[str, Any]]:
     tenants = [
         load_json(path)
-        for path in sorted((REPO_ROOT / "examples" / "tenants").glob("*.json"))
+        for path in tenant_authority_paths()
     ]
     return [tenant for tenant in tenants if tenant["status"] in {"active", "setup"}]
 
@@ -339,11 +345,14 @@ def test_neutral_tenant_registry_example_matches_schema(
 
 def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
     tenant_registry_schema: dict[str, Any],
+    crm_skill_pack_schema: dict[str, Any],
 ) -> None:
-    liquisto = load_json(REPO_ROOT / "examples" / "tenants" / "liquisto.json")
+    liquisto = load_json(tenant_authority_path("liquisto"))
+    skill_pack = load_json(crm_skill_pack_path("liquisto-research-assistance"))
 
     assert_valid(tenant_registry_schema, liquisto)
     assert_tenant_registry_references_are_valid(liquisto)
+    assert_valid(crm_skill_pack_schema, skill_pack)
     assert liquisto["legal_profile"]["legal_name"] == "Liquisto Technologies GmbH"
     assert "Pending legal bootstrap" not in json.dumps(liquisto)
     assert liquisto["ui_profile"]["landing"] == {
@@ -365,6 +374,13 @@ def test_liquisto_tenant_registry_example_matches_ui_profile_contract(
     assert "scas-actions" in liquisto["ui_profile"]["command_center"]["surfaces"]
     assert liquisto["ui_profile"]["scas_skill_packs"][0]["id"] == (
         "liquisto-research-assistance"
+    )
+    assert skill_pack["tenant_id"] == liquisto["tenant_id"]
+    assert skill_pack["task_types"] == (
+        liquisto["ui_profile"]["scas_skill_packs"][0]["task_types"]
+    )
+    assert skill_pack["required_capabilities"] == (
+        liquisto["ui_profile"]["scas_skill_packs"][0]["required_capabilities"]
     )
     assert [area["id"] for area in liquisto["ui_profile"]["workspace_areas"]] == [
         "research",
@@ -439,7 +455,7 @@ def test_daskuechenhaus_tenant_registry_example_matches_schema_and_public_identi
         "daskuechenhaus-next-step-planning",
     ]
     daskuechenhaus_skill_pack_paths = sorted(
-        (REPO_ROOT / "examples" / "crm-skill-packs").glob("daskuechenhaus-*.json")
+        path for path in crm_skill_pack_paths() if path.name.startswith("daskuechenhaus-")
     )
     daskuechenhaus_skill_packs = {}
     for path in daskuechenhaus_skill_pack_paths:
@@ -527,7 +543,7 @@ def test_kinderhaus_tenant_registry_example_matches_schema_and_privacy_boundary(
 
     for pack_ref in kinderhaus["ui_profile"]["scas_skill_packs"]:
         skill_pack = load_json(
-            REPO_ROOT / "examples" / "crm-skill-packs" / f"{pack_ref['id']}.json"
+            crm_skill_pack_path(pack_ref["id"])
         )
         assert_valid(crm_skill_pack_schema, skill_pack)
         assert skill_pack["tenant_id"] == kinderhaus["tenant_id"]

@@ -12,6 +12,18 @@ from skill_centric_agent_system.control_plane import (  # noqa: E402
     generate_seed_sql,
 )
 
+DEFAULT_TENANT_DIRS = (Path("examples/tenants"), Path("registry/tenants"))
+
+
+def collect_tenant_paths(tenant_dirs: list[Path]) -> list[Path]:
+    tenant_paths: list[Path] = []
+    for tenant_dir in tenant_dirs:
+        if not tenant_dir.exists():
+            continue
+        tenant_paths.extend(tenant_dir.glob("*.json"))
+        tenant_paths.extend(tenant_dir.glob("*/tenant.json"))
+    return sorted(set(tenant_paths), key=lambda path: path.as_posix())
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -26,8 +38,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tenants-dir",
         type=Path,
-        default=Path("examples/tenants"),
-        help="Directory containing neutral tenant registry fixtures.",
+        action="append",
+        default=None,
+        help=(
+            "Directory containing tenant authority records or legacy tenant "
+            "fixtures. Can be repeated. Defaults to registry/tenants plus "
+            "examples/tenants while legacy migrations are in progress."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -69,7 +86,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     module_paths = sorted(args.modules_dir.rglob("module.json"))
-    tenant_paths = sorted(args.tenants_dir.glob("*.json")) if args.tenants_dir.exists() else []
+    tenant_dirs = args.tenants_dir or list(DEFAULT_TENANT_DIRS)
+    tenant_paths = collect_tenant_paths(tenant_dirs)
     records = build_seed_records(
         module_paths,
         tenant_paths=tenant_paths,
